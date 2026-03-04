@@ -4,6 +4,58 @@
 
 @layer base {
   :root {
+    --background: 210 20% 96%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 199 89% 48%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 260 50% 55%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 210 15% 90%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 174 72% 42%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 145 65% 38%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 222 47% 11%;
+
+    --border: 214 20% 85%;
+    --input: 214 20% 85%;
+    --ring: 199 89% 48%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 215 16% 47%;
+    --sidebar-primary: 199 89% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 15% 93%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 20% 90%;
+    --sidebar-ring: 199 89% 48%;
+
+    --sys-surface: 210 15% 95%;
+    --sys-gradient-start: 210 40% 96%;
+    --sys-gradient-mid: 220 30% 92%;
+    --sys-gradient-end: 210 25% 94%;
+  }
+
+  .dark {
     --background: 222 47% 6%;
     --foreground: 210 40% 98%;
 
@@ -38,8 +90,6 @@
     --input: 217 33% 18%;
     --ring: 199 89% 60%;
 
-    --radius: 0.75rem;
-
     --sidebar-background: 222 47% 5%;
     --sidebar-foreground: 215 20% 65%;
     --sidebar-primary: 199 89% 60%;
@@ -49,7 +99,6 @@
     --sidebar-border: 217 33% 15%;
     --sidebar-ring: 199 89% 60%;
 
-    /* Custom system colors */
     --sys-surface: 222 47% 9%;
     --sys-gradient-start: 240 55% 12%;
     --sys-gradient-mid: 260 45% 22%;

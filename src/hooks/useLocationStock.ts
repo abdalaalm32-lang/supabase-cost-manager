@@ -126,7 +126,7 @@ export function useLocationStock(
     queryFn: async () => {
       const { data, error } = await supabase
         .from("stocktakes")
-        .select("id, branch_id, warehouse_id, date, created_at, stocktake_items(stock_item_id, counted_qty)")
+        .select("id, branch_id, warehouse_id, date, created_at, stocktake_items(stock_item_id, counted_qty, book_qty)")
         .eq("company_id", companyId!)
         .eq("status", "مكتمل")
         .order("created_at", { ascending: false });
@@ -215,8 +215,22 @@ export function useLocationStock(
       }
     }
 
+    // Stocktake adjustments (counted_qty - book_qty for this location)
+    for (const st of stocktakes) {
+      if (match(st.branch_id, st.warehouse_id)) {
+        for (const si of (st.stocktake_items || [])) {
+          if (si.stock_item_id) {
+            const adjustment = Number(si.counted_qty) - Number(si.book_qty || 0);
+            if (adjustment !== 0) {
+              add(si.stock_item_id, adjustment);
+            }
+          }
+        }
+      }
+    }
+
     return map;
-  }, [locationId, locationType, purchaseItems, productionRecords, productionIngredients, transferItems, wasteItems, posSaleItems, recipes]);
+  }, [locationId, locationType, purchaseItems, productionRecords, productionIngredients, transferItems, wasteItems, posSaleItems, recipes, stocktakes]);
 
   const getLocationStock = (stockItemId: string): number => {
     return stockMap.get(stockItemId) || 0;

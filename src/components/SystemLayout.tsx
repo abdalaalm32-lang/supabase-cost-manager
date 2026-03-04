@@ -11,8 +11,9 @@ import {
   Store, ArrowRightLeft, ClipboardCheck, Trash2,
   Layers, PieChart, BarChart3, ShieldBan, Factory,
   ChevronDown, Monitor, Receipt, BrainCircuit, FolderOpen, UtensilsCrossed, MessageSquare,
-  Shield, Building2, Sun, Moon
+  Shield, Building2, Sun, Moon, Circle
 } from "lucide-react";
+import loginBg from "@/assets/login-bg.jpg";
 
 interface SystemLayoutProps {
   children: React.ReactNode;
@@ -224,7 +225,7 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
             )}
           </button>
           {!isSidebarCollapsed && isExpanded && (
-            <div className="mr-6 mt-1 mb-1 space-y-0.5 border-r-2 border-primary/20 pr-3">
+            <div className="mr-4 mt-1 mb-1 space-y-0.5 pr-2">
               {item.children!.map((child) => {
                 const ChildIcon = child.icon;
                 const childActive = location.pathname === child.path;
@@ -232,13 +233,13 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
                   <button
                     key={child.id}
                     onClick={() => handleNavigate(child, item.id)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-all duration-200 ${
+                    className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs transition-all duration-200 relative ${
                       childActive
-                        ? "bg-primary/10 text-primary font-semibold"
-                        : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground font-medium"
+                        ? "bg-primary/10 text-primary font-semibold before:absolute before:right-0 before:top-1/2 before:-translate-y-1/2 before:w-[3px] before:h-4 before:rounded-full before:bg-primary"
+                        : "text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent/40 font-medium"
                     }`}
                   >
-                    <ChildIcon size={14} className="flex-shrink-0 opacity-70" />
+                    <Circle size={5} className={`flex-shrink-0 ${childActive ? 'text-primary fill-primary' : 'text-sidebar-foreground/30'}`} />
                     <span className="truncate">{child.label}</span>
                   </button>
                 );
@@ -342,9 +343,22 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden relative">
+        {/* Background Image with Blur */}
+        <div 
+          className="absolute inset-0 z-0"
+          style={{
+            backgroundImage: `url(${loginBg})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            filter: 'blur(30px) brightness(0.3)',
+            transform: 'scale(1.1)',
+          }}
+        />
+        <div className="absolute inset-0 z-0 bg-background/70 dark:bg-background/60" />
+        
         {/* Top Navbar */}
-        <header className="h-14 border-b border-border bg-card/50 backdrop-blur-md flex items-center justify-between px-6 flex-shrink-0">
+        <header className="h-14 border-b border-border/50 bg-card/30 backdrop-blur-xl flex items-center justify-between px-6 flex-shrink-0 relative z-10">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span className="font-semibold text-foreground">{userName}</span>
             <span className="text-xs">•</span>
@@ -353,7 +367,7 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              className="p-2 rounded-xl hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
               title={theme === "dark" ? "الوضع الفاتح" : "الوضع الداكن"}
             >
               {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
@@ -361,7 +375,7 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
             <NotificationBell />
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto relative z-10">
           <div className="p-6">{children}</div>
         </main>
       </div>

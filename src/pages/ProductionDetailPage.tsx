@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface LocalIngredient {
   id?: string;
@@ -650,6 +651,7 @@ export const ProductionDetailPage: React.FC = () => {
                     <TableHead className="text-right">الكود</TableHead>
                     <TableHead className="text-right">الخامة</TableHead>
                     <TableHead className="text-right">الوحدة</TableHead>
+                    <TableHead className="text-right">الرصيد المتاح</TableHead>
                     <TableHead className="text-right">الكمية</TableHead>
                     <TableHead className="text-right">متوسط التكلفة</TableHead>
                     <TableHead className="text-right">القيمة</TableHead>
@@ -659,40 +661,50 @@ export const ProductionDetailPage: React.FC = () => {
                 <TableBody>
                   {ingredients.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={isLocked ? 6 : 7} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={isLocked ? 8 : 9} className="text-center py-8 text-muted-foreground">
                         لم تتم إضافة مكونات بعد
                       </TableCell>
                     </TableRow>
                   ) : (
-                    ingredients.map((ing, idx) => (
-                      <TableRow key={idx}>
-                        <TableCell className="font-mono text-xs">{ing.code}</TableCell>
-                        <TableCell className="font-medium text-sm">{ing.name}</TableCell>
-                        <TableCell className="text-sm">{ing.unit}</TableCell>
-                        <TableCell>
-                          {isLocked ? (
-                            <span className="text-sm">{ing.required_qty}</span>
-                          ) : (
-                            <Input
-                              type="number"
-                              min={0}
-                              value={ing.required_qty}
-                              onChange={e => updateQty(idx, e.target.value)}
-                              className="h-8 w-20 text-sm"
-                            />
-                          )}
-                        </TableCell>
-                        <TableCell className="text-sm">{ing.unit_cost.toFixed(2)}</TableCell>
-                        <TableCell className="text-sm font-medium">{(ing.required_qty * ing.unit_cost).toFixed(2)}</TableCell>
-                        {!isLocked && (
-                          <TableCell>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeIngredient(idx)}>
-                              <Trash2 size={14} />
-                            </Button>
+                    ingredients.map((ing, idx) => {
+                      const available = locationId ? getLocationStock(ing.stock_item_id) : null;
+                      const isOverStock = available !== null && ing.required_qty > 0 && ing.required_qty > available;
+                      return (
+                        <TableRow key={idx}>
+                          <TableCell className="font-mono text-xs">{ing.code}</TableCell>
+                          <TableCell className="font-medium text-sm">{ing.name}</TableCell>
+                          <TableCell className="text-sm">{ing.unit}</TableCell>
+                          <TableCell className={cn("text-sm", isOverStock && "text-destructive font-bold")}>
+                            {available !== null ? available.toFixed(2) : "—"}
                           </TableCell>
-                        )}
-                      </TableRow>
-                    ))
+                          <TableCell>
+                            {isLocked ? (
+                              <span className="text-sm">{ing.required_qty}</span>
+                            ) : (
+                              <Input
+                                type="number"
+                                min={0}
+                                value={ing.required_qty}
+                                onChange={e => updateQty(idx, e.target.value)}
+                                className={cn("h-8 w-20 text-sm", isOverStock && "border-destructive ring-1 ring-destructive")}
+                              />
+                            )}
+                            {isOverStock && (
+                              <p className="text-[10px] text-destructive mt-0.5">المتاح: {available!.toFixed(2)}</p>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-sm">{ing.unit_cost.toFixed(2)}</TableCell>
+                          <TableCell className="text-sm font-medium">{(ing.required_qty * ing.unit_cost).toFixed(2)}</TableCell>
+                          {!isLocked && (
+                            <TableCell>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeIngredient(idx)}>
+                                <Trash2 size={14} />
+                              </Button>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/hooks/useTheme";
 import { useNavigate, useLocation } from "react-router-dom";
 import { NotificationBell } from "@/components/NotificationBell";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,7 +11,7 @@ import {
   Store, ArrowRightLeft, ClipboardCheck, Trash2,
   Layers, PieChart, BarChart3, ShieldBan, Factory,
   ChevronDown, Monitor, Receipt, BrainCircuit, FolderOpen, UtensilsCrossed, MessageSquare,
-  Shield, Building2
+  Shield, Building2, Sun, Moon
 } from "lucide-react";
 
 interface SystemLayoutProps {
@@ -120,6 +121,7 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
   children, onLogout, companyName, userName,
 }) => {
   const { hasPermission, auth } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -290,15 +292,12 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
                 </div>
               </div>
             )}
-            <div className="flex items-center gap-1">
-              <NotificationBell />
-              <button
-                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                className="p-2 rounded-lg hover:bg-sidebar-accent text-sidebar-foreground transition-colors"
-              >
-                <Menu size={18} />
-              </button>
-            </div>
+            <button
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              className="p-2 rounded-lg hover:bg-sidebar-accent text-sidebar-foreground transition-colors"
+            >
+              <Menu size={18} />
+            </button>
           </div>
         </div>
 
@@ -343,9 +342,29 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="p-6">{children}</div>
-      </main>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Top Navbar */}
+        <header className="h-14 border-b border-border bg-card/50 backdrop-blur-md flex items-center justify-between px-6 flex-shrink-0">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span className="font-semibold text-foreground">{userName}</span>
+            <span className="text-xs">•</span>
+            <span className="text-xs">{companyName}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+              title={theme === "dark" ? "الوضع الفاتح" : "الوضع الداكن"}
+            >
+              {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <NotificationBell />
+          </div>
+        </header>
+        <main className="flex-1 overflow-y-auto">
+          <div className="p-6">{children}</div>
+        </main>
+      </div>
 
       {/* Access Denied Modal */}
       {isAccessDenied && (

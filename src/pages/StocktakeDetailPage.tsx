@@ -20,6 +20,7 @@ import {
 import { ArrowRight, Plus, Trash2, Save, ClipboardCheck, Package, TrendingUp, TrendingDown, DollarSign, MapPin, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useLocationStock } from "@/hooks/useLocationStock";
 
 export const StocktakeDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -114,6 +115,19 @@ export const StocktakeDetailPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  // Determine location type and ID for per-location stock
+  const stocktakeLocationType = useMemo<"branch" | "warehouse">(() => {
+    if (stocktake?.warehouse_id) return "warehouse";
+    return "branch";
+  }, [stocktake]);
+
+  const stocktakeLocationId = useMemo(() => {
+    if (!stocktake) return null;
+    return stocktake.branch_id || stocktake.warehouse_id || null;
+  }, [stocktake]);
+
+  const { getLocationStock } = useLocationStock(stocktakeLocationId, stocktakeLocationType);
+
   const getStockItemInfo = useCallback((siId: string | null) => {
     if (!siId) return null;
     return allStockItems.find((s: any) => s.id === siId) || null;
@@ -161,11 +175,13 @@ export const StocktakeDetailPage: React.FC = () => {
     if (selectedItemIds.size === 0) return;
     const rows = Array.from(selectedItemIds).map(siId => {
       const si = allStockItems.find((s: any) => s.id === siId)!;
+      // Use per-location stock as book_qty instead of global current_stock
+      const locationBookQty = stocktakeLocationId ? getLocationStock(siId) : Number(si.current_stock) || 0;
       return {
         stocktake_id: id!,
         stock_item_id: siId,
         counted_qty: 0,
-        book_qty: Number(si.current_stock) || 0,
+        book_qty: locationBookQty,
         avg_cost: Number(si.avg_cost) || 0,
       };
     });

@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useLocationStock } from "@/hooks/useLocationStock";
 
 interface LocalTransferItem {
   id?: string;
@@ -119,6 +120,14 @@ export const TransferDetailPage: React.FC = () => {
     return locs;
   }, [branches, warehouses]);
 
+  // Determine source location type
+  const sourceLocationType = useMemo<"branch" | "warehouse">(() => {
+    if (warehouses.some((w: any) => w.id === sourceId)) return "warehouse";
+    return "branch";
+  }, [sourceId, warehouses]);
+
+  const { getLocationStock: getSourceStock } = useLocationStock(sourceId || null, sourceLocationType);
+
   // Load existing record
   const { data: existingRecord } = useQuery({
     queryKey: ["transfer-record", id],
@@ -190,12 +199,14 @@ export const TransferDetailPage: React.FC = () => {
   const handleAddItems = () => {
     const newItems: LocalTransferItem[] = Array.from(selectedItemIds).map(siId => {
       const si = allStockItems.find((s: any) => s.id === siId)!;
+      // Use per-location stock from source location
+      const locationStock = sourceId ? getSourceStock(siId) : Number(si.current_stock) || 0;
       return {
         stock_item_id: siId,
         name: si.name,
         code: si.code || "—",
         unit: si.stock_unit || "كجم",
-        current_stock: Number(si.current_stock) || 0,
+        current_stock: locationStock,
         avg_cost: Number(si.avg_cost) || 0,
         quantity: 0,
       };

@@ -7,7 +7,6 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { LoginPage } from "@/pages/LoginPage";
-import { CreateCompanyPage } from "@/pages/CreateCompanyPage";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { PlaceholderPage } from "@/pages/PlaceholderPage";
 import { RecipesPage } from "@/pages/RecipesPage";
@@ -218,13 +217,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 };
 
 const LoginPageWrapper = () => {
-  const navigate = useNavigate();
-  return <LoginPage onCreateCompany={() => navigate("/register")} />;
-};
-
-const CreateCompanyPageWrapper = () => {
-  const navigate = useNavigate();
-  return <CreateCompanyPage onBack={() => navigate("/login")} />;
+  return <LoginPage />;
 };
 
 const PermissionGuard: React.FC<{ permKey: string; children: React.ReactNode }> = ({ permKey, children }) => {
@@ -263,7 +256,7 @@ const AppRoutes = () => {
     <Routes>
       {/* Public routes */}
       <Route path="/login" element={auth.session ? <Navigate to="/" replace /> : <LoginPageWrapper />} />
-      <Route path="/register" element={auth.session ? <Navigate to="/" replace /> : <CreateCompanyPageWrapper />} />
+      {/* Registration removed */}
 
       {/* Protected routes inside SystemLayout */}
       <Route

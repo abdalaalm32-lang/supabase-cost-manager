@@ -50,7 +50,7 @@ export const ProductionDetailPage: React.FC = () => {
   const [selectedDept, setSelectedDept] = useState("all");
   const [selectedCat, setSelectedCat] = useState("all");
   const [selectedProductId, setSelectedProductId] = useState("");
-  const [producedQty, setProducedQty] = useState<number>(0);
+  const [producedQty, setProducedQty] = useState<string>("0");
   const [selectedUnit, setSelectedUnit] = useState("كجم");
   const [ingredients, setIngredients] = useState<LocalIngredient[]>([]);
   const [status, setStatus] = useState("مسودة");
@@ -141,7 +141,7 @@ export const ProductionDetailPage: React.FC = () => {
       setDate(existingRecord.date);
       setStatus(existingRecord.status);
       setSelectedProductId(existingRecord.product_id || "");
-      setProducedQty(Number(existingRecord.produced_qty));
+      setProducedQty(String(existingRecord.produced_qty));
       setOriginalQty(Number(existingRecord.produced_qty));
       setSelectedUnit(existingRecord.unit || "كجم");
       setProductionNotes((existingRecord as any).notes || "");
@@ -225,7 +225,7 @@ export const ProductionDetailPage: React.FC = () => {
   };
 
   const updateQty = (idx: number, val: string) => {
-    setIngredients(prev => prev.map((ing, i) => i === idx ? { ...ing, required_qty: val === "" ? 0 : Number(val) } : ing));
+    setIngredients(prev => prev.map((ing, i) => i === idx ? { ...ing, required_qty: val === "" || val === "0" || val === "0." ? (val === "" ? 0 : Number(val) || 0) : Number(val) || 0 } : ing));
   };
 
   const removeIngredient = (idx: number) => {
@@ -270,7 +270,8 @@ export const ProductionDetailPage: React.FC = () => {
     return ingredients.reduce((sum, ing) => sum + ing.required_qty * ing.unit_cost, 0);
   }, [ingredients]);
 
-  const unitCost = producedQty > 0 ? totalComponentsCost / producedQty : 0;
+  const producedQtyNum = Number(producedQty) || 0;
+  const unitCost = producedQtyNum > 0 ? totalComponentsCost / producedQtyNum : 0;
 
   const isLocked = !isNew && status !== "مؤرشف" && !isEditMode;
 
@@ -288,7 +289,7 @@ export const ProductionDetailPage: React.FC = () => {
       toast({ title: "خطأ", description: "اختر المنتج أولاً", variant: "destructive" });
       return;
     }
-    if (producedQty <= 0) {
+    if (producedQtyNum <= 0) {
       toast({ title: "خطأ", description: "أدخل كمية الإنتاج", variant: "destructive" });
       return;
     }
@@ -309,7 +310,7 @@ export const ProductionDetailPage: React.FC = () => {
           date,
           product_id: selectedProductId,
           product_name: selectedProduct?.name || "",
-          produced_qty: producedQty,
+           produced_qty: producedQtyNum,
           unit: selectedUnit,
           total_production_cost: totalComponentsCost,
           unit_cost: unitCost,
@@ -373,9 +374,9 @@ export const ProductionDetailPage: React.FC = () => {
             if (prodItem) {
               const oldStock = Number(prodItem.current_stock) || 0;
               const oldAvg = Number(prodItem.avg_cost) || 0;
-              const totalStock = oldStock + producedQty;
+              const totalStock = oldStock + producedQtyNum;
               const newAvg = totalStock > 0
-                ? ((oldStock * oldAvg) + (producedQty * unitCost)) / totalStock
+                ? ((oldStock * oldAvg) + (producedQtyNum * unitCost)) / totalStock
                 : unitCost;
               await supabase.from("stock_items").update({
                 current_stock: totalStock,
@@ -389,14 +390,14 @@ export const ProductionDetailPage: React.FC = () => {
       } else {
         // Edit existing - track changes
         const changes: any[] = [];
-        if (producedQty !== originalQty) {
-          changes.push({ field: "كمية الإنتاج", old_value: originalQty, new_value: producedQty });
+        if (producedQtyNum !== originalQty) {
+          changes.push({ field: "كمية الإنتاج", old_value: originalQty, new_value: producedQtyNum });
         }
         changes.push({ field: "إجمالي التكلفة", old_value: Number(existingRecord?.total_production_cost).toFixed(2), new_value: totalComponentsCost.toFixed(2) });
 
         // Update record
         const updateData: any = {
-          produced_qty: producedQty,
+          produced_qty: producedQtyNum,
           unit: selectedUnit,
           total_production_cost: totalComponentsCost,
           unit_cost: unitCost,
@@ -558,10 +559,15 @@ export const ProductionDetailPage: React.FC = () => {
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">كمية الإنتاج</label>
               <Input
-                type="number"
-                min={0}
-                value={producedQty || ""}
-                onChange={e => setProducedQty(Number(e.target.value) || 0)}
+                type="text"
+                inputMode="decimal"
+                value={producedQty}
+                onChange={e => {
+                  const val = e.target.value;
+                  if (val === "" || /^\d*\.?\d*$/.test(val)) {
+                    setProducedQty(val);
+                  }
+                }}
                 disabled={isLocked}
               />
             </div>
@@ -572,7 +578,7 @@ export const ProductionDetailPage: React.FC = () => {
               <Select value={selectedUnit} onValueChange={setSelectedUnit} disabled={isLocked}>
                 <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {["كجم", "جرام", "لتر", "مل", "وحدة", "قطعة"].map(u => (
+                  {["كجم", "لتر", "وحدة"].map(u => (
                     <SelectItem key={u} value={u}>{u}</SelectItem>
                   ))}
                 </SelectContent>
@@ -689,7 +695,7 @@ export const ProductionDetailPage: React.FC = () => {
               </div>
               <p className="text-3xl font-black text-primary">{unitCost.toFixed(2)}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                {totalComponentsCost.toFixed(2)} ÷ {producedQty || 0} = {unitCost.toFixed(2)}
+                {totalComponentsCost.toFixed(2)} ÷ {producedQtyNum || 0} = {unitCost.toFixed(2)}
               </p>
             </div>
           </div>

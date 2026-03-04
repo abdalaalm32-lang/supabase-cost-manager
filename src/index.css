@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@200..1000&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -110,9 +112,12 @@
   * {
     @apply border-border;
   }
+  * {
+    font-family: 'Cairo', sans-serif !important;
+  }
   body {
     @apply bg-background text-foreground;
-    font-family: 'Cairo', 'Segoe UI', system-ui, sans-serif;
+    font-family: 'Cairo', sans-serif;
     direction: rtl;
   }
 }
@@ -136,9 +141,6 @@
     -webkit-text-fill-color: transparent;
   }
 }
-
-/* Google Fonts - Cairo for Arabic */
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@200..1000&display=swap');
 
 /* Scrollbar styling */
 ::-webkit-scrollbar {

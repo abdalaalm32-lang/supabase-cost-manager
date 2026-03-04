@@ -224,7 +224,7 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
             )}
           </button>
           {!isSidebarCollapsed && isExpanded && (
-            <div className="mr-4 mt-0.5 space-y-0.5 border-r border-border/30 pr-2">
+            <div className="mr-6 mt-1 mb-1 space-y-0.5 border-r-2 border-primary/20 pr-3">
               {item.children!.map((child) => {
                 const ChildIcon = child.icon;
                 const childActive = location.pathname === child.path;
@@ -232,13 +232,13 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
                   <button
                     key={child.id}
                     onClick={() => handleNavigate(child, item.id)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 ${
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-all duration-200 ${
                       childActive
-                        ? "bg-primary/15 text-primary"
-                        : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                        ? "bg-primary/10 text-primary font-semibold"
+                        : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground font-medium"
                     }`}
                   >
-                    <ChildIcon size={15} className="flex-shrink-0" />
+                    <ChildIcon size={14} className="flex-shrink-0 opacity-70" />
                     <span className="truncate">{child.label}</span>
                   </button>
                 );

@@ -485,8 +485,8 @@ export const WasteReportsPage: React.FC = () => {
             <ResponsiveContainer width="100%" height={260}>
               <LineChart data={monthlyTrend} margin={{ top: 20, right: 30, bottom: 20, left: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="month" tick={{ fontSize: 10 }} tickMargin={10} />
-                <YAxis tick={{ fontSize: 10 }} tickMargin={10} />
+                <XAxis dataKey="month" tick={{ fontSize: 10 }} tickMargin={30} />
+                <YAxis tick={{ fontSize: 10 }} tickMargin={30} />
                 <Tooltip contentStyle={{ borderRadius: 12, fontSize: 12, color: "#000" }} />
                 <Line type="monotone" dataKey="cost" name="الخسارة" stroke="hsl(0, 84%, 60%)" strokeWidth={2} dot={{ r: 3 }} />
                 <Line type="monotone" dataKey="count" name="عدد العمليات" stroke="hsl(38, 92%, 50%)" strokeWidth={2} dot={{ r: 3 }} />
@@ -505,7 +505,7 @@ export const WasteReportsPage: React.FC = () => {
               <BarChart data={topWastedChart} margin={{ top: 20, right: 30, bottom: 20, left: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="name" tick={{ fontSize: 9 }} tickMargin={10} />
-                <YAxis tick={{ fontSize: 10 }} tickMargin={10} />
+                <YAxis tick={{ fontSize: 10 }} tickMargin={30} />
                 <Tooltip contentStyle={{ borderRadius: 12, fontSize: 12, color: "#000" }} />
                 <Bar dataKey="loss" name="إجمالي الخسارة" fill="hsl(0, 84%, 60%)" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -524,7 +524,7 @@ export const WasteReportsPage: React.FC = () => {
                 <Pie data={reasonDistChart} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70}
                   label={({ name, percent, cx: cxx, cy: cyy, midAngle, outerRadius: or }: any) => {
                     const rad = Math.PI / 180;
-                    const radius = or + 28;
+                    const radius = or + 60;
                     const x = cxx + radius * Math.cos(-midAngle * rad);
                     const y = cyy + radius * Math.sin(-midAngle * rad);
                     return (
@@ -553,7 +553,7 @@ export const WasteReportsPage: React.FC = () => {
                 <Pie data={categoryLossChart} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70}
                   label={({ name, percent, cx: cxx, cy: cyy, midAngle, outerRadius: or }: any) => {
                     const rad = Math.PI / 180;
-                    const radius = or + 28;
+                    const radius = or + 70;
                     const x = cxx + radius * Math.cos(-midAngle * rad);
                     const y = cyy + radius * Math.sin(-midAngle * rad);
                     return (

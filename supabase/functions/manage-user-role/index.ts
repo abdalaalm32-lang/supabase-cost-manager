@@ -54,15 +54,20 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check if requesting user is admin in their company
+    // Check if requesting user is admin or owner in their company
     const { data: isAdmin } = await supabaseAdmin.rpc("is_company_admin", {
       _user_id: requestingUser.id,
       _company_id: reqProfile.company_id,
     });
 
-    if (!isAdmin) {
+    const { data: isOwner } = await supabaseAdmin.rpc("is_company_owner", {
+      _user_id: requestingUser.id,
+      _company_id: reqProfile.company_id,
+    });
+
+    if (!isAdmin && !isOwner) {
       return new Response(
-        JSON.stringify({ error: "فقط المدير يمكنه تعديل الأدوار" }),
+        JSON.stringify({ error: "فقط المدير أو المالك يمكنه تعديل الأدوار" }),
         {
           status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },

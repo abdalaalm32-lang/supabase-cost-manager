@@ -51,14 +51,19 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check admin status
+    // Check admin or owner status
     const { data: isAdmin } = await supabaseAdmin.rpc("is_company_admin", {
       _user_id: callerUser.id,
       _company_id: callerProfile.company_id,
     });
 
-    if (!isAdmin) {
-      return new Response(JSON.stringify({ error: "يجب أن تكون مديراً" }), {
+    const { data: isOwner } = await supabaseAdmin.rpc("is_company_owner", {
+      _user_id: callerUser.id,
+      _company_id: callerProfile.company_id,
+    });
+
+    if (!isAdmin && !isOwner) {
+      return new Response(JSON.stringify({ error: "يجب أن تكون مديراً أو مالكاً" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

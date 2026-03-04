@@ -102,6 +102,16 @@ export const SettingsWarehousesPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  const { data: companyLimits } = useQuery({
+    queryKey: ["company-limits-wh", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("companies").select("max_warehouses").eq("id", companyId!).single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
   const totalWarehouses = warehouses?.length || 0;
   const linkedBranchesCount = new Set(warehouseBranches?.map(wb => wb.branch_id) || []).size;
 
@@ -110,7 +120,14 @@ export const SettingsWarehousesPage: React.FC = () => {
     setFormActive(true); setFormLinkedBranches([]); setEditWarehouse(null);
   };
 
-  const openAdd = () => { resetForm(); setIsDialogOpen(true); };
+  const openAdd = () => {
+    const maxWarehouses = (companyLimits as any)?.max_warehouses ?? 999;
+    if (totalWarehouses >= maxWarehouses && !auth.isAdmin) {
+      toast.error(`تم الوصول للحد الأقصى من المخازن (${maxWarehouses})`);
+      return;
+    }
+    resetForm(); setIsDialogOpen(true);
+  };
   const openEdit = (w: any) => {
     setEditWarehouse(w);
     setFormName(w.name);

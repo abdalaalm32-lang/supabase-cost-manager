@@ -50,6 +50,16 @@ export const SettingsBranchesPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  const { data: companyData } = useQuery({
+    queryKey: ["company-limits", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("companies").select("max_branches").eq("id", companyId!).single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
   const { data: users } = useQuery({
     queryKey: ["all-users", companyId],
     queryFn: async () => {
@@ -71,7 +81,14 @@ export const SettingsBranchesPage: React.FC = () => {
     setFormName(""); setFormAddress(""); setFormManagerId(""); setFormActive(true); setEditBranch(null);
   };
 
-  const openAdd = () => { resetForm(); setIsDialogOpen(true); };
+  const openAdd = () => {
+    const maxBranches = (companyData as any)?.max_branches ?? 999;
+    if (totalBranches >= maxBranches && !auth.isAdmin) {
+      toast.error(`تم الوصول للحد الأقصى من الفروع (${maxBranches})`);
+      return;
+    }
+    resetForm(); setIsDialogOpen(true);
+  };
   const openEdit = (b: any) => {
     setEditBranch(b);
     setFormName(b.name);

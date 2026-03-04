@@ -95,9 +95,17 @@ const navItems: NavItem[] = [
   {
     id: "settings", path: "/settings", label: "الإعدادات", icon: Settings,
     children: [
-      { id: "settings-users", path: "/settings/users", label: "المستخدمين", icon: Settings },
+      { id: "settings-companies", path: "/settings/companies", label: "إدارة الشركات", icon: Settings },
       { id: "settings-warehouses", path: "/settings/warehouses", label: "المخازن", icon: Settings },
       { id: "settings-branches", path: "/settings/branches", label: "الفروع", icon: Settings },
+    ],
+  },
+  {
+    id: "company-settings", path: "/company-settings", label: "إعدادات الشركة", icon: Settings,
+    children: [
+      { id: "company-settings-users", path: "/company-settings/users", label: "المستخدمين", icon: Settings },
+      { id: "company-settings-warehouses", path: "/company-settings/warehouses", label: "المخازن", icon: Settings },
+      { id: "company-settings-branches", path: "/company-settings/branches", label: "الفروع", icon: Settings },
     ],
   },
 ];
@@ -130,8 +138,10 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
   };
 
   const canAccessItem = (item: NavItem) => {
-    // Settings is admin-only
+    // Admin-only settings
     if (item.id === "settings") return auth.isAdmin;
+    // Company settings for admin or owner (or user with settings permission)
+    if (item.id === "company-settings") return auth.isAdmin || auth.isOwner || hasPermission("settings");
     return hasPermission(item.id);
   };
 
@@ -143,7 +153,13 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
       setIsAccessDenied(true);
       return;
     }
-    if (permKey !== "settings" && !hasPermission(permKey)) {
+    // Company settings check
+    if (permKey === "company-settings" && !auth.isAdmin && !auth.isOwner && !hasPermission("settings")) {
+      setDeniedModule(item.label);
+      setIsAccessDenied(true);
+      return;
+    }
+    if (permKey !== "settings" && permKey !== "company-settings" && !hasPermission(permKey)) {
       setDeniedModule(item.label);
       setIsAccessDenied(true);
       return;
@@ -161,6 +177,8 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
 
     // Hide settings entirely if not admin
     if (item.id === "settings" && !auth.isAdmin) return null;
+    // Hide company settings if not admin, not owner, and no settings permission
+    if (item.id === "company-settings" && !auth.isAdmin && !auth.isOwner && !hasPermission("settings")) return null;
 
     if (hasChildren) {
       return (

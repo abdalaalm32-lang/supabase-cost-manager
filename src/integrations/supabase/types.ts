@@ -198,22 +198,34 @@ export type Database = {
       }
       companies: {
         Row: {
+          active: boolean
           code: string
           created_at: string
           id: string
+          max_branches: number
+          max_warehouses: number
           name: string
+          owner_id: string | null
         }
         Insert: {
+          active?: boolean
           code: string
           created_at?: string
           id?: string
+          max_branches?: number
+          max_warehouses?: number
           name: string
+          owner_id?: string | null
         }
         Update: {
+          active?: boolean
           code?: string
           created_at?: string
           id?: string
+          max_branches?: number
+          max_warehouses?: number
           name?: string
+          owner_id?: string | null
         }
         Relationships: []
       }
@@ -2133,6 +2145,10 @@ export type Database = {
         Returns: boolean
       }
       is_company_admin: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_company_owner: {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
       }

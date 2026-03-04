@@ -16,6 +16,8 @@ import { PosScreenPage } from "@/pages/PosScreenPage";
 import { PosInvoicesPage } from "@/pages/PosInvoicesPage";
 import { PosAnalyticsPage } from "@/pages/PosAnalyticsPage";
 import { SettingsUsersPage } from "@/pages/SettingsUsersPage";
+import { AdminCompaniesPage } from "@/pages/AdminCompaniesPage";
+import { CompanySettingsPage } from "@/pages/CompanySettingsPage";
 import { SettingsBranchesPage } from "@/pages/SettingsBranchesPage";
 import { SettingsWarehousesPage } from "@/pages/SettingsWarehousesPage";
 import { InventoryMaterialsPage } from "@/pages/InventoryMaterialsPage";
@@ -96,6 +98,12 @@ const PermissionGuard: React.FC<{ permKey: string; children: React.ReactNode }> 
 const AdminGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { auth } = useAuth();
   if (!auth.isAdmin) return <Navigate to="/" replace />;
+  return <>{children}</>;
+};
+
+const OwnerOrAdminGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { auth, hasPermission } = useAuth();
+  if (!auth.isAdmin && !auth.isOwner && !hasPermission("settings")) return <Navigate to="/" replace />;
   return <>{children}</>;
 };
 
@@ -182,10 +190,15 @@ const AppRoutes = () => {
                 <Route path="/reports/transfers" element={<PermissionGuard permKey="reports"><TransferReportsPage /></PermissionGuard>} />
                 <Route path="/reports/cost-adjustments" element={<PermissionGuard permKey="reports"><CostAdjustmentReportsPage /></PermissionGuard>} />
                 <Route path="/reports/inventory-turnover" element={<PermissionGuard permKey="reports"><InventoryTurnoverPage /></PermissionGuard>} />
-                <Route path="/settings" element={<AdminGuard><Navigate to="/settings/users" replace /></AdminGuard>} />
+                <Route path="/settings" element={<AdminGuard><Navigate to="/settings/companies" replace /></AdminGuard>} />
+                <Route path="/settings/companies" element={<AdminGuard><AdminCompaniesPage /></AdminGuard>} />
                 <Route path="/settings/users" element={<AdminGuard><SettingsUsersPage /></AdminGuard>} />
                 <Route path="/settings/warehouses" element={<AdminGuard><SettingsWarehousesPage /></AdminGuard>} />
                 <Route path="/settings/branches" element={<AdminGuard><SettingsBranchesPage /></AdminGuard>} />
+                <Route path="/company-settings" element={<OwnerOrAdminGuard><Navigate to="/company-settings/users" replace /></OwnerOrAdminGuard>} />
+                <Route path="/company-settings/users" element={<OwnerOrAdminGuard><CompanySettingsPage /></OwnerOrAdminGuard>} />
+                <Route path="/company-settings/warehouses" element={<OwnerOrAdminGuard><SettingsWarehousesPage /></OwnerOrAdminGuard>} />
+                <Route path="/company-settings/branches" element={<OwnerOrAdminGuard><SettingsBranchesPage /></OwnerOrAdminGuard>} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </SystemLayout>

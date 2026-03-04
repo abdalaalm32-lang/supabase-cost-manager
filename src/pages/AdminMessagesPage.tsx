@@ -76,13 +76,16 @@ export const AdminMessagesPage: React.FC = () => {
   });
 
   const filtered = tickets?.filter(t => {
-    const matchFilter = filter === "all" || t.status === filter;
+    const matchFilter = filter === "all" || 
+      (filter === "suspension" ? t.subject === "استعلام عن سبب تعطيل الشركة" : t.status === filter);
     const matchSearch = !searchQuery ||
       t.company_name?.includes(searchQuery) ||
       t.company_code?.includes(searchQuery) ||
       t.sender_name?.includes(searchQuery);
     return matchFilter && matchSearch;
   }) || [];
+
+  const suspensionCount = tickets?.filter(t => t.subject === "استعلام عن سبب تعطيل الشركة").length || 0;
 
   const newCount = tickets?.filter(t => t.status === "new").length || 0;
   const readCount = tickets?.filter(t => t.status === "read").length || 0;
@@ -157,7 +160,7 @@ export const AdminMessagesPage: React.FC = () => {
           <Input placeholder="بحث بالاسم أو كود الشركة..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pr-9" />
         </div>
         <Select value={filter} onValueChange={setFilter}>
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-[200px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -165,6 +168,7 @@ export const AdminMessagesPage: React.FC = () => {
             <SelectItem value="new">جديد</SelectItem>
             <SelectItem value="read">مقروء</SelectItem>
             <SelectItem value="replied">تم الرد</SelectItem>
+            <SelectItem value="suspension">رسائل وقف الشركة ({suspensionCount})</SelectItem>
           </SelectContent>
         </Select>
       </div>

@@ -347,7 +347,7 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
         {/* Background image with blur - same as login page */}
         <div className="absolute inset-0 z-0">
           <img src={loginBg} alt="" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-background/80 backdrop-blur-xl" />
+          <div className="absolute inset-0 bg-background/70 backdrop-blur-sm" />
         </div>
         {/* Top Navbar */}
         <header className="h-14 border-b border-border bg-card/30 backdrop-blur-md flex items-center justify-between px-6 flex-shrink-0 relative z-10">

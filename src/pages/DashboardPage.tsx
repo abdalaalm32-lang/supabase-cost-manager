@@ -153,25 +153,63 @@ export const DashboardPage: React.FC = () => {
       {/* Charts Row 1 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Area chart - Sales vs Purchases */}
-        <ChartCard title="المبيعات مقابل المشتريات (6 أشهر)" icon={TrendingUp} className="lg:col-span-2">
+        <ChartCard
+          title="المبيعات مقابل المشتريات (6 أشهر)"
+          icon={TrendingUp}
+          className="lg:col-span-2"
+        >
           <ResponsiveContainer width="100%" height={240}>
-            <AreaChart data={d.monthlyData}>
+            <AreaChart
+              data={d.monthlyData}
+              margin={{ left: 70 }} // 👈 عشان يعوض dx = -70 وما يحصلش قص
+            >
               <defs>
                 <linearGradient id="salesGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="hsl(199, 89%, 60%)" stopOpacity={0.3} />
                   <stop offset="95%" stopColor="hsl(199, 89%, 60%)" stopOpacity={0} />
                 </linearGradient>
+
                 <linearGradient id="purchGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="hsl(38, 92%, 55%)" stopOpacity={0.3} />
                   <stop offset="95%" stopColor="hsl(38, 92%, 55%)" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(217, 33%, 18%)" />
-              <XAxis dataKey="month" tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 10 }} />
-              <YAxis tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 10 }} />
+
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="hsl(217, 33%, 18%)"
+              />
+
+              <XAxis
+                dataKey="month"
+                tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 10 }}
+              />
+
+              <YAxis
+                width={80}
+                dx={-35}
+                tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 10 }}
+              />
+
               <Tooltip content={<CustomTooltip />} />
-              <Area type="monotone" dataKey="sales" name="المبيعات" stroke="hsl(199, 89%, 60%)" fill="url(#salesGrad)" strokeWidth={2} />
-              <Area type="monotone" dataKey="purchases" name="المشتريات" stroke="hsl(38, 92%, 55%)" fill="url(#purchGrad)" strokeWidth={2} />
+
+              <Area
+                type="monotone"
+                dataKey="sales"
+                name="المبيعات"
+                stroke="hsl(199, 89%, 60%)"
+                fill="url(#salesGrad)"
+                strokeWidth={2}
+              />
+
+              <Area
+                type="monotone"
+                dataKey="purchases"
+                name="المشتريات"
+                stroke="hsl(38, 92%, 55%)"
+                fill="url(#purchGrad)"
+                strokeWidth={2}
+              />
             </AreaChart>
           </ResponsiveContainer>
         </ChartCard>
@@ -211,16 +249,46 @@ export const DashboardPage: React.FC = () => {
           <ResponsiveContainer width="100%" height={220}>
             <RePieChart>
               <Pie
-                data={d.purchaseStatusDist.length > 0 ? d.purchaseStatusDist : [{ name: "لا توجد بيانات", value: 1 }]}
-                cx="50%" cy="50%" innerRadius={50} outerRadius={80}
-                paddingAngle={3} dataKey="value"
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                labelLine={false}
+                data={
+                  d.purchaseStatusDist.length > 0
+                    ? d.purchaseStatusDist
+                    : [{ name: "لا توجد بيانات", value: 1 }]
+                }
+                cx="50%"
+                cy="50%"
+                innerRadius={50}
+                outerRadius={80}
+                paddingAngle={3}
+                dataKey="value"
+                labelLine={true}
+                label={({ cx, cy, midAngle, outerRadius, percent, name }) => {
+                  const RADIAN = Math.PI / 180;
+                  const radius = outerRadius + 50; // 👈 المسافة بين النص والدايرة
+                  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+                  return (
+                    <text
+                      x={x}
+                      y={y}
+                      fill="#9ca3af"
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      style={{ fontSize: "14px" }}
+                    >
+                      {name} {(percent * 100).toFixed(0)}%
+                    </text>
+                  );
+                }}
               >
-                {(d.purchaseStatusDist.length > 0 ? d.purchaseStatusDist : [{ name: "لا توجد", value: 1 }]).map((_, i) => (
+                {(d.purchaseStatusDist.length > 0
+                  ? d.purchaseStatusDist
+                  : [{ name: "لا توجد بيانات", value: 1 }]
+                ).map((_, i) => (
                   <Cell key={i} fill={COLORS[i % COLORS.length]} />
                 ))}
               </Pie>
+
               <Tooltip />
             </RePieChart>
           </ResponsiveContainer>
@@ -253,8 +321,17 @@ export const DashboardPage: React.FC = () => {
               <BarChart data={d.topSuppliers} layout="vertical" barSize={16}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(217, 33%, 18%)" />
                 <XAxis type="number" tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 10 }} />
-                <YAxis type="category" dataKey="name" tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 10 }} width={100} />
-                <Tooltip content={<CustomTooltip />} />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  width={120}
+                  tick={{
+                    fill: "hsl(215, 20%, 55%)",
+                    fontSize: 10
+                  }}
+                  tickMargin={10}
+                  dx={-85}
+                />                <Tooltip content={<CustomTooltip />} />
                 <Bar dataKey="total" name="المبلغ" fill="hsl(260, 60%, 50%)" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -315,9 +392,8 @@ export const DashboardPage: React.FC = () => {
           <div className="space-y-2 max-h-[200px] overflow-y-auto">
             {d.recentActivity.length > 0 ? d.recentActivity.map((a, i) => (
               <div key={i} className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/20 transition-colors">
-                <div className={`w-1.5 h-1.5 rounded-full ${
-                  a.type === "purchase" ? "bg-warning" : a.type === "production" ? "bg-success" : "bg-accent"
-                }`} />
+                <div className={`w-1.5 h-1.5 rounded-full ${a.type === "purchase" ? "bg-warning" : a.type === "production" ? "bg-success" : "bg-accent"
+                  }`} />
                 <div className="flex-1 min-w-0">
                   <p className="text-[11px] text-foreground truncate">{a.label}</p>
                   <p className="text-[9px] text-muted-foreground">{a.date}</p>

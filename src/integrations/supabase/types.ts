@@ -438,6 +438,7 @@ export type Database = {
         Row: {
           avg_check: number
           bills: number
+          branch_id: string | null
           capacity: number
           company_id: string
           created_at: string
@@ -460,6 +461,7 @@ export type Database = {
         Insert: {
           avg_check?: number
           bills?: number
+          branch_id?: string | null
           capacity?: number
           company_id: string
           created_at?: string
@@ -482,6 +484,7 @@ export type Database = {
         Update: {
           avg_check?: number
           bills?: number
+          branch_id?: string | null
           capacity?: number
           company_id?: string
           created_at?: string
@@ -502,6 +505,13 @@ export type Database = {
           turn_over?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "menu_costing_periods_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "menu_costing_periods_company_id_fkey"
             columns: ["company_id"]

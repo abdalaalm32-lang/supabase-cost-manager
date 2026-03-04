@@ -2,12 +2,15 @@ import React, { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate, useLocation } from "react-router-dom";
 import { NotificationBell } from "@/components/NotificationBell";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard, Package, ChefHat, ShoppingCart, Calculator,
   FileText, Settings, LogOut, Menu,
   Store, ArrowRightLeft, ClipboardCheck, Trash2,
   Layers, PieChart, BarChart3, ShieldBan, Factory,
-  ChevronDown, Monitor, Receipt, BrainCircuit, FolderOpen, UtensilsCrossed, MessageSquare
+  ChevronDown, Monitor, Receipt, BrainCircuit, FolderOpen, UtensilsCrossed, MessageSquare,
+  Shield, Building2
 } from "lucide-react";
 
 interface SystemLayoutProps {
@@ -25,7 +28,7 @@ interface NavItem {
   children?: NavItem[];
 }
 
-const navItems: NavItem[] = [
+const mainNavItems: NavItem[] = [
   { id: "dashboard", path: "/", label: "لوحة التحكم", icon: LayoutDashboard },
   {
     id: "pos", path: "/pos", label: "نقطة البيع (POS)", icon: Store,
@@ -77,7 +80,6 @@ const navItems: NavItem[] = [
       { id: "menu-costing-report", path: "/menu-costing/report", label: "التقرير النهائي", icon: FileText },
     ],
   },
-  
   { id: "cost-adjustment", path: "/cost-adjustment", label: "تعديل التكاليف", icon: Calculator },
   {
     id: "reports", path: "/reports", label: "التقارير", icon: FileText,
@@ -94,15 +96,6 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    id: "settings", path: "/settings", label: "الإعدادات", icon: Settings,
-    children: [
-      { id: "settings-companies", path: "/settings/companies", label: "إدارة الشركات", icon: Settings },
-      { id: "settings-messages", path: "/settings/messages", label: "رسائل العملاء", icon: MessageSquare },
-      { id: "settings-warehouses", path: "/settings/warehouses", label: "المخازن", icon: Settings },
-      { id: "settings-branches", path: "/settings/branches", label: "الفروع", icon: Settings },
-    ],
-  },
-  {
     id: "company-settings", path: "/company-settings", label: "إعدادات الشركة", icon: Settings,
     children: [
       { id: "company-settings-users", path: "/company-settings/users", label: "المستخدمين", icon: Settings },
@@ -111,6 +104,17 @@ const navItems: NavItem[] = [
     ],
   },
 ];
+
+// Admin settings as separate item (shown at bottom)
+const adminSettingsItem: NavItem = {
+  id: "settings", path: "/settings", label: "لوحة تحكم الأدمن", icon: Shield,
+  children: [
+    { id: "settings-companies", path: "/settings/companies", label: "إدارة الشركات", icon: Building2 },
+    { id: "settings-messages", path: "/settings/messages", label: "رسائل العملاء", icon: MessageSquare },
+    { id: "settings-warehouses", path: "/settings/warehouses", label: "المخازن", icon: Settings },
+    { id: "settings-branches", path: "/settings/branches", label: "الفروع", icon: Settings },
+  ],
+};
 
 export const SystemLayout: React.FC<SystemLayoutProps> = ({
   children, onLogout, companyName, userName,
@@ -123,12 +127,30 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
   const [deniedModule, setDeniedModule] = useState("");
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
+  // Fetch company code
+  const { data: companyData } = useQuery({
+    queryKey: ["company-code", auth.profile?.company_id],
+    queryFn: async () => {
+      if (!auth.profile?.company_id) return null;
+      const { data } = await supabase
+        .from("companies")
+        .select("code")
+        .eq("id", auth.profile.company_id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!auth.profile?.company_id,
+  });
+
+  const companyCode = companyData?.code || "";
+
+  const allNavItems = [...mainNavItems];
+
   const isChildActive = (item: NavItem) =>
     item.children?.some((c) => location.pathname === c.path || location.pathname.startsWith(c.path + "/")) ?? false;
 
-  // Auto-expand group if a child is active
   React.useEffect(() => {
-    navItems.forEach((item) => {
+    [...allNavItems, adminSettingsItem].forEach((item) => {
       if (item.children && isChildActive(item)) {
         setExpandedGroups((prev) => ({ ...prev, [item.id]: true }));
       }
@@ -140,36 +162,26 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
   };
 
   const canAccessItem = (item: NavItem) => {
-    // Admin-only settings
     if (item.id === "settings") return auth.isAdmin;
-    // Company settings for admin or owner (or user with settings permission)
     if (item.id === "company-settings") return auth.isAdmin || auth.isOwner || hasPermission("settings");
     return hasPermission(item.id);
   };
 
   const handleNavigate = (item: NavItem, parentId?: string) => {
     const permKey = parentId || item.id;
-    // Settings check uses admin
     if (permKey === "settings" && !auth.isAdmin) {
-      setDeniedModule(item.label);
-      setIsAccessDenied(true);
-      return;
+      setDeniedModule(item.label); setIsAccessDenied(true); return;
     }
-    // Company settings check
     if (permKey === "company-settings" && !auth.isAdmin && !auth.isOwner && !hasPermission("settings")) {
-      setDeniedModule(item.label);
-      setIsAccessDenied(true);
-      return;
+      setDeniedModule(item.label); setIsAccessDenied(true); return;
     }
     if (permKey !== "settings" && permKey !== "company-settings" && !hasPermission(permKey)) {
-      setDeniedModule(item.label);
-      setIsAccessDenied(true);
-      return;
+      setDeniedModule(item.label); setIsAccessDenied(true); return;
     }
     navigate(item.path);
   };
 
-  const renderNavItem = (item: NavItem) => {
+  const renderNavItem = (item: NavItem, isAdminSection = false) => {
     const Icon = item.icon;
     const hasChildren = !!item.children;
     const isExpanded = expandedGroups[item.id];
@@ -177,26 +189,24 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
     const isGroupActive = hasChildren && isChildActive(item);
     const hasAccess = canAccessItem(item);
 
-    // Hide settings entirely if not admin
     if (item.id === "settings" && !auth.isAdmin) return null;
-    // Hide company settings if not admin, not owner, and no settings permission
     if (item.id === "company-settings" && !auth.isAdmin && !auth.isOwner && !hasPermission("settings")) return null;
+
+    const activeClass = isAdminSection
+      ? "bg-gradient-to-l from-amber-500/20 to-orange-500/20 text-amber-400 border border-amber-500/30"
+      : "bg-primary/15 text-primary border border-primary/20";
 
     if (hasChildren) {
       return (
         <div key={item.id}>
           <button
             onClick={() => {
-              if (!hasAccess) {
-                setDeniedModule(item.label);
-                setIsAccessDenied(true);
-                return;
-              }
+              if (!hasAccess) { setDeniedModule(item.label); setIsAccessDenied(true); return; }
               toggleGroup(item.id);
             }}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
               isGroupActive
-                ? "bg-primary/15 text-primary border border-primary/20"
+                ? activeClass
                 : hasAccess
                 ? "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 : "text-sidebar-foreground/30 cursor-not-allowed"
@@ -207,12 +217,7 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
             {!isSidebarCollapsed && (
               <>
                 <span className="truncate flex-1 text-start">{item.label}</span>
-                <ChevronDown
-                  size={14}
-                  className={`flex-shrink-0 transition-transform duration-200 ${
-                    isExpanded ? "rotate-180" : ""
-                  }`}
-                />
+                <ChevronDown size={14} className={`flex-shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
               </>
             )}
           </button>
@@ -248,7 +253,7 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
         onClick={() => handleNavigate(item)}
         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
           isActive
-            ? "bg-primary/15 text-primary border border-primary/20"
+            ? activeClass
             : hasAccess
             ? "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             : "text-sidebar-foreground/30 cursor-not-allowed"
@@ -269,42 +274,61 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
           isSidebarCollapsed ? "w-[70px]" : "w-[260px]"
         } bg-sidebar border-l border-sidebar-border flex flex-col transition-all duration-300 flex-shrink-0`}
       >
-        {/* Logo */}
-        <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
-          {!isSidebarCollapsed && (
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <div className="min-w-0">
-                <h1 className="text-xl font-black text-gradient">3M GSC</h1>
-                <p className="text-[10px] text-sidebar-foreground/60 truncate">{companyName}</p>
+        {/* Header / Logo */}
+        <div className="p-4 border-b border-sidebar-border">
+          <div className="flex items-center justify-between">
+            {!isSidebarCollapsed && (
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <div className="min-w-0">
+                  <h1 className="text-xl font-black text-gradient">3M GSC</h1>
+                  <p className="text-[10px] text-sidebar-foreground/60 truncate">{companyName}</p>
+                  {companyCode && (
+                    <p className="text-[9px] font-mono text-primary/70 mt-0.5">
+                      كود: {companyCode}
+                    </p>
+                  )}
+                </div>
               </div>
+            )}
+            <div className="flex items-center gap-1">
+              <NotificationBell />
+              <button
+                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                className="p-2 rounded-lg hover:bg-sidebar-accent text-sidebar-foreground transition-colors"
+              >
+                <Menu size={18} />
+              </button>
             </div>
-          )}
-          <div className="flex items-center gap-1">
-            <NotificationBell />
-            <button
-              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-              className="p-2 rounded-lg hover:bg-sidebar-accent text-sidebar-foreground transition-colors"
-            >
-              <Menu size={18} />
-            </button>
           </div>
         </div>
 
-        {/* Nav Items */}
+        {/* Main Nav Items */}
         <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-0.5">
-          {navItems.map(renderNavItem)}
+          {allNavItems.map((item) => renderNavItem(item))}
         </nav>
+
+        {/* Admin Settings Button - at bottom, above user section */}
+        {auth.isAdmin && (
+          <div className="px-2 pb-1">
+            <div className="border-t border-sidebar-border pt-2">
+              {renderNavItem(adminSettingsItem, true)}
+            </div>
+          </div>
+        )}
 
         {/* User & Logout */}
         <div className="p-3 border-t border-sidebar-border">
           {!isSidebarCollapsed && (
             <div className="flex items-center gap-2 mb-2 px-2">
-              <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center text-primary-foreground text-xs font-bold">
+              <div className="w-9 h-9 rounded-full gradient-primary flex items-center justify-center text-primary-foreground text-xs font-bold shadow-md">
                 {userName?.charAt(0) || "U"}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-foreground truncate">{userName}</p>
                 <p className="text-[10px] text-muted-foreground truncate">{companyName}</p>
+                {companyCode && (
+                  <p className="text-[9px] font-mono text-primary/60">كود: {companyCode}</p>
+                )}
               </div>
             </div>
           )}

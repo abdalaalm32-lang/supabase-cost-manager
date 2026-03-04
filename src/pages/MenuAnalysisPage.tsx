@@ -202,9 +202,9 @@ export const MenuAnalysisPage: React.FC = () => {
     }
     // Filter by Kitchen/Bar tab
     if (activeTab === "kitchen") {
-      items = items.filter(i => i.menu_engineering_class === "Kitchen" || !i.menu_engineering_class);
+      items = items.filter(i => !i.menu_engineering_class || i.menu_engineering_class.toLowerCase() === "kitchen");
     } else {
-      items = items.filter(i => i.menu_engineering_class === "Bar");
+      items = items.filter(i => i.menu_engineering_class?.toLowerCase() === "bar");
     }
     return items;
   }, [posItems, selectedBranchId, activeTab]);

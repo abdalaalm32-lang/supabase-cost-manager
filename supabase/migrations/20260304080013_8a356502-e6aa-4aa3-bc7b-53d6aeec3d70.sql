@@ -1,0 +1,2 @@
+ALTER TABLE public.stocktakes DROP CONSTRAINT stocktakes_type_check;
+ALTER TABLE public.stocktakes ADD CONSTRAINT stocktakes_type_check CHECK (type = ANY (ARRAY['opening'::text, 'closing'::text, 'regular'::text, 'جرد دوري مفاجئ'::text, 'جرد أول المدة'::text, 'جرد آخر المدة'::text, 'فحص مخزون فوري'::text]));

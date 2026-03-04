@@ -19,6 +19,7 @@ import {
 import { ArrowRight, Plus, Trash2, Save, DollarSign, MapPin, User, CalendarDays, FileText, Package, Archive, ShoppingBag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useLocationStock } from "@/hooks/useLocationStock";
 
 const WASTE_REASONS = [
   { value: "تلف عام أو انتهاء صلاحية", label: "تلف عام أو انتهاء صلاحية" },
@@ -140,16 +141,18 @@ export const WasteDetailPage: React.FC = () => {
     enabled: !!companyId,
   });
 
-  // Get stock item locations for current stock by location
-  const { data: stockItemLocations = [] } = useQuery({
-    queryKey: ["stock-item-locations", companyId],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("stock_item_locations").select("*");
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!companyId,
-  });
+  // Determine location type and ID
+  const wasteLocationType = useMemo<"branch" | "warehouse">(() => {
+    if (wasteRecord?.warehouse_id) return "warehouse";
+    return "branch";
+  }, [wasteRecord]);
+
+  const wasteLocationId = useMemo(() => {
+    if (!wasteRecord) return null;
+    return wasteRecord.branch_id || wasteRecord.warehouse_id || null;
+  }, [wasteRecord]);
+
+  const { getLocationStock } = useLocationStock(wasteLocationId, wasteLocationType);
 
   const getStockItemInfo = useCallback((siId: string | null) => {
     if (!siId) return null;
@@ -302,6 +305,10 @@ export const WasteDetailPage: React.FC = () => {
 
   const getCurrentStock = (stockItemId: string | null) => {
     if (!stockItemId || !wasteRecord) return null;
+    // Use per-location stock
+    if (wasteLocationId) {
+      return getLocationStock(stockItemId);
+    }
     const si = getStockItemInfo(stockItemId);
     return si ? Number(si.current_stock) : null;
   };
@@ -314,6 +321,23 @@ export const WasteDetailPage: React.FC = () => {
   }, [wasteItems, localQty]);
 
   const handleSaveAndFinish = async () => {
+    // Validate stock availability
+    const overStockItems: string[] = [];
+    for (const item of wasteItems) {
+      const qty = Number(localQty[item.id] ?? item.quantity);
+      if (qty > 0 && item.stock_item_id) {
+        const available = getCurrentStock(item.stock_item_id);
+        if (available !== null && qty > available) {
+          const si = getStockItemInfo(item.stock_item_id);
+          overStockItems.push(`"${si?.name || item.name}" (المطلوب: ${qty} / المتاح: ${available.toFixed(2)})`);
+        }
+      }
+    }
+    if (overStockItems.length > 0) {
+      toast({ title: "خطأ: كمية غير متوفرة", description: overStockItems.join("، "), variant: "destructive" });
+      return;
+    }
+
     for (const item of wasteItems) {
       const qty = Number(localQty[item.id] ?? item.quantity);
       let reason = localReason[item.id] ?? item.reason ?? "";

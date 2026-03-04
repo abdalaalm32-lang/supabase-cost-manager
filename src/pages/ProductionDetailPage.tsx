@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useLocationStock } from "@/hooks/useLocationStock";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -119,6 +120,8 @@ export const ProductionDetailPage: React.FC = () => {
     },
     enabled: !!companyId,
   });
+
+  const { getLocationStock } = useLocationStock(locationId || null, locationType);
 
   // Load existing record
   const { data: existingRecord } = useQuery({
@@ -292,6 +295,23 @@ export const ProductionDetailPage: React.FC = () => {
     if (producedQtyNum <= 0) {
       toast({ title: "خطأ", description: "أدخل كمية الإنتاج", variant: "destructive" });
       return;
+    }
+
+    // Validate ingredient stock availability at the selected location
+    if (locationId && ingredients.length > 0) {
+      const overStockItems: string[] = [];
+      for (const ing of ingredients) {
+        if (ing.stock_item_id && ing.required_qty > 0) {
+          const available = getLocationStock(ing.stock_item_id);
+          if (ing.required_qty > available) {
+            overStockItems.push(`"${ing.name}" (المطلوب: ${ing.required_qty} / المتاح: ${available.toFixed(2)})`);
+          }
+        }
+      }
+      if (overStockItems.length > 0) {
+        toast({ title: "خطأ: كمية الخامات غير متوفرة", description: overStockItems.join("، "), variant: "destructive" });
+        return;
+      }
     }
 
     const selectedProduct = allStockItems.find((s: any) => s.id === selectedProductId);

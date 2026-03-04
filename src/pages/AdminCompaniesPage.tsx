@@ -452,11 +452,11 @@ export const AdminCompaniesPage: React.FC = () => {
 
       {/* Add Company Dialog */}
       <Dialog open={isAddCompanyOpen} onOpenChange={(open) => { if (!open) { setIsAddCompanyOpen(false); resetAddForm(); } else setIsAddCompanyOpen(true); }}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col" dir="rtl">
+        <DialogContent className="max-w-lg max-h-[90vh]" dir="rtl">
           <DialogHeader>
             <DialogTitle>إضافة شركة جديدة</DialogTitle>
           </DialogHeader>
-          <ScrollArea className="flex-1 min-h-0 max-h-[60vh] px-1">
+          <ScrollArea className="max-h-[65vh] pr-3">
             <div className="space-y-4 py-2">
               <div className="space-y-2">
                 <Label>اسم الشركة *</Label>
@@ -504,11 +504,11 @@ export const AdminCompaniesPage: React.FC = () => {
 
       {/* Edit User Dialog */}
       <Dialog open={isEditUserOpen} onOpenChange={setIsEditUserOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col" dir="rtl">
+        <DialogContent className="max-w-lg max-h-[90vh]" dir="rtl">
           <DialogHeader>
             <DialogTitle>تعديل المستخدم: {editingUser?.full_name}</DialogTitle>
           </DialogHeader>
-          <ScrollArea className="flex-1 min-h-0 max-h-[60vh] px-1">
+          <ScrollArea className="max-h-[65vh] pr-3">
             <div className="space-y-4 py-2">
               <div className="flex items-center justify-between p-3 rounded-xl border border-border/50 bg-muted/30">
                 <Label>حالة الحساب</Label>

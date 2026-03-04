@@ -113,8 +113,8 @@ export const NotificationBell: React.FC = () => {
       {isOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-          {/* Panel opens to the LEFT (right-0 positions it from right edge) */}
-          <div className="absolute right-0 top-full mt-2 w-80 z-50 bg-popover border border-border rounded-xl shadow-xl overflow-hidden" dir="rtl">
+          {/* Panel opens to the RIGHT in RTL layout */}
+          <div className="absolute left-0 top-full mt-2 w-80 z-50 bg-popover border border-border rounded-xl shadow-xl overflow-hidden" dir="rtl">
             <div className="p-3 border-b border-border flex items-center justify-between">
               <p className="font-bold text-sm text-foreground">الإشعارات</p>
               <button onClick={() => setIsOpen(false)} className="text-muted-foreground hover:text-foreground">

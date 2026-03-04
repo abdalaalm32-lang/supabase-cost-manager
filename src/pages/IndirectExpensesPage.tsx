@@ -39,6 +39,7 @@ interface CostingPeriod {
   status: string;
   created_at: string;
   custom_expenses: CustomExpense[];
+  branch_id: string | null;
 }
 
 const emptyForm = {
@@ -58,6 +59,7 @@ const emptyForm = {
   default_consumables_pct: 1,
   default_packing_cost: 0,
   custom_expenses: [] as CustomExpense[],
+  branch_id: "" as string,
 };
 
 const getDaysInPeriod = (start: string, end: string) => {
@@ -177,6 +179,7 @@ export const IndirectExpensesPage: React.FC = () => {
       default_consumables_pct: form.default_consumables_pct,
       default_packing_cost: form.default_packing_cost,
       custom_expenses: form.custom_expenses as any,
+      branch_id: form.branch_id || null,
     };
 
     let error;
@@ -216,6 +219,7 @@ export const IndirectExpensesPage: React.FC = () => {
       default_consumables_pct: p.default_consumables_pct,
       default_packing_cost: p.default_packing_cost,
       custom_expenses: p.custom_expenses || [],
+      branch_id: p.branch_id || "",
     });
     setDialogOpen(true);
   };
@@ -278,9 +282,24 @@ export const IndirectExpensesPage: React.FC = () => {
               <DialogTitle>{editingId ? "تعديل الفترة" : "إضافة فترة جديدة"}</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div>
-                <Label>اسم الفترة *</Label>
-                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="مثال: أكتوبر 2025" />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>اسم الفترة *</Label>
+                  <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="مثال: أكتوبر 2025" />
+                </div>
+                <div>
+                  <Label>الفرع</Label>
+                  <Select value={form.branch_id} onValueChange={(v) => setForm({ ...form, branch_id: v })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="اختر الفرع" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {branches.map(b => (
+                        <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -383,17 +402,21 @@ export const IndirectExpensesPage: React.FC = () => {
       {/* Periods list */}
       {periods.length > 0 && (
         <div className="flex gap-2 flex-wrap">
-          {periods.map((p) => (
-            <Button
-              key={p.id}
-              variant={selectedPeriod?.id === p.id ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSelectedPeriod(p)}
-              className="gap-2"
-            >
-              {p.name}
-            </Button>
-          ))}
+          {periods.map((p) => {
+            const branchName = branches.find(b => b.id === p.branch_id)?.name;
+            return (
+              <Button
+                key={p.id}
+                variant={selectedPeriod?.id === p.id ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedPeriod(p)}
+                className="gap-2"
+              >
+                {p.name}
+                {branchName && <Badge variant="secondary" className="text-[10px] mr-1">{branchName}</Badge>}
+              </Button>
+            );
+          })}
         </div>
       )}
 

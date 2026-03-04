@@ -1,0 +1,1 @@
+ALTER TABLE public.menu_costing_periods ADD COLUMN branch_id uuid REFERENCES public.branches(id) ON DELETE SET NULL DEFAULT NULL;

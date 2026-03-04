@@ -4,13 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, Store, Warehouse } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
 export const InventoryBalancesPage: React.FC = () => {
@@ -38,10 +35,7 @@ export const InventoryBalancesPage: React.FC = () => {
   const { data: categories = [] } = useQuery({
     queryKey: ["inv-categories-active", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("inventory_categories")
-        .select("*")
-        .eq("active", true);
+      const { data, error } = await supabase.from("inventory_categories").select("*").eq("active", true);
       if (error) throw error;
       return data;
     },
@@ -51,11 +45,7 @@ export const InventoryBalancesPage: React.FC = () => {
   const { data: branches = [] } = useQuery({
     queryKey: ["branches-active", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("branches")
-        .select("*")
-        .eq("active", true)
-        .order("name");
+      const { data, error } = await supabase.from("branches").select("*").eq("active", true).order("name");
       if (error) throw error;
       return data;
     },
@@ -65,11 +55,7 @@ export const InventoryBalancesPage: React.FC = () => {
   const { data: warehouses = [] } = useQuery({
     queryKey: ["warehouses-active", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("warehouses")
-        .select("*")
-        .eq("active", true)
-        .order("name");
+      const { data, error } = await supabase.from("warehouses").select("*").eq("active", true).order("name");
       if (error) throw error;
       return data;
     },
@@ -79,9 +65,7 @@ export const InventoryBalancesPage: React.FC = () => {
   const { data: itemLocations = [] } = useQuery({
     queryKey: ["stock-item-locations", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("stock_item_locations")
-        .select("*");
+      const { data, error } = await supabase.from("stock_item_locations").select("*");
       if (error) throw error;
       return data as any[];
     },
@@ -188,36 +172,6 @@ export const InventoryBalancesPage: React.FC = () => {
     enabled: !!companyId && isLocationFiltered,
   });
 
-  // ========== Fetch completed stocktakes for location-based adjustments ==========
-  const { data: stocktakes = [] } = useQuery({
-    queryKey: ["bal-stocktakes", companyId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("stocktakes")
-        .select("id, branch_id, warehouse_id, status")
-        .eq("company_id", companyId!)
-        .eq("status", "مكتمل");
-      if (error) throw error;
-      return data as any[];
-    },
-    enabled: !!companyId && isLocationFiltered,
-  });
-
-  const { data: stocktakeItems = [] } = useQuery({
-    queryKey: ["bal-stocktake-items", companyId, stocktakes.map((s: any) => s.id).join(",")],
-    queryFn: async () => {
-      const stIds = stocktakes.map((s: any) => s.id);
-      if (stIds.length === 0) return [];
-      const { data, error } = await supabase
-        .from("stocktake_items")
-        .select("*")
-        .in("stocktake_id", stIds);
-      if (error) throw error;
-      return data as any[];
-    },
-    enabled: !!companyId && isLocationFiltered && stocktakes.length > 0,
-  });
-
   // ========== Calculate per-location stock ==========
   const locationStockMap = useMemo(() => {
     if (!isLocationFiltered) return new Map<string, number>();
@@ -282,12 +236,16 @@ export const InventoryBalancesPage: React.FC = () => {
     }
 
     // 6. POS Sales consumption OUT (via recipes)
+    // Build recipe map: pos_item_id → [{stock_item_id, qty}]
     const recipeMap = new Map<string, { stock_item_id: string; qty: number }[]>();
     for (const r of recipes) {
-      recipeMap.set(r.menu_item_id, (r.recipe_ingredients || []).map((i: any) => ({
-        stock_item_id: i.stock_item_id,
-        qty: Number(i.qty),
-      })));
+      recipeMap.set(
+        r.menu_item_id,
+        (r.recipe_ingredients || []).map((i: any) => ({
+          stock_item_id: i.stock_item_id,
+          qty: Number(i.qty),
+        })),
+      );
     }
 
     for (const si of posSaleItems) {
@@ -302,27 +260,19 @@ export const InventoryBalancesPage: React.FC = () => {
       }
     }
 
-    // 7. Stocktake adjustments (counted_qty - book_qty = adjustment)
-    const locationStocktakeIds = new Set(
-      stocktakes
-        .filter((st: any) => {
-          if (locationType === "branch") return st.branch_id === locationFilter;
-          return st.warehouse_id === locationFilter;
-        })
-        .map((st: any) => st.id)
-    );
-
-    for (const si of stocktakeItems) {
-      if (locationStocktakeIds.has(si.stocktake_id)) {
-        const adjustment = Number(si.counted_qty) - Number(si.book_qty);
-        if (adjustment !== 0 && si.stock_item_id) {
-          addQty(si.stock_item_id, adjustment);
-        }
-      }
-    }
-
     return stockMap;
-  }, [isLocationFiltered, locationType, locationFilter, purchaseItems, productionRecords, productionIngredients, transferItems, wasteItems, posSaleItems, recipes, stocktakes, stocktakeItems]);
+  }, [
+    isLocationFiltered,
+    locationType,
+    locationFilter,
+    purchaseItems,
+    productionRecords,
+    productionIngredients,
+    transferItems,
+    wasteItems,
+    posSaleItems,
+    recipes,
+  ]);
 
   const getCatName = (id: string | null) => {
     if (!id) return "—";
@@ -361,7 +311,7 @@ export const InventoryBalancesPage: React.FC = () => {
             if (locationType === "branch") return l.branch_id === locationFilter;
             return l.warehouse_id === locationFilter;
           })
-          .map((l: any) => l.stock_item_id)
+          .map((l: any) => l.stock_item_id),
       );
       result = result.filter((item: any) => itemIdsWithLocation.has(item.id));
     }
@@ -369,12 +319,13 @@ export const InventoryBalancesPage: React.FC = () => {
     // Search
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
-      result = result.filter((item: any) =>
-        (item.code || "").toLowerCase().includes(q) ||
-        item.name.toLowerCase().includes(q) ||
-        getCatName(item.category_id).toLowerCase().includes(q) ||
-        item.stock_unit.toLowerCase().includes(q) ||
-        getLocationNames(item.id).toLowerCase().includes(q)
+      result = result.filter(
+        (item: any) =>
+          (item.code || "").toLowerCase().includes(q) ||
+          item.name.toLowerCase().includes(q) ||
+          getCatName(item.category_id).toLowerCase().includes(q) ||
+          item.stock_unit.toLowerCase().includes(q) ||
+          getLocationNames(item.id).toLowerCase().includes(q),
       );
     }
 
@@ -384,7 +335,7 @@ export const InventoryBalancesPage: React.FC = () => {
   const totalValue = useMemo(() => {
     return filtered.reduce((sum: number, item: any) => {
       const stock = getDisplayStock(item);
-      return sum + (stock * Number(item.avg_cost));
+      return sum + stock * Number(item.avg_cost);
     }, 0);
   }, [filtered, locationStockMap, isLocationFiltered]);
 
@@ -392,8 +343,8 @@ export const InventoryBalancesPage: React.FC = () => {
     <div className="space-y-6 animate-fade-in-up">
       <h1 className="text-2xl font-bold">أرصدة المخزون</h1>
 
-      {/* Search + Filter */}
-      <div className="flex items-center gap-3 flex-wrap">
+      {/* Search Bar */}
+      <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -403,42 +354,61 @@ export const InventoryBalancesPage: React.FC = () => {
             className="glass-input pr-9"
           />
         </div>
-
-        {/* Location type toggle */}
-        <div className="flex items-center gap-1 bg-muted/40 rounded-lg p-0.5 border border-border/40">
-          <Button
-            variant={locationType === "branch" ? "default" : "ghost"}
-            size="sm"
-            className="h-8 text-xs px-3"
-            onClick={() => { setLocationType("branch"); setLocationFilter("all"); }}
-          >
-            <Store className="h-3.5 w-3.5 ml-1" />
-            فرع
-          </Button>
-          <Button
-            variant={locationType === "warehouse" ? "default" : "ghost"}
-            size="sm"
-            className="h-8 text-xs px-3"
-            onClick={() => { setLocationType("warehouse"); setLocationFilter("all"); }}
-          >
-            <Warehouse className="h-3.5 w-3.5 ml-1" />
-            مخزن
-          </Button>
-        </div>
-
-        <Select value={locationFilter} onValueChange={setLocationFilter}>
-          <SelectTrigger className="w-52">
-            <SelectValue placeholder={locationType === "branch" ? "كل الفروع" : "كل المخازن"} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{locationType === "branch" ? "كل الفروع" : "كل المخازن"}</SelectItem>
-            {locationType === "branch"
-              ? branches.map((b: any) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)
-              : warehouses.map((w: any) => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)
-            }
-          </SelectContent>
-        </Select>
       </div>
+
+      <Tabs
+        value={locationType}
+        onValueChange={(val) => {
+          setLocationType(val as "branch" | "warehouse");
+          setLocationFilter("all");
+        }}
+        className="w-full"
+      >
+        <TabsList className="mb-4">
+          <TabsTrigger value="warehouse" className="flex items-center gap-2">
+            <Warehouse size={16} />
+            المخازن
+          </TabsTrigger>
+          <TabsTrigger value="branch" className="flex items-center gap-2">
+            <Store size={16} />
+            الفروع
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="warehouse" className="mt-0">
+          <div className="flex flex-wrap gap-2 mb-6">
+            <Button variant={locationFilter === "all" ? "default" : "outline"} onClick={() => setLocationFilter("all")}>
+              كل المخازن
+            </Button>
+            {warehouses.map((w: any) => (
+              <Button
+                key={w.id}
+                variant={locationFilter === w.id ? "default" : "outline"}
+                onClick={() => setLocationFilter(w.id)}
+              >
+                {w.name}
+              </Button>
+            ))}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="branch" className="mt-0">
+          <div className="flex flex-wrap gap-2 mb-6">
+            <Button variant={locationFilter === "all" ? "default" : "outline"} onClick={() => setLocationFilter("all")}>
+              كل الفروع
+            </Button>
+            {branches.map((b: any) => (
+              <Button
+                key={b.id}
+                variant={locationFilter === b.id ? "default" : "outline"}
+                onClick={() => setLocationFilter(b.id)}
+              >
+                {b.name}
+              </Button>
+            ))}
+          </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Table */}
       <div className="glass-card overflow-hidden">
@@ -451,7 +421,7 @@ export const InventoryBalancesPage: React.FC = () => {
               <TableHead className="text-right">وحدة التخزين</TableHead>
               <TableHead className="text-right">المواقع المرتبطة</TableHead>
               <TableHead className={cn("text-right", isLocationFiltered && "bg-primary/10 text-primary font-bold")}>
-                {isLocationFiltered ? "رصيد الموقع" : "الرصيد الحالي"}
+                {isLocationFiltered ? "الرصيد بالفرع/المخزن" : "الرصيد الحالي"}
               </TableHead>
               <TableHead className="text-right">متوسط التكلفة</TableHead>
               <TableHead className="text-right">قيمة المخزون</TableHead>
@@ -460,11 +430,15 @@ export const InventoryBalancesPage: React.FC = () => {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">جاري التحميل...</TableCell>
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  جاري التحميل...
+                </TableCell>
               </TableRow>
             ) : filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">لا توجد أصناف</TableCell>
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  لا توجد أصناف
+                </TableCell>
               </TableRow>
             ) : (
               <>
@@ -480,7 +454,11 @@ export const InventoryBalancesPage: React.FC = () => {
                       <TableCell className="text-xs max-w-[200px] truncate" title={getLocationNames(item.id)}>
                         {getLocationNames(item.id)}
                       </TableCell>
-                      <TableCell className={cn(isLocationFiltered && "ring-2 ring-primary/40 rounded bg-primary/5 font-bold text-primary")}>
+                      <TableCell
+                        className={cn(
+                          isLocationFiltered && "ring-2 ring-primary/40 rounded bg-primary/5 font-bold text-primary",
+                        )}
+                      >
                         {stock.toFixed(2)}
                       </TableCell>
                       <TableCell>{Number(item.avg_cost).toFixed(2)}</TableCell>
@@ -490,7 +468,9 @@ export const InventoryBalancesPage: React.FC = () => {
                 })}
                 {/* Total Row */}
                 <TableRow className="bg-muted/30 font-bold">
-                  <TableCell colSpan={7} className="text-left">الإجمالي</TableCell>
+                  <TableCell colSpan={7} className="text-left">
+                    الإجمالي
+                  </TableCell>
                   <TableCell className="font-bold">{totalValue.toFixed(2)}</TableCell>
                 </TableRow>
               </>

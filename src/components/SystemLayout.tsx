@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate, useLocation } from "react-router-dom";
+import { NotificationBell } from "@/components/NotificationBell";
 import {
   LayoutDashboard, Package, ChefHat, ShoppingCart, Calculator,
   FileText, Settings, LogOut, Menu,
   Store, ArrowRightLeft, ClipboardCheck, Trash2,
   Layers, PieChart, BarChart3, ShieldBan, Factory,
-  ChevronDown, Monitor, Receipt, BrainCircuit, FolderOpen, UtensilsCrossed
+  ChevronDown, Monitor, Receipt, BrainCircuit, FolderOpen, UtensilsCrossed, MessageSquare
 } from "lucide-react";
 
 interface SystemLayoutProps {
@@ -96,6 +97,7 @@ const navItems: NavItem[] = [
     id: "settings", path: "/settings", label: "الإعدادات", icon: Settings,
     children: [
       { id: "settings-companies", path: "/settings/companies", label: "إدارة الشركات", icon: Settings },
+      { id: "settings-messages", path: "/settings/messages", label: "رسائل العملاء", icon: MessageSquare },
       { id: "settings-warehouses", path: "/settings/warehouses", label: "المخازن", icon: Settings },
       { id: "settings-branches", path: "/settings/branches", label: "الفروع", icon: Settings },
     ],
@@ -270,17 +272,22 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
         {/* Logo */}
         <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
           {!isSidebarCollapsed && (
-            <div>
-              <h1 className="text-xl font-black text-gradient">3M GSC</h1>
-              <p className="text-[10px] text-sidebar-foreground/60 truncate">{companyName}</p>
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <div className="min-w-0">
+                <h1 className="text-xl font-black text-gradient">3M GSC</h1>
+                <p className="text-[10px] text-sidebar-foreground/60 truncate">{companyName}</p>
+              </div>
             </div>
           )}
-          <button
-            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-            className="p-2 rounded-lg hover:bg-sidebar-accent text-sidebar-foreground transition-colors"
-          >
-            <Menu size={18} />
-          </button>
+          <div className="flex items-center gap-1">
+            <NotificationBell />
+            <button
+              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              className="p-2 rounded-lg hover:bg-sidebar-accent text-sidebar-foreground transition-colors"
+            >
+              <Menu size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Nav Items */}

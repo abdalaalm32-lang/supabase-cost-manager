@@ -52,6 +52,7 @@ import { IndirectExpensesPage } from "@/pages/IndirectExpensesPage";
 import { MenuAnalysisPage } from "@/pages/MenuAnalysisPage";
 import { MenuFinalReportPage } from "@/pages/MenuFinalReportPage";
 import { SystemLayout } from "@/components/SystemLayout";
+import { AdminMessagesPage } from "@/pages/AdminMessagesPage";
 
 const queryClient = new QueryClient();
 
@@ -192,6 +193,7 @@ const AppRoutes = () => {
                 <Route path="/reports/inventory-turnover" element={<PermissionGuard permKey="reports"><InventoryTurnoverPage /></PermissionGuard>} />
                 <Route path="/settings" element={<AdminGuard><Navigate to="/settings/companies" replace /></AdminGuard>} />
                 <Route path="/settings/companies" element={<AdminGuard><AdminCompaniesPage /></AdminGuard>} />
+                <Route path="/settings/messages" element={<AdminGuard><AdminMessagesPage /></AdminGuard>} />
                 <Route path="/settings/users" element={<AdminGuard><SettingsUsersPage /></AdminGuard>} />
                 <Route path="/settings/warehouses" element={<AdminGuard><SettingsWarehousesPage /></AdminGuard>} />
                 <Route path="/settings/branches" element={<AdminGuard><SettingsBranchesPage /></AdminGuard>} />

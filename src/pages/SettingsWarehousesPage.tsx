@@ -133,11 +133,29 @@ export const SettingsWarehousesPage: React.FC = () => {
     setFormActive(true); setFormLinkedBranches([]); setEditWarehouse(null);
   };
 
-  const buildWhatsAppUrl = () => {
-    const companyName = companyData?.name || "";
-    const companyCode = companyData?.code || "";
-    const message = `اهلا انا مدير شركه ${companyName} المشترك معك في السيستم\nاريد ترقيه حسابي لتزويد limit الفروع والمخازن\nدا كود شركتي ${companyCode}\nشكرا`;
-    return `https://wa.me/2001061425923?text=${encodeURIComponent(message)}`;
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
+
+  const sendUpgradeRequest = async () => {
+    if (!companyData || !auth.profile) return;
+    setUpgradeLoading(true);
+    try {
+      const { error } = await supabase.from("support_tickets").insert({
+        company_id: companyId!,
+        company_name: companyData.name,
+        company_code: companyData.code,
+        sender_id: auth.profile.user_id,
+        sender_name: auth.profile.full_name,
+        subject: "طلب ترقية حساب",
+        message: `اهلا انا مدير شركه ${companyData.name} المشترك معك في السيستم\nاريد ترقيه حسابي لتزويد limit الفروع والمخازن\nدا كود شركتي ${companyData.code}\nشكرا`,
+      });
+      if (error) throw error;
+      toast.success("تم إرسال طلب الترقية بنجاح");
+      setIsLimitDialogOpen(false);
+    } catch (e: any) {
+      toast.error(e.message || "حدث خطأ");
+    } finally {
+      setUpgradeLoading(false);
+    }
   };
 
   const openAdd = () => {
@@ -488,11 +506,12 @@ export const SettingsWarehousesPage: React.FC = () => {
               يمكنك طلب ترقية حسابك لزيادة الحدود عبر الواتساب.
             </p>
             <Button
-              className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white font-bold"
-              onClick={() => window.open(buildWhatsAppUrl(), "_blank")}
+              className="w-full gap-2 gradient-primary text-primary-foreground font-bold"
+              onClick={sendUpgradeRequest}
+              disabled={upgradeLoading}
             >
               <MessageCircle className="h-5 w-5" />
-              طلب ترقية عبر واتساب
+              {upgradeLoading ? "جاري الإرسال..." : "إرسال طلب ترقية"}
             </Button>
           </div>
         </DialogContent>

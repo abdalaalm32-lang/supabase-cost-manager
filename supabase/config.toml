@@ -1,1 +1,28 @@
 project_id = "lcqubaxjzxoksczjhshv"
+
+[functions.create-company]
+verify_jwt = false
+
+[functions.manage-user]
+verify_jwt = false
+
+[functions.manage-user-role]
+verify_jwt = false
+
+[functions.create-admin-user]
+verify_jwt = false
+
+[functions.reset-company-data]
+verify_jwt = false
+
+[functions.send-registration-otp]
+verify_jwt = false
+
+[functions.verify-otp-register]
+verify_jwt = false
+
+[functions.send-password-reset-otp]
+verify_jwt = false
+
+[functions.verify-password-reset-otp]
+verify_jwt = false

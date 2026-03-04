@@ -155,13 +155,9 @@ export const AdminCompaniesPage: React.FC = () => {
     mutationFn: async ({ companyId, active }: { companyId: string; active: boolean }) => {
       const { error } = await supabase.from("companies").update({ active }).eq("id", companyId);
       if (error) throw error;
-      if (!active) {
-        const { error: profileError } = await supabase.from("profiles").update({ status: "موقف" }).eq("company_id", companyId);
-        if (profileError) throw profileError;
-      }
     },
     onSuccess: (_, { active }) => {
-      toast.success(active ? "تم تفعيل الشركة" : "تم تعطيل الشركة وجميع مستخدميها");
+      toast.success(active ? "تم تفعيل الشركة" : "تم تعطيل الشركة");
       queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
       queryClient.invalidateQueries({ queryKey: ["admin-company-profiles"] });
     },

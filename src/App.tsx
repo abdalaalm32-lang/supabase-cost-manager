@@ -1,9 +1,9 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { LoginPage } from "@/pages/LoginPage";
@@ -174,8 +174,9 @@ const CompanyDeactivatedOverlay: React.FC<{ isOwner: boolean }> = ({ isOwner }) 
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { auth } = useAuth();
+  const qc = useQueryClient();
   
-  // Check if company is active
+  // Check if company is active (priority check before individual status)
   const { data: companyStatus } = useQuery({
     queryKey: ["company-active-status", auth.profile?.company_id],
     queryFn: async () => {
@@ -187,17 +188,31 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
       return data;
     },
     enabled: !!auth.profile?.company_id && !auth.isAdmin,
-    refetchInterval: 30000,
+    refetchInterval: 15000,
   });
+
+  // Subscribe to company changes for instant deactivation
+  useEffect(() => {
+    if (!auth.profile?.company_id || auth.isAdmin) return;
+    const channel = supabase
+      .channel("company-active-watch")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "companies", filter: `id=eq.${auth.profile.company_id}` }, () => {
+        qc.invalidateQueries({ queryKey: ["company-active-status", auth.profile?.company_id] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [auth.profile?.company_id, auth.isAdmin]);
 
   if (!auth.isReady) return null;
   if (!auth.session) return <Navigate to="/login" replace />;
-  if (auth.profile && auth.profile.status !== "نشط") return <SuspendedOverlay />;
   
-  // Check company deactivation (not for admins)
+  // Company deactivation check FIRST (not for admins)
   if (!auth.isAdmin && companyStatus && !companyStatus.active) {
     return <CompanyDeactivatedOverlay isOwner={auth.isOwner} />;
   }
+  
+  // Individual user suspension check
+  if (auth.profile && auth.profile.status !== "نشط") return <SuspendedOverlay />;
   
   return <>{children}</>;
 };

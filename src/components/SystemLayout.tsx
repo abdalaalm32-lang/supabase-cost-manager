@@ -5,6 +5,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { NotificationBell } from "@/components/NotificationBell";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import loginBg from "@/assets/login-bg.jpg";
 import {
   LayoutDashboard, Package, ChefHat, ShoppingCart, Calculator,
   FileText, Settings, LogOut, Menu,
@@ -361,8 +362,13 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
             <NotificationBell />
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto">
-          <div className="p-6">{children}</div>
+        <main className="flex-1 overflow-y-auto relative">
+          {/* Background image with blur - same as login page */}
+          <div className="fixed inset-0 -z-10" style={{ pointerEvents: 'none' }}>
+            <img src={loginBg} alt="" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-background/85 backdrop-blur-md" />
+          </div>
+          <div className="p-6 relative">{children}</div>
         </main>
       </div>
 

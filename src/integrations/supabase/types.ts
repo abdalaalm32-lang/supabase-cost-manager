@@ -1690,6 +1690,62 @@ export type Database = {
           },
         ]
       }
+      support_tickets: {
+        Row: {
+          admin_reply: string | null
+          admin_reply_at: string | null
+          company_code: string
+          company_id: string
+          company_name: string
+          created_at: string
+          id: string
+          is_reply_read: boolean
+          message: string
+          sender_id: string
+          sender_name: string
+          status: string
+          subject: string
+        }
+        Insert: {
+          admin_reply?: string | null
+          admin_reply_at?: string | null
+          company_code: string
+          company_id: string
+          company_name: string
+          created_at?: string
+          id?: string
+          is_reply_read?: boolean
+          message: string
+          sender_id: string
+          sender_name: string
+          status?: string
+          subject: string
+        }
+        Update: {
+          admin_reply?: string | null
+          admin_reply_at?: string | null
+          company_code?: string
+          company_id?: string
+          company_name?: string
+          created_at?: string
+          id?: string
+          is_reply_read?: boolean
+          message?: string
+          sender_id?: string
+          sender_name?: string
+          status?: string
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transfer_items: {
         Row: {
           avg_cost: number

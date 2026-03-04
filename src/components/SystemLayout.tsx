@@ -343,9 +343,14 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden relative">
+        {/* Background image with blur - same as login page */}
+        <div className="absolute inset-0 z-0">
+          <img src={loginBg} alt="" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-xl" />
+        </div>
         {/* Top Navbar */}
-        <header className="h-14 border-b border-border bg-card/50 backdrop-blur-md flex items-center justify-between px-6 flex-shrink-0">
+        <header className="h-14 border-b border-border bg-card/30 backdrop-blur-md flex items-center justify-between px-6 flex-shrink-0 relative z-10">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span className="font-semibold text-foreground">{userName}</span>
             <span className="text-xs">•</span>
@@ -362,13 +367,8 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
             <NotificationBell />
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto relative">
-          {/* Background image with blur - same as login page */}
-          <div className="fixed inset-0 -z-10" style={{ pointerEvents: 'none' }}>
-            <img src={loginBg} alt="" className="w-full h-full object-cover" />
-            <div className="absolute inset-0 bg-background/85 backdrop-blur-md" />
-          </div>
-          <div className="p-6 relative">{children}</div>
+        <main className="flex-1 overflow-y-auto relative z-10">
+          <div className="p-6">{children}</div>
         </main>
       </div>
 

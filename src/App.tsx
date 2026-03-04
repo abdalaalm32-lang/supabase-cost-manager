@@ -1,9 +1,10 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { LoginPage } from "@/pages/LoginPage";
 import { CreateCompanyPage } from "@/pages/CreateCompanyPage";
@@ -72,11 +73,132 @@ const SuspendedOverlay = () => (
   </div>
 );
 
+const CompanyDeactivatedOverlay: React.FC<{ isOwner: boolean }> = ({ isOwner }) => {
+  const { auth } = useAuth();
+  const [isSending, setIsSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [replyData, setReplyData] = useState<any>(null);
+
+  // Check if there's already a reply to a previous inquiry
+  const { data: existingTicket } = useQuery({
+    queryKey: ["suspension-inquiry", auth.profile?.company_id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("support_tickets")
+        .select("*")
+        .eq("company_id", auth.profile!.company_id)
+        .eq("subject", "استعلام عن سبب تعطيل الشركة")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: isOwner && !!auth.profile?.company_id,
+  });
+
+  const sendInquiry = async () => {
+    if (!auth.profile) return;
+    setIsSending(true);
+    try {
+      const { data: company } = await supabase
+        .from("companies")
+        .select("name, code")
+        .eq("id", auth.profile.company_id)
+        .single();
+
+      await supabase.from("support_tickets").insert({
+        company_id: auth.profile.company_id,
+        company_name: company?.name || "",
+        company_code: company?.code || "",
+        sender_id: auth.user!.id,
+        sender_name: auth.profile.full_name,
+        subject: "استعلام عن سبب تعطيل الشركة",
+        message: `تم تعطيل الشركة "${company?.name}" (${company?.code}) وأريد معرفة السبب.`,
+      });
+      setSent(true);
+    } catch {
+      // silent
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const hasReply = existingTicket?.admin_reply;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+      <div className="absolute inset-0 bg-background/60 backdrop-blur-xl" />
+      <div className="relative z-10 text-center p-8 max-w-md">
+        <div className="w-20 h-20 rounded-full bg-destructive/15 flex items-center justify-center mx-auto mb-6">
+          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-destructive"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+        </div>
+        {isOwner ? (
+          <>
+            <h2 className="text-2xl font-black text-foreground mb-3">تم تعطيل الشركة</h2>
+            <p className="text-muted-foreground text-sm mb-6">
+              تم تعطيل شركتك من خلال الإدارة. لا يمكنك الوصول إلى النظام حالياً.
+            </p>
+
+            {hasReply && (
+              <div className="mb-4 p-4 rounded-xl bg-primary/5 border border-primary/20 text-start" dir="rtl">
+                <p className="text-xs font-bold text-primary mb-1">رد الإدارة:</p>
+                <p className="text-sm text-foreground whitespace-pre-wrap">{existingTicket.admin_reply}</p>
+              </div>
+            )}
+
+            {sent ? (
+              <p className="text-sm text-primary font-medium">تم إرسال الاستعلام بنجاح ✓</p>
+            ) : (
+              <button
+                onClick={sendInquiry}
+                disabled={isSending}
+                className="gradient-primary text-primary-foreground px-6 py-3 rounded-xl font-bold text-sm disabled:opacity-50"
+              >
+                {isSending ? "جاري الإرسال..." : "استعلام عن السبب"}
+              </button>
+            )}
+          </>
+        ) : (
+          <>
+            <h2 className="text-2xl font-black text-foreground mb-3">النظام معطل</h2>
+            <p className="text-muted-foreground text-sm mb-6">
+              سيستم الشركة معطل من خلال الإدارة.
+              <br />تواصل مع مدير الشركة لمزيد من المعلومات.
+            </p>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { auth } = useAuth();
+  
+  // Check if company is active
+  const { data: companyStatus } = useQuery({
+    queryKey: ["company-active-status", auth.profile?.company_id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("companies")
+        .select("active")
+        .eq("id", auth.profile!.company_id)
+        .single();
+      return data;
+    },
+    enabled: !!auth.profile?.company_id && !auth.isAdmin,
+    refetchInterval: 30000,
+  });
+
   if (!auth.isReady) return null;
   if (!auth.session) return <Navigate to="/login" replace />;
   if (auth.profile && auth.profile.status !== "نشط") return <SuspendedOverlay />;
+  
+  // Check company deactivation (not for admins)
+  if (!auth.isAdmin && companyStatus && !companyStatus.active) {
+    return <CompanyDeactivatedOverlay isOwner={auth.isOwner} />;
+  }
+  
   return <>{children}</>;
 };
 

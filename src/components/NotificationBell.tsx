@@ -40,6 +40,7 @@ export const NotificationBell: React.FC = () => {
         return data || [];
       }
       if (auth.isOwner) {
+        // Show tickets with unread replies (including suspension inquiries)
         const { data, error } = await supabase
           .from("support_tickets")
           .select("*")

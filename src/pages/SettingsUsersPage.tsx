@@ -569,7 +569,7 @@ export const SettingsUsersPage: React.FC = () => {
             {activeTab === "permissions" && (
               <div className="space-y-3 py-2 pr-1">
                 <p className="text-sm text-muted-foreground">اختر الصفحات التي يمكن لهذا المستخدم الوصول إليها:</p>
-                <div className="space-y-2 max-h-[45vh] overflow-y-auto pr-1">
+                <div className="space-y-2 pr-1">
                   {ALL_PERMISSIONS.map((perm) => (
                     <div
                       key={perm.key}

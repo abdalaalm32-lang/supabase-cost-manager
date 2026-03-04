@@ -16,9 +16,13 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowRight, Plus, Search, Trash2, Save, Archive } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ArrowRight, Plus, Search, Trash2, Save, Archive, CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface InvoiceItem {
   stock_item_id: string;
@@ -39,7 +43,7 @@ export const AddPurchaseInvoicePage: React.FC = () => {
   const [supplierId, setSupplierId] = useState("");
   const [destinationType, setDestinationType] = useState<"branch" | "warehouse" | "">("");
   const [destinationId, setDestinationId] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState<Date>(new Date());
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [itemPickerOpen, setItemPickerOpen] = useState(false);
@@ -163,7 +167,7 @@ export const AddPurchaseInvoicePage: React.FC = () => {
           supplier_name: selectedSupplier?.name || "",
           branch_id: destinationType === "branch" ? destinationId : null,
           warehouse_id: destinationType === "warehouse" ? destinationId : null,
-          date,
+          date: format(date, "yyyy-MM-dd"),
           notes: notes || null,
           total_amount: totalAmount,
           status,
@@ -268,7 +272,17 @@ export const AddPurchaseInvoicePage: React.FC = () => {
 
           <div className="space-y-2">
             <Label>التاريخ</Label>
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="glass-input" />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("w-full justify-start text-right font-normal", !date && "text-muted-foreground")}>
+                  <CalendarIcon className="ml-2 h-4 w-4" />
+                  {date ? format(date, "yyyy-MM-dd") : "اختر التاريخ"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus className={cn("p-3 pointer-events-auto")} />
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="space-y-2">

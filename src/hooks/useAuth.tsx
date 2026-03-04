@@ -21,6 +21,7 @@ interface AuthState {
   profile: Profile | null;
   roles: string[];
   isAdmin: boolean;
+  isOwner: boolean;
 }
 
 interface AuthContextType {
@@ -49,6 +50,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     profile: null,
     roles: [],
     isAdmin: false,
+    isOwner: false,
   });
 
   const fetchProfile = async (userId: string) => {
@@ -74,7 +76,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       fetchRoles(session.user.id),
     ]);
     const isAdmin = roles.includes("admin");
-    setAuth({ isReady: true, session, user: session.user, profile, roles, isAdmin });
+    const isOwner = roles.includes("owner");
+    setAuth({ isReady: true, session, user: session.user, profile, roles, isAdmin, isOwner });
   };
 
   useEffect(() => {
@@ -82,7 +85,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (session?.user) {
         setTimeout(() => loadUserData(session), 0);
       } else {
-        setAuth({ isReady: true, session: null, user: null, profile: null, roles: [], isAdmin: false });
+        setAuth({ isReady: true, session: null, user: null, profile: null, roles: [], isAdmin: false, isOwner: false });
       }
     });
 
@@ -105,7 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .on("postgres_changes", { event: "*", schema: "public", table: "user_roles" }, () => {
         if (auth.user) {
           fetchRoles(auth.user.id).then((roles) => {
-            setAuth((prev) => ({ ...prev, roles, isAdmin: roles.includes("admin") }));
+            setAuth((prev) => ({ ...prev, roles, isAdmin: roles.includes("admin"), isOwner: roles.includes("owner") }));
           });
         }
       })
@@ -167,6 +170,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!auth.profile) return false;
     if (auth.profile.status !== "نشط") return false;
     if (auth.isAdmin) return true;
+    if (auth.isOwner && key === "settings") return true;
     // For all other users, check their specific permissions array
     return auth.profile.permissions?.includes(key) ?? false;
   };

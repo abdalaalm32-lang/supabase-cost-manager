@@ -558,17 +558,24 @@ export const WasteDetailPage: React.FC = () => {
                       <TableCell className="font-medium">{si?.name || item.name}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{item.source_product || "—"}</TableCell>
                       <TableCell>{si?.stock_unit || item.unit || "—"}</TableCell>
-                      <TableCell>{currentStock !== null ? currentStock.toFixed(2) : "—"}</TableCell>
+                      <TableCell className={cn(currentStock !== null && qty > currentStock && "text-destructive font-bold")}>
+                        {currentStock !== null ? currentStock.toFixed(2) : "—"}
+                      </TableCell>
                       <TableCell>
                         {isEditable ? (
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={getQty(item)}
-                            onChange={e => setLocalQty(prev => ({ ...prev, [item.id]: e.target.value }))}
-                            className="w-24 h-8 text-sm"
-                          />
+                          <>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={getQty(item)}
+                              onChange={e => setLocalQty(prev => ({ ...prev, [item.id]: e.target.value }))}
+                              className={cn("w-24 h-8 text-sm", currentStock !== null && qty > currentStock && "border-destructive ring-1 ring-destructive")}
+                            />
+                            {currentStock !== null && qty > currentStock && (
+                              <p className="text-[10px] text-destructive mt-0.5">المتاح: {currentStock.toFixed(2)}</p>
+                            )}
+                          </>
                         ) : (
                           qty.toFixed(2)
                         )}

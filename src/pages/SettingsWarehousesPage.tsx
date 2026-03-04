@@ -18,7 +18,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
-  Warehouse, Building2, Plus, MoreHorizontal, Pencil, Trash2, ToggleLeft, Search, Filter
+  Warehouse, Building2, Plus, MoreHorizontal, Pencil, Trash2, ToggleLeft, Search, Filter, MessageCircle, AlertTriangle
 } from "lucide-react";
 
 const CLASSIFICATIONS = [
@@ -40,6 +40,7 @@ export const SettingsWarehousesPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterClassification, setFilterClassification] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [isLimitDialogOpen, setIsLimitDialogOpen] = useState(false);
 
   // Form
   const [formName, setFormName] = useState("");
@@ -102,28 +103,46 @@ export const SettingsWarehousesPage: React.FC = () => {
     enabled: !!companyId,
   });
 
-  const { data: companyLimits } = useQuery({
-    queryKey: ["company-limits-wh", companyId],
+  const { data: companyData } = useQuery({
+    queryKey: ["company-data-full-wh", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("companies").select("max_warehouses").eq("id", companyId!).single();
+      const { data, error } = await supabase.from("companies").select("*").eq("id", companyId!).single();
       if (error) throw error;
       return data;
     },
     enabled: !!companyId,
   });
 
+  const { data: branchCount } = useQuery({
+    queryKey: ["branch-count", companyId],
+    queryFn: async () => {
+      const { count, error } = await supabase.from("branches").select("id", { count: "exact", head: true }).eq("company_id", companyId!);
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!companyId,
+  });
+
   const totalWarehouses = warehouses?.length || 0;
   const linkedBranchesCount = new Set(warehouseBranches?.map(wb => wb.branch_id) || []).size;
+  const maxWarehouses = companyData?.max_warehouses ?? 999;
+  const maxBranches = companyData?.max_branches ?? 999;
 
   const resetForm = () => {
     setFormName(""); setFormClassification("مخزن رئيسي"); setFormManagerId("");
     setFormActive(true); setFormLinkedBranches([]); setEditWarehouse(null);
   };
 
+  const buildWhatsAppUrl = () => {
+    const companyName = companyData?.name || "";
+    const companyCode = companyData?.code || "";
+    const message = `اهلا انا مدير شركه ${companyName} المشترك معك في السيستم\nاريد ترقيه حسابي لتزويد limit الفروع والمخازن\nدا كود شركتي ${companyCode}\nشكرا`;
+    return `https://wa.me/2001061425923?text=${encodeURIComponent(message)}`;
+  };
+
   const openAdd = () => {
-    const maxWarehouses = (companyLimits as any)?.max_warehouses ?? 999;
     if (totalWarehouses >= maxWarehouses && !auth.isAdmin) {
-      toast.error(`تم الوصول للحد الأقصى من المخازن (${maxWarehouses})`);
+      setIsLimitDialogOpen(true);
       return;
     }
     resetForm(); setIsDialogOpen(true);
@@ -158,8 +177,6 @@ export const SettingsWarehousesPage: React.FC = () => {
         }).eq("id", editWarehouse.id);
         if (error) throw error;
         warehouseId = editWarehouse.id;
-
-        // Delete old links then insert new
         await supabase.from("warehouse_branches").delete().eq("warehouse_id", warehouseId);
       } else {
         const { data: code } = await supabase.rpc("generate_warehouse_code", { p_company_id: companyId! });
@@ -172,7 +189,6 @@ export const SettingsWarehousesPage: React.FC = () => {
         warehouseId = data.id;
       }
 
-      // Insert branch links
       if (formLinkedBranches.length > 0) {
         const links = formLinkedBranches.map(bid => ({ warehouse_id: warehouseId, branch_id: bid }));
         const { error } = await supabase.from("warehouse_branches").insert(links);
@@ -359,11 +375,11 @@ export const SettingsWarehousesPage: React.FC = () => {
 
       {/* Add/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={open => { if (!open) { setIsDialogOpen(false); resetForm(); } else setIsDialogOpen(true); }}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-hidden flex flex-col" dir="rtl">
+        <DialogContent className="max-w-md max-h-[90vh]" dir="rtl">
           <DialogHeader>
             <DialogTitle>{editWarehouse ? "تعديل المخزن" : "إضافة مخزن جديد"}</DialogTitle>
           </DialogHeader>
-          <ScrollArea className="flex-1 min-h-0 max-h-[60vh] px-1">
+          <ScrollArea className="max-h-[65vh] pr-3">
             <div className="space-y-4 py-2">
               <div className="space-y-2">
                 <Label>اسم المخزن *</Label>
@@ -406,7 +422,7 @@ export const SettingsWarehousesPage: React.FC = () => {
                     </label>
                   ))}
                   {(!branches || branches.length === 0) && (
-                    <p className="text-sm text-muted-foreground text-center py-2">لا يوجد فروع نشطة</p>
+                    <p className="text-xs text-muted-foreground text-center py-2">لا يوجد فروع نشطة</p>
                   )}
                 </div>
               </div>
@@ -436,18 +452,51 @@ export const SettingsWarehousesPage: React.FC = () => {
         <AlertDialogContent dir="rtl">
           <AlertDialogHeader>
             <AlertDialogTitle>حذف المخزن</AlertDialogTitle>
-            <AlertDialogDescription>
-              هل أنت متأكد من حذف المخزن "{deleteTarget?.name}"؟ لا يمكن التراجع عن هذا الإجراء.
-            </AlertDialogDescription>
+            <AlertDialogDescription>هل أنت متأكد من حذف المخزن "{deleteTarget?.name}"؟</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>إلغاء</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deleteWarehouse.mutate()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              حذف
-            </AlertDialogAction>
+            <AlertDialogAction onClick={() => deleteWarehouse.mutate()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">حذف</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Limit Reached Dialog */}
+      <Dialog open={isLimitDialogOpen} onOpenChange={setIsLimitDialogOpen}>
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-orange-600">
+              <AlertTriangle className="h-5 w-5" />
+              تم الوصول للحد الأقصى
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              لقد وصلت للحد الأقصى المسموح به في خطتك الحالية:
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 rounded-xl border border-border/50 bg-muted/30 text-center">
+                <p className="text-xs text-muted-foreground">حد الفروع</p>
+                <p className="text-2xl font-black text-foreground">{maxBranches}</p>
+              </div>
+              <div className="p-3 rounded-xl border border-border/50 bg-muted/30 text-center">
+                <p className="text-xs text-muted-foreground">حد المخازن</p>
+                <p className="text-2xl font-black text-foreground">{maxWarehouses}</p>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              يمكنك طلب ترقية حسابك لزيادة الحدود عبر الواتساب.
+            </p>
+            <Button
+              className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white font-bold"
+              onClick={() => window.open(buildWhatsAppUrl(), "_blank")}
+            >
+              <MessageCircle className="h-5 w-5" />
+              طلب ترقية عبر واتساب
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

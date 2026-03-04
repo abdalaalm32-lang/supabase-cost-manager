@@ -16,7 +16,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
-  Building2, MapPin, Plus, MoreHorizontal, Pencil, Trash2, ToggleLeft, Search
+  Building2, MapPin, Plus, MoreHorizontal, Pencil, Trash2, ToggleLeft, Search, MessageCircle, AlertTriangle
 } from "lucide-react";
 
 export const SettingsBranchesPage: React.FC = () => {
@@ -29,6 +29,7 @@ export const SettingsBranchesPage: React.FC = () => {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isLimitDialogOpen, setIsLimitDialogOpen] = useState(false);
 
   // Form
   const [formName, setFormName] = useState("");
@@ -51,11 +52,21 @@ export const SettingsBranchesPage: React.FC = () => {
   });
 
   const { data: companyData } = useQuery({
-    queryKey: ["company-limits", companyId],
+    queryKey: ["company-data-full", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("companies").select("max_branches").eq("id", companyId!).single();
+      const { data, error } = await supabase.from("companies").select("*").eq("id", companyId!).single();
       if (error) throw error;
       return data;
+    },
+    enabled: !!companyId,
+  });
+
+  const { data: warehouseCount } = useQuery({
+    queryKey: ["warehouse-count", companyId],
+    queryFn: async () => {
+      const { count, error } = await supabase.from("warehouses").select("id", { count: "exact", head: true }).eq("company_id", companyId!);
+      if (error) throw error;
+      return count || 0;
     },
     enabled: !!companyId,
   });
@@ -76,15 +87,16 @@ export const SettingsBranchesPage: React.FC = () => {
 
   const totalBranches = branches?.length || 0;
   const addressCount = branches?.filter(b => b.address).length || 0;
+  const maxBranches = companyData?.max_branches ?? 999;
+  const maxWarehouses = companyData?.max_warehouses ?? 999;
 
   const resetForm = () => {
     setFormName(""); setFormAddress(""); setFormManagerId(""); setFormActive(true); setEditBranch(null);
   };
 
   const openAdd = () => {
-    const maxBranches = (companyData as any)?.max_branches ?? 999;
     if (totalBranches >= maxBranches && !auth.isAdmin) {
-      toast.error(`تم الوصول للحد الأقصى من الفروع (${maxBranches})`);
+      setIsLimitDialogOpen(true);
       return;
     }
     resetForm(); setIsDialogOpen(true);
@@ -96,6 +108,13 @@ export const SettingsBranchesPage: React.FC = () => {
     setFormManagerId(b.manager_id || "");
     setFormActive(b.active);
     setIsDialogOpen(true);
+  };
+
+  const buildWhatsAppUrl = () => {
+    const companyName = companyData?.name || "";
+    const companyCode = companyData?.code || "";
+    const message = `اهلا انا مدير شركه ${companyName} المشترك معك في السيستم\nاريد ترقيه حسابي لتزويد limit الفروع والمخازن\nدا كود شركتي ${companyCode}\nشكرا`;
+    return `https://wa.me/2001061425923?text=${encodeURIComponent(message)}`;
   };
 
   const saveBranch = useMutation({
@@ -140,7 +159,6 @@ export const SettingsBranchesPage: React.FC = () => {
   const deleteBranch = useMutation({
     mutationFn: async () => {
       if (!deleteTarget) return;
-      // Unlink related records first
       await supabase.from("categories").update({ branch_id: null }).eq("branch_id", deleteTarget.id);
       await supabase.from("profiles").update({ branch_id: null }).eq("branch_id", deleteTarget.id);
       await supabase.from("warehouse_branches").delete().eq("branch_id", deleteTarget.id);
@@ -266,11 +284,11 @@ export const SettingsBranchesPage: React.FC = () => {
 
       {/* Add/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={open => { if (!open) { setIsDialogOpen(false); resetForm(); } else setIsDialogOpen(true); }}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-hidden flex flex-col" dir="rtl">
+        <DialogContent className="max-w-md max-h-[90vh]" dir="rtl">
           <DialogHeader>
             <DialogTitle>{editBranch ? "تعديل الفرع" : "إضافة فرع جديد"}</DialogTitle>
           </DialogHeader>
-          <ScrollArea className="flex-1 min-h-0 max-h-[60vh] px-1">
+          <ScrollArea className="max-h-[65vh] pr-3">
             <div className="space-y-4 py-2">
               <div className="space-y-2">
                 <Label>اسم الفرع *</Label>
@@ -326,6 +344,43 @@ export const SettingsBranchesPage: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Limit Reached Dialog */}
+      <Dialog open={isLimitDialogOpen} onOpenChange={setIsLimitDialogOpen}>
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-orange-600">
+              <AlertTriangle className="h-5 w-5" />
+              تم الوصول للحد الأقصى
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              لقد وصلت للحد الأقصى المسموح به في خطتك الحالية:
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 rounded-xl border border-border/50 bg-muted/30 text-center">
+                <p className="text-xs text-muted-foreground">حد الفروع</p>
+                <p className="text-2xl font-black text-foreground">{maxBranches}</p>
+              </div>
+              <div className="p-3 rounded-xl border border-border/50 bg-muted/30 text-center">
+                <p className="text-xs text-muted-foreground">حد المخازن</p>
+                <p className="text-2xl font-black text-foreground">{maxWarehouses}</p>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              يمكنك طلب ترقية حسابك لزيادة الحدود عبر الواتساب.
+            </p>
+            <Button
+              className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white font-bold"
+              onClick={() => window.open(buildWhatsAppUrl(), "_blank")}
+            >
+              <MessageCircle className="h-5 w-5" />
+              طلب ترقية عبر واتساب
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

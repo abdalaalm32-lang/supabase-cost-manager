@@ -153,6 +153,15 @@ export const CompanySettingsPage: React.FC = () => {
   const createUser = useMutation({
     mutationFn: async () => {
       if (!formName || !formEmail || !formPassword) throw new Error("الاسم والبريد وكلمة المرور مطلوبين");
+      
+      // Check email uniqueness
+      const { data: existingProfile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("email", formEmail)
+        .maybeSingle();
+      if (existingProfile) throw new Error("هذا البريد الإلكتروني مستخدم بالفعل");
+
       const { data: userCode } = await supabase.rpc("generate_user_code", { p_company_id: companyId! });
       const res = await supabase.functions.invoke("create-admin-user", {
         body: {

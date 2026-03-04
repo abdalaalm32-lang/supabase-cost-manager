@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import {
-  Building2, Plus, ChevronDown, ChevronUp, Users, Eye, KeyRound, Trash2, UserCheck, Settings2, RotateCcw, AlertTriangle
+  Building2, Plus, ChevronDown, ChevronUp, Users, Eye, KeyRound, Trash2, UserCheck, Settings2, RotateCcw, AlertTriangle, Search
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
@@ -46,6 +46,7 @@ export const AdminCompaniesPage: React.FC = () => {
   const [isAddCompanyOpen, setIsAddCompanyOpen] = useState(false);
   const [isEditUserOpen, setIsEditUserOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
+  const [searchCode, setSearchCode] = useState("");
 
   // Add company form
   const [companyName, setCompanyName] = useState("");
@@ -65,9 +66,14 @@ export const AdminCompaniesPage: React.FC = () => {
   const [passwordTargetUser, setPasswordTargetUser] = useState<any>(null);
   const [newPassword, setNewPassword] = useState("");
 
-  // Delete dialog
+  // Delete user dialog
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deleteTargetUser, setDeleteTargetUser] = useState<any>(null);
+
+  // Delete company dialog
+  const [isDeleteCompanyOpen, setIsDeleteCompanyOpen] = useState(false);
+  const [deleteTargetCompany, setDeleteTargetCompany] = useState<any>(null);
+  const [deleteCompanyConfirmText, setDeleteCompanyConfirmText] = useState("");
 
   // Reset data dialog
   const [resetStep, setResetStep] = useState(0);
@@ -104,9 +110,23 @@ export const AdminCompaniesPage: React.FC = () => {
     enabled: !!expandedCompany,
   });
 
+  // Filter companies by code search
+  const filteredCompanies = companies?.filter(c =>
+    !searchCode || c.code?.toLowerCase().includes(searchCode.toLowerCase()) || c.name?.toLowerCase().includes(searchCode.toLowerCase())
+  ) || [];
+
   const createCompany = useMutation({
     mutationFn: async () => {
       if (!companyName || !ownerEmail || !ownerPassword || !ownerName) throw new Error("جميع الحقول مطلوبة");
+      
+      // Check email uniqueness
+      const { data: existingProfile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("email", ownerEmail)
+        .maybeSingle();
+      if (existingProfile) throw new Error("هذا البريد الإلكتروني مستخدم بالفعل");
+
       const res = await supabase.functions.invoke("create-company", {
         body: {
           company_name: companyName,
@@ -133,19 +153,10 @@ export const AdminCompaniesPage: React.FC = () => {
 
   const toggleCompanyActive = useMutation({
     mutationFn: async ({ companyId, active }: { companyId: string; active: boolean }) => {
-      // Update company active status
-      const { error } = await supabase
-        .from("companies")
-        .update({ active })
-        .eq("id", companyId);
+      const { error } = await supabase.from("companies").update({ active }).eq("id", companyId);
       if (error) throw error;
-
-      // If deactivating, suspend all users
       if (!active) {
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .update({ status: "موقف" })
-          .eq("company_id", companyId);
+        const { error: profileError } = await supabase.from("profiles").update({ status: "موقف" }).eq("company_id", companyId);
         if (profileError) throw profileError;
       }
     },
@@ -159,10 +170,7 @@ export const AdminCompaniesPage: React.FC = () => {
 
   const updateCompanyLimits = useMutation({
     mutationFn: async ({ companyId, max_branches, max_warehouses }: { companyId: string; max_branches: number; max_warehouses: number }) => {
-      const { error } = await supabase
-        .from("companies")
-        .update({ max_branches, max_warehouses })
-        .eq("id", companyId);
+      const { error } = await supabase.from("companies").update({ max_branches, max_warehouses }).eq("id", companyId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -175,13 +183,10 @@ export const AdminCompaniesPage: React.FC = () => {
   const updateUserFromAdmin = useMutation({
     mutationFn: async () => {
       if (!editingUser) return;
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          status: editFormStatus ? "نشط" : "موقف",
-          permissions: editFormPermissions,
-        })
-        .eq("id", editingUser.id);
+      const { error } = await supabase.from("profiles").update({
+        status: editFormStatus ? "نشط" : "موقف",
+        permissions: editFormPermissions,
+      }).eq("id", editingUser.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -226,6 +231,26 @@ export const AdminCompaniesPage: React.FC = () => {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const deleteCompany = useMutation({
+    mutationFn: async () => {
+      if (!deleteTargetCompany || deleteCompanyConfirmText !== "حذف") return;
+      const res = await supabase.functions.invoke("delete-company", {
+        body: { company_id: deleteTargetCompany.id },
+      });
+      if (res.error) throw new Error(res.error.message);
+      if (res.data?.error) throw new Error(res.data.error);
+    },
+    onSuccess: () => {
+      toast.success("تم حذف الشركة وجميع بياناتها");
+      setIsDeleteCompanyOpen(false);
+      setDeleteTargetCompany(null);
+      setDeleteCompanyConfirmText("");
+      setExpandedCompany(null);
+      queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const handleResetData = async () => {
     if (resetConfirmText !== "تصفير" || !resetTargetCompany) return;
     setIsResetting(true);
@@ -247,13 +272,8 @@ export const AdminCompaniesPage: React.FC = () => {
   };
 
   const resetAddForm = () => {
-    setCompanyName("");
-    setCompanyCode("");
-    setOwnerName("");
-    setOwnerEmail("");
-    setOwnerPassword("");
-    setMaxBranches(2);
-    setMaxWarehouses(1);
+    setCompanyName(""); setCompanyCode(""); setOwnerName(""); setOwnerEmail(""); setOwnerPassword("");
+    setMaxBranches(2); setMaxWarehouses(1);
   };
 
   const openEditUser = (user: any) => {
@@ -309,14 +329,25 @@ export const AdminCompaniesPage: React.FC = () => {
         </Card>
       </div>
 
+      {/* Search by code */}
+      <div className="relative max-w-sm">
+        <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="بحث بالكود أو اسم الشركة..."
+          value={searchCode}
+          onChange={(e) => setSearchCode(e.target.value)}
+          className="pr-9"
+        />
+      </div>
+
       {/* Companies List */}
       <div className="space-y-3">
         {isLoading ? (
           <p className="text-center text-muted-foreground py-10">جاري التحميل...</p>
-        ) : companies?.length === 0 ? (
+        ) : filteredCompanies.length === 0 ? (
           <p className="text-center text-muted-foreground py-10">لا توجد شركات</p>
         ) : (
-          companies?.map((company: any) => (
+          filteredCompanies.map((company: any) => (
             <Card key={company.id} className={cn("glass-card", !company.active && "opacity-60")}>
               <CardContent className="p-0">
                 <Collapsible
@@ -341,6 +372,19 @@ export const AdminCompaniesPage: React.FC = () => {
                         </span>
                       </div>
                       <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          title="حذف الشركة"
+                          onClick={() => {
+                            setDeleteTargetCompany(company);
+                            setDeleteCompanyConfirmText("");
+                            setIsDeleteCompanyOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -562,7 +606,7 @@ export const AdminCompaniesPage: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Dialog */}
+      {/* Delete User Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent dir="rtl">
           <AlertDialogHeader>
@@ -575,6 +619,40 @@ export const AdminCompaniesPage: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Delete Company Dialog */}
+      <Dialog open={isDeleteCompanyOpen} onOpenChange={(open) => { if (!open) { setIsDeleteCompanyOpen(false); setDeleteTargetCompany(null); setDeleteCompanyConfirmText(""); } }}>
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-destructive flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" />
+              حذف الشركة نهائياً
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              سيتم حذف شركة <strong>{deleteTargetCompany?.name}</strong> وجميع بياناتها وحسابات المستخدمين نهائياً. لا يمكن التراجع عن هذا الإجراء!
+            </p>
+            <p className="text-sm font-bold text-destructive">اكتب "حذف" للتأكيد</p>
+            <Input
+              value={deleteCompanyConfirmText}
+              onChange={(e) => setDeleteCompanyConfirmText(e.target.value)}
+              placeholder='اكتب "حذف"'
+              className="text-center text-lg font-bold"
+            />
+          </div>
+          <div className="flex gap-2 pt-2">
+            <Button
+              className="flex-1 bg-destructive text-destructive-foreground font-bold"
+              onClick={() => deleteCompany.mutate()}
+              disabled={deleteCompanyConfirmText !== "حذف" || deleteCompany.isPending}
+            >
+              {deleteCompany.isPending ? "جاري الحذف..." : "حذف نهائي"}
+            </Button>
+            <Button variant="outline" onClick={() => { setIsDeleteCompanyOpen(false); setDeleteCompanyConfirmText(""); }}>إلغاء</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Reset Data Dialogs */}
       <AlertDialog open={resetStep === 1} onOpenChange={(open) => { if (!open) { setResetStep(0); setResetTargetCompany(null); } }}>

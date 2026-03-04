@@ -4,11 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, Store, Warehouse } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
+import { useLocationStock } from "@/hooks/useLocationStock";
 
 export const InventoryBalancesPage: React.FC = () => {
   const { auth } = useAuth();
@@ -72,207 +71,14 @@ export const InventoryBalancesPage: React.FC = () => {
     enabled: !!companyId,
   });
 
-  // ========== Fetch all transaction data for per-location stock calculation ==========
   const isLocationFiltered = locationFilter !== "";
 
-  const { data: purchaseItems = [] } = useQuery({
-    queryKey: ["bal-purchase-items", companyId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("purchase_items")
-        .select("*, purchase_orders!inner(id, status, branch_id, warehouse_id, company_id)")
-        .eq("purchase_orders.company_id", companyId!)
-        .eq("purchase_orders.status", "مكتمل");
-      if (error) throw error;
-      return data as any[];
-    },
-    enabled: !!companyId && isLocationFiltered,
-  });
-
-  const { data: productionRecords = [] } = useQuery({
-    queryKey: ["bal-production-records", companyId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("production_records")
-        .select("*")
-        .eq("company_id", companyId!)
-        .eq("status", "مكتمل");
-      if (error) throw error;
-      return data as any[];
-    },
-    enabled: !!companyId && isLocationFiltered,
-  });
-
-  const { data: productionIngredients = [] } = useQuery({
-    queryKey: ["bal-production-ingredients", companyId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("production_ingredients")
-        .select("*, production_records!inner(id, status, branch_id, warehouse_id, company_id)")
-        .eq("production_records.company_id", companyId!)
-        .eq("production_records.status", "مكتمل");
-      if (error) throw error;
-      return data as any[];
-    },
-    enabled: !!companyId && isLocationFiltered,
-  });
-
-  const { data: transferItems = [] } = useQuery({
-    queryKey: ["bal-transfer-items", companyId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("transfer_items")
-        .select("*, transfers!inner(id, status, source_id, destination_id, company_id)")
-        .eq("transfers.company_id", companyId!)
-        .eq("transfers.status", "مكتمل");
-      if (error) throw error;
-      return data as any[];
-    },
-    enabled: !!companyId && isLocationFiltered,
-  });
-
-  const { data: wasteItems = [] } = useQuery({
-    queryKey: ["bal-waste-items", companyId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("waste_items")
-        .select("*, waste_records!inner(id, status, branch_id, warehouse_id, company_id)")
-        .eq("waste_records.company_id", companyId!)
-        .eq("waste_records.status", "مكتمل");
-      if (error) throw error;
-      return data as any[];
-    },
-    enabled: !!companyId && isLocationFiltered,
-  });
-
-  const { data: posSaleItems = [] } = useQuery({
-    queryKey: ["bal-pos-sale-items", companyId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("pos_sale_items")
-        .select("*, pos_sales!inner(id, status, branch_id, company_id)")
-        .eq("pos_sales.company_id", companyId!)
-        .eq("pos_sales.status", "مكتمل");
-      if (error) throw error;
-      return data as any[];
-    },
-    enabled: !!companyId && isLocationFiltered,
-  });
-
-  const { data: recipes = [] } = useQuery({
-    queryKey: ["bal-recipes", companyId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("recipes")
-        .select("id, menu_item_id, recipe_ingredients(stock_item_id, qty)")
-        .eq("company_id", companyId!);
-      if (error) throw error;
-      return data as any[];
-    },
-    enabled: !!companyId && isLocationFiltered,
-  });
-
-  // ========== Calculate per-location stock ==========
-  const locationStockMap = useMemo(() => {
-    if (!isLocationFiltered) return new Map<string, number>();
-
-    const stockMap = new Map<string, number>();
-    const addQty = (itemId: string | null, qty: number) => {
-      if (!itemId) return;
-      stockMap.set(itemId, (stockMap.get(itemId) || 0) + qty);
-    };
-    const subQty = (itemId: string | null, qty: number) => {
-      if (!itemId) return;
-      stockMap.set(itemId, (stockMap.get(itemId) || 0) - qty);
-    };
-
-    const matchesLocation = (branchId: string | null, warehouseId: string | null) => {
-      if (locationType === "branch") return branchId === locationFilter;
-      return warehouseId === locationFilter;
-    };
-
-    // 1. Purchases IN
-    for (const pi of purchaseItems) {
-      const po = pi.purchase_orders;
-      if (matchesLocation(po.branch_id, po.warehouse_id)) {
-        addQty(pi.stock_item_id, Number(pi.quantity));
-      }
-    }
-
-    // 2. Production - produced items IN
-    for (const pr of productionRecords) {
-      if (matchesLocation(pr.branch_id, pr.warehouse_id)) {
-        addQty(pr.product_id, Number(pr.produced_qty));
-      }
-    }
-
-    // 3. Production ingredients OUT
-    for (const ing of productionIngredients) {
-      const pr = ing.production_records;
-      if (matchesLocation(pr.branch_id, pr.warehouse_id)) {
-        subQty(ing.stock_item_id, Number(ing.required_qty));
-      }
-    }
-
-    // 4. Transfers - destination IN, source OUT
-    for (const ti of transferItems) {
-      const t = ti.transfers;
-      // Source matches → OUT
-      if (t.source_id === locationFilter) {
-        subQty(ti.stock_item_id, Number(ti.quantity));
-      }
-      // Destination matches → IN
-      if (t.destination_id === locationFilter) {
-        addQty(ti.stock_item_id, Number(ti.quantity));
-      }
-    }
-
-    // 5. Waste OUT
-    for (const wi of wasteItems) {
-      const wr = wi.waste_records;
-      if (matchesLocation(wr.branch_id, wr.warehouse_id)) {
-        subQty(wi.stock_item_id, Number(wi.quantity));
-      }
-    }
-
-    // 6. POS Sales consumption OUT (via recipes)
-    // Build recipe map: pos_item_id → [{stock_item_id, qty}]
-    const recipeMap = new Map<string, { stock_item_id: string; qty: number }[]>();
-    for (const r of recipes) {
-      recipeMap.set(
-        r.menu_item_id,
-        (r.recipe_ingredients || []).map((i: any) => ({
-          stock_item_id: i.stock_item_id,
-          qty: Number(i.qty),
-        })),
-      );
-    }
-
-    for (const si of posSaleItems) {
-      const sale = si.pos_sales;
-      if (locationType === "branch" && sale.branch_id === locationFilter) {
-        const ingredients = recipeMap.get(si.pos_item_id);
-        if (ingredients) {
-          for (const ing of ingredients) {
-            subQty(ing.stock_item_id, ing.qty * Number(si.quantity));
-          }
-        }
-      }
-    }
-
-    return stockMap;
-  }, [
-    isLocationFiltered,
-    locationType,
-    locationFilter,
-    purchaseItems,
-    productionRecords,
-    productionIngredients,
-    transferItems,
-    wasteItems,
-    posSaleItems,
-    recipes,
-  ]);
+  // Use centralized hook for per-location stock calculation
+  // This includes: purchases, production, transfers, waste, POS sales (via recipes), and stocktake adjustments
+  const { stockMap: locationStockMap, getLocationStock } = useLocationStock(
+    isLocationFiltered ? locationFilter : null,
+    locationType
+  );
 
   const getCatName = (id: string | null) => {
     if (!id) return "—";
@@ -296,7 +102,7 @@ export const InventoryBalancesPage: React.FC = () => {
   };
 
   const getDisplayStock = (item: any) => {
-    return locationStockMap.get(item.id) || 0;
+    return getLocationStock(item.id);
   };
 
   const filtered = useMemo(() => {

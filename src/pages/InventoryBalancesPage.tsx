@@ -16,7 +16,7 @@ export const InventoryBalancesPage: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [locationType, setLocationType] = useState<"branch" | "warehouse">("branch");
-  const [locationFilter, setLocationFilter] = useState("all");
+  const [locationFilter, setLocationFilter] = useState("");
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["stock-items", companyId],
@@ -73,7 +73,7 @@ export const InventoryBalancesPage: React.FC = () => {
   });
 
   // ========== Fetch all transaction data for per-location stock calculation ==========
-  const isLocationFiltered = locationFilter !== "all";
+  const isLocationFiltered = locationFilter !== "";
 
   const { data: purchaseItems = [] } = useQuery({
     queryKey: ["bal-purchase-items", companyId],
@@ -296,7 +296,6 @@ export const InventoryBalancesPage: React.FC = () => {
   };
 
   const getDisplayStock = (item: any) => {
-    if (!isLocationFiltered) return Number(item.current_stock);
     return locationStockMap.get(item.id) || 0;
   };
 
@@ -360,7 +359,7 @@ export const InventoryBalancesPage: React.FC = () => {
         value={locationType}
         onValueChange={(val) => {
           setLocationType(val as "branch" | "warehouse");
-          setLocationFilter("all");
+          setLocationFilter("");
         }}
         className="w-full"
       >
@@ -377,9 +376,6 @@ export const InventoryBalancesPage: React.FC = () => {
 
         <TabsContent value="warehouse" className="mt-0">
           <div className="flex flex-wrap gap-2 mb-6">
-            <Button variant={locationFilter === "all" ? "default" : "outline"} onClick={() => setLocationFilter("all")}>
-              كل المخازن
-            </Button>
             {warehouses.map((w: any) => (
               <Button
                 key={w.id}
@@ -394,9 +390,6 @@ export const InventoryBalancesPage: React.FC = () => {
 
         <TabsContent value="branch" className="mt-0">
           <div className="flex flex-wrap gap-2 mb-6">
-            <Button variant={locationFilter === "all" ? "default" : "outline"} onClick={() => setLocationFilter("all")}>
-              كل الفروع
-            </Button>
             {branches.map((b: any) => (
               <Button
                 key={b.id}
@@ -410,74 +403,82 @@ export const InventoryBalancesPage: React.FC = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Table */}
-      <div className="glass-card overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="text-right">كود الصنف</TableHead>
-              <TableHead className="text-right">اسم الصنف</TableHead>
-              <TableHead className="text-right">المجموعة</TableHead>
-              <TableHead className="text-right">وحدة التخزين</TableHead>
-              <TableHead className="text-right">المواقع المرتبطة</TableHead>
-              <TableHead className={cn("text-right", isLocationFiltered && "bg-primary/10 text-primary font-bold")}>
-                {isLocationFiltered ? "الرصيد بالفرع/المخزن" : "الرصيد الحالي"}
-              </TableHead>
-              <TableHead className="text-right">متوسط التكلفة</TableHead>
-              <TableHead className="text-right">قيمة المخزون</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
+      {/* Table or empty state */}
+      {!isLocationFiltered ? (
+        <div className="glass-card flex flex-col items-center justify-center py-16 text-center space-y-3">
+          <Warehouse className="h-12 w-12 text-muted-foreground/50" />
+          <p className="text-lg text-muted-foreground font-medium">
+            يرجى اختيار فرع أو مخزن لعرض بياناته
+          </p>
+          <p className="text-sm text-muted-foreground/70">
+            Please select a branch or warehouse to display its data.
+          </p>
+        </div>
+      ) : (
+        <div className="glass-card overflow-hidden">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                  جاري التحميل...
-                </TableCell>
+                <TableHead className="text-right">كود الصنف</TableHead>
+                <TableHead className="text-right">اسم الصنف</TableHead>
+                <TableHead className="text-right">المجموعة</TableHead>
+                <TableHead className="text-right">وحدة التخزين</TableHead>
+                <TableHead className="text-right">المواقع المرتبطة</TableHead>
+                <TableHead className="text-right bg-primary/10 text-primary font-bold">
+                  الرصيد بالفرع/المخزن
+                </TableHead>
+                <TableHead className="text-right">متوسط التكلفة</TableHead>
+                <TableHead className="text-right">قيمة المخزون</TableHead>
               </TableRow>
-            ) : filtered.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                  لا توجد أصناف
-                </TableCell>
-              </TableRow>
-            ) : (
-              <>
-                {filtered.map((item: any) => {
-                  const stock = getDisplayStock(item);
-                  const inventoryValue = stock * Number(item.avg_cost);
-                  return (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-mono text-xs">{item.code || "—"}</TableCell>
-                      <TableCell className="font-medium">{item.name}</TableCell>
-                      <TableCell>{getCatName(item.category_id)}</TableCell>
-                      <TableCell>{item.stock_unit}</TableCell>
-                      <TableCell className="text-xs max-w-[200px] truncate" title={getLocationNames(item.id)}>
-                        {getLocationNames(item.id)}
-                      </TableCell>
-                      <TableCell
-                        className={cn(
-                          isLocationFiltered && "ring-2 ring-primary/40 rounded bg-primary/5 font-bold text-primary",
-                        )}
-                      >
-                        {stock.toFixed(2)}
-                      </TableCell>
-                      <TableCell>{Number(item.avg_cost).toFixed(2)}</TableCell>
-                      <TableCell className="font-semibold">{inventoryValue.toFixed(2)}</TableCell>
-                    </TableRow>
-                  );
-                })}
-                {/* Total Row */}
-                <TableRow className="bg-muted/30 font-bold">
-                  <TableCell colSpan={7} className="text-left">
-                    الإجمالي
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    جاري التحميل...
                   </TableCell>
-                  <TableCell className="font-bold">{totalValue.toFixed(2)}</TableCell>
                 </TableRow>
-              </>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ) : filtered.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    لا توجد أصناف
+                  </TableCell>
+                </TableRow>
+              ) : (
+                <>
+                  {filtered.map((item: any) => {
+                    const stock = getDisplayStock(item);
+                    const inventoryValue = stock * Number(item.avg_cost);
+                    return (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-mono text-xs">{item.code || "—"}</TableCell>
+                        <TableCell className="font-medium">{item.name}</TableCell>
+                        <TableCell>{getCatName(item.category_id)}</TableCell>
+                        <TableCell>{item.stock_unit}</TableCell>
+                        <TableCell className="text-xs max-w-[200px] truncate" title={getLocationNames(item.id)}>
+                          {getLocationNames(item.id)}
+                        </TableCell>
+                        <TableCell className="ring-2 ring-primary/40 rounded bg-primary/5 font-bold text-primary">
+                          {stock.toFixed(2)}
+                        </TableCell>
+                        <TableCell>{Number(item.avg_cost).toFixed(2)}</TableCell>
+                        <TableCell className="font-semibold">{inventoryValue.toFixed(2)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {/* Total Row */}
+                  <TableRow className="bg-muted/30 font-bold">
+                    <TableCell colSpan={7} className="text-left">
+                      الإجمالي
+                    </TableCell>
+                    <TableCell className="font-bold">{totalValue.toFixed(2)}</TableCell>
+                  </TableRow>
+                </>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </div>
   );
 };

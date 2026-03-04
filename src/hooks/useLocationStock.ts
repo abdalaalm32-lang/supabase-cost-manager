@@ -120,6 +120,21 @@ export function useLocationStock(
     staleTime: 30000,
   });
 
+  // Fetch stock items to get conversion_factor for unit conversion
+  const { data: stockItemsData = [] } = useQuery({
+    queryKey: ["loc-stock-items-conversion", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("stock_items")
+        .select("id, conversion_factor")
+        .eq("company_id", companyId!);
+      if (error) throw error;
+      return data as any[];
+    },
+    enabled,
+    staleTime: 30000,
+  });
+
   // Stocktake adjustments - use latest completed stocktake per location
   const { data: stocktakes = [] } = useQuery({
     queryKey: ["loc-stock-stocktakes", companyId],
@@ -195,7 +210,14 @@ export function useLocationStock(
     }
 
     // POS Sales OUT (via recipes) - only for branches
+    // Recipe quantities are in recipe_unit (grams/ml), must convert to stock_unit using conversion_factor
     if (locationType === "branch") {
+      // Build conversion factor map: stock_item_id -> conversion_factor
+      const conversionMap = new Map<string, number>();
+      for (const si of stockItemsData) {
+        conversionMap.set(si.id, Number(si.conversion_factor) || 1);
+      }
+
       const recipeMap = new Map<string, { stock_item_id: string; qty: number }[]>();
       for (const r of recipes) {
         recipeMap.set(r.menu_item_id, (r.recipe_ingredients || []).map((i: any) => ({
@@ -209,7 +231,10 @@ export function useLocationStock(
           const ings = recipeMap.get(si.pos_item_id);
           if (ings) {
             for (const ing of ings) {
-              sub(ing.stock_item_id, ing.qty * Number(si.quantity));
+              // Convert recipe qty (grams/ml/pieces) to stock unit (kg/liters) by dividing by conversion_factor
+              const convFactor = conversionMap.get(ing.stock_item_id) || 1;
+              const qtyInStockUnit = (ing.qty / convFactor) * Number(si.quantity);
+              sub(ing.stock_item_id, qtyInStockUnit);
             }
           }
         }
@@ -231,7 +256,7 @@ export function useLocationStock(
     }
 
     return map;
-  }, [locationId, locationType, purchaseItems, productionRecords, productionIngredients, transferItems, wasteItems, posSaleItems, recipes, stocktakes]);
+  }, [locationId, locationType, purchaseItems, productionRecords, productionIngredients, transferItems, wasteItems, posSaleItems, recipes, stocktakes, stockItemsData]);
 
   const getLocationStock = (stockItemId: string): number => {
     return stockMap.get(stockItemId) || 0;

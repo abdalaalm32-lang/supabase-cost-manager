@@ -165,8 +165,10 @@ export const AdminCompaniesPage: React.FC = () => {
   });
 
   const updateCompanyLimits = useMutation({
-    mutationFn: async ({ companyId, max_branches, max_warehouses }: { companyId: string; max_branches: number; max_warehouses: number }) => {
-      const { error } = await supabase.from("companies").update({ max_branches, max_warehouses }).eq("id", companyId);
+    mutationFn: async ({ companyId, max_branches, max_warehouses, max_users }: { companyId: string; max_branches: number; max_warehouses: number; max_users?: number }) => {
+      const update: any = { max_branches, max_warehouses };
+      if (max_users !== undefined) update.max_users = max_users;
+      const { error } = await supabase.from("companies").update(update).eq("id", companyId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -364,44 +366,48 @@ export const AdminCompaniesPage: React.FC = () => {
                           {company.active ? "نشط" : "معطل"}
                         </Badge>
                         <span className="text-xs text-muted-foreground">
-                          الحد: {company.max_branches} فروع / {company.max_warehouses} مخازن
+                          الحد: {company.max_branches} فروع / {company.max_warehouses} مخازن / {company.max_users ?? 5} مستخدمين
                         </span>
                       </div>
                       <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive hover:text-destructive"
-                          title="حذف الشركة"
-                          onClick={() => {
-                            setDeleteTargetCompany(company);
-                            setDeleteCompanyConfirmText("");
-                            setIsDeleteCompanyOpen(true);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-orange-600 hover:text-orange-700"
-                          title="تصفير البيانات"
-                          onClick={() => {
-                            setResetTargetCompany(company);
-                            setResetStep(1);
-                            setResetConfirmText("");
-                          }}
-                        >
-                          <RotateCcw className="h-4 w-4" />
-                        </Button>
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs text-muted-foreground">{company.active ? "نشط" : "معطل"}</span>
-                          <Switch
-                            checked={company.active}
-                            onCheckedChange={(checked) => toggleCompanyActive.mutate({ companyId: company.id, active: checked })}
-                            dir="ltr"
-                          />
-                        </div>
+                        {company.code !== "GSC-ADMIN" && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              title="حذف الشركة"
+                              onClick={() => {
+                                setDeleteTargetCompany(company);
+                                setDeleteCompanyConfirmText("");
+                                setIsDeleteCompanyOpen(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-orange-600 hover:text-orange-700"
+                              title="تصفير البيانات"
+                              onClick={() => {
+                                setResetTargetCompany(company);
+                                setResetStep(1);
+                                setResetConfirmText("");
+                              }}
+                            >
+                              <RotateCcw className="h-4 w-4" />
+                            </Button>
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs text-muted-foreground">{company.active ? "نشط" : "معطل"}</span>
+                              <Switch
+                                checked={company.active}
+                                onCheckedChange={(checked) => toggleCompanyActive.mutate({ companyId: company.id, active: checked })}
+                                dir="ltr"
+                              />
+                            </div>
+                          </>
+                        )}
                         <div className="flex items-center gap-1">
                           <Label className="text-xs">فروع:</Label>
                           <Input
@@ -417,6 +423,14 @@ export const AdminCompaniesPage: React.FC = () => {
                             className="w-14 h-7 text-xs text-center"
                             value={company.max_warehouses}
                             onChange={(e) => updateCompanyLimits.mutate({ companyId: company.id, max_branches: company.max_branches, max_warehouses: Number(e.target.value) })}
+                            min={0}
+                          />
+                          <Label className="text-xs mr-2">مستخدمين:</Label>
+                          <Input
+                            type="number"
+                            className="w-14 h-7 text-xs text-center"
+                            value={company.max_users ?? 5}
+                            onChange={(e) => updateCompanyLimits.mutate({ companyId: company.id, max_branches: company.max_branches, max_warehouses: company.max_warehouses, max_users: Number(e.target.value) })}
                             min={0}
                           />
                         </div>

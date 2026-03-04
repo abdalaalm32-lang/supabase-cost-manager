@@ -116,7 +116,7 @@ export const SettingsUsersPage: React.FC = () => {
   const { data: companyData } = useQuery({
     queryKey: ["company", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("companies").select("name").eq("id", companyId!).single();
+      const { data, error } = await supabase.from("companies").select("name, code, max_users, max_branches, max_warehouses").eq("id", companyId!).single();
       if (error) throw error;
       return data;
     },
@@ -142,7 +142,39 @@ export const SettingsUsersPage: React.FC = () => {
     setDetailUser(null);
   };
 
+  const [isLimitDialogOpen, setIsLimitDialogOpen] = useState(false);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
+
+  const maxUsers = (companyData as any)?.max_users ?? 5;
+
+  const sendUpgradeRequest = async () => {
+    if (!companyData || !auth.profile) return;
+    setUpgradeLoading(true);
+    try {
+      const { error } = await supabase.from("support_tickets").insert({
+        company_id: companyId!,
+        company_name: (companyData as any).name,
+        company_code: (companyData as any).code,
+        sender_id: auth.profile.user_id,
+        sender_name: auth.profile.full_name,
+        subject: "طلب ترقية حساب",
+        message: `اهلا انا مدير شركه ${(companyData as any).name} المشترك معك في السيستم\nاريد ترقيه حسابي لتزويد limit المستخدمين\nدا كود شركتي ${(companyData as any).code}\nشكرا`,
+      });
+      if (error) throw error;
+      toast.success("تم إرسال طلب الترقية بنجاح");
+      setIsLimitDialogOpen(false);
+    } catch (e: any) {
+      toast.error(e.message || "حدث خطأ");
+    } finally {
+      setUpgradeLoading(false);
+    }
+  };
+
   const openAddDialog = () => {
+    if (totalUsers >= maxUsers && !auth.isAdmin) {
+      setIsLimitDialogOpen(true);
+      return;
+    }
     resetForm();
     setIsDialogOpen(true);
   };
@@ -733,6 +765,37 @@ export const SettingsUsersPage: React.FC = () => {
             </Button>
             <Button variant="outline" onClick={() => { setResetStep(0); setResetTargetUser(null); setResetConfirmText(""); }}>
               إلغاء
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* User Limit Dialog */}
+      <Dialog open={isLimitDialogOpen} onOpenChange={setIsLimitDialogOpen}>
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-orange-600">
+              <AlertTriangle className="h-5 w-5" />
+              تم الوصول للحد الأقصى
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              لقد وصلت للحد الأقصى المسموح به من المستخدمين في خطتك الحالية:
+            </p>
+            <div className="p-3 rounded-xl border border-border/50 bg-muted/30 text-center">
+              <p className="text-xs text-muted-foreground">حد المستخدمين</p>
+              <p className="text-2xl font-black text-foreground">{maxUsers}</p>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              يمكنك طلب ترقية حسابك لزيادة عدد المستخدمين.
+            </p>
+            <Button
+              className="w-full gap-2 gradient-primary text-primary-foreground font-bold"
+              onClick={sendUpgradeRequest}
+              disabled={upgradeLoading}
+            >
+              {upgradeLoading ? "جاري الإرسال..." : "إرسال طلب ترقية"}
             </Button>
           </div>
         </DialogContent>

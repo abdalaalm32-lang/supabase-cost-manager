@@ -203,6 +203,7 @@ export type Database = {
           created_at: string
           id: string
           max_branches: number
+          max_users: number
           max_warehouses: number
           name: string
           owner_id: string | null
@@ -213,6 +214,7 @@ export type Database = {
           created_at?: string
           id?: string
           max_branches?: number
+          max_users?: number
           max_warehouses?: number
           name: string
           owner_id?: string | null
@@ -223,6 +225,7 @@ export type Database = {
           created_at?: string
           id?: string
           max_branches?: number
+          max_users?: number
           max_warehouses?: number
           name?: string
           owner_id?: string | null

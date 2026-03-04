@@ -126,9 +126,10 @@ export function useLocationStock(
     queryFn: async () => {
       const { data, error } = await supabase
         .from("stocktakes")
-        .select("id, branch_id, warehouse_id, date, created_at, stocktake_items(stock_item_id, counted_qty, book_qty)")
+        .select("id, branch_id, warehouse_id, date, created_at, type, stocktake_items(stock_item_id, counted_qty, book_qty)")
         .eq("company_id", companyId!)
         .eq("status", "مكتمل")
+        .neq("type", "فحص مخزون فوري")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data as any[];

@@ -188,6 +188,36 @@ export const InventoryBalancesPage: React.FC = () => {
     enabled: !!companyId && isLocationFiltered,
   });
 
+  // ========== Fetch completed stocktakes for location-based adjustments ==========
+  const { data: stocktakes = [] } = useQuery({
+    queryKey: ["bal-stocktakes", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("stocktakes")
+        .select("id, branch_id, warehouse_id, status")
+        .eq("company_id", companyId!)
+        .eq("status", "مكتمل");
+      if (error) throw error;
+      return data as any[];
+    },
+    enabled: !!companyId && isLocationFiltered,
+  });
+
+  const { data: stocktakeItems = [] } = useQuery({
+    queryKey: ["bal-stocktake-items", companyId, stocktakes.map((s: any) => s.id).join(",")],
+    queryFn: async () => {
+      const stIds = stocktakes.map((s: any) => s.id);
+      if (stIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("stocktake_items")
+        .select("*")
+        .in("stocktake_id", stIds);
+      if (error) throw error;
+      return data as any[];
+    },
+    enabled: !!companyId && isLocationFiltered && stocktakes.length > 0,
+  });
+
   // ========== Calculate per-location stock ==========
   const locationStockMap = useMemo(() => {
     if (!isLocationFiltered) return new Map<string, number>();
@@ -252,7 +282,6 @@ export const InventoryBalancesPage: React.FC = () => {
     }
 
     // 6. POS Sales consumption OUT (via recipes)
-    // Build recipe map: pos_item_id → [{stock_item_id, qty}]
     const recipeMap = new Map<string, { stock_item_id: string; qty: number }[]>();
     for (const r of recipes) {
       recipeMap.set(r.menu_item_id, (r.recipe_ingredients || []).map((i: any) => ({
@@ -273,8 +302,27 @@ export const InventoryBalancesPage: React.FC = () => {
       }
     }
 
+    // 7. Stocktake adjustments (counted_qty - book_qty = adjustment)
+    const locationStocktakeIds = new Set(
+      stocktakes
+        .filter((st: any) => {
+          if (locationType === "branch") return st.branch_id === locationFilter;
+          return st.warehouse_id === locationFilter;
+        })
+        .map((st: any) => st.id)
+    );
+
+    for (const si of stocktakeItems) {
+      if (locationStocktakeIds.has(si.stocktake_id)) {
+        const adjustment = Number(si.counted_qty) - Number(si.book_qty);
+        if (adjustment !== 0 && si.stock_item_id) {
+          addQty(si.stock_item_id, adjustment);
+        }
+      }
+    }
+
     return stockMap;
-  }, [isLocationFiltered, locationType, locationFilter, purchaseItems, productionRecords, productionIngredients, transferItems, wasteItems, posSaleItems, recipes]);
+  }, [isLocationFiltered, locationType, locationFilter, purchaseItems, productionRecords, productionIngredients, transferItems, wasteItems, posSaleItems, recipes, stocktakes, stocktakeItems]);
 
   const getCatName = (id: string | null) => {
     if (!id) return "—";

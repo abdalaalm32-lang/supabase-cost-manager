@@ -1,0 +1,2 @@
+ALTER TABLE production_records DROP CONSTRAINT production_records_status_check;
+ALTER TABLE production_records ADD CONSTRAINT production_records_status_check CHECK (status = ANY (ARRAY['مسودة'::text, 'مكتمل'::text, 'مؤرشف'::text]));

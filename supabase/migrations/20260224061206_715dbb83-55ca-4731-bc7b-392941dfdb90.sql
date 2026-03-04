@@ -1,0 +1,2 @@
+ALTER TABLE purchase_orders DROP CONSTRAINT purchase_orders_status_check;
+ALTER TABLE purchase_orders ADD CONSTRAINT purchase_orders_status_check CHECK (status = ANY (ARRAY['مسودة'::text, 'مكتمل'::text, 'مؤرشف'::text]));

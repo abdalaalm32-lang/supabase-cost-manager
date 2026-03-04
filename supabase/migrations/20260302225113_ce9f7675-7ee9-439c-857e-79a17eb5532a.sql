@@ -1,0 +1,1 @@
+ALTER TABLE public.pos_items ADD COLUMN menu_engineering_class text;

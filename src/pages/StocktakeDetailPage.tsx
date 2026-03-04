@@ -1,0 +1,576 @@
+import React, { useState, useMemo, useCallback } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useParams, useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import { ArrowRight, Plus, Trash2, Save, ClipboardCheck, Package, TrendingUp, TrendingDown, DollarSign, MapPin, User } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+
+export const StocktakeDetailPage: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const { auth } = useAuth();
+  const companyId = auth.profile?.company_id;
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const [showAddItems, setShowAddItems] = useState(false);
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+  const [filterDept, setFilterDept] = useState("all");
+  const [filterCat, setFilterCat] = useState("all");
+  const [notes, setNotes] = useState("");
+  const [notesLoaded, setNotesLoaded] = useState(false);
+  const [localQty, setLocalQty] = useState<Record<string, string>>({});
+
+  const { data: stocktake, isLoading: stLoading } = useQuery({
+    queryKey: ["stocktake", id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("stocktakes").select("*").eq("id", id!).single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id,
+  });
+
+  React.useEffect(() => {
+    if (stocktake && !notesLoaded) {
+      setNotes(stocktake.notes || "");
+      setNotesLoaded(true);
+    }
+  }, [stocktake, notesLoaded]);
+
+  const { data: stocktakeItems = [], isLoading: itemsLoading } = useQuery({
+    queryKey: ["stocktake-items", id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("stocktake_items").select("*").eq("stocktake_id", id!);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id,
+  });
+
+  const { data: allStockItems = [] } = useQuery({
+    queryKey: ["stock-items-all", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("stock_items").select("*").eq("active", true).order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
+  const { data: departments = [] } = useQuery({
+    queryKey: ["departments-active", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("departments").select("*").eq("active", true).order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ["inv-categories-active", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("inventory_categories").select("*").eq("active", true);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
+  const { data: branches = [] } = useQuery({
+    queryKey: ["branches-active", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("branches").select("*").eq("active", true);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ["warehouses-active", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("warehouses").select("*").eq("active", true);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
+  const getStockItemInfo = useCallback((siId: string | null) => {
+    if (!siId) return null;
+    return allStockItems.find((s: any) => s.id === siId) || null;
+  }, [allStockItems]);
+
+  const locationName = useMemo(() => {
+    if (!stocktake) return "";
+    if (stocktake.branch_id) {
+      const b = branches.find((br: any) => br.id === stocktake.branch_id);
+      return b?.name || "";
+    }
+    if (stocktake.warehouse_id) {
+      const w = warehouses.find((wr: any) => wr.id === stocktake.warehouse_id);
+      return w?.name || "";
+    }
+    return "";
+  }, [stocktake, branches, warehouses]);
+
+  const existingStockItemIds = useMemo(() => new Set(stocktakeItems.map((i: any) => i.stock_item_id)), [stocktakeItems]);
+
+  const availableItems = useMemo(() => {
+    let items = allStockItems.filter((s: any) => !existingStockItemIds.has(s.id));
+    if (filterDept !== "all") items = items.filter((s: any) => s.department_id === filterDept);
+    if (filterCat !== "all") items = items.filter((s: any) => s.category_id === filterCat);
+    return items;
+  }, [allStockItems, existingStockItemIds, filterDept, filterCat]);
+
+  const toggleItem = (itemId: string) => {
+    setSelectedItemIds(prev => {
+      const next = new Set(prev);
+      if (next.has(itemId)) next.delete(itemId); else next.add(itemId);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selectedItemIds.size === availableItems.length) {
+      setSelectedItemIds(new Set());
+    } else {
+      setSelectedItemIds(new Set(availableItems.map((i: any) => i.id)));
+    }
+  };
+
+  const handleAddItems = async () => {
+    if (selectedItemIds.size === 0) return;
+    const rows = Array.from(selectedItemIds).map(siId => {
+      const si = allStockItems.find((s: any) => s.id === siId)!;
+      return {
+        stocktake_id: id!,
+        stock_item_id: siId,
+        counted_qty: 0,
+        book_qty: Number(si.current_stock) || 0,
+        avg_cost: Number(si.avg_cost) || 0,
+      };
+    });
+    const { error } = await supabase.from("stocktake_items").insert(rows);
+    if (error) {
+      toast({ title: "خطأ", description: error.message, variant: "destructive" });
+      return;
+    }
+    setShowAddItems(false);
+    setSelectedItemIds(new Set());
+    queryClient.invalidateQueries({ queryKey: ["stocktake-items", id] });
+    toast({ title: "تم إضافة الأصناف بنجاح" });
+  };
+
+  const handleDeleteItem = async (itemId: string) => {
+    await supabase.from("stocktake_items").delete().eq("id", itemId);
+    queryClient.invalidateQueries({ queryKey: ["stocktake-items", id] });
+  };
+
+  const handleQtyChange = (itemId: string, value: string) => {
+    setLocalQty(prev => ({ ...prev, [itemId]: value }));
+  };
+
+  const getCountedQty = (item: any) => {
+    if (localQty[item.id] !== undefined) return localQty[item.id];
+    return String(item.counted_qty);
+  };
+
+  // Check if this is an edit of an archived stocktake
+  const isEditMode = stocktake?.status === "مؤرشف" && new URLSearchParams(window.location.search).get("edit") === "true";
+
+  const handleSave = async () => {
+    // Save items
+    for (const item of stocktakeItems) {
+      const qty = Number(localQty[item.id] ?? item.counted_qty);
+      if (qty !== Number(item.counted_qty)) {
+        await supabase.from("stocktake_items").update({ counted_qty: qty }).eq("id", item.id);
+      }
+    }
+
+    const totalActual = stocktakeItems.reduce((sum: number, item: any) => {
+      const qty = Number(localQty[item.id] ?? item.counted_qty);
+      return sum + qty * Number(item.avg_cost);
+    }, 0);
+
+    if (isEditMode) {
+      // Build changes list for edit history
+      const changes: any[] = [];
+      for (const item of stocktakeItems) {
+        const newQty = Number(localQty[item.id] ?? item.counted_qty);
+        const oldQty = Number(item.counted_qty);
+        if (newQty !== oldQty) {
+          const si = getStockItemInfo(item.stock_item_id);
+          changes.push({
+            stock_item_name: si?.name || "—",
+            stock_item_code: si?.code || "—",
+            old_counted_qty: oldQty,
+            new_counted_qty: newQty,
+            book_qty: Number(item.book_qty),
+            avg_cost: Number(item.avg_cost),
+          });
+        }
+      }
+
+      if (notes !== (stocktake?.notes || "")) {
+        changes.push({
+          field: "notes",
+          old_value: stocktake?.notes || "",
+          new_value: notes,
+        });
+      }
+
+      // Save edit history
+      if (changes.length > 0) {
+        await supabase.from("stocktake_edit_history").insert({
+          stocktake_id: id!,
+          editor_name: auth.profile?.full_name || "",
+          changes,
+        });
+      }
+
+      // Mark as edited and save as مكتمل
+      const { error } = await supabase.from("stocktakes").update({
+        notes,
+        total_actual_value: totalActual,
+        status: "مكتمل",
+        is_edited: true,
+      }).eq("id", id!);
+
+      if (error) {
+        toast({ title: "خطأ", description: error.message, variant: "destructive" });
+        return;
+      }
+
+      // Update current_stock in stock_items based on counted quantities
+      for (const item of stocktakeItems) {
+        const countedQty = Number(localQty[item.id] ?? item.counted_qty);
+        if (item.stock_item_id) {
+          await supabase.from("stock_items").update({
+            current_stock: countedQty,
+          }).eq("id", item.stock_item_id);
+        }
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["stocktake", id] });
+      queryClient.invalidateQueries({ queryKey: ["stocktake-items", id] });
+      queryClient.invalidateQueries({ queryKey: ["stocktakes"] });
+      toast({ title: "تم حفظ التعديلات بنجاح" });
+      navigate("/stocktake");
+    } else {
+      // Normal save as مكتمل
+      const { error } = await supabase.from("stocktakes").update({
+        notes,
+        total_actual_value: totalActual,
+        status: "مكتمل",
+      }).eq("id", id!);
+
+      if (error) {
+        toast({ title: "خطأ", description: error.message, variant: "destructive" });
+        return;
+      }
+
+      // Update current_stock in stock_items based on counted quantities
+      for (const item of stocktakeItems) {
+        const countedQty = Number(localQty[item.id] ?? item.counted_qty);
+        if (item.stock_item_id) {
+          await supabase.from("stock_items").update({
+            current_stock: countedQty,
+          }).eq("id", item.stock_item_id);
+        }
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["stocktake", id] });
+      queryClient.invalidateQueries({ queryKey: ["stocktake-items", id] });
+      queryClient.invalidateQueries({ queryKey: ["stocktakes"] });
+      toast({ title: "تم حفظ الجرد كمكتمل" });
+      navigate("/stocktake");
+    }
+  };
+
+  // Computed totals - only sum values, not quantities
+  const totals = useMemo(() => {
+    let totalBookValue = 0;
+    let totalCountedValue = 0;
+    let totalDiffValue = 0;
+
+    stocktakeItems.forEach((item: any) => {
+      const countedQty = Number(localQty[item.id] ?? item.counted_qty);
+      const bookQty = Number(item.book_qty);
+      const avgCost = Number(item.avg_cost);
+      const value = countedQty * avgCost;
+      const bookValue = bookQty * avgCost;
+      const diff = countedQty - bookQty;
+
+      totalBookValue += bookValue;
+      totalCountedValue += value;
+      totalDiffValue += diff * avgCost;
+    });
+
+    return { totalBookValue, totalCountedValue, totalValue: totalCountedValue, totalDiffValue };
+  }, [stocktakeItems, localQty]);
+
+  const isEditable = stocktake?.status === "مسودة" || isEditMode;
+  const isArchived = stocktake?.status === "مؤرشف" && !isEditMode;
+
+  if (stLoading) return <div className="p-8 text-center text-muted-foreground">جاري التحميل...</div>;
+  if (!stocktake) return <div className="p-8 text-center text-muted-foreground">لم يتم العثور على الجرد</div>;
+
+  return (
+    <div className="space-y-6 animate-fade-in-up">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" onClick={() => navigate("/stocktake")}>
+          <ArrowRight size={18} />
+        </Button>
+        <h1 className="text-2xl font-bold">تفاصيل الجرد - {stocktake.record_number}</h1>
+        {isEditMode && (
+          <span className="px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700">وضع التعديل</span>
+        )}
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        <div className="glass-card p-4 text-center">
+          <div className="flex items-center justify-center mb-2">
+            <ClipboardCheck size={18} className="text-primary" />
+          </div>
+          <p className="text-xs text-muted-foreground mb-1">نوع الجرد</p>
+          <p className="font-semibold text-sm">{stocktake.type}</p>
+        </div>
+        <div className="glass-card p-4 text-center">
+          <div className="flex items-center justify-center mb-2">
+            <DollarSign size={18} className="text-primary" />
+          </div>
+          <p className="text-xs text-muted-foreground mb-1">إجمالي القيمة الفعلية</p>
+          <p className="font-semibold text-sm">{totals.totalValue.toFixed(2)}</p>
+        </div>
+        <div className="glass-card p-4 text-center">
+          <div className="flex items-center justify-center mb-2">
+            <Package size={18} className="text-primary" />
+          </div>
+          <p className="text-xs text-muted-foreground mb-1">عدد الأصناف</p>
+          <p className="font-semibold text-sm">{stocktakeItems.length}</p>
+        </div>
+        <div className="glass-card p-4 text-center">
+          <div className="flex items-center justify-center mb-2">
+            {totals.totalDiffValue >= 0 ? <TrendingUp size={18} className="text-green-600" /> : <TrendingDown size={18} className="text-red-600" />}
+          </div>
+          <p className="text-xs text-muted-foreground mb-1">إجمالي قيمة الفارق</p>
+          <p className={cn("font-semibold text-sm", totals.totalDiffValue >= 0 ? "text-green-600" : "text-red-600")}>
+            {totals.totalDiffValue >= 0 ? `+${totals.totalDiffValue.toFixed(2)}` : totals.totalDiffValue.toFixed(2)}
+          </p>
+        </div>
+        <div className="glass-card p-4 text-center">
+          <div className="flex items-center justify-center mb-2">
+            <MapPin size={18} className="text-muted-foreground" />
+          </div>
+          <p className="text-xs text-muted-foreground mb-1">الموقع</p>
+          <p className="font-semibold text-sm">{locationName || "—"}</p>
+        </div>
+      </div>
+
+      {/* Notes */}
+      {isEditable && (
+        <div className="max-w-lg">
+          <Label>ملاحظات (اختياري)</Label>
+          <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="أضف ملاحظة..." rows={2} />
+        </div>
+      )}
+      {!isEditable && stocktake.notes && (
+        <div className="glass-card p-4">
+          <p className="text-xs text-muted-foreground mb-1">ملاحظات</p>
+          <p className="text-sm">{stocktake.notes}</p>
+        </div>
+      )}
+
+      {/* Add Items Button */}
+      {isEditable && (
+        <Button onClick={() => { setShowAddItems(true); setSelectedItemIds(new Set()); setFilterDept("all"); setFilterCat("all"); }}>
+          <Plus size={16} /> إضافة أصناف للجرد
+        </Button>
+      )}
+
+      {/* Items Table */}
+      <div className="glass-card overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="text-right">كود الصنف</TableHead>
+              <TableHead className="text-right">اسم الصنف</TableHead>
+              <TableHead className="text-right">وحدة التخزين</TableHead>
+              <TableHead className="text-right">الرصيد الدفتري</TableHead>
+              <TableHead className="text-right">الرصيد الفعلي</TableHead>
+              <TableHead className="text-right">متوسط التكلفة</TableHead>
+              <TableHead className="text-right">القيمة</TableHead>
+              <TableHead className="text-right">الفارق</TableHead>
+              <TableHead className="text-right">قيمة الفارق</TableHead>
+              {isEditable && <TableHead className="text-right">حذف</TableHead>}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {itemsLoading ? (
+              <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">جاري التحميل...</TableCell></TableRow>
+            ) : stocktakeItems.length === 0 ? (
+              <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">لا توجد أصناف - أضف أصناف للجرد</TableCell></TableRow>
+            ) : (
+              <>
+                {stocktakeItems.map((item: any) => {
+                  const si = getStockItemInfo(item.stock_item_id);
+                  const countedQty = Number(getCountedQty(item));
+                  const bookQty = Number(item.book_qty);
+                  const avgCost = Number(item.avg_cost);
+                  const value = countedQty * avgCost;
+                  const diff = countedQty - bookQty;
+                  const diffValue = diff * avgCost;
+
+                  return (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-mono text-xs">{si?.code || "—"}</TableCell>
+                      <TableCell className="font-medium">{si?.name || "—"}</TableCell>
+                      <TableCell>{si?.stock_unit || "—"}</TableCell>
+                      <TableCell>{bookQty.toFixed(2)}</TableCell>
+                      <TableCell>
+                        {isEditable ? (
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={getCountedQty(item)}
+                            onChange={e => handleQtyChange(item.id, e.target.value)}
+                            className="w-24 h-8 text-sm"
+                          />
+                        ) : (
+                          <span>{countedQty.toFixed(2)}</span>
+                        )}
+                      </TableCell>
+                      <TableCell>{avgCost.toFixed(2)}</TableCell>
+                      <TableCell className="font-semibold">{value.toFixed(2)}</TableCell>
+                      <TableCell className={cn("font-semibold", diff > 0 ? "text-green-600" : diff < 0 ? "text-red-600" : "")}>
+                        {diff > 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2)}
+                      </TableCell>
+                      <TableCell className={cn("font-semibold", diffValue > 0 ? "text-green-600" : diffValue < 0 ? "text-red-600" : "")}>
+                        {diffValue > 0 ? `+${diffValue.toFixed(2)}` : diffValue.toFixed(2)}
+                      </TableCell>
+                      {isEditable && (
+                        <TableCell>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteItem(item.id)}>
+                            <Trash2 size={14} />
+                          </Button>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  );
+                })}
+                {/* Totals Row - values only, no quantities */}
+                <TableRow className="bg-muted/50 font-bold">
+                  <TableCell colSpan={3} className="text-right">الإجمالي</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell>{totals.totalValue.toFixed(2)}</TableCell>
+                  <TableCell>—</TableCell>
+                  <TableCell className={cn(totals.totalDiffValue >= 0 ? "text-green-600" : "text-red-600")}>
+                    {totals.totalDiffValue >= 0 ? `+${totals.totalDiffValue.toFixed(2)}` : totals.totalDiffValue.toFixed(2)}
+                  </TableCell>
+                  {isEditable && <TableCell />}
+                </TableRow>
+              </>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Action buttons */}
+      {isEditable && (
+        <div className="flex gap-3">
+          <Button onClick={handleSave}>
+            <Save size={16} /> {isEditMode ? "حفظ التعديلات" : "حفظ الجرد"}
+          </Button>
+        </div>
+      )}
+
+      {/* Add Items Dialog */}
+      <Dialog open={showAddItems} onOpenChange={setShowAddItems}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader><DialogTitle>إضافة أصناف للجرد</DialogTitle></DialogHeader>
+
+          <div className="flex gap-3 flex-wrap">
+            <Select value={filterDept} onValueChange={setFilterDept}>
+              <SelectTrigger className="w-44"><SelectValue placeholder="القسم" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل الأقسام</SelectItem>
+                {departments.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={filterCat} onValueChange={setFilterCat}>
+              <SelectTrigger className="w-44"><SelectValue placeholder="المجموعة" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل المجموعات</SelectItem>
+                {categories.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center gap-2 py-2">
+            <Checkbox
+              checked={availableItems.length > 0 && selectedItemIds.size === availableItems.length}
+              onCheckedChange={toggleAll}
+            />
+            <Label className="text-sm cursor-pointer" onClick={toggleAll}>تحديد الكل ({selectedItemIds.size}/{availableItems.length})</Label>
+          </div>
+
+          <div className="overflow-auto flex-1 border rounded-md">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10"></TableHead>
+                  <TableHead className="text-right">الكود</TableHead>
+                  <TableHead className="text-right">اسم الصنف</TableHead>
+                  <TableHead className="text-right">الوحدة</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {availableItems.length === 0 ? (
+                  <TableRow><TableCell colSpan={4} className="text-center py-4 text-muted-foreground">لا توجد أصناف متاحة</TableCell></TableRow>
+                ) : availableItems.map((si: any) => (
+                  <TableRow key={si.id} className="cursor-pointer" onClick={() => toggleItem(si.id)}>
+                    <TableCell><Checkbox checked={selectedItemIds.has(si.id)} /></TableCell>
+                    <TableCell className="font-mono text-xs">{si.code || "—"}</TableCell>
+                    <TableCell>{si.name}</TableCell>
+                    <TableCell>{si.stock_unit}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddItems(false)}>إلغاء</Button>
+            <Button onClick={handleAddItems} disabled={selectedItemIds.size === 0}>
+              إضافة ({selectedItemIds.size})
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};

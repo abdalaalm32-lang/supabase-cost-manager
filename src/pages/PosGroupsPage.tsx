@@ -1,0 +1,232 @@
+import React, { useState, useMemo } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
+} from "@/components/ui/dialog";
+import { Plus, Archive, RotateCcw, Search, Pencil } from "lucide-react";
+import { toast } from "sonner";
+
+type FilterStatus = "نشط" | "مؤرشف" | "الكل";
+
+export const PosGroupsPage: React.FC = () => {
+  const { auth } = useAuth();
+  const qc = useQueryClient();
+  const companyId = auth.profile?.company_id;
+
+  const [open, setOpen] = useState(false);
+  const [branchId, setBranchId] = useState("");
+  const [name, setName] = useState("");
+  const [filter, setFilter] = useState<FilterStatus>("نشط");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Edit state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editId, setEditId] = useState("");
+  const [editName, setEditName] = useState("");
+  const [editBranchId, setEditBranchId] = useState("");
+
+  const { data: branches = [] } = useQuery({
+    queryKey: ["branches", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("branches").select("*").eq("active", true).order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
+  const { data: categories = [], isLoading } = useQuery({
+    queryKey: ["pos-categories", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("categories").select("*, branches!categories_branch_id_fkey(name)").order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
+  const addMutation = useMutation({
+    mutationFn: async () => {
+      const { data: codeData, error: codeError } = await supabase.rpc("generate_category_code", { p_company_id: companyId! });
+      if (codeError) throw codeError;
+      const { error } = await supabase.from("categories").insert({ company_id: companyId!, name, branch_id: branchId || null, code: codeData, active: true });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pos-categories"] });
+      toast.success("تم إضافة المجموعة بنجاح");
+      setOpen(false); setName(""); setBranchId("");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const editMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("categories").update({ name: editName, branch_id: editBranchId || null }).eq("id", editId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pos-categories"] });
+      toast.success("تم تعديل المجموعة بنجاح");
+      setEditOpen(false);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
+      const { error } = await supabase.from("categories").update({ active: !active }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["pos-categories"] }); toast.success("تم تحديث الحالة"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const openEdit = (cat: any) => {
+    setEditId(cat.id);
+    setEditName(cat.name);
+    setEditBranchId(cat.branch_id || "");
+    setEditOpen(true);
+  };
+
+  const filtered = useMemo(() => {
+    let result = categories.filter((c: any) => {
+      if (filter === "نشط") return c.active;
+      if (filter === "مؤرشف") return !c.active;
+      return true;
+    });
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      result = result.filter((c: any) =>
+        (c.code || "").toLowerCase().includes(q) ||
+        c.name.toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [categories, filter, searchQuery]);
+
+  return (
+    <div className="space-y-6 animate-fade-in-up">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">المجموعات</h1>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button className="gap-2"><Plus size={18} /> إضافة مجموعة</Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader><DialogTitle>إضافة مجموعة جديدة</DialogTitle></DialogHeader>
+            <div className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <Label>الفرع</Label>
+                <Select value={branchId} onValueChange={setBranchId}>
+                  <SelectTrigger><SelectValue placeholder="اختر الفرع" /></SelectTrigger>
+                  <SelectContent>{branches.map((b: any) => (<SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>))}</SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>اسم المجموعة</Label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="مثال: مشروبات ساخنة" className="glass-input" />
+              </div>
+              <Button className="w-full" disabled={!name.trim() || addMutation.isPending} onClick={() => addMutation.mutate()}>
+                {addMutation.isPending ? "جاري الإضافة..." : "إضافة"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>تعديل المجموعة</DialogTitle></DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label>الفرع</Label>
+              <Select value={editBranchId} onValueChange={setEditBranchId}>
+                <SelectTrigger><SelectValue placeholder="اختر الفرع" /></SelectTrigger>
+                <SelectContent>{branches.map((b: any) => (<SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>))}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>اسم المجموعة</Label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="glass-input" />
+            </div>
+            <Button className="w-full" disabled={!editName.trim() || editMutation.isPending} onClick={() => editMutation.mutate()}>
+              {editMutation.isPending ? "جاري الحفظ..." : "حفظ التعديلات"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Search + Filter */}
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="بحث بالكود أو اسم المجموعة..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="glass-input pr-9" />
+        </div>
+        <div className="flex gap-2">
+          {(["نشط", "مؤرشف", "الكل"] as FilterStatus[]).map((s) => (
+            <Button key={s} variant={filter === s ? "default" : "outline"} size="sm" onClick={() => setFilter(s)}>{s}</Button>
+          ))}
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="glass-card overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="text-right">الكود</TableHead>
+              <TableHead className="text-right">المجموعة</TableHead>
+              <TableHead className="text-right">الفرع</TableHead>
+              <TableHead className="text-right">الحالة</TableHead>
+              <TableHead className="text-right">الإجراءات</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">جاري التحميل...</TableCell></TableRow>
+            ) : filtered.length === 0 ? (
+              <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">لا توجد مجموعات</TableCell></TableRow>
+            ) : (
+              filtered.map((cat: any) => (
+                <TableRow key={cat.id}>
+                  <TableCell className="font-mono text-xs text-right">{cat.code || "—"}</TableCell>
+                  <TableCell className="font-medium text-right">{cat.name}</TableCell>
+                  <TableCell className="text-right">{cat.branches?.name || "—"}</TableCell>
+                  <TableCell className="text-right">
+                    <Badge variant={cat.active ? "default" : "secondary"} className={cat.active ? "bg-[hsl(var(--success))] text-[hsl(var(--success-foreground))]" : "bg-[hsl(var(--warning))] text-[hsl(var(--warning-foreground))]"}>
+                      {cat.active ? "نشط" : "مؤرشف"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => openEdit(cat)}>
+                        <Pencil size={16} className="ml-1" /> تعديل
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => archiveMutation.mutate({ id: cat.id, active: cat.active })}>
+                        {cat.active ? (<><Archive size={16} className="ml-1" /> أرشفة</>) : (<><RotateCcw size={16} className="ml-1" /> تفعيل</>)}
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+};

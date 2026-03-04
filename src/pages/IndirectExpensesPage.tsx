@@ -1,0 +1,530 @@
+import React, { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "@/hooks/use-toast";
+import { Plus, Edit2, Trash2, TrendingUp, DollarSign, Percent, Target, Building2, Zap, Users, Megaphone, Wrench, MoreHorizontal, Calendar as CalendarIcon, X } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+
+interface CustomExpense {
+  name: string;
+  value: number;
+}
+
+interface CostingPeriod {
+  id: string;
+  name: string;
+  start_date: string;
+  end_date: string;
+  expected_sales: number;
+  capacity: number;
+  turn_over: number;
+  avg_check: number;
+  media: number;
+  bills: number;
+  salaries: number;
+  other_expenses: number;
+  maintenance: number;
+  rent: number;
+  default_consumables_pct: number;
+  default_packing_cost: number;
+  status: string;
+  created_at: string;
+  custom_expenses: CustomExpense[];
+}
+
+const emptyForm = {
+  name: "",
+  start_date: undefined as Date | undefined,
+  end_date: undefined as Date | undefined,
+  expected_sales: 0,
+  capacity: 0,
+  turn_over: 0,
+  avg_check: 0,
+  media: 0,
+  bills: 0,
+  salaries: 0,
+  other_expenses: 0,
+  maintenance: 0,
+  rent: 0,
+  default_consumables_pct: 1,
+  default_packing_cost: 0,
+  custom_expenses: [] as CustomExpense[],
+};
+
+const getDaysInPeriod = (start: string, end: string) => {
+  const s = new Date(start);
+  const e = new Date(end);
+  return Math.max(1, Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+};
+
+export const IndirectExpensesPage: React.FC = () => {
+  const { auth } = useAuth();
+  const [periods, setPeriods] = useState<CostingPeriod[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState(emptyForm);
+  const [selectedPeriod, setSelectedPeriod] = useState<CostingPeriod | null>(null);
+  const [newCustomName, setNewCustomName] = useState("");
+  const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
+  const [selectedBranchId, setSelectedBranchId] = useState<string>("all");
+
+  const companyId = auth.profile?.company_id;
+
+  const fetchPeriods = async () => {
+    if (!companyId) return;
+    const { data, error } = await supabase
+      .from("menu_costing_periods")
+      .select("*")
+      .eq("company_id", companyId)
+      .order("created_at", { ascending: false });
+    if (!error && data) {
+      const mapped = data.map((d: any) => ({
+        ...d,
+        custom_expenses: Array.isArray(d.custom_expenses) ? d.custom_expenses : [],
+      })) as CostingPeriod[];
+      setPeriods(mapped);
+      if (!selectedPeriod && mapped.length > 0) setSelectedPeriod(mapped[0]);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchPeriods();
+    if (companyId) {
+      supabase.from("branches").select("id, name").eq("company_id", companyId).eq("active", true)
+        .then(({ data }) => { if (data) setBranches(data); });
+    }
+  }, [companyId]);
+
+  const totalIndirectCost = (p: CostingPeriod) => {
+    const base = p.media + p.bills + p.salaries + p.other_expenses + p.maintenance + p.rent;
+    const customTotal = (p.custom_expenses || []).reduce((sum, c) => sum + c.value, 0);
+    return base + customTotal;
+  };
+
+  const expectedDailySales = (p: CostingPeriod) =>
+    p.capacity * p.turn_over * p.avg_check;
+
+  const monthlyExpectedSales = (p: CostingPeriod) => {
+    const days = getDaysInPeriod(p.start_date, p.end_date);
+    return expectedDailySales(p) * days;
+  };
+
+  const indirectCostPct = (p: CostingPeriod) => {
+    const monthly = monthlyExpectedSales(p);
+    return monthly > 0 ? (totalIndirectCost(p) / monthly) * 100 : 0;
+  };
+
+  const breakEvenPoint = (p: CostingPeriod) => {
+    const dailySales = expectedDailySales(p);
+    const monthly = monthlyExpectedSales(p);
+    return monthly > 0 ? totalIndirectCost(p) / (dailySales / monthly) : 0;
+  };
+
+  const handleAddCustomExpense = () => {
+    if (!newCustomName.trim()) return;
+    setForm({
+      ...form,
+      custom_expenses: [...form.custom_expenses, { name: newCustomName.trim(), value: 0 }],
+    });
+    setNewCustomName("");
+  };
+
+  const handleRemoveCustomExpense = (index: number) => {
+    setForm({
+      ...form,
+      custom_expenses: form.custom_expenses.filter((_, i) => i !== index),
+    });
+  };
+
+  const handleCustomExpenseChange = (index: number, value: number) => {
+    const updated = [...form.custom_expenses];
+    updated[index] = { ...updated[index], value };
+    setForm({ ...form, custom_expenses: updated });
+  };
+
+  const handleSave = async () => {
+    if (!companyId || !form.name || !form.start_date || !form.end_date) {
+      toast({ title: "خطأ", description: "يرجى ملء جميع الحقول المطلوبة", variant: "destructive" });
+      return;
+    }
+
+    const payload = {
+      company_id: companyId,
+      name: form.name,
+      start_date: format(form.start_date, "yyyy-MM-dd"),
+      end_date: format(form.end_date, "yyyy-MM-dd"),
+      expected_sales: form.capacity * form.turn_over * form.avg_check,
+      capacity: form.capacity,
+      turn_over: form.turn_over,
+      avg_check: form.avg_check,
+      media: form.media,
+      bills: form.bills,
+      salaries: form.salaries,
+      other_expenses: form.other_expenses,
+      maintenance: form.maintenance,
+      rent: form.rent,
+      default_consumables_pct: form.default_consumables_pct,
+      default_packing_cost: form.default_packing_cost,
+      custom_expenses: form.custom_expenses as any,
+    };
+
+    let error;
+    if (editingId) {
+      ({ error } = await supabase.from("menu_costing_periods").update(payload).eq("id", editingId));
+    } else {
+      ({ error } = await supabase.from("menu_costing_periods").insert(payload));
+    }
+
+    if (error) {
+      toast({ title: "خطأ", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "تم", description: editingId ? "تم تحديث الفترة" : "تم إضافة الفترة" });
+      setDialogOpen(false);
+      setEditingId(null);
+      setForm(emptyForm);
+      fetchPeriods();
+    }
+  };
+
+  const handleEdit = (p: CostingPeriod) => {
+    setEditingId(p.id);
+    setForm({
+      name: p.name,
+      start_date: new Date(p.start_date),
+      end_date: new Date(p.end_date),
+      expected_sales: p.expected_sales,
+      capacity: p.capacity,
+      turn_over: p.turn_over,
+      avg_check: p.avg_check,
+      media: p.media,
+      bills: p.bills,
+      salaries: p.salaries,
+      other_expenses: p.other_expenses,
+      maintenance: p.maintenance,
+      rent: p.rent,
+      default_consumables_pct: p.default_consumables_pct,
+      default_packing_cost: p.default_packing_cost,
+      custom_expenses: p.custom_expenses || [],
+    });
+    setDialogOpen(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from("menu_costing_periods").delete().eq("id", id);
+    if (!error) {
+      toast({ title: "تم", description: "تم حذف الفترة" });
+      if (selectedPeriod?.id === id) setSelectedPeriod(null);
+      fetchPeriods();
+    }
+  };
+
+  const getExpenseItems = (p: CostingPeriod) => {
+    const items = [
+      { label: "الإيجار", value: p.rent, icon: Building2, color: "text-blue-500" },
+      { label: "المرتبات", value: p.salaries, icon: Users, color: "text-emerald-500" },
+      { label: "الفواتير", value: p.bills, icon: Zap, color: "text-yellow-500" },
+      { label: "الميديا والتسويق", value: p.media, icon: Megaphone, color: "text-purple-500" },
+      { label: "الصيانة", value: p.maintenance, icon: Wrench, color: "text-orange-500" },
+      { label: "أخرى", value: p.other_expenses, icon: MoreHorizontal, color: "text-muted-foreground" },
+    ];
+    (p.custom_expenses || []).forEach((c) => {
+      items.push({ label: c.name, value: c.value, icon: MoreHorizontal, color: "text-cyan-500" });
+    });
+    return items;
+  };
+
+  const expenseItems = selectedPeriod ? getExpenseItems(selectedPeriod) : [];
+  const total = selectedPeriod ? totalIndirectCost(selectedPeriod) : 0;
+  const monthSales = selectedPeriod ? monthlyExpectedSales(selectedPeriod) : 0;
+
+  return (
+    <div className="space-y-6 animate-fade-in-up" dir="rtl">
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <h1 className="text-2xl font-bold">تحليل المصاريف الغير مباشرة</h1>
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="text-sm text-muted-foreground">الفرع:</span>
+          <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="كل الفروع" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">كل الفروع</SelectItem>
+              {branches.map(b => (
+                <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <Dialog open={dialogOpen} onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) { setEditingId(null); setForm(emptyForm); }
+        }}>
+          <DialogTrigger asChild>
+            <Button className="gap-2"><Plus size={16} /> إضافة فترة</Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{editingId ? "تعديل الفترة" : "إضافة فترة جديدة"}</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div>
+                <Label>اسم الفترة *</Label>
+                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="مثال: أكتوبر 2025" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>من تاريخ *</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start gap-2">
+                        <CalendarIcon size={14} />
+                        {form.start_date ? format(form.start_date, "yyyy/MM/dd") : "اختر التاريخ"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={form.start_date} onSelect={(d) => setForm({ ...form, start_date: d })} /></PopoverContent>
+                  </Popover>
+                </div>
+                <div>
+                  <Label>إلى تاريخ *</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start gap-2">
+                        <CalendarIcon size={14} />
+                        {form.end_date ? format(form.end_date, "yyyy/MM/dd") : "اختر التاريخ"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={form.end_date} onSelect={(d) => setForm({ ...form, end_date: d })} /></PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <h3 className="font-semibold mb-3">المصاريف الغير مباشرة</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { key: "rent", label: "الإيجار" },
+                    { key: "salaries", label: "المرتبات" },
+                    { key: "bills", label: "الفواتير" },
+                    { key: "media", label: "الميديا والتسويق" },
+                    { key: "maintenance", label: "الصيانة" },
+                    { key: "other_expenses", label: "أخرى" },
+                  ].map((item) => (
+                    <div key={item.key}>
+                      <Label>{item.label}</Label>
+                      <Input type="number" value={(form as any)[item.key]} onChange={(e) => setForm({ ...form, [item.key]: parseFloat(e.target.value) || 0 })} />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Custom expenses */}
+                {form.custom_expenses.length > 0 && (
+                  <div className="grid grid-cols-2 gap-3 mt-3">
+                    {form.custom_expenses.map((ce, idx) => (
+                      <div key={idx} className="relative">
+                        <Label className="flex items-center gap-1">
+                          {ce.name}
+                          <button type="button" onClick={() => handleRemoveCustomExpense(idx)} className="text-destructive hover:text-destructive/80">
+                            <X size={12} />
+                          </button>
+                        </Label>
+                        <Input type="number" value={ce.value} onChange={(e) => handleCustomExpenseChange(idx, parseFloat(e.target.value) || 0)} />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex gap-2 mt-3">
+                  <Input
+                    placeholder="اسم البند الجديد"
+                    value={newCustomName}
+                    onChange={(e) => setNewCustomName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddCustomExpense())}
+                  />
+                  <Button type="button" variant="outline" size="sm" onClick={handleAddCustomExpense} className="gap-1 shrink-0">
+                    <Plus size={14} /> إضافة بند
+                  </Button>
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <h3 className="font-semibold mb-3">بيانات التشغيل</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>المبيعات المتوقعة (تلقائي)</Label><Input type="number" value={form.capacity * form.turn_over * form.avg_check} readOnly className="bg-muted" /></div>
+                  <div><Label>السعة (عدد الكراسي)</Label><Input type="number" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: parseFloat(e.target.value) || 0 })} /></div>
+                  <div><Label>معدل الدوران</Label><Input type="number" step="0.1" value={form.turn_over} onChange={(e) => setForm({ ...form, turn_over: parseFloat(e.target.value) || 0 })} /></div>
+                  <div><Label>متوسط الفاتورة</Label><Input type="number" value={form.avg_check} onChange={(e) => setForm({ ...form, avg_check: parseFloat(e.target.value) || 0 })} /></div>
+                </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <h3 className="font-semibold mb-3">إعدادات التكاليف الافتراضية</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>نسبة المستهلكات الافتراضية (%)</Label><Input type="number" step="0.1" value={form.default_consumables_pct} onChange={(e) => setForm({ ...form, default_consumables_pct: parseFloat(e.target.value) || 0 })} /></div>
+                </div>
+              </div>
+
+              <Button onClick={handleSave} className="w-full mt-2">{editingId ? "تحديث" : "حفظ"}</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Periods list */}
+      {periods.length > 0 && (
+        <div className="flex gap-2 flex-wrap">
+          {periods.map((p) => (
+            <Button
+              key={p.id}
+              variant={selectedPeriod?.id === p.id ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSelectedPeriod(p)}
+              className="gap-2"
+            >
+              {p.name}
+            </Button>
+          ))}
+        </div>
+      )}
+
+      {selectedPeriod && (
+        <>
+          {/* Actions */}
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => handleEdit(selectedPeriod)} className="gap-1">
+              <Edit2 size={14} /> تعديل
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => handleDelete(selectedPeriod.id)} className="gap-1 text-destructive hover:text-destructive">
+              <Trash2 size={14} /> حذف
+            </Button>
+          </div>
+
+          {/* KPI Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card className="border-primary/20 bg-primary/5">
+              <CardContent className="p-4 text-center">
+                <DollarSign className="mx-auto mb-1 text-primary" size={24} />
+                <p className="text-xs text-muted-foreground">إجمالي المصاريف الغير مباشرة</p>
+                <p className="text-xl font-bold text-primary">{total.toLocaleString()}</p>
+              </CardContent>
+            </Card>
+            <Card className="border-emerald-500/20 bg-emerald-500/5">
+              <CardContent className="p-4 text-center">
+                <TrendingUp className="mx-auto mb-1 text-emerald-500" size={24} />
+                <p className="text-xs text-muted-foreground">المبيعات الشهرية المتوقعة</p>
+                <p className="text-xl font-bold text-emerald-600">{monthSales.toLocaleString()}</p>
+              </CardContent>
+            </Card>
+            <Card className="border-orange-500/20 bg-orange-500/5">
+              <CardContent className="p-4 text-center">
+                <Percent className="mx-auto mb-1 text-orange-500" size={24} />
+                <p className="text-xs text-muted-foreground">نسبة المصاريف الغير مباشرة</p>
+                <p className="text-xl font-bold text-orange-600">{indirectCostPct(selectedPeriod).toFixed(2)}%</p>
+              </CardContent>
+            </Card>
+            <Card className="border-red-500/20 bg-red-500/5">
+              <CardContent className="p-4 text-center">
+                <Target className="mx-auto mb-1 text-red-500" size={24} />
+                <p className="text-xs text-muted-foreground">نقطة التعادل</p>
+                <p className="text-xl font-bold text-red-600">{breakEvenPoint(selectedPeriod).toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Expense breakdown */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader><CardTitle className="text-lg">توزيع المصاريف</CardTitle></CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {expenseItems.map((item) => {
+                    const Icon = item.icon;
+                    const pct = monthSales > 0 ? (item.value / monthSales * 100) : 0;
+                    return (
+                      <div key={item.label} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Icon size={16} className={item.color} />
+                          <span className="text-sm">{item.label}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-semibold">{item.value.toLocaleString()}</span>
+                          <Badge variant="secondary" className="text-xs">{pct.toFixed(2)}%</Badge>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div className="border-t pt-2 flex items-center justify-between font-bold">
+                    <span>الإجمالي</span>
+                    <span className="text-primary">{total.toLocaleString()}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader><CardTitle className="text-lg">بيانات التشغيل</CardTitle></CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {[
+                    { label: "السعة (عدد الكراسي)", value: selectedPeriod.capacity },
+                    { label: "معدل الدوران", value: selectedPeriod.turn_over },
+                    { label: "متوسط الفاتورة", value: selectedPeriod.avg_check.toLocaleString() },
+                    { label: "المبيعات اليومية المتوقعة", value: expectedDailySales(selectedPeriod).toLocaleString() },
+                    { label: "المبيعات الشهرية المتوقعة", value: monthSales.toLocaleString() },
+                  ].map((item) => (
+                    <div key={item.label} className="flex items-center justify-between border-b pb-2 last:border-0">
+                      <span className="text-sm text-muted-foreground">{item.label}</span>
+                      <span className="font-semibold">{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Visual bar chart of expenses */}
+          <Card>
+            <CardHeader><CardTitle className="text-lg">نسب المصاريف من المبيعات الشهرية المتوقعة</CardTitle></CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {expenseItems.map((item) => {
+                  const pct = monthSales > 0 ? (item.value / monthSales * 100) : 0;
+                  return (
+                    <div key={item.label}>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span>{item.label}</span>
+                        <span className="font-medium">{pct.toFixed(2)}%</span>
+                      </div>
+                      <div className="h-3 bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${Math.min(pct * 3, 100)}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      {!loading && periods.length === 0 && (
+        <Card className="p-12 text-center">
+          <DollarSign size={48} className="mx-auto mb-4 text-muted-foreground/30" />
+          <h3 className="text-lg font-semibold mb-2">لا توجد فترات محفوظة</h3>
+          <p className="text-muted-foreground text-sm mb-4">أضف فترة جديدة لبدء تحليل المصاريف الغير مباشرة</p>
+          <Button onClick={() => setDialogOpen(true)} className="gap-2"><Plus size={16} /> إضافة فترة</Button>
+        </Card>
+      )}
+    </div>
+  );
+};

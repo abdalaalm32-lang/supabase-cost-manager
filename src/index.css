@@ -1,0 +1,107 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 47% 8%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 10%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 199 89% 60%;
+    --primary-foreground: 222 47% 6%;
+
+    --secondary: 260 60% 50%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 33% 14%;
+    --muted-foreground: 215 20% 55%;
+
+    --accent: 174 80% 50%;
+    --accent-foreground: 222 47% 6%;
+
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 210 40% 98%;
+
+    --success: 145 65% 45%;
+    --success-foreground: 222 47% 6%;
+
+    --warning: 38 92% 55%;
+    --warning-foreground: 222 47% 6%;
+
+    --border: 217 33% 18%;
+    --input: 217 33% 18%;
+    --ring: 199 89% 60%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 222 47% 5%;
+    --sidebar-foreground: 215 20% 65%;
+    --sidebar-primary: 199 89% 60%;
+    --sidebar-primary-foreground: 222 47% 6%;
+    --sidebar-accent: 217 33% 14%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 33% 15%;
+    --sidebar-ring: 199 89% 60%;
+
+    /* Custom system colors */
+    --sys-surface: 222 47% 9%;
+    --sys-gradient-start: 240 55% 12%;
+    --sys-gradient-mid: 260 45% 22%;
+    --sys-gradient-end: 240 40% 16%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Cairo', 'Segoe UI', system-ui, sans-serif;
+    direction: rtl;
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-xl border border-border/50 rounded-2xl shadow-xl;
+  }
+  .glass-input {
+    @apply bg-muted/50 border border-border/50 rounded-xl text-foreground placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all;
+  }
+  .gradient-primary {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+  }
+  .gradient-bg {
+    background: linear-gradient(135deg, hsl(var(--sys-gradient-start)), hsl(var(--sys-gradient-mid)), hsl(var(--sys-gradient-end)));
+  }
+  .text-gradient {
+    background: linear-gradient(to right, hsl(var(--primary)), hsl(var(--accent)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
+
+/* Google Fonts - Cairo for Arabic */
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@200..1000&display=swap');
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted));
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}

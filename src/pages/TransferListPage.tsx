@@ -1,0 +1,246 @@
+import React, { useState, useMemo } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Plus, Search, Eye, Pencil, ToggleLeft, ToggleRight, ArrowLeftRight, Trash2,
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+
+type StatusFilter = "all" | "مكتمل" | "مؤرشف";
+
+export const TransferListPage: React.FC = () => {
+  const { auth } = useAuth();
+  const companyId = auth.profile?.company_id;
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{ id: string; newStatus: string } | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const { data: records = [], isLoading } = useQuery({
+    queryKey: ["transfers", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("transfers")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
+  const filtered = useMemo(() => {
+    let items = records;
+    if (statusFilter !== "all") {
+      items = items.filter((r: any) => r.status === statusFilter);
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      items = items.filter((r: any) =>
+        (r.record_number || "").toLowerCase().includes(q) ||
+        (r.source_name || "").toLowerCase().includes(q) ||
+        (r.destination_name || "").toLowerCase().includes(q)
+      );
+    }
+    return items;
+  }, [records, statusFilter, search]);
+
+  const handleStatusChange = async () => {
+    if (!confirmAction) return;
+    const { id, newStatus } = confirmAction;
+    const { error } = await supabase.from("transfers").update({ status: newStatus }).eq("id", id);
+    if (error) {
+      toast({ title: "خطأ", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: `تم تغيير الحالة إلى ${newStatus}` });
+      queryClient.invalidateQueries({ queryKey: ["transfers"] });
+    }
+    setShowConfirm(false);
+    setConfirmAction(null);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    try {
+      // Fetch transfer items to reverse stock
+      const { data: items } = await supabase.from("transfer_items").select("*").eq("transfer_id", deleteId);
+      // Re-fetch latest stock for each item
+      if (items && items.length > 0) {
+        for (const item of items) {
+          if (item.stock_item_id) {
+            const { data: si } = await supabase.from("stock_items").select("current_stock, avg_cost").eq("id", item.stock_item_id).single();
+            if (si) {
+              // No global stock change for transfers, just refresh
+            }
+          }
+        }
+      }
+      await supabase.from("transfer_items").delete().eq("transfer_id", deleteId);
+      await supabase.from("transfers").delete().eq("id", deleteId);
+      queryClient.invalidateQueries({ queryKey: ["transfers"] });
+      queryClient.invalidateQueries({ queryKey: ["stock-items"] });
+      toast({ title: "تم حذف الإذن بنجاح" });
+    } catch (err: any) {
+      toast({ title: "خطأ", description: err.message, variant: "destructive" });
+    }
+    setShowDeleteConfirm(false);
+    setDeleteId(null);
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "مكتمل":
+        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/15 text-green-400">● مكتمل</span>;
+      case "مؤرشف":
+        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/15 text-red-400">● مؤرشف</span>;
+      default:
+        return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-500/15 text-yellow-400">● مسودة</span>;
+    }
+  };
+
+  return (
+    <div className="space-y-4 animate-fade-in-up">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <ArrowLeftRight size={28} className="text-primary" />
+          <h1 className="text-2xl font-bold">أذونات الصرف والتحويل</h1>
+        </div>
+        <Button onClick={() => navigate("/transfers/add")} size="sm">
+          <Plus size={14} /> إضافة إذن جديد
+        </Button>
+      </div>
+
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="بحث برقم الإذن، المصدر، الوجهة..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pr-9"
+          />
+        </div>
+        <div className="flex gap-1">
+          {(["all", "مكتمل", "مؤرشف"] as StatusFilter[]).map(f => (
+            <Button
+              key={f}
+              variant={statusFilter === f ? "default" : "outline"}
+              size="sm"
+              onClick={() => setStatusFilter(f)}
+            >
+              {f === "all" ? "الكل" : f}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      <div className="glass-card overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="text-right">رقم الإذن</TableHead>
+              <TableHead className="text-right">التاريخ</TableHead>
+              <TableHead className="text-right">من</TableHead>
+              <TableHead className="text-right">إلى</TableHead>
+              <TableHead className="text-right">الحالة</TableHead>
+              <TableHead className="text-right">إجمالي التكلفة</TableHead>
+              <TableHead className="text-right">الإجراءات</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">جاري التحميل...</TableCell></TableRow>
+            ) : filtered.length === 0 ? (
+              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">لا توجد أذونات تحويل</TableCell></TableRow>
+            ) : (
+              filtered.map((r: any) => (
+                <TableRow key={r.id}>
+                  <TableCell className="font-mono text-xs">{r.record_number || "—"}</TableCell>
+                  <TableCell>{r.date}</TableCell>
+                  <TableCell>{r.source_name || "—"}</TableCell>
+                  <TableCell>{r.destination_name || "—"}</TableCell>
+                  <TableCell>{getStatusBadge(r.status)}</TableCell>
+                  <TableCell>{Number(r.total_cost || 0).toFixed(2)}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`/transfers/${r.id}`)}>
+                        <Eye size={14} />
+                      </Button>
+                      {r.status === "مؤرشف" && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`/transfers/${r.id}?edit=true`)}>
+                          <Pencil size={14} />
+                        </Button>
+                      )}
+                      {r.status === "مكتمل" ? (
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                          setConfirmAction({ id: r.id, newStatus: "مؤرشف" });
+                          setShowConfirm(true);
+                        }}>
+                          <ToggleLeft size={14} />
+                        </Button>
+                      ) : r.status === "مؤرشف" ? (
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                          setConfirmAction({ id: r.id, newStatus: "مكتمل" });
+                          setShowConfirm(true);
+                        }}>
+                          <ToggleRight size={14} />
+                        </Button>
+                      ) : null}
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => { setDeleteId(r.id); setShowDeleteConfirm(true); }}>
+                        <Trash2 size={14} />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <Dialog open={showConfirm} onOpenChange={setShowConfirm}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>تأكيد تغيير الحالة</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            هل تريد تغيير الحالة إلى {confirmAction?.newStatus}؟
+          </p>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setShowConfirm(false)}>إلغاء</Button>
+            <Button size="sm" onClick={handleStatusChange}>تأكيد</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>تأكيد الحذف</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">هل تريد حذف هذا الإذن؟ سيتم إعادة تحديث أرصدة المخزون.</p>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setShowDeleteConfirm(false)}>إلغاء</Button>
+            <Button variant="destructive" size="sm" onClick={handleDelete}>حذف</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};

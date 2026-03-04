@@ -1,0 +1,2 @@
+ALTER TABLE public.production_records DROP CONSTRAINT production_records_product_id_fkey;
+ALTER TABLE public.production_records ADD CONSTRAINT production_records_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.stock_items(id);

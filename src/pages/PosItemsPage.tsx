@@ -54,11 +54,26 @@ export const PosItemsPage: React.FC = () => {
     enabled: !!companyId,
   });
 
-  // Fetch active categories only for the form
+  // Fetch active categories filtered by selected branch (add dialog)
   const { data: categories = [] } = useQuery({
-    queryKey: ["pos-categories-active", companyId],
+    queryKey: ["pos-categories-active", companyId, branchId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("categories").select("*").eq("active", true).order("name");
+      let q = supabase.from("categories").select("*").eq("active", true).order("name");
+      if (branchId) q = q.eq("branch_id", branchId);
+      const { data, error } = await q;
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
+  // Fetch active categories filtered by selected branch (edit dialog)
+  const { data: editCategories = [] } = useQuery({
+    queryKey: ["pos-categories-active-edit", companyId, editBranchId],
+    queryFn: async () => {
+      let q = supabase.from("categories").select("*").eq("active", true).order("name");
+      if (editBranchId) q = q.eq("branch_id", editBranchId);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
@@ -104,7 +119,7 @@ export const PosItemsPage: React.FC = () => {
   // Edit item
   const editMutation = useMutation({
     mutationFn: async () => {
-      const selectedCat = categories.find((c: any) => c.id === editCategoryId);
+      const selectedCat = editCategories.find((c: any) => c.id === editCategoryId);
       const { error } = await supabase.from("pos_items").update({
         name: editName, price: parseFloat(editPrice) || 0,
         branch_id: editBranchId || null, category_id: editCategoryId || null,
@@ -172,7 +187,7 @@ export const PosItemsPage: React.FC = () => {
             <div className="space-y-4 pt-2">
               <div className="space-y-2">
                 <Label>الفرع</Label>
-                <Select value={branchId} onValueChange={setBranchId}>
+                <Select value={branchId} onValueChange={(v) => { setBranchId(v); setCategoryId(""); }}>
                   <SelectTrigger><SelectValue placeholder="اختر الفرع" /></SelectTrigger>
                   <SelectContent>{branches.map((b: any) => (<SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>))}</SelectContent>
                 </Select>
@@ -217,7 +232,7 @@ export const PosItemsPage: React.FC = () => {
           <div className="space-y-4 pt-2">
             <div className="space-y-2">
               <Label>الفرع</Label>
-              <Select value={editBranchId} onValueChange={setEditBranchId}>
+              <Select value={editBranchId} onValueChange={(v) => { setEditBranchId(v); setEditCategoryId(""); }}>
                 <SelectTrigger><SelectValue placeholder="اختر الفرع" /></SelectTrigger>
                 <SelectContent>{branches.map((b: any) => (<SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>))}</SelectContent>
               </Select>
@@ -226,7 +241,7 @@ export const PosItemsPage: React.FC = () => {
               <Label>المجموعة</Label>
               <Select value={editCategoryId} onValueChange={setEditCategoryId}>
                 <SelectTrigger><SelectValue placeholder="اختر المجموعة" /></SelectTrigger>
-                <SelectContent>{categories.map((c: any) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent>
+                <SelectContent>{editCategories.map((c: any) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}</SelectContent>
               </Select>
             </div>
             <div className="space-y-2">

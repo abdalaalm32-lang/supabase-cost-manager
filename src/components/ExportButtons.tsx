@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { FileSpreadsheet, Loader2 } from "lucide-react";
-import { exportToExcel, type ExportColumn } from "@/lib/exportUtils";
+import { FileSpreadsheet, FileText, Loader2 } from "lucide-react";
+import { exportToExcel, exportToPDF, type ExportColumn } from "@/lib/exportUtils";
 import { toast } from "sonner";
 
 interface ExportButtonsProps {
@@ -19,36 +19,47 @@ export const ExportButtons: React.FC<ExportButtonsProps> = ({
   title,
   headerGroups,
 }) => {
-  const [loading, setLoading] = useState(false);
+  const [loadingExcel, setLoadingExcel] = useState(false);
+  const [loadingPdf, setLoadingPdf] = useState(false);
 
   const handleExcel = async () => {
-    setLoading(true);
+    setLoadingExcel(true);
     try {
       await exportToExcel({ title, filename, columns, data, headerGroups });
-      toast.success("تم تصدير الملف بنجاح");
+      toast.success("تم تصدير Excel بنجاح");
     } catch (err) {
       console.error(err);
       toast.error("حدث خطأ أثناء التصدير");
     } finally {
-      setLoading(false);
+      setLoadingExcel(false);
+    }
+  };
+
+  const handlePdf = async () => {
+    setLoadingPdf(true);
+    try {
+      await exportToPDF({ title, filename, columns, data, headerGroups });
+      toast.success("تم تصدير PDF بنجاح");
+    } catch (err) {
+      console.error(err);
+      toast.error("حدث خطأ أثناء التصدير");
+    } finally {
+      setLoadingPdf(false);
     }
   };
 
   if (!data || data.length === 0) return null;
 
   return (
-    <Button variant="outline" size="sm" className="gap-2" onClick={handleExcel} disabled={loading}>
-      {loading ? (
-        <>
-          <Loader2 size={14} className="animate-spin" />
-          جاري التصدير...
-        </>
-      ) : (
-        <>
-          <FileSpreadsheet size={14} className="text-green-600" />
-          تصدير Excel
-        </>
-      )}
-    </Button>
+    <div className="flex items-center gap-1">
+      <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePdf} disabled={loadingPdf}>
+        {loadingPdf ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
+        PDF
+      </Button>
+      <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExcel} disabled={loadingExcel}>
+        {loadingExcel ? <Loader2 size={14} className="animate-spin" /> : <FileSpreadsheet size={14} className="text-green-600" />}
+        Excel
+      </Button>
+    </div>
   );
 };

@@ -12,10 +12,9 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  Plus, Search, Eye, Pencil, ToggleLeft, ToggleRight, ArrowLeftRight, Trash2,
+  Plus, Search, Eye, Pencil, ToggleLeft, ToggleRight, ArrowLeftRight, Trash2, Printer,
 } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
-import { PrintButton } from "@/components/PrintButton";
 import { useToast } from "@/hooks/use-toast";
 
 type StatusFilter = "all" | "مكتمل" | "مؤرشف" | "edited";
@@ -107,6 +106,122 @@ export const TransferListPage: React.FC = () => {
     setDeleteId(null);
   };
 
+  const handlePrintTransfer = async (record: any) => {
+    // Fetch transfer items
+    const { data: items } = await supabase
+      .from("transfer_items")
+      .select("*")
+      .eq("transfer_id", record.id)
+      .order("name");
+
+    const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
+    const logoSrc = `${window.location.origin}/logo.png`;
+
+    let itemsHTML = "";
+    let totalQty = 0;
+    let totalCostSum = 0;
+    (items || []).forEach((item: any, idx: number) => {
+      const tc = Number(item.quantity || 0) * Number(item.avg_cost || 0);
+      totalQty += Number(item.quantity || 0);
+      totalCostSum += tc;
+      itemsHTML += `<tr>
+        <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${idx + 1}</td>
+        <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${item.code || "—"}</td>
+        <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:right;">${item.name || "—"}</td>
+        <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${item.unit || "—"}</td>
+        <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${Number(item.current_stock || 0).toFixed(2)}</td>
+        <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${Number(item.quantity || 0).toFixed(2)}</td>
+        <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${Number(item.avg_cost || 0).toFixed(2)}</td>
+        <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${tc.toFixed(2)}</td>
+      </tr>`;
+    });
+
+    // Totals row
+    itemsHTML += `<tr style="font-weight:bold;background:#f5f5f5;">
+      <td colspan="5" style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">الإجمالي</td>
+      <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${totalQty.toFixed(2)}</td>
+      <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">—</td>
+      <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${totalCostSum.toFixed(2)}</td>
+    </tr>`;
+
+    const printHTML = `<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>إذن تحويل ${record.record_number || ""}</title>
+  <style>
+    @font-face { font-family:'CairoLocal'; src:url('${window.location.origin}/fonts/Cairo-Regular.ttf') format('truetype'); font-display:swap; }
+    @font-face { font-family:'AmiriLocal'; src:url('${window.location.origin}/fonts/Amiri-Regular.ttf') format('truetype'); font-display:swap; }
+    @font-face { font-family:'AmiriBold'; src:url('${window.location.origin}/fonts/Amiri-Bold.ttf') format('truetype'); font-display:swap; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'CairoLocal','AmiriLocal',sans-serif; direction:rtl; padding:20px; color:#000; background:#fff; }
+    @media print { @page { size:auto; margin:10mm; } body { padding:0; } }
+    .header { text-align:center; margin-bottom:15px; border-bottom:2px solid #000; padding-bottom:10px; display:flex; align-items:center; justify-content:center; gap:10px; }
+    .logo { width:40px; height:40px; object-fit:contain; }
+    .header h1 { font-size:18px; font-weight:bold; font-family:'AmiriBold','CairoLocal',sans-serif; }
+    .header p { font-size:11px; }
+    .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:15px; border:1px solid #000; padding:10px; }
+    .info-item { font-size:11px; }
+    .info-item strong { font-family:'AmiriBold','CairoLocal',sans-serif; }
+    table { width:100%; border-collapse:collapse; margin-bottom:15px; }
+    th { border:1px solid #000; padding:5px 6px; font-size:10px; text-align:center; font-family:'AmiriBold','CairoLocal',sans-serif; background:#f0f0f0; }
+    .signatures { display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; margin-top:30px; }
+    .sig-box { text-align:center; border-top:1px solid #000; padding-top:8px; font-size:11px; }
+    .footer { text-align:center; margin-top:20px; font-size:9px; border-top:1px solid #000; padding-top:8px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="${logoSrc}" alt="Logo" class="logo" />
+    <div>
+      <h1>إذن صرف وتحويل</h1>
+      <p>Cost Management System • ${dateStr}</p>
+    </div>
+  </div>
+  <div class="info-grid">
+    <div class="info-item"><strong>رقم الإذن:</strong> ${record.record_number || "—"}</div>
+    <div class="info-item"><strong>التاريخ:</strong> ${record.date || "—"}</div>
+    <div class="info-item"><strong>من (المصدر):</strong> ${record.source_name || "—"}</div>
+    <div class="info-item"><strong>إلى (الوجهة):</strong> ${record.destination_name || "—"}</div>
+    <div class="info-item"><strong>المنشئ:</strong> ${record.creator_name || "—"}</div>
+    <div class="info-item"><strong>الحالة:</strong> ${record.is_edited ? "معدّل" : record.status || "—"}</div>
+    ${record.notes ? `<div class="info-item" style="grid-column:span 2;"><strong>ملاحظات:</strong> ${record.notes}</div>` : ""}
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>م</th>
+        <th>الكود</th>
+        <th>اسم الصنف</th>
+        <th>الوحدة</th>
+        <th>الرصيد الحالي</th>
+        <th>الكمية المحولة</th>
+        <th>متوسط التكلفة</th>
+        <th>إجمالي التكلفة</th>
+      </tr>
+    </thead>
+    <tbody>${itemsHTML}</tbody>
+  </table>
+  <div class="signatures">
+    <div class="sig-box">المُسلّم</div>
+    <div class="sig-box">المُستلم</div>
+    <div class="sig-box">المدير المسؤول</div>
+  </div>
+  <div class="footer">Powered by Mohamed Abdel Aal</div>
+  <script>
+    (async function(){
+      try { if(document.fonts && document.fonts.ready) await document.fonts.ready; } catch(e){}
+      window.print();
+      window.onafterprint = function(){ window.close(); };
+    })();
+  </script>
+</body>
+</html>`;
+
+    const w = window.open("", "_blank");
+    if (w) { w.document.write(printHTML); w.document.close(); }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "مكتمل":
@@ -165,11 +280,6 @@ export const TransferListPage: React.FC = () => {
           filename="أذونات_التحويل"
           title="أذونات الصرف والتحويل"
         />
-        <PrintButton
-          data={filtered.map((r: any) => ({ record: r.record_number || "—", date: r.date, from: r.source_name || "—", to: r.destination_name || "—", creator: r.creator_name || "—", status: r.is_edited ? "معدل" : r.status, cost: Number(r.total_cost || 0).toFixed(2) }))}
-          columns={[{ key: "record", label: "رقم الإذن" }, { key: "date", label: "التاريخ" }, { key: "from", label: "من" }, { key: "to", label: "إلى" }, { key: "creator", label: "المنشئ" }, { key: "status", label: "الحالة" }, { key: "cost", label: "إجمالي التكلفة" }]}
-          title="أذونات الصرف والتحويل"
-        />
       </div>
 
       <div className="glass-card overflow-hidden">
@@ -226,6 +336,9 @@ export const TransferListPage: React.FC = () => {
                           <ToggleRight size={14} />
                         </Button>
                       ) : null}
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handlePrintTransfer(r)}>
+                        <Printer size={14} />
+                      </Button>
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => { setDeleteId(r.id); setShowDeleteConfirm(true); }}>
                         <Trash2 size={14} />
                       </Button>

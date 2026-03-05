@@ -1,6 +1,4 @@
 import React, { useState, useMemo } from "react";
-import { ExportButtons } from "@/components/ExportButtons";
-import { PrintButton } from "@/components/PrintButton";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -256,71 +254,6 @@ export const CostAdjustmentReportsPage: React.FC = () => {
           </h1>
           <p className="text-muted-foreground text-sm mt-1">تحليل عمليات تعديل التكلفة واتجاهات التغيير</p>
         </div>
-        <div className="flex gap-2 print:hidden">
-          <ExportButtons
-            data={processedData.map((r: any, i: number) => ({
-              "#": i + 1,
-              "رقم السجل": r.recordNumber,
-              التاريخ: r.date,
-              الصنف: r.itemName,
-              الكود: r.code,
-              الموقع: r.branchName,
-              المجموعة: r.catName,
-              "التكلفة السابقة": r.oldCost.toFixed(2),
-              "التكلفة الجديدة": r.newCost.toFixed(2),
-              "فرق القيمة": r.diff.toFixed(2),
-              "نسبة التغيير %": r.diffPercent.toFixed(1),
-              البيان: r.notes,
-            }))}
-            columns={[
-              { key: "#", label: "#" },
-              { key: "رقم السجل", label: "رقم السجل" },
-              { key: "التاريخ", label: "التاريخ" },
-              { key: "الصنف", label: "الصنف" },
-              { key: "الكود", label: "الكود" },
-              { key: "الموقع", label: "الموقع" },
-              { key: "المجموعة", label: "المجموعة" },
-              { key: "التكلفة السابقة", label: "التكلفة السابقة" },
-              { key: "التكلفة الجديدة", label: "التكلفة الجديدة" },
-              { key: "فرق القيمة", label: "فرق القيمة" },
-              { key: "نسبة التغيير %", label: "نسبة التغيير %" },
-              { key: "البيان", label: "البيان" },
-            ]}
-            filename="تقارير_تعديل_التكاليف"
-            title="تقارير تعديل التكاليف"
-          />
-          <PrintButton
-            data={processedData.map((r: any, i: number) => ({
-              "#": i + 1,
-              "رقم السجل": r.recordNumber,
-              التاريخ: r.date,
-              الصنف: r.itemName,
-              الكود: r.code,
-              الموقع: r.branchName,
-              المجموعة: r.catName,
-              "التكلفة السابقة": r.oldCost.toFixed(2),
-              "التكلفة الجديدة": r.newCost.toFixed(2),
-              "فرق القيمة": r.diff.toFixed(2),
-              "نسبة التغيير %": r.diffPercent.toFixed(1),
-              البيان: r.notes,
-            }))}
-            columns={[
-              { key: "#", label: "#" },
-              { key: "رقم السجل", label: "رقم السجل" },
-              { key: "التاريخ", label: "التاريخ" },
-              { key: "الصنف", label: "الصنف" },
-              { key: "الكود", label: "الكود" },
-              { key: "الموقع", label: "الموقع" },
-              { key: "المجموعة", label: "المجموعة" },
-              { key: "التكلفة السابقة", label: "التكلفة السابقة" },
-              { key: "التكلفة الجديدة", label: "التكلفة الجديدة" },
-              { key: "فرق القيمة", label: "فرق القيمة" },
-              { key: "نسبة التغيير %", label: "نسبة التغيير %" },
-              { key: "البيان", label: "البيان" },
-            ]}
-            title="تقارير تعديل التكاليف"
-          />
-        </div>
       </div>
 
       {/* Filters */}
@@ -552,12 +485,6 @@ export const CostAdjustmentReportsPage: React.FC = () => {
         <CardContent className="p-0">
           <div className="flex items-center justify-between px-4 pt-4 pb-2">
             <h3 className="text-sm font-bold">جدول تفاصيل تعديلات التكاليف</h3>
-            <ExportButtons
-              data={processedData.map((row: any) => ({ record: row.recordNumber, date: row.date, item: row.itemName, code: row.code, location: row.branchName, category: row.catName, oldCost: fmt(row.oldCost), newCost: fmt(row.newCost), diff: fmt(row.diff), diffPct: row.diffPercent.toFixed(1) + "%", notes: row.notes || "—" }))}
-              columns={[{ key: "record", label: "رقم السجل" }, { key: "date", label: "التاريخ" }, { key: "item", label: "الصنف" }, { key: "code", label: "الكود" }, { key: "location", label: "الموقع" }, { key: "category", label: "المجموعة" }, { key: "oldCost", label: "التكلفة السابقة" }, { key: "newCost", label: "التكلفة الجديدة" }, { key: "diff", label: "فرق القيمة" }, { key: "diffPct", label: "نسبة التغيير" }, { key: "notes", label: "البيان" }]}
-              filename="تقارير_تعديل_التكاليف"
-              title="تقارير تعديل التكاليف"
-            />
           </div>
           <div className="overflow-x-auto">
             <Table>

@@ -1,6 +1,4 @@
 import React, { useState, useMemo } from "react";
-import { ExportButtons } from "@/components/ExportButtons";
-import { PrintButton } from "@/components/PrintButton";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -307,73 +305,6 @@ export const TransferReportsPage: React.FC = () => {
           </h1>
           <p className="text-muted-foreground text-sm mt-1">تحليل حركة التحويلات بين الفروع والمخازن</p>
         </div>
-        <div className="flex gap-2 print:hidden">
-          <ExportButtons
-            data={processedData.map((i, idx) => {
-              const r = getTopRoute(i.routes);
-              return {
-                "#": idx + 1,
-                الكود: i.code,
-                "اسم الصنف": i.name,
-                المجموعة: i.catName,
-                من: r.source,
-                إلى: r.destination,
-                "إجمالي الكمية": i.totalTransferQty.toFixed(2),
-                الوحدة: i.unit,
-                "إجمالي التكلفة": i.totalCost.toFixed(2),
-                "مرات التحويل": i.occurrences,
-                "آخر تحويل": i.lastTransferDate,
-              };
-            })}
-            columns={[
-              { key: "#", label: "#" },
-              { key: "الكود", label: "الكود" },
-              { key: "اسم الصنف", label: "اسم الصنف" },
-              { key: "المجموعة", label: "المجموعة" },
-              { key: "من", label: "من" },
-              { key: "إلى", label: "إلى" },
-              { key: "إجمالي الكمية", label: "إجمالي الكمية" },
-              { key: "الوحدة", label: "الوحدة" },
-              { key: "إجمالي التكلفة", label: "إجمالي التكلفة" },
-              { key: "مرات التحويل", label: "مرات التحويل" },
-              { key: "آخر تحويل", label: "آخر تحويل" },
-            ]}
-            filename="تقارير_التحويلات"
-            title="تقارير أذونات الصرف والتحويل"
-          />
-          <PrintButton
-            data={processedData.map((i, idx) => {
-              const r = getTopRoute(i.routes);
-              return {
-                "#": idx + 1,
-                الكود: i.code,
-                "اسم الصنف": i.name,
-                المجموعة: i.catName,
-                من: r.source,
-                إلى: r.destination,
-                "إجمالي الكمية": i.totalTransferQty.toFixed(2),
-                الوحدة: i.unit,
-                "إجمالي التكلفة": i.totalCost.toFixed(2),
-                "مرات التحويل": i.occurrences,
-                "آخر تحويل": i.lastTransferDate,
-              };
-            })}
-            columns={[
-              { key: "#", label: "#" },
-              { key: "الكود", label: "الكود" },
-              { key: "اسم الصنف", label: "اسم الصنف" },
-              { key: "المجموعة", label: "المجموعة" },
-              { key: "من", label: "من" },
-              { key: "إلى", label: "إلى" },
-              { key: "إجمالي الكمية", label: "إجمالي الكمية" },
-              { key: "الوحدة", label: "الوحدة" },
-              { key: "إجمالي التكلفة", label: "إجمالي التكلفة" },
-              { key: "مرات التحويل", label: "مرات التحويل" },
-              { key: "آخر تحويل", label: "آخر تحويل" },
-            ]}
-            title="تقارير أذونات الصرف والتحويل"
-          />
-        </div>
       </div>
 
       {/* Filters */}
@@ -607,15 +538,7 @@ export const TransferReportsPage: React.FC = () => {
         <CardContent className="pt-4 pb-2">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-bold flex items-center gap-1"><ArrowRightLeft size={16} /> تفاصيل الأصناف المحوّلة</h3>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">{fmtInt(processedData.length)} صنف</span>
-              <ExportButtons
-                data={processedData.map((item: any) => ({ code: item.code, name: item.name, category: item.catName, qty: fmt(item.totalTransferQty), unit: item.unit, cost: fmt(item.totalCost), occurrences: item.occurrences, lastDate: item.lastTransferDate }))}
-                columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الصنف" }, { key: "category", label: "المجموعة" }, { key: "qty", label: "إجمالي الكمية" }, { key: "unit", label: "الوحدة" }, { key: "cost", label: "إجمالي التكلفة" }, { key: "occurrences", label: "مرات التحويل" }, { key: "lastDate", label: "آخر تحويل" }]}
-                filename="تقارير_التحويلات"
-                title="تقارير التحويلات"
-              />
-            </div>
+            <span className="text-xs text-muted-foreground">{fmtInt(processedData.length)} صنف</span>
           </div>
           <div className="overflow-x-auto">
             <Table>

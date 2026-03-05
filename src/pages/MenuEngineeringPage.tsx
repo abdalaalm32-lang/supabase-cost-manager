@@ -454,7 +454,7 @@ export const MenuEngineeringPage: React.FC = () => {
               <TableBody>
                 {engineeringData.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={15} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={16} className="text-center py-8 text-muted-foreground">
                       لا توجد بيانات - تأكد من تكويد تصنيف هندسة المنيو للخامات وربطها بالوصفات
                     </TableCell>
                   </TableRow>

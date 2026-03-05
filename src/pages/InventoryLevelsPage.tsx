@@ -1,6 +1,4 @@
 import React, { useState, useMemo } from "react";
-import { ExportButtons } from "@/components/ExportButtons";
-import { PrintButton } from "@/components/PrintButton";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -260,71 +258,6 @@ export const InventoryLevelsPage: React.FC = () => {
           </h1>
           <p className="text-muted-foreground text-sm mt-1">مراقبة مستويات الأصناف وتنبيهات إعادة الطلب</p>
         </div>
-        <div className="flex gap-2 print:hidden">
-          <ExportButtons
-            data={processedItems.map((i: any, idx: number) => ({
-              "#": idx + 1,
-              الكود: i.code || "",
-              "اسم الصنف": i.name,
-              المجموعة: i.catName,
-              "الرصيد الحالي": i.currentStock.toFixed(2),
-              الوحدة: i.stock_unit,
-              "متوسط التكلفة": Number(i.avg_cost).toFixed(2),
-              "إجمالي القيمة": i.totalValue.toFixed(2),
-              "الحد الأدنى": i.minLevel,
-              "إعادة الطلب": i.reorderLevel,
-              "الحد الأقصى": i.maxLevel,
-              الحالة: i.status,
-            }))}
-            columns={[
-              { key: "#", label: "#" },
-              { key: "الكود", label: "الكود" },
-              { key: "اسم الصنف", label: "اسم الصنف" },
-              { key: "المجموعة", label: "المجموعة" },
-              { key: "الرصيد الحالي", label: "الرصيد الحالي" },
-              { key: "الوحدة", label: "الوحدة" },
-              { key: "متوسط التكلفة", label: "متوسط التكلفة" },
-              { key: "إجمالي القيمة", label: "إجمالي القيمة" },
-              { key: "الحد الأدنى", label: "الحد الأدنى" },
-              { key: "إعادة الطلب", label: "إعادة الطلب" },
-              { key: "الحد الأقصى", label: "الحد الأقصى" },
-              { key: "الحالة", label: "الحالة" },
-            ]}
-            filename="مستويات_المخزون"
-            title="مستويات المخزون"
-          />
-          <PrintButton
-            data={processedItems.map((i: any, idx: number) => ({
-              "#": idx + 1,
-              الكود: i.code || "",
-              "اسم الصنف": i.name,
-              المجموعة: i.catName,
-              "الرصيد الحالي": i.currentStock.toFixed(2),
-              الوحدة: i.stock_unit,
-              "متوسط التكلفة": Number(i.avg_cost).toFixed(2),
-              "إجمالي القيمة": i.totalValue.toFixed(2),
-              "الحد الأدنى": i.minLevel,
-              "إعادة الطلب": i.reorderLevel,
-              "الحد الأقصى": i.maxLevel,
-              الحالة: i.status,
-            }))}
-            columns={[
-              { key: "#", label: "#" },
-              { key: "الكود", label: "الكود" },
-              { key: "اسم الصنف", label: "اسم الصنف" },
-              { key: "المجموعة", label: "المجموعة" },
-              { key: "الرصيد الحالي", label: "الرصيد الحالي" },
-              { key: "الوحدة", label: "الوحدة" },
-              { key: "متوسط التكلفة", label: "متوسط التكلفة" },
-              { key: "إجمالي القيمة", label: "إجمالي القيمة" },
-              { key: "الحد الأدنى", label: "الحد الأدنى" },
-              { key: "إعادة الطلب", label: "إعادة الطلب" },
-              { key: "الحد الأقصى", label: "الحد الأقصى" },
-              { key: "الحالة", label: "الحالة" },
-            ]}
-            title="مستويات المخزون"
-          />
-        </div>
       </div>
 
       {/* Filters */}
@@ -522,19 +455,6 @@ export const InventoryLevelsPage: React.FC = () => {
             <CardTitle className="text-sm font-bold flex items-center gap-2">
               <BarChart3 size={16} /> جدول مستويات المخزون ({processedItems.length} صنف)
             </CardTitle>
-            <div className="flex items-center gap-2">
-              <PrintButton
-                data={processedItems.map((item: any) => ({ code: item.code || "—", name: item.name, category: item.catName, stock: item.currentStock.toFixed(2), min: item.minLevel, max: item.maxLevel, reorder: item.reorderLevel, unit: item.unit, status: item.statusLabel }))}
-                columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الصنف" }, { key: "category", label: "المجموعة" }, { key: "stock", label: "الرصيد" }, { key: "min", label: "الحد الأدنى" }, { key: "max", label: "الحد الأقصى" }, { key: "reorder", label: "نقطة الطلب" }, { key: "unit", label: "الوحدة" }, { key: "status", label: "الحالة" }]}
-                title="مستويات المخزون"
-              />
-              <ExportButtons
-                data={processedItems.map((item: any) => ({ code: item.code || "—", name: item.name, category: item.catName, stock: item.currentStock.toFixed(2), min: item.minLevel, max: item.maxLevel, reorder: item.reorderLevel, unit: item.unit, status: item.statusLabel }))}
-                columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الصنف" }, { key: "category", label: "المجموعة" }, { key: "stock", label: "الرصيد" }, { key: "min", label: "الحد الأدنى" }, { key: "max", label: "الحد الأقصى" }, { key: "reorder", label: "نقطة الطلب" }, { key: "unit", label: "الوحدة" }, { key: "status", label: "الحالة" }]}
-                filename="مستويات_المخزون"
-                title="مستويات المخزون"
-              />
-            </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">

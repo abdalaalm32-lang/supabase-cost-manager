@@ -1,6 +1,4 @@
 import React, { useState, useMemo, useRef } from "react";
-import { ExportButtons } from "@/components/ExportButtons";
-import { PrintButton } from "@/components/PrintButton";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -361,71 +359,6 @@ export const PurchaseReportsPage: React.FC = () => {
           </h1>
           <p className="text-muted-foreground text-sm mt-1">تحليل شامل لعمليات الشراء والموردين والخامات</p>
         </div>
-        <div className="flex gap-2 print:hidden">
-          <ExportButtons
-            data={filteredData.map((i, idx) => ({
-              "#": idx + 1,
-              الكود: i.code || "",
-              "اسم الخامة": i.name,
-              المجموعة: i.categoryName,
-              "عدد مرات الشراء": i.purchaseCount,
-              "المورد الأكثر شراءً": `${i.topSupplier} (${i.topSupplierCount})`,
-              "إجمالي الكمية": i.totalQty.toFixed(2),
-              الوحدة: i.unit,
-              "التكلفة المعيارية": i.standardCost.toFixed(2),
-              "متوسط التكلفة": i.avgCost.toFixed(2),
-              "فرق السعر": i.priceDiff.toFixed(2),
-              "إجمالي القيمة": i.totalValue.toFixed(2),
-            }))}
-            columns={[
-              { key: "#", label: "#" },
-              { key: "الكود", label: "الكود" },
-              { key: "اسم الخامة", label: "اسم الخامة" },
-              { key: "المجموعة", label: "المجموعة" },
-              { key: "عدد مرات الشراء", label: "عدد مرات الشراء" },
-              { key: "المورد الأكثر شراءً", label: "المورد الأكثر شراءً" },
-              { key: "إجمالي الكمية", label: "إجمالي الكمية" },
-              { key: "الوحدة", label: "الوحدة" },
-              { key: "التكلفة المعيارية", label: "التكلفة المعيارية" },
-              { key: "متوسط التكلفة", label: "متوسط التكلفة" },
-              { key: "فرق السعر", label: "فرق السعر" },
-              { key: "إجمالي القيمة", label: "إجمالي القيمة" },
-            ]}
-            filename="تقرير_المشتريات"
-            title="تقارير المشتريات"
-          />
-          <PrintButton
-            data={filteredData.map((i, idx) => ({
-              "#": idx + 1,
-              الكود: i.code || "",
-              "اسم الخامة": i.name,
-              المجموعة: i.categoryName,
-              "عدد مرات الشراء": i.purchaseCount,
-              "المورد الأكثر شراءً": `${i.topSupplier} (${i.topSupplierCount})`,
-              "إجمالي الكمية": i.totalQty.toFixed(2),
-              الوحدة: i.unit,
-              "التكلفة المعيارية": i.standardCost.toFixed(2),
-              "متوسط التكلفة": i.avgCost.toFixed(2),
-              "فرق السعر": i.priceDiff.toFixed(2),
-              "إجمالي القيمة": i.totalValue.toFixed(2),
-            }))}
-            columns={[
-              { key: "#", label: "#" },
-              { key: "الكود", label: "الكود" },
-              { key: "اسم الخامة", label: "اسم الخامة" },
-              { key: "المجموعة", label: "المجموعة" },
-              { key: "عدد مرات الشراء", label: "عدد مرات الشراء" },
-              { key: "المورد الأكثر شراءً", label: "المورد الأكثر شراءً" },
-              { key: "إجمالي الكمية", label: "إجمالي الكمية" },
-              { key: "الوحدة", label: "الوحدة" },
-              { key: "التكلفة المعيارية", label: "التكلفة المعيارية" },
-              { key: "متوسط التكلفة", label: "متوسط التكلفة" },
-              { key: "فرق السعر", label: "فرق السعر" },
-              { key: "إجمالي القيمة", label: "إجمالي القيمة" },
-            ]}
-            title="تقارير المشتريات"
-          />
-        </div>
       </div>
 
       {/* Filters */}
@@ -681,12 +614,6 @@ export const PurchaseReportsPage: React.FC = () => {
             <CardTitle className="text-sm font-bold flex items-center gap-2">
               <Package size={16} /> جدول تفاصيل المشتريات ({filteredData.length} خامة)
             </CardTitle>
-            <ExportButtons
-              data={filteredData.map((item: any) => ({ code: item.code || "—", name: item.name, category: item.categoryName, purchases: item.purchaseCount, supplier: item.topSupplier, qty: fmt(item.totalQty), unit: item.unit, stdCost: fmt(item.standardCost), avgCost: fmt(item.avgCost), diff: fmt(item.priceDiff), total: fmt(item.totalValue) }))}
-              columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الخامة" }, { key: "category", label: "المجموعة" }, { key: "purchases", label: "عدد الشراء" }, { key: "supplier", label: "المورد الأكثر" }, { key: "qty", label: "إجمالي الكمية" }, { key: "unit", label: "الوحدة" }, { key: "stdCost", label: "التكلفة المعيارية" }, { key: "avgCost", label: "متوسط التكلفة" }, { key: "diff", label: "فرق السعر" }, { key: "total", label: "إجمالي القيمة" }]}
-              filename="تقارير_المشتريات"
-              title="تقارير المشتريات"
-            />
           </div>
         </CardHeader>
         <CardContent className="p-0" ref={tableRef}>

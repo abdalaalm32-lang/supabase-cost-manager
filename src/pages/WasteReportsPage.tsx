@@ -1,6 +1,4 @@
 import React, { useState, useMemo } from "react";
-import { ExportButtons } from "@/components/ExportButtons";
-import { PrintButton } from "@/components/PrintButton";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -394,67 +392,6 @@ export const WasteReportsPage: React.FC = () => {
           </h1>
           <p className="text-muted-foreground text-sm mt-1">تحليل خسائر الهالك وأسبابه وتوزيعه</p>
         </div>
-        <div className="flex gap-2 print:hidden">
-          <ExportButtons
-            data={processedData.map((i, idx) => ({
-              "#": idx + 1,
-              الكود: i.code,
-              "اسم الصنف": i.name,
-              المجموعة: i.catName,
-              "إجمالي كمية الهالك": i.totalWasteQty.toFixed(2),
-              الوحدة: i.unit,
-              "متوسط التكلفة": i.avgCost.toFixed(2),
-              "إجمالي الخسارة": i.totalLoss.toFixed(2),
-              "السبب الأكثر شيوعاً": getTopReason(i.reasons),
-              "مرات التكرار": i.occurrences,
-              "آخر تاريخ هالك": i.lastWasteDate,
-            }))}
-            columns={[
-              { key: "#", label: "#" },
-              { key: "الكود", label: "الكود" },
-              { key: "اسم الصنف", label: "اسم الصنف" },
-              { key: "المجموعة", label: "المجموعة" },
-              { key: "إجمالي كمية الهالك", label: "إجمالي كمية الهالك" },
-              { key: "الوحدة", label: "الوحدة" },
-              { key: "متوسط التكلفة", label: "متوسط التكلفة" },
-              { key: "إجمالي الخسارة", label: "إجمالي الخسارة" },
-              { key: "السبب الأكثر شيوعاً", label: "السبب الأكثر شيوعاً" },
-              { key: "مرات التكرار", label: "مرات التكرار" },
-              { key: "آخر تاريخ هالك", label: "آخر تاريخ هالك" },
-            ]}
-            filename="تقارير_الهالك"
-            title="تقارير الهالك"
-          />
-          <PrintButton
-            data={processedData.map((i, idx) => ({
-              "#": idx + 1,
-              الكود: i.code,
-              "اسم الصنف": i.name,
-              المجموعة: i.catName,
-              "إجمالي كمية الهالك": i.totalWasteQty.toFixed(2),
-              الوحدة: i.unit,
-              "متوسط التكلفة": i.avgCost.toFixed(2),
-              "إجمالي الخسارة": i.totalLoss.toFixed(2),
-              "السبب الأكثر شيوعاً": getTopReason(i.reasons),
-              "مرات التكرار": i.occurrences,
-              "آخر تاريخ هالك": i.lastWasteDate,
-            }))}
-            columns={[
-              { key: "#", label: "#" },
-              { key: "الكود", label: "الكود" },
-              { key: "اسم الصنف", label: "اسم الصنف" },
-              { key: "المجموعة", label: "المجموعة" },
-              { key: "إجمالي كمية الهالك", label: "إجمالي كمية الهالك" },
-              { key: "الوحدة", label: "الوحدة" },
-              { key: "متوسط التكلفة", label: "متوسط التكلفة" },
-              { key: "إجمالي الخسارة", label: "إجمالي الخسارة" },
-              { key: "السبب الأكثر شيوعاً", label: "السبب الأكثر شيوعاً" },
-              { key: "مرات التكرار", label: "مرات التكرار" },
-              { key: "آخر تاريخ هالك", label: "آخر تاريخ هالك" },
-            ]}
-            title="تقارير الهالك"
-          />
-        </div>
       </div>
 
       {/* Filters */}
@@ -798,12 +735,6 @@ export const WasteReportsPage: React.FC = () => {
             <CardTitle className="text-sm font-bold flex items-center gap-2">
               <BarChart3 size={16} /> جدول تفاصيل الهالك ({processedData.length} صنف)
             </CardTitle>
-            <ExportButtons
-              data={processedData.map((item: any) => ({ code: item.code || "—", name: item.name, category: item.catName, qty: item.totalWasteQty.toFixed(2), unit: item.unit, avgCost: item.avgCost.toFixed(2), loss: item.totalLoss.toFixed(2), reason: getTopReason(item.reasons), occurrences: item.occurrences, lastDate: item.lastWasteDate }))}
-              columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الصنف" }, { key: "category", label: "المجموعة" }, { key: "qty", label: "كمية الهالك" }, { key: "unit", label: "الوحدة" }, { key: "avgCost", label: "متوسط التكلفة" }, { key: "loss", label: "إجمالي الخسارة" }, { key: "reason", label: "السبب الأكثر شيوعاً" }, { key: "occurrences", label: "التكرار" }, { key: "lastDate", label: "آخر تاريخ" }]}
-              filename="تقارير_الهالك"
-              title="تقارير الهالك"
-            />
           </div>
         </CardHeader>
         <CardContent className="p-0">

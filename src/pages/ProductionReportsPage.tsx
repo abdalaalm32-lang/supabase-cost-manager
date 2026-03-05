@@ -1,6 +1,4 @@
 import React, { useState, useMemo } from "react";
-import { ExportButtons } from "@/components/ExportButtons";
-import { PrintButton } from "@/components/PrintButton";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -282,67 +280,6 @@ export const ProductionReportsPage: React.FC = () => {
           </h1>
           <p className="text-muted-foreground text-sm mt-1">تحليل كثافة وتكاليف عمليات الإنتاج</p>
         </div>
-        <div className="flex gap-2 print:hidden">
-          <ExportButtons
-            data={processedData.map((i, idx) => ({
-              "#": idx + 1,
-              الكود: i.code,
-              "اسم الصنف": i.name,
-              المجموعة: i.catName,
-              "كثافة الإنتاج": i.productionCount,
-              "إجمالي الكمية": i.totalProducedQty.toFixed(2),
-              الوحدة: i.stockUnit,
-              "الرصيد الحالي": i.currentStock.toFixed(2),
-              "متوسط التكلفة": i.avgCost.toFixed(2),
-              "إجمالي تكلفة الإنتاج": i.totalProductionCost.toFixed(2),
-              "آخر تاريخ إنتاج": i.lastProductionDate,
-            }))}
-            columns={[
-              { key: "#", label: "#" },
-              { key: "الكود", label: "الكود" },
-              { key: "اسم الصنف", label: "اسم الصنف" },
-              { key: "المجموعة", label: "المجموعة" },
-              { key: "كثافة الإنتاج", label: "كثافة الإنتاج" },
-              { key: "إجمالي الكمية", label: "إجمالي الكمية" },
-              { key: "الوحدة", label: "الوحدة" },
-              { key: "الرصيد الحالي", label: "الرصيد الحالي" },
-              { key: "متوسط التكلفة", label: "متوسط التكلفة" },
-              { key: "إجمالي تكلفة الإنتاج", label: "إجمالي تكلفة الإنتاج" },
-              { key: "آخر تاريخ إنتاج", label: "آخر تاريخ إنتاج" },
-            ]}
-            filename="تقارير_الإنتاج"
-            title="تقارير عمليات الإنتاج"
-          />
-          <PrintButton
-            data={processedData.map((i, idx) => ({
-              "#": idx + 1,
-              الكود: i.code,
-              "اسم الصنف": i.name,
-              المجموعة: i.catName,
-              "كثافة الإنتاج": i.productionCount,
-              "إجمالي الكمية": i.totalProducedQty.toFixed(2),
-              الوحدة: i.stockUnit,
-              "الرصيد الحالي": i.currentStock.toFixed(2),
-              "متوسط التكلفة": i.avgCost.toFixed(2),
-              "إجمالي تكلفة الإنتاج": i.totalProductionCost.toFixed(2),
-              "آخر تاريخ إنتاج": i.lastProductionDate,
-            }))}
-            columns={[
-              { key: "#", label: "#" },
-              { key: "الكود", label: "الكود" },
-              { key: "اسم الصنف", label: "اسم الصنف" },
-              { key: "المجموعة", label: "المجموعة" },
-              { key: "كثافة الإنتاج", label: "كثافة الإنتاج" },
-              { key: "إجمالي الكمية", label: "إجمالي الكمية" },
-              { key: "الوحدة", label: "الوحدة" },
-              { key: "الرصيد الحالي", label: "الرصيد الحالي" },
-              { key: "متوسط التكلفة", label: "متوسط التكلفة" },
-              { key: "إجمالي تكلفة الإنتاج", label: "إجمالي تكلفة الإنتاج" },
-              { key: "آخر تاريخ إنتاج", label: "آخر تاريخ إنتاج" },
-            ]}
-            title="تقارير عمليات الإنتاج"
-          />
-        </div>
       </div>
 
       {/* Filters */}
@@ -565,12 +502,6 @@ export const ProductionReportsPage: React.FC = () => {
             <CardTitle className="text-sm font-bold flex items-center gap-2">
               <BarChart3 size={16} /> جدول كثافة الإنتاج ({processedData.length} صنف)
             </CardTitle>
-            <ExportButtons
-              data={processedData.map((item: any) => ({ code: item.code || "—", name: item.name, category: item.catName, count: item.productionCount, qty: fmt(item.totalProducedQty), stock: fmt(item.currentStock), unit: item.stockUnit, avgCost: fmt(item.avgCost), totalCost: fmt(item.totalProductionCost), lastDate: item.lastProductionDate }))}
-              columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الصنف" }, { key: "category", label: "المجموعة" }, { key: "count", label: "كثافة الإنتاج" }, { key: "qty", label: "إجمالي الكمية" }, { key: "stock", label: "الرصيد الحالي" }, { key: "unit", label: "الوحدة" }, { key: "avgCost", label: "متوسط التكلفة" }, { key: "totalCost", label: "إجمالي تكلفة الإنتاج" }, { key: "lastDate", label: "آخر تاريخ" }]}
-              filename="تقارير_الإنتاج"
-              title="تقارير الإنتاج"
-            />
           </div>
         </CardHeader>
         <CardContent className="p-0">

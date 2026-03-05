@@ -409,9 +409,8 @@ export const MenuEngineeringPage: React.FC = () => {
           <CardContent className="p-4 text-center">
             <p className="text-xs text-muted-foreground">نسب الربحية ({activeTab === "kitchen" ? "مطبخ" : "بار"})</p>
             <div className="flex gap-1 justify-center mt-1 text-xs">
-              <Badge className={levelBadgeClass["مرتفع"]}>{">"}{t.high}%</Badge>
-              <Badge className={levelBadgeClass["متوسط"]}>{t.medium}-{t.high}%</Badge>
-              <Badge className={levelBadgeClass["منخفض"]}>{"<"}{t.medium}%</Badge>
+              <Badge className={levelBadgeClass["عالية"]}>{"≥"}{t.medium}% عالية</Badge>
+              <Badge className={levelBadgeClass["منخفضة"]}>{"<"}{t.medium}% منخفضة</Badge>
             </div>
           </CardContent>
         </Card>

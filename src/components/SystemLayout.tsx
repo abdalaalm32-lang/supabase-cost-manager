@@ -6,6 +6,7 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import loginBg from "@/assets/login-bg.jpg";
+import logo3m from "@/assets/logo-3m.png";
 import {
   LayoutDashboard, Package, ChefHat, ShoppingCart, Calculator,
   FileText, Settings, LogOut, Menu,
@@ -282,8 +283,8 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
           <div className="flex items-center justify-between">
             {!isSidebarCollapsed && (
               <div className="flex items-center gap-2 flex-1 min-w-0">
+                <img src={logo3m} alt="3M GSC" className="h-10 w-auto object-contain" />
                 <div className="min-w-0">
-                  <h1 className="text-xl font-black text-gradient">3M GSC</h1>
                   <p className="text-[10px] text-sidebar-foreground/60 truncate">{companyName}</p>
                   {companyCode && (
                     <p className="text-[9px] font-mono text-primary/70 mt-0.5">

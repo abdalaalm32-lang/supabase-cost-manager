@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { ExportButtons } from "@/components/ExportButtons";
+import { PrintButton } from "@/components/PrintButton";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -810,6 +811,24 @@ export const InventoryMovementPage: React.FC = () => {
 
       {/* Movement Table */}
       <Card className="border-border/50">
+        <div className="flex items-center justify-between px-4 pt-4 pb-2">
+          <h3 className="text-sm font-bold">جدول حركة المخزون</h3>
+          <div className="flex items-center gap-2">
+            <PrintButton
+              data={filteredData.map(item => ({ code: item.code || "—", name: item.name, purchases: item.inPurchases ? item.inPurchases.toFixed(2) : "-", production: item.inProduction ? item.inProduction.toFixed(2) : "-", receipts: item.inReceipts ? item.inReceipts.toFixed(2) : "-", transfers: item.outTransfers ? item.outTransfers.toFixed(2) : "-", consumption: item.outConsumption ? item.outConsumption.toFixed(2) : "-", waste: item.outWaste ? item.outWaste.toFixed(2) : "-", bookQty: item.bookQty.toFixed(2), countQty: item.countQty ? item.countQty.toFixed(2) : "-", varQty: item.varQty ? item.varQty.toFixed(2) : "-", varVal: item.varVal ? item.varVal.toFixed(2) : "-" }))}
+              columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الخامة" }, { key: "purchases", label: "مشتريات" }, { key: "production", label: "إنتاج" }, { key: "receipts", label: "استلامات" }, { key: "transfers", label: "تحويلات" }, { key: "consumption", label: "استهلاك" }, { key: "waste", label: "هالك" }, { key: "bookQty", label: "الرصيد الدفتري" }, { key: "countQty", label: "رصيد الجرد" }, { key: "varQty", label: "تباين كمية" }, { key: "varVal", label: "تباين قيمة" }]}
+              headerGroups={[{ label: "الكود", colSpan: 1 }, { label: "الخامة", colSpan: 1 }, { label: "الوارد", colSpan: 3 }, { label: "المنصرف", colSpan: 3 }, { label: "الرصيد الدفتري", colSpan: 1 }, { label: "رصيد الجرد", colSpan: 1 }, { label: "التباين", colSpan: 2 }]}
+              title="حركة المخزون"
+            />
+            <ExportButtons
+              data={filteredData.map(item => ({ code: item.code || "—", name: item.name, purchases: item.inPurchases ? item.inPurchases.toFixed(2) : "-", production: item.inProduction ? item.inProduction.toFixed(2) : "-", receipts: item.inReceipts ? item.inReceipts.toFixed(2) : "-", transfers: item.outTransfers ? item.outTransfers.toFixed(2) : "-", consumption: item.outConsumption ? item.outConsumption.toFixed(2) : "-", waste: item.outWaste ? item.outWaste.toFixed(2) : "-", bookQty: item.bookQty.toFixed(2), countQty: item.countQty ? item.countQty.toFixed(2) : "-", varQty: item.varQty ? item.varQty.toFixed(2) : "-", varVal: item.varVal ? item.varVal.toFixed(2) : "-" }))}
+              columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الخامة" }, { key: "purchases", label: "مشتريات" }, { key: "production", label: "إنتاج" }, { key: "receipts", label: "استلامات" }, { key: "transfers", label: "تحويلات" }, { key: "consumption", label: "استهلاك" }, { key: "waste", label: "هالك" }, { key: "bookQty", label: "الرصيد الدفتري" }, { key: "countQty", label: "رصيد الجرد" }, { key: "varQty", label: "تباين كمية" }, { key: "varVal", label: "تباين قيمة" }]}
+              headerGroups={[{ label: "الكود", colSpan: 1 }, { label: "الخامة", colSpan: 1 }, { label: "الوارد", colSpan: 3 }, { label: "المنصرف", colSpan: 3 }, { label: "الرصيد الدفتري", colSpan: 1 }, { label: "رصيد الجرد", colSpan: 1 }, { label: "التباين", colSpan: 2 }]}
+              filename="حركة_المخزون"
+              title="حركة المخزون"
+            />
+          </div>
+        </div>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>

@@ -19,6 +19,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, Plus, Search, Pencil, Eye, History, Trash2, User, MapPin, ToggleLeft, ToggleRight } from "lucide-react";
+import { ExportButtons } from "@/components/ExportButtons";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -251,6 +252,12 @@ export const WasteListPage: React.FC = () => {
         <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input placeholder="بحث..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pr-9" />
       </div>
+      <ExportButtons
+        data={filtered.map((wr: any) => ({ record: wr.record_number || "—", date: wr.date, creator: wr.creator_name || "—", location: getLocationName(wr), status: wr.is_edited ? "معدل" : wr.status, cost: Number(wr.total_cost).toFixed(2) }))}
+        columns={[{ key: "record", label: "رقم العملية" }, { key: "date", label: "التاريخ" }, { key: "creator", label: "المنشئ" }, { key: "location", label: "الموقع" }, { key: "status", label: "الحالة" }, { key: "cost", label: "إجمالي التكلفة" }]}
+        filename="سجلات_الهالك"
+        title="سجلات الهالك"
+      />
 
       <div className="glass-card overflow-hidden">
         <Table>

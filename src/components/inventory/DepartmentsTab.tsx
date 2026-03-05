@@ -17,6 +17,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
+import { ExportButtons } from "@/components/ExportButtons";
 import { toast } from "sonner";
 
 type FilterStatus = "نشط" | "غير نشط" | "الكل";
@@ -201,6 +202,12 @@ export const DepartmentsTab: React.FC = () => {
             </Button>
           ))}
         </div>
+        <ExportButtons
+          data={filtered.map((d: any) => ({ code: d.code || "—", name: d.name, manager: d.manager || "—", status: d.active ? "نشط" : "غير نشط" }))}
+          columns={[{ key: "code", label: "الكود" }, { key: "name", label: "اسم القسم" }, { key: "manager", label: "المدير المسؤول" }, { key: "status", label: "الحالة" }]}
+          filename="الأقسام"
+          title="الأقسام"
+        />
       </div>
 
       {/* Table */}

@@ -18,6 +18,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, Search, Archive, Pencil, Eye, History, Zap } from "lucide-react";
+import { ExportButtons } from "@/components/ExportButtons";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -229,6 +230,12 @@ export const InstantStocktakeListPage: React.FC = () => {
         <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input placeholder="بحث..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pr-9" />
       </div>
+      <ExportButtons
+        data={filtered.map((st: any) => ({ record: st.record_number || "—", date: st.date, location: getLocationName(st), status: st.is_edited ? "معدل" : st.status, diff: getDiffValue(st.id).toFixed(2) }))}
+        columns={[{ key: "record", label: "رقم الفحص" }, { key: "date", label: "التاريخ" }, { key: "location", label: "الفرع / المخزن" }, { key: "status", label: "الحالة" }, { key: "diff", label: "قيمة الفروقات" }]}
+        filename="فحص_مخزون_فوري"
+        title="فحص مخزون فوري"
+      />
 
       <div className="glass-card overflow-hidden">
         <Table>

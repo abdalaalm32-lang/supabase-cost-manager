@@ -15,6 +15,7 @@ import {
   Eye, X, Printer, Save, FileText, Plus, Minus, Trash2,
   AlertCircle, Store, CalendarDays, Search, Archive, RotateCcw
 } from "lucide-react";
+import { ExportButtons } from "@/components/ExportButtons";
 
 type FilterStatus = "الكل" | "مكتمل" | "مؤرشف";
 
@@ -162,6 +163,12 @@ export const PosInvoicesPage: React.FC = () => {
             </Button>
           ))}
         </div>
+        <ExportButtons
+          data={(filtered || []).map((sale: any) => ({ invoice: sale.invoice_number || "—", date: format(new Date(sale.date), "yyyy/MM/dd"), branch: (sale.branches as any)?.name || "—", total: Number(sale.total_amount).toFixed(2), status: sale.status }))}
+          columns={[{ key: "invoice", label: "رقم الفاتورة" }, { key: "date", label: "التاريخ" }, { key: "branch", label: "الفرع" }, { key: "total", label: "الإجمالي" }, { key: "status", label: "الحالة" }]}
+          filename="فواتير_نقطة_البيع"
+          title="سجل الفواتير"
+        />
       </div>
 
       {/* Table */}

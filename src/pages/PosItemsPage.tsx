@@ -16,6 +16,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { Plus, Archive, RotateCcw, Search, Pencil } from "lucide-react";
+import { ExportButtons } from "@/components/ExportButtons";
 import { toast } from "sonner";
 
 type FilterStatus = "نشط" | "مؤرشف" | "الكل";
@@ -280,6 +281,12 @@ export const PosItemsPage: React.FC = () => {
             <Button key={s} variant={filter === s ? "default" : "outline"} size="sm" onClick={() => setFilter(s)}>{s}</Button>
           ))}
         </div>
+        <ExportButtons
+          data={filtered.map((item: any) => ({ code: item.code || "—", name: item.name, category: item.categories?.name || item.category || "—", branch: item.branches?.name || "—", menuClass: item.menu_engineering_class || "—", price: Number(item.price).toFixed(2), status: item.active ? "نشط" : "مؤرشف" }))}
+          columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الصنف" }, { key: "category", label: "المجموعة" }, { key: "branch", label: "الفرع" }, { key: "menuClass", label: "تصنيف المنيو" }, { key: "price", label: "السعر" }, { key: "status", label: "الحالة" }]}
+          filename="أصناف_نقطة_البيع"
+          title="أصناف نقطة البيع"
+        />
       </div>
 
       {/* Table */}

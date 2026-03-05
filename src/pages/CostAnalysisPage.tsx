@@ -11,6 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { CalendarIcon, Store, Printer, FileSpreadsheet, Layers, Building2, Download, FileText, BarChart3, TrendingUp, TrendingDown, Minus, Warehouse } from "lucide-react";
+import { exportToExcel, exportToPDF } from "@/lib/exportUtils";
+import { toast } from "sonner";
 import {
   Table, TableHeader, TableBody, TableFooter, TableHead, TableRow, TableCell,
 } from "@/components/ui/table";
@@ -553,10 +555,64 @@ export const CostAnalysisPage: React.FC = () => {
     return group?.items || [];
   }, [chartCategoryFilter, grouped, calcData]);
 
-  const handlePrint = () => window.print();
-  const handleExportExcel = () => { /* placeholder */ };
-  const handleExportPdf = () => { /* placeholder */ };
+  const exportColumns = [
+    { key: "code", label: "كود الصنف" },
+    { key: "name", label: "اسم الصنف" },
+    { key: "unit", label: "الوحدة" },
+    { key: "openQty", label: "أول المدة - كمية" },
+    { key: "openVal", label: "أول المدة - قيمة" },
+    { key: "inQty", label: "الوارد - كمية" },
+    { key: "inVal", label: "الوارد - قيمة" },
+    { key: "outQty", label: "المنصرف - كمية" },
+    { key: "outVal", label: "المنصرف - قيمة" },
+    { key: "bookQty", label: "الدفتري - كمية" },
+    { key: "bookVal", label: "الدفتري - قيمة" },
+    { key: "countQty", label: "الفعلي - كمية" },
+    { key: "countVal", label: "الفعلي - قيمة" },
+    { key: "varQty", label: "التباين - كمية" },
+    { key: "varVal", label: "التباين - قيمة" },
+  ];
 
+  const exportData = useMemo(() => {
+    const rows: Record<string, any>[] = [];
+    for (const g of grouped) {
+      for (const item of g.items) {
+        rows.push({
+          code: item.code || "—",
+          name: item.name,
+          unit: item.unit,
+          openQty: fmtQty(item.openQty),
+          openVal: fmtNum(item.openVal),
+          inQty: fmtQty(item.inQty),
+          inVal: fmtNum(item.inVal),
+          outQty: fmtQty(item.outQty),
+          outVal: fmtNum(item.outVal),
+          bookQty: fmtQty(item.bookQty),
+          bookVal: fmtNum(item.bookVal),
+          countQty: fmtQty(item.countQty),
+          countVal: fmtNum(item.countVal),
+          varQty: fmtQty(item.varQty),
+          varVal: fmtNum(item.varVal),
+        });
+      }
+    }
+    return rows;
+  }, [grouped]);
+
+  const handleExportExcel = () => {
+    try {
+      exportToExcel({ title: "تحليل التكاليف", filename: "تحليل_التكاليف", columns: exportColumns, data: exportData });
+      toast.success("تم تصدير الملف بنجاح");
+    } catch { toast.error("حدث خطأ أثناء التصدير"); }
+  };
+  const handleExportPdf = async () => {
+    try {
+      await exportToPDF({ title: "تحليل التكاليف", filename: "تحليل_التكاليف", columns: exportColumns, data: exportData });
+      toast.success("تم تصدير الملف بنجاح");
+    } catch { toast.error("حدث خطأ أثناء التصدير"); }
+  };
+
+  const handlePrint = () => window.print();
   const hasFilters = dateFrom || dateTo || locationFilter !== "all" || categoryFilter !== "all" || departmentFilter !== "all";
 
   const fmtNum = (n: number) => Number(n.toFixed(2)).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });

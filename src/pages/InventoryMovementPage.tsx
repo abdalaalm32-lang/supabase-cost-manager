@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { ExportButtons } from "@/components/ExportButtons";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";

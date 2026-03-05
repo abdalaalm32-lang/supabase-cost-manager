@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { ExportButtons } from "@/components/ExportButtons";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -491,6 +492,15 @@ export const CostAdjustmentReportsPage: React.FC = () => {
       {/* Table */}
       <Card>
         <CardContent className="p-0">
+          <div className="flex items-center justify-between px-4 pt-4 pb-2">
+            <h3 className="text-sm font-bold">جدول تفاصيل تعديلات التكاليف</h3>
+            <ExportButtons
+              data={processedData.map((row: any) => ({ record: row.recordNumber, date: row.date, item: row.itemName, code: row.code, location: row.branchName, category: row.catName, oldCost: fmt(row.oldCost), newCost: fmt(row.newCost), diff: fmt(row.diff), diffPct: row.diffPercent.toFixed(1) + "%", notes: row.notes || "—" }))}
+              columns={[{ key: "record", label: "رقم السجل" }, { key: "date", label: "التاريخ" }, { key: "item", label: "الصنف" }, { key: "code", label: "الكود" }, { key: "location", label: "الموقع" }, { key: "category", label: "المجموعة" }, { key: "oldCost", label: "التكلفة السابقة" }, { key: "newCost", label: "التكلفة الجديدة" }, { key: "diff", label: "فرق القيمة" }, { key: "diffPct", label: "نسبة التغيير" }, { key: "notes", label: "البيان" }]}
+              filename="تقارير_تعديل_التكاليف"
+              title="تقارير تعديل التكاليف"
+            />
+          </div>
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>

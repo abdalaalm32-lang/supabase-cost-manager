@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef } from "react";
+import { ExportButtons } from "@/components/ExportButtons";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -618,9 +619,17 @@ export const PurchaseReportsPage: React.FC = () => {
       {/* Table */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-bold flex items-center gap-2">
-            <Package size={16} /> جدول تفاصيل المشتريات ({filteredData.length} خامة)
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-bold flex items-center gap-2">
+              <Package size={16} /> جدول تفاصيل المشتريات ({filteredData.length} خامة)
+            </CardTitle>
+            <ExportButtons
+              data={filteredData.map((item: any) => ({ code: item.code || "—", name: item.name, category: item.categoryName, purchases: item.purchaseCount, supplier: item.topSupplier, qty: fmt(item.totalQty), unit: item.unit, stdCost: fmt(item.standardCost), avgCost: fmt(item.avgCost), diff: fmt(item.priceDiff), total: fmt(item.totalValue) }))}
+              columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الخامة" }, { key: "category", label: "المجموعة" }, { key: "purchases", label: "عدد الشراء" }, { key: "supplier", label: "المورد الأكثر" }, { key: "qty", label: "إجمالي الكمية" }, { key: "unit", label: "الوحدة" }, { key: "stdCost", label: "التكلفة المعيارية" }, { key: "avgCost", label: "متوسط التكلفة" }, { key: "diff", label: "فرق السعر" }, { key: "total", label: "إجمالي القيمة" }]}
+              filename="تقارير_المشتريات"
+              title="تقارير المشتريات"
+            />
+          </div>
         </CardHeader>
         <CardContent className="p-0" ref={tableRef}>
           <div className="overflow-x-auto">

@@ -692,39 +692,49 @@ ${allTablesHTML}
             </SelectContent>
           </Select>
 
-          {/* Print/Export All Recipes */}
-          {allRecipesData.length > 0 && (
-            <div className="flex items-center gap-1 flex-wrap">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-1 h-7 text-xs w-full">
-                    <Printer size={12} /> طباعة الكل
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handlePrintAllRecipes(false)}>الكميات فقط</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handlePrintAllRecipes(true)}>بالتكلفة</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Button variant="outline" size="sm" className="gap-1 h-7 text-xs flex-1" onClick={handleExportAllPdf} disabled={loadingAllPdf}>
-                {loadingAllPdf ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />} PDF
-              </Button>
-              <Button variant="outline" size="sm" className="gap-1 h-7 text-xs flex-1" onClick={handleExportAllExcel} disabled={loadingAllExcel}>
-                {loadingAllExcel ? <Loader2 size={12} className="animate-spin" /> : <FileSpreadsheet size={12} className="text-green-600" />} Excel
-              </Button>
-            </div>
-          )}
+          {/* Print/Export All Recipes - requires branch selection */}
+          {selectedBranch !== "all" && (
+            <>
+              {/* Category filter for print */}
+              <Select value={selectedPrintCategory} onValueChange={setSelectedPrintCategory}>
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder="تصنيف الطباعة" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">كل التصنيفات</SelectItem>
+                  {posCategories
+                    .filter((c: any) => !c.branch_id || c.branch_id === selectedBranch)
+                    .map((c: any) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
 
-          <Select value={selectedEngClass} onValueChange={setSelectedEngClass}>
-            <SelectTrigger className="h-9 text-sm">
-              <SelectValue placeholder="تصنيف المنيو" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">كل التصنيفات</SelectItem>
-              <SelectItem value="kitchen">Kitchen</SelectItem>
-              <SelectItem value="bar">Bar</SelectItem>
-            </SelectContent>
-          </Select>
+              {allRecipesData.length > 0 && (
+                <div className="flex items-center gap-1 flex-wrap">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="gap-1 h-7 text-xs w-full">
+                        <Printer size={12} /> طباعة الكل ({allRecipesData.length})
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handlePrintAllRecipes(false)}>الكميات فقط</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handlePrintAllRecipes(true)}>بالتكلفة</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <Button variant="outline" size="sm" className="gap-1 h-7 text-xs flex-1" onClick={handleExportAllPdf} disabled={loadingAllPdf}>
+                    {loadingAllPdf ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />} PDF
+                  </Button>
+                  <Button variant="outline" size="sm" className="gap-1 h-7 text-xs flex-1" onClick={handleExportAllExcel} disabled={loadingAllExcel}>
+                    {loadingAllExcel ? <Loader2 size={12} className="animate-spin" /> : <FileSpreadsheet size={12} className="text-green-600" />} Excel
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
 
           {/* Product Search */}
           <div className="relative">

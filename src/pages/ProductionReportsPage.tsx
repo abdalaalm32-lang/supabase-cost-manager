@@ -503,6 +503,7 @@ export const ProductionReportsPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-bold flex items-center gap-2">
               <BarChart3 size={16} /> جدول كثافة الإنتاج ({processedData.length} صنف)
+            </CardTitle>
             <ExportButtons
               data={processedData.map((item: any) => ({ code: item.code || "—", name: item.name, category: item.catName, count: item.productionCount, qty: fmt(item.totalProducedQty), stock: fmt(item.currentStock), unit: item.stockUnit, avgCost: fmt(item.avgCost), totalCost: fmt(item.totalProductionCost), lastDate: item.lastProductionDate }))}
               columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الصنف" }, { key: "category", label: "المجموعة" }, { key: "count", label: "كثافة الإنتاج" }, { key: "qty", label: "إجمالي الكمية" }, { key: "stock", label: "الرصيد الحالي" }, { key: "unit", label: "الوحدة" }, { key: "avgCost", label: "متوسط التكلفة" }, { key: "totalCost", label: "إجمالي تكلفة الإنتاج" }, { key: "lastDate", label: "آخر تاريخ" }]}

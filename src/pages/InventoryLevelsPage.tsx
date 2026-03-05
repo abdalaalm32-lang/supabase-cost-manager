@@ -471,6 +471,7 @@ export const InventoryLevelsPage: React.FC = () => {
               />
             </div>
           </div>
+        </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>

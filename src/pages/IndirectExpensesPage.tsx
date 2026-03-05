@@ -36,6 +36,7 @@ interface CostingPeriod {
   rent: number;
   default_consumables_pct: number;
   default_packing_cost: number;
+  tax_rate: number;
   status: string;
   created_at: string;
   custom_expenses: CustomExpense[];
@@ -58,6 +59,7 @@ const emptyForm = {
   rent: 0,
   default_consumables_pct: 1,
   default_packing_cost: 0,
+  tax_rate: 0,
   custom_expenses: [] as CustomExpense[],
   branch_id: "" as string,
 };
@@ -178,6 +180,7 @@ export const IndirectExpensesPage: React.FC = () => {
       rent: form.rent,
       default_consumables_pct: form.default_consumables_pct,
       default_packing_cost: form.default_packing_cost,
+      tax_rate: form.tax_rate,
       custom_expenses: form.custom_expenses as any,
       branch_id: form.branch_id || null,
     };
@@ -218,6 +221,7 @@ export const IndirectExpensesPage: React.FC = () => {
       rent: p.rent,
       default_consumables_pct: p.default_consumables_pct,
       default_packing_cost: p.default_packing_cost,
+      tax_rate: (p as any).tax_rate || 0,
       custom_expenses: p.custom_expenses || [],
       branch_id: p.branch_id || "",
     });
@@ -390,6 +394,7 @@ export const IndirectExpensesPage: React.FC = () => {
                 <h3 className="font-semibold mb-3">إعدادات التكاليف الافتراضية</h3>
                 <div className="grid grid-cols-2 gap-3">
                   <div><Label>نسبة المستهلكات الافتراضية (%)</Label><Input type="number" step="0.1" value={form.default_consumables_pct} onChange={(e) => setForm({ ...form, default_consumables_pct: parseFloat(e.target.value) || 0 })} /></div>
+                  <div><Label>نسبة الضريبة (%)</Label><Input type="number" step="0.1" value={form.tax_rate} onChange={(e) => setForm({ ...form, tax_rate: parseFloat(e.target.value) || 0 })} /></div>
                 </div>
               </div>
 

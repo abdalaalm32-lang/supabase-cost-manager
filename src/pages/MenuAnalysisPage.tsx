@@ -13,6 +13,7 @@ import { AlertTriangle, Package } from "lucide-react";
 import { CategoryPackingTable } from "@/components/menu-analysis/CategoryPackingTable";
 import { CategorySummaryTable } from "@/components/menu-analysis/CategorySummaryTable";
 import { CategorySideCostTable } from "@/components/menu-analysis/CategorySideCostTable";
+import { CategoryFinancialTable } from "@/components/menu-analysis/CategoryFinancialTable";
 
 interface PosItem {
   id: string;
@@ -48,6 +49,7 @@ interface CostingPeriod {
   default_consumables_pct: number;
   default_packing_cost: number;
   custom_expenses: { name: string; value: number }[];
+  tax_rate: number;
 }
 
 interface CostOverride {
@@ -445,8 +447,8 @@ export const MenuAnalysisPage: React.FC = () => {
                   </Table>
                 </div>
 
-                {/* Side Cost, Packing & Summary tables */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/20">
+                {/* Side Cost, Packing, Summary & Financial tables */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-muted/20">
                   <div>
                     <h4 className="text-sm font-bold mb-2">تكلفة إضافية للكاتجوري</h4>
                     <CategorySideCostTable
@@ -476,6 +478,18 @@ export const MenuAnalysisPage: React.FC = () => {
                       avgDirectCost={avgDirectCost}
                       avgDirectProfit={avgDirectProfit}
                       breakEvenOrders={breakEvenOrders}
+                    />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold mb-2">الملخص المالي للكاتجوري</h4>
+                    <CategoryFinancialTable
+                      categoryName={cat.name}
+                      totalSellingPrice={catTotalPrice}
+                      totalDirectCost={catTotalDirect}
+                      totalIndirectCost={catItemsIndirectSum}
+                      netTakeAway={catTotalPrice - catTotalDirect - catItemsIndirectSum}
+                      netTable={(catTotalPrice * (1 - (selectedPeriod?.tax_rate || 0) / 100)) - catTotalDirect - catItemsIndirectSum}
+                      itemsCount={catItemCount}
                     />
                   </div>
                 </div>

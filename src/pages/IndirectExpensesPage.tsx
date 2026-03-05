@@ -72,6 +72,10 @@ const getDaysInPeriod = (start: string, end: string) => {
   return Math.max(1, Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1);
 };
 
+interface CostOverride {
+  pos_item_id: string; side_cost: number; consumables_pct: number | null; packing_cost: number;
+}
+
 export const IndirectExpensesPage: React.FC = () => {
   const { auth } = useAuth();
   const [periods, setPeriods] = useState<CostingPeriod[]>([]);
@@ -83,6 +87,11 @@ export const IndirectExpensesPage: React.FC = () => {
   const [newCustomName, setNewCustomName] = useState("");
   const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
   const [selectedBranchId, setSelectedBranchId] = useState<string>("all");
+  const [posItems, setPosItems] = useState<any[]>([]);
+  const [recipeCosts, setRecipeCosts] = useState<Map<string, number>>(new Map());
+  const [costOverrides, setCostOverrides] = useState<Map<string, CostOverride>>(new Map());
+  const [categoryPackingItems, setCategoryPackingItems] = useState<any[]>([]);
+  const [categorySideCostItems, setCategorySideCostItems] = useState<any[]>([]);
 
   const companyId = auth.profile?.company_id;
 
@@ -104,13 +113,55 @@ export const IndirectExpensesPage: React.FC = () => {
     setLoading(false);
   };
 
+  const fetchCostData = async () => {
+    if (!companyId) return;
+    const [itemsRes, recipesRes, overridesRes] = await Promise.all([
+      supabase.from("pos_items").select("*, categories:category_id(name)").eq("company_id", companyId).eq("active", true),
+      supabase.from("recipes").select("id, menu_item_id, recipe_ingredients(stock_item_id, qty, stock_items:stock_item_id(avg_cost, conversion_factor))").eq("company_id", companyId),
+      supabase.from("pos_item_cost_settings").select("*").eq("company_id", companyId),
+    ]);
+    if (itemsRes.data) {
+      setPosItems((itemsRes.data as any[]).map(item => ({ ...item, category: item.categories?.name || item.category || null })));
+    }
+    const recipeCostMap = new Map<string, number>();
+    if (recipesRes.data) {
+      for (const recipe of recipesRes.data as any[]) {
+        let totalCost = 0;
+        for (const ing of recipe.recipe_ingredients || []) {
+          const si = ing.stock_items;
+          if (si) totalCost += ing.qty * (si.avg_cost / (si.conversion_factor || 1));
+        }
+        recipeCostMap.set(recipe.menu_item_id, totalCost);
+      }
+    }
+    setRecipeCosts(recipeCostMap);
+    const overrideMap = new Map<string, CostOverride>();
+    if (overridesRes.data) for (const o of overridesRes.data as any[]) overrideMap.set(o.pos_item_id, o as CostOverride);
+    setCostOverrides(overrideMap);
+  };
+
+  const fetchPackingSideCosts = async () => {
+    if (!companyId || !selectedPeriod) return;
+    const [packRes, sideRes] = await Promise.all([
+      supabase.from("category_packing_items").select("*").eq("company_id", companyId).eq("period_id", selectedPeriod.id),
+      supabase.from("category_side_costs" as any).select("*").eq("company_id", companyId).eq("period_id", selectedPeriod.id),
+    ]);
+    if (packRes.data) setCategoryPackingItems(packRes.data);
+    if (sideRes.data) setCategorySideCostItems(sideRes.data as any[]);
+  };
+
   useEffect(() => {
     fetchPeriods();
     if (companyId) {
       supabase.from("branches").select("id, name").eq("company_id", companyId).eq("active", true)
         .then(({ data }) => { if (data) setBranches(data); });
+      fetchCostData();
     }
   }, [companyId]);
+
+  useEffect(() => {
+    fetchPackingSideCosts();
+  }, [selectedPeriod?.id, companyId]);
 
   const totalIndirectCost = (p: CostingPeriod) => {
     const base = p.media + p.bills + p.salaries + p.other_expenses + p.maintenance + p.rent;
@@ -259,6 +310,39 @@ export const IndirectExpensesPage: React.FC = () => {
   const expenseItems = selectedPeriod ? getExpenseItems(selectedPeriod) : [];
   const total = selectedPeriod ? totalIndirectCost(selectedPeriod) : 0;
   const monthSales = selectedPeriod ? monthlyExpectedSales(selectedPeriod) : 0;
+
+  // Calculate Avg Direct Cost %
+  const avgDirectCostPct = (() => {
+    if (!selectedPeriod || posItems.length === 0) return 0;
+    const filteredItems = selectedBranchId !== "all" 
+      ? posItems.filter(i => i.branch_id === selectedBranchId) 
+      : posItems;
+    
+    let totalPrice = 0;
+    let totalDirectCost = 0;
+    const getCatPackingCost = (catName: string) => categoryPackingItems.filter((p: any) => p.category_name === catName).reduce((s: number, p: any) => s + p.cost, 0);
+    const getCatSideCost = (catName: string) => categorySideCostItems.filter((p: any) => p.category_name === catName).reduce((s: number, p: any) => s + p.cost, 0);
+
+    for (const item of filteredItems) {
+      const catName = item.category || "بدون تصنيف";
+      const mainCost = recipeCosts.get(item.id) || 0;
+      const override = costOverrides.get(item.id);
+      const sideCost = (override?.side_cost || 0) + getCatSideCost(catName);
+      const isBar = item.menu_engineering_class?.toLowerCase() === "bar";
+      const defaultPct = isBar ? (selectedPeriod.default_consumables_pct_bar ?? selectedPeriod.default_consumables_pct) : selectedPeriod.default_consumables_pct;
+      const consumablesPct = override?.consumables_pct ?? defaultPct;
+      const consumables = (item.price * consumablesPct) / 100;
+      const packingCost = getCatPackingCost(catName);
+      const finalDirectCost = mainCost + sideCost + consumables + packingCost;
+
+      totalPrice += item.price;
+      totalDirectCost += finalDirectCost;
+    }
+    return totalPrice > 0 ? (totalDirectCost / totalPrice) * 100 : 0;
+  })();
+
+  const indirectPctValue = selectedPeriod ? indirectCostPct(selectedPeriod) : 0;
+  const netProfitPct = 100 - indirectPctValue - avgDirectCostPct;
 
   return (
     <div className="space-y-6 animate-fade-in-up" dir="rtl">
@@ -474,7 +558,41 @@ export const IndirectExpensesPage: React.FC = () => {
             </Card>
           </div>
 
-          {/* Expense breakdown */}
+          {/* Profitability Summary Table */}
+          <Card>
+            <CardContent className="p-0 overflow-hidden rounded-lg">
+              <table className="w-full text-sm">
+                <tbody>
+                  <tr>
+                    <td className="px-6 py-3 bg-[hsl(40,30%,85%)] text-right font-semibold border-b border-border w-1/2">
+                      Indirect Cost Per.
+                    </td>
+                    <td className="px-6 py-3 bg-[hsl(0,50%,90%)] text-center font-bold border-b border-border w-1/2">
+                      {indirectPctValue.toFixed(2)}%
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-6 py-3 bg-[hsl(40,30%,85%)] text-right font-semibold border-b border-border">
+                      Avg Direct Cost Per.
+                    </td>
+                    <td className="px-6 py-3 bg-[hsl(40,50%,88%)] text-center font-bold border-b border-border">
+                      {avgDirectCostPct.toFixed(2)}%
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-6 py-3 bg-[hsl(40,30%,85%)] text-right font-semibold">
+                      Net Profit Per.
+                    </td>
+                    <td className={`px-6 py-3 text-center font-bold ${netProfitPct >= 0 ? 'bg-[hsl(120,40%,85%)]' : 'bg-[hsl(0,50%,90%)]'}`}>
+                      {netProfitPct.toFixed(2)}%
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card>
               <CardHeader><CardTitle className="text-lg">توزيع المصاريف</CardTitle></CardHeader>

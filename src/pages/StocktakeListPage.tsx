@@ -234,12 +234,16 @@ export const StocktakeListPage: React.FC = () => {
         <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${Number(item.counted_qty).toFixed(2)}</td>
         <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;${diff !== 0 ? (diff > 0 ? 'color:green;' : 'color:red;') : ''}">${diff.toFixed(2)}</td>
         <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${Number(item.avg_cost).toFixed(2)}</td>
+        <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${(Number(item.counted_qty) * Number(item.avg_cost)).toFixed(2)}</td>
         <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;${diffValue !== 0 ? (diffValue > 0 ? 'color:green;' : 'color:red;') : ''}">${diffValue.toFixed(2)}</td>
       </tr>`;
     });
+    const totalValue = (items || []).reduce((s: number, item: any) => s + Number(item.counted_qty) * Number(item.avg_cost), 0);
     itemsHTML += `<tr style="font-weight:bold;background:#f5f5f5;">
-      <td colspan="6" style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">إجمالي قيمة الفروقات</td>
-      <td colspan="3" style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;${totalDiffValue !== 0 ? (totalDiffValue > 0 ? 'color:green;' : 'color:red;') : ''}">${totalDiffValue.toFixed(2)}</td>
+      <td colspan="6" style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">الإجمالي</td>
+      <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;"></td>
+      <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${totalValue.toFixed(2)}</td>
+      <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;${totalDiffValue !== 0 ? (totalDiffValue > 0 ? 'color:green;' : 'color:red;') : ''}">${totalDiffValue.toFixed(2)}</td>
     </tr>`;
 
     const printHTML = `<!DOCTYPE html>
@@ -296,6 +300,7 @@ export const StocktakeListPage: React.FC = () => {
         <th>الكمية الفعلية</th>
         <th>الفرق</th>
         <th>متوسط التكلفة</th>
+        <th>القيمة</th>
         <th>قيمة الفرق</th>
       </tr>
     </thead>

@@ -678,7 +678,7 @@ ${allTablesHTML}
           <h2 className="font-bold text-sm">المنتجات</h2>
 
           {/* Branch Filter */}
-          <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+          <Select value={selectedBranch} onValueChange={(v) => { setSelectedBranch(v); setSelectedPrintCategory("all"); }}>
             <SelectTrigger className="h-9 text-sm">
               <SelectValue placeholder="كل الفروع" />
             </SelectTrigger>

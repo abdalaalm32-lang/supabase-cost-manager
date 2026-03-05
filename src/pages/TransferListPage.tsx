@@ -158,6 +158,7 @@ export const TransferListPage: React.FC = () => {
               <TableHead className="text-right">التاريخ</TableHead>
               <TableHead className="text-right">من</TableHead>
               <TableHead className="text-right">إلى</TableHead>
+              <TableHead className="text-right">المنشئ</TableHead>
               <TableHead className="text-right">الحالة</TableHead>
               <TableHead className="text-right">إجمالي التكلفة</TableHead>
               <TableHead className="text-right">الإجراءات</TableHead>
@@ -165,9 +166,9 @@ export const TransferListPage: React.FC = () => {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">جاري التحميل...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">جاري التحميل...</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">لا توجد أذونات تحويل</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">لا توجد أذونات تحويل</TableCell></TableRow>
             ) : (
               filtered.map((r: any) => (
                 <TableRow key={r.id}>
@@ -175,6 +176,7 @@ export const TransferListPage: React.FC = () => {
                   <TableCell>{r.date}</TableCell>
                   <TableCell>{r.source_name || "—"}</TableCell>
                   <TableCell>{r.destination_name || "—"}</TableCell>
+                  <TableCell className="text-sm">{r.creator_name || "—"}</TableCell>
                   <TableCell>{getStatusBadge(r.status)}</TableCell>
                   <TableCell>{Number(r.total_cost || 0).toFixed(2)}</TableCell>
                   <TableCell>

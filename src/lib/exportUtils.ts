@@ -254,7 +254,7 @@ export async function exportToPDF({ title, filename, columns, data, headerGroups
 
   doc.setFont(fontName, "normal");
   doc.setFontSize(8);
-  doc.text(processArabicText(`Cost Management System • ${dateStr}`), pageWidth / 2, 17, { align: "center" });
+  doc.text(processArabicText(`نظام إدارة التكاليف • ${dateStr}`), pageWidth / 2, 17, { align: "center" });
 
   doc.setDrawColor(...BLACK);
   doc.setLineWidth(0.2);

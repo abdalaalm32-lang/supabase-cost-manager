@@ -183,6 +183,9 @@ export async function exportToPDF({ title, filename, columns, data, headerGroups
 
   const processArabicText = (value: unknown) => {
     const raw = value !== null && value !== undefined && String(value).trim() !== "" ? String(value) : "—";
+    const hasArabic = /[\u0600-\u06FF]/.test(raw);
+    if (!hasArabic) return raw;
+
     const arabicParser = (doc as any).processArabic;
     return typeof arabicParser === "function" ? arabicParser(raw) : raw;
   };
@@ -213,7 +216,7 @@ export async function exportToPDF({ title, filename, columns, data, headerGroups
 
   doc.setLanguage("ar");
   if (typeof (doc as any).setR2L === "function") {
-    (doc as any).setR2L(true);
+    (doc as any).setR2L(false);
   }
   doc.setFont(fontName, "normal");
 
@@ -251,7 +254,7 @@ export async function exportToPDF({ title, filename, columns, data, headerGroups
 
   doc.setFont(fontName, "normal");
   doc.setFontSize(8);
-  doc.text(processArabicText(`Cost Management System • ${dateStr}`), pageWidth / 2, 17, { align: "center" });
+  doc.text(processArabicText(`نظام إدارة التكاليف • ${dateStr}`), pageWidth / 2, 17, { align: "center" });
 
   doc.setDrawColor(...BLACK);
   doc.setLineWidth(0.2);

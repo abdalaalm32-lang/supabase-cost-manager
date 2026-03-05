@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/table";
 import {
   Plus, Save, Trash2, Search, ArrowRight, ArrowLeftRight,
-  DollarSign, Calendar, Archive,
+  DollarSign, Calendar, Archive, Printer,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";

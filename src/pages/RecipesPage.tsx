@@ -448,8 +448,16 @@ export const RecipesPage: React.FC = () => {
   // === Print / Export ALL recipes for selected branch ===
 
   const allRecipesData = useMemo(() => {
+    if (selectedBranch === "all") return [];
     // Get products that have recipes & match branch filter
-    const products = filteredProducts.filter((p: any) => !!recipeMap[p.id]);
+    let products = filteredProducts.filter((p: any) => !!recipeMap[p.id]);
+    // Filter by category if not "all"
+    if (selectedPrintCategory !== "all") {
+      products = products.filter((p: any) => {
+        const catName = p.category || posCategories.find((c: any) => c.id === p.category_id)?.name || "";
+        return catName === selectedPrintCategory || p.category_id === selectedPrintCategory;
+      });
+    }
     return products.map((p: any) => {
       const recipe = recipeMap[p.id];
       const ings = (recipe.recipe_ingredients || []).map((ri: any) => {
@@ -463,7 +471,7 @@ export const RecipesPage: React.FC = () => {
       const totalCost = ings.reduce((s: number, i: any) => s + i.cost, 0);
       return { product: p, ingredients: ings, totalCost };
     });
-  }, [filteredProducts, recipeMap, allStockItems]);
+  }, [filteredProducts, recipeMap, allStockItems, selectedBranch, selectedPrintCategory, posCategories]);
 
   const handlePrintAllRecipes = (withCost: boolean) => {
     if (allRecipesData.length === 0) return;

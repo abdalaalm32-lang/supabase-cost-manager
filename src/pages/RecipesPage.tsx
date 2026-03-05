@@ -39,6 +39,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { RecipePrintExport, MaterialUsagePrintExport } from "@/components/RecipePrintExport";
+import { exportToExcel, exportToPDF, type ExportColumn } from "@/lib/exportUtils";
 
 // Local types
 interface LocalIngredient {

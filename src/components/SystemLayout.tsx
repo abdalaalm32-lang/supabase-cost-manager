@@ -367,7 +367,7 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
             <NotificationBell />
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto relative z-10">
+        <main className="flex-1 min-h-0 overflow-y-auto relative z-10">
           <div className="p-6">{children}</div>
         </main>
       </div>

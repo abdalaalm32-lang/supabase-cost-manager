@@ -17,6 +17,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2, Search } from "lucide-react";
+import { ExportButtons } from "@/components/ExportButtons";
 import { toast } from "sonner";
 
 export const SuppliersTab: React.FC = () => {
@@ -128,9 +129,17 @@ export const SuppliersTab: React.FC = () => {
         </Button>
       </div>
 
-      <div className="relative max-w-md">
-        <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="بحث بالاسم أو الكود أو الهاتف أو الرقم الضريبي..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="glass-input pr-9" />
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="بحث بالاسم أو الكود أو الهاتف أو الرقم الضريبي..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="glass-input pr-9" />
+        </div>
+        <ExportButtons
+          data={filtered.map((s: any) => ({ code: s.code || "—", name: s.name, phone: s.phone || "—", taxId: s.tax_id || "—" }))}
+          columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الاسم" }, { key: "phone", label: "الهاتف" }, { key: "taxId", label: "الرقم الضريبي" }]}
+          filename="الموردين"
+          title="الموردين"
+        />
       </div>
 
       <div className="glass-card overflow-hidden">

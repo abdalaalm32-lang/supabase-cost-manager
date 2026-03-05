@@ -9,6 +9,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Plus, Search, Pencil, Trash2, Eye, ToggleLeft, ToggleRight } from "lucide-react";
+import { ExportButtons } from "@/components/ExportButtons";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -122,6 +123,12 @@ export const CostAdjustmentPage: React.FC = () => {
             <Button key={s} variant={filter === s ? "default" : "outline"} size="sm" onClick={() => setFilter(s)}>{s}</Button>
           ))}
         </div>
+        <ExportButtons
+          data={filtered.map((r: any) => ({ record: r.record_number || "—", date: new Date(r.date).toLocaleDateString("ar-EG"), location: getLocation(r), status: (r as any).is_edited && r.status === "مكتمل" ? "معدل" : r.status, items: r.cost_adjustment_items?.length || 0 }))}
+          columns={[{ key: "record", label: "رقم السجل" }, { key: "date", label: "التاريخ" }, { key: "location", label: "الموقع" }, { key: "status", label: "الحالة" }, { key: "items", label: "عدد الأصناف" }]}
+          filename="تعديل_التكاليف"
+          title="تعديل التكاليف"
+        />
       </div>
 
       <div className="glass-card overflow-hidden">

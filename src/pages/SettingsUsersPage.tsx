@@ -22,6 +22,7 @@ import { format } from "date-fns";
 import {
   Users, UserCheck, Plus, Eye, CalendarIcon, Clock, KeyRound, Trash2, AlertTriangle, RotateCcw
 } from "lucide-react";
+import { ExportButtons } from "@/components/ExportButtons";
 
 const ALL_PERMISSIONS = [
   { key: "dashboard", label: "لوحة التحكم" },
@@ -379,6 +380,14 @@ export const SettingsUsersPage: React.FC = () => {
       </div>
 
       {/* Users Table */}
+      <div className="flex justify-end mb-2">
+        <ExportButtons
+          data={(profiles || []).map((u: any) => ({ code: u.user_code || "—", name: u.full_name, email: u.email, role: (u.job_roles as any)?.name || "—", branch: (u.branches as any)?.name || "—", status: u.status }))}
+          columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الاسم" }, { key: "email", label: "البريد الإلكتروني" }, { key: "role", label: "الدور الوظيفي" }, { key: "branch", label: "الفرع" }, { key: "status", label: "الحالة" }]}
+          filename="المستخدمين"
+          title="المستخدمين"
+        />
+      </div>
       <Card className="glass-card">
         <CardContent className="p-0">
           <Table>

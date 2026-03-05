@@ -22,6 +22,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Pencil, Trash2, Search, Warehouse, Building2 } from "lucide-react";
+import { ExportButtons } from "@/components/ExportButtons";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 
@@ -434,6 +435,12 @@ export const StockItemsTab: React.FC = () => {
             <Button key={s} variant={filter === s ? "default" : "outline"} size="sm" onClick={() => setFilter(s)}>{s}</Button>
           ))}
         </div>
+        <ExportButtons
+          data={filtered.map((item: any) => ({ code: item.code || "—", name: item.name, category: getCatName(item.category_id), department: getDepName(item.department_id), unit: item.stock_unit, cost: Number(item.standard_cost).toFixed(2), locations: getLocationNames(item.id), status: item.active ? "نشط" : "غير نشط" }))}
+          columns={[{ key: "code", label: "الكود" }, { key: "name", label: "اسم الصنف" }, { key: "category", label: "المجموعة" }, { key: "department", label: "القسم" }, { key: "unit", label: "وحدة التخزين" }, { key: "cost", label: "التكلفة المعيارية" }, { key: "locations", label: "المواقع" }, { key: "status", label: "الحالة" }]}
+          filename="أصناف_المخزون"
+          title="أصناف المخزون"
+        />
       </div>
 
       {/* Table */}

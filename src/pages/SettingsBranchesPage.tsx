@@ -18,6 +18,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import {
   Building2, MapPin, Plus, MoreHorizontal, Pencil, Trash2, ToggleLeft, Search, MessageCircle, AlertTriangle
 } from "lucide-react";
+import { ExportButtons } from "@/components/ExportButtons";
 
 export const SettingsBranchesPage: React.FC = () => {
   const { auth } = useAuth();
@@ -238,9 +239,17 @@ export const SettingsBranchesPage: React.FC = () => {
       </div>
 
       {/* Search */}
-      <div className="relative max-w-sm">
-        <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="بحث بالاسم أو الكود أو العنوان..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pr-9" />
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="بحث بالاسم أو الكود أو العنوان..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pr-9" />
+        </div>
+        <ExportButtons
+          data={filtered.map((b: any) => ({ code: b.code || "—", name: b.name, address: b.address || "—", manager: getManagerName(b.manager_id), status: b.active ? "نشط" : "متوقف" }))}
+          columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الاسم" }, { key: "address", label: "العنوان" }, { key: "manager", label: "المدير" }, { key: "status", label: "الحالة" }]}
+          filename="الفروع"
+          title="الفروع"
+        />
       </div>
 
       {/* Table */}

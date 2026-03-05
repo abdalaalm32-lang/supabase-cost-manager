@@ -20,6 +20,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2, Search, Settings2 } from "lucide-react";
+import { ExportButtons } from "@/components/ExportButtons";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
 
@@ -256,6 +257,12 @@ export const CategoriesTab: React.FC = () => {
             <Button key={s} variant={filter === s ? "default" : "outline"} size="sm" onClick={() => setFilter(s)}>{s}</Button>
           ))}
         </div>
+        <ExportButtons
+          data={filtered.map((c: any) => ({ code: c.code || "—", name: c.name, department: getDeptName(c), storageType: c.storage_type || "—", status: c.active ? "نشط" : "غير نشط" }))}
+          columns={[{ key: "code", label: "الكود" }, { key: "name", label: "اسم المجموعة" }, { key: "department", label: "القسم التابع" }, { key: "storageType", label: "نوع التخزين" }, { key: "status", label: "الحالة" }]}
+          filename="المجموعات"
+          title="المجموعات"
+        />
       </div>
 
       <div className="glass-card overflow-hidden">

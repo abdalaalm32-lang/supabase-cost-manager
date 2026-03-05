@@ -20,6 +20,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import {
   Warehouse, Building2, Plus, MoreHorizontal, Pencil, Trash2, ToggleLeft, Search, Filter, MessageCircle, AlertTriangle
 } from "lucide-react";
+import { ExportButtons } from "@/components/ExportButtons";
 
 const CLASSIFICATIONS = [
   "مخزن رئيسي",
@@ -330,6 +331,12 @@ export const SettingsWarehousesPage: React.FC = () => {
             <SelectItem value="inactive">متوقف</SelectItem>
           </SelectContent>
         </Select>
+        <ExportButtons
+          data={filtered.map((w: any) => ({ code: w.code || "—", name: w.name, classification: w.classification || "—", manager: getManagerName(w.manager_id), branches: getBranchNames(w.id), status: w.active ? "نشط" : "متوقف" }))}
+          columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الاسم" }, { key: "classification", label: "التصنيف" }, { key: "manager", label: "المسؤول" }, { key: "branches", label: "الفروع المرتبطة" }, { key: "status", label: "الحالة" }]}
+          filename="المخازن"
+          title="المخازن"
+        />
       </div>
 
       {/* Table */}

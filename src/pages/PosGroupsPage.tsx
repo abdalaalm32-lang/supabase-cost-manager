@@ -16,6 +16,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { Plus, Archive, RotateCcw, Search, Pencil } from "lucide-react";
+import { ExportButtons } from "@/components/ExportButtons";
 import { toast } from "sonner";
 
 type FilterStatus = "نشط" | "مؤرشف" | "الكل";
@@ -181,6 +182,12 @@ export const PosGroupsPage: React.FC = () => {
             <Button key={s} variant={filter === s ? "default" : "outline"} size="sm" onClick={() => setFilter(s)}>{s}</Button>
           ))}
         </div>
+        <ExportButtons
+          data={filtered.map((cat: any) => ({ code: cat.code || "—", name: cat.name, branch: cat.branches?.name || "—", status: cat.active ? "نشط" : "مؤرشف" }))}
+          columns={[{ key: "code", label: "الكود" }, { key: "name", label: "المجموعة" }, { key: "branch", label: "الفرع" }, { key: "status", label: "الحالة" }]}
+          filename="مجموعات_نقطة_البيع"
+          title="مجموعات نقطة البيع"
+        />
       </div>
 
       {/* Table */}

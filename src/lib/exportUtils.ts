@@ -237,33 +237,42 @@ export async function exportToPDF({ title, filename, columns, data }: ExportOpti
     })
   );
 
+  // Dynamic font size based on column count
+  const colCount = columns.length;
+  const bodyFontSize = colCount > 12 ? 5 : colCount > 8 ? 6 : colCount > 5 ? 7 : 8;
+  const headFontSize = bodyFontSize + 0.5;
+
   autoTable(doc, {
     head: [headers],
     body: rows,
     startY: 40,
     theme: "grid",
+    tableWidth: "auto",
     styles: {
       font: fontName,
-      fontSize: 9,
-      cellPadding: 3,
-      halign: "center",
+      fontSize: bodyFontSize,
+      cellPadding: 1.5,
+      halign: "right",
       valign: "middle",
       lineColor: BORDER_DARK,
-      lineWidth: 0.2,
+      lineWidth: 0.15,
       textColor: TEXT_LIGHT,
       fillColor: DARK_CARD,
+      overflow: "linebreak",
+      cellWidth: "wrap",
     },
     headStyles: {
       fillColor: PRIMARY_DIM,
       textColor: WHITE,
-      fontSize: 10,
+      fontSize: headFontSize,
       fontStyle: "bold",
-      halign: "center",
+      halign: "right",
+      cellPadding: 2,
     },
     alternateRowStyles: {
       fillColor: DARK_ROW_ALT,
     },
-    margin: { top: 40, right: 10, bottom: 25, left: 10 },
+    margin: { top: 40, right: 5, bottom: 20, left: 5 },
     didDrawPage: (pageData: any) => {
       // Dark background on each page
       doc.setFillColor(...DARK_BG);

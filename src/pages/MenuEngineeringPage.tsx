@@ -448,7 +448,7 @@ export const MenuEngineeringPage: React.FC = () => {
                   <TableHead className="text-right text-xs">ربح الكاتجوري</TableHead>
                   <TableHead className="text-right text-xs">شعبية الكاتجوري</TableHead>
                   <TableHead className="text-right text-xs">التصنيف</TableHead>
-                </TableRow>
+                  <TableHead className="text-right text-xs">القرار</TableHead>
               </TableHeader>
               <TableBody>
                 {engineeringData.length === 0 ? (

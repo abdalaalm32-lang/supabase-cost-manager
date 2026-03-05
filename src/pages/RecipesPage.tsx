@@ -445,8 +445,6 @@ export const RecipesPage: React.FC = () => {
   const isLocked = recipeStatus === "ready" && !isEditing;
 
   // === Print / Export ALL recipes for selected branch ===
-  const [loadingAllPdf, setLoadingAllPdf] = useState(false);
-  const [loadingAllExcel, setLoadingAllExcel] = useState(false);
 
   const allRecipesData = useMemo(() => {
     // Get products that have recipes & match branch filter

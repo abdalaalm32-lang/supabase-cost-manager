@@ -456,16 +456,21 @@ export const RecipesPage: React.FC = () => {
             {showGlobalResults && globalSearchResults.length > 0 && (
               <div className="absolute top-full mt-1 left-0 right-0 z-50 glass-card p-2 max-h-60 overflow-auto">
                 {globalSearchResults.map((item: any) => (
-                  <div key={item.id} className="p-2 rounded-lg hover:bg-muted/50 text-sm">
+                  <div
+                    key={item.id}
+                    className="p-2 rounded-lg hover:bg-muted/50 text-sm cursor-pointer"
+                    onClick={() => {
+                      setSelectedMaterial(item);
+                      setShowGlobalResults(false);
+                    }}
+                  >
                     <div className="flex items-center justify-between">
                       <span className="font-medium">{item.name}</span>
                       <Badge variant="secondary" className="text-xs">
                         {item.usedInCount} وصفة
                       </Badge>
                     </div>
-                    {item.productNames.length > 0 && (
-                      <p className="text-xs text-muted-foreground mt-1">{item.productNames.join("، ")}</p>
-                    )}
+                    <p className="text-xs text-muted-foreground mt-0.5">{item.code} • {item.stock_unit}</p>
                   </div>
                 ))}
                 <button

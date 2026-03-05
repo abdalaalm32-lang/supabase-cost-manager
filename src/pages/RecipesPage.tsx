@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { RecipePrintExport, MaterialUsagePrintExport } from "@/components/RecipePrintExport";
 
 // Local types
 interface LocalIngredient {
@@ -72,6 +73,7 @@ export const RecipesPage: React.FC = () => {
   // Global raw material search
   const [globalSearch, setGlobalSearch] = useState("");
   const [showGlobalResults, setShowGlobalResults] = useState(false);
+  const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
 
   // Queries
   const { data: branches = [] } = useQuery({
@@ -411,11 +413,18 @@ export const RecipesPage: React.FC = () => {
       const usedIn = recipes.filter((r: any) =>
         (r.recipe_ingredients || []).some((ri: any) => ri.stock_item_id === si.id),
       );
-      const productNames = usedIn.map((r: any) => {
+      const usageDetails = usedIn.map((r: any) => {
         const product = posItems.find((p: any) => p.id === r.menu_item_id);
-        return product?.name || "—";
+        const ri = (r.recipe_ingredients || []).find((ri: any) => ri.stock_item_id === si.id);
+        return {
+          productName: product?.name || "—",
+          qty: Number(ri?.qty || 0),
+          unit: si.recipe_unit || si.stock_unit || "كجم",
+          avgCost: Number(si.avg_cost || 0),
+          conversionFactor: Number(si.conversion_factor || 1),
+        };
       });
-      return { ...si, usedInCount: usedIn.length, productNames };
+      return { ...si, usedInCount: usedIn.length, usageDetails };
     });
   }, [globalSearch, allStockItems, recipes, posItems]);
 
@@ -447,16 +456,21 @@ export const RecipesPage: React.FC = () => {
             {showGlobalResults && globalSearchResults.length > 0 && (
               <div className="absolute top-full mt-1 left-0 right-0 z-50 glass-card p-2 max-h-60 overflow-auto">
                 {globalSearchResults.map((item: any) => (
-                  <div key={item.id} className="p-2 rounded-lg hover:bg-muted/50 text-sm">
+                  <div
+                    key={item.id}
+                    className="p-2 rounded-lg hover:bg-muted/50 text-sm cursor-pointer"
+                    onClick={() => {
+                      setSelectedMaterial(item);
+                      setShowGlobalResults(false);
+                    }}
+                  >
                     <div className="flex items-center justify-between">
                       <span className="font-medium">{item.name}</span>
                       <Badge variant="secondary" className="text-xs">
                         {item.usedInCount} وصفة
                       </Badge>
                     </div>
-                    {item.productNames.length > 0 && (
-                      <p className="text-xs text-muted-foreground mt-1">{item.productNames.join("، ")}</p>
-                    )}
+                    <p className="text-xs text-muted-foreground mt-0.5">{item.code} • {item.stock_unit}</p>
                   </div>
                 ))}
                 <button
@@ -490,6 +504,16 @@ export const RecipesPage: React.FC = () => {
                     <Copy size={14} /> نسخ
                   </Button>
                 </>
+              )}
+              {ingredients.length > 0 && (
+                <RecipePrintExport
+                  productName={selectedProduct.name}
+                  productCode={selectedProduct.code}
+                  productPrice={Number(selectedProduct.price)}
+                  ingredients={ingredients}
+                  totalCost={totalIngredientsCost}
+                  type="pos"
+                />
               )}
             </>
           )}
@@ -824,6 +848,54 @@ export const RecipesPage: React.FC = () => {
               إضافة ({selectedItemIds.size})
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Material Usage Detail Dialog */}
+      <Dialog open={!!selectedMaterial} onOpenChange={(open) => !open && setSelectedMaterial(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>تفاصيل استخدام خامة: {selectedMaterial?.name}</DialogTitle>
+          </DialogHeader>
+          {selectedMaterial && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <span>الكود: {selectedMaterial.code || "—"}</span>
+                <span>الوحدة: {selectedMaterial.stock_unit}</span>
+                <span>م. التكلفة: {Number(selectedMaterial.avg_cost).toFixed(2)}</span>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-right">المنتج</TableHead>
+                    <TableHead className="text-right">الكمية</TableHead>
+                    <TableHead className="text-right">الوحدة</TableHead>
+                    <TableHead className="text-right">م. التكلفة</TableHead>
+                    <TableHead className="text-right">الإجمالي</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(selectedMaterial.usageDetails || []).map((u: any, idx: number) => {
+                    const cost = (u.qty / (u.conversionFactor || 1)) * u.avgCost;
+                    return (
+                      <TableRow key={idx}>
+                        <TableCell className="font-medium text-sm">{u.productName}</TableCell>
+                        <TableCell className="text-sm">{u.qty}</TableCell>
+                        <TableCell className="text-sm">{u.unit}</TableCell>
+                        <TableCell className="text-sm">{u.avgCost.toFixed(2)}</TableCell>
+                        <TableCell className="text-sm font-semibold">{cost.toFixed(2)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+              <MaterialUsagePrintExport
+                materialName={selectedMaterial.name}
+                materialCode={selectedMaterial.code || "—"}
+                usageData={selectedMaterial.usageDetails || []}
+              />
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

@@ -429,6 +429,15 @@ export const TransferDetailPage: React.FC = () => {
                 className="min-h-[60px]"
               />
             </div>
+
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">المنشئ</label>
+              <Input
+                value={isNew ? (auth.profile?.full_name || "") : (existingRecord?.creator_name || auth.profile?.full_name || "")}
+                disabled
+                className="h-9 text-sm bg-muted/50"
+              />
+            </div>
           </div>
 
           {/* Cost Summary */}

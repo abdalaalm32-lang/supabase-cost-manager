@@ -1818,6 +1818,7 @@ export type Database = {
           destination_id: string | null
           destination_name: string | null
           id: string
+          is_edited: boolean
           notes: string | null
           record_number: string | null
           source_id: string | null
@@ -1833,6 +1834,7 @@ export type Database = {
           destination_id?: string | null
           destination_name?: string | null
           id?: string
+          is_edited?: boolean
           notes?: string | null
           record_number?: string | null
           source_id?: string | null
@@ -1848,6 +1850,7 @@ export type Database = {
           destination_id?: string | null
           destination_name?: string | null
           id?: string
+          is_edited?: boolean
           notes?: string | null
           record_number?: string | null
           source_id?: string | null

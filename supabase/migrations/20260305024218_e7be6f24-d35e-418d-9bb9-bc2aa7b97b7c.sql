@@ -1,0 +1,1 @@
+ALTER TABLE public.transfers ADD COLUMN IF NOT EXISTS is_edited boolean NOT NULL DEFAULT false;

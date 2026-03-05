@@ -244,8 +244,8 @@ export const ProductionListPage: React.FC = () => {
     <div class="info-item"><strong>تكلفة الوحدة:</strong> ${Number(record.unit_cost).toFixed(2)}</div>
   </div>
   <div class="signatures">
-    <div class="sig-box">المُسلّم</div>
-    <div class="sig-box">المُستلم</div>
+    <div class="sig-box">مسؤول الإنتاج</div>
+    <div class="sig-box">أمين المخزن</div>
     <div class="sig-box">المدير المسؤول</div>
   </div>
   <div class="footer">Powered by Mohamed Abdel Aal</div>

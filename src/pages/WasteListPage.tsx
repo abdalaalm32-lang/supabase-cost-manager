@@ -374,11 +374,6 @@ export const WasteListPage: React.FC = () => {
           filename="سجلات_الهالك"
           title="سجلات الهالك"
         />
-        <PrintButton
-          data={filtered.map((wr: any) => ({ record: wr.record_number || "—", date: wr.date, creator: wr.creator_name || "—", location: getLocationName(wr), status: wr.is_edited ? "معدل" : wr.status, cost: Number(wr.total_cost).toFixed(2) }))}
-          columns={[{ key: "record", label: "رقم العملية" }, { key: "date", label: "التاريخ" }, { key: "creator", label: "المنشئ" }, { key: "location", label: "الموقع" }, { key: "status", label: "الحالة" }, { key: "cost", label: "إجمالي التكلفة" }]}
-          title="سجلات الهالك"
-        />
       </div>
 
       <div className="glass-card overflow-hidden">
@@ -436,6 +431,9 @@ export const WasteListPage: React.FC = () => {
                         <History size={14} />
                       </Button>
                     )}
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handlePrintWaste(wr)}>
+                      <Printer size={14} />
+                    </Button>
                     <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => { setDeleteRecord(wr); setShowDeleteConfirm(true); }}>
                       <Trash2 size={14} />
                     </Button>

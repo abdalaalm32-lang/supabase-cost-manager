@@ -18,13 +18,13 @@ import {
 } from "@/components/ui/table";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, Plus, Search, Archive, Pencil, Eye, History, Trash2, User, MapPin } from "lucide-react";
+import { CalendarIcon, Plus, Search, Pencil, Eye, History, Trash2, User, MapPin, ToggleLeft, ToggleRight } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 
-type FilterTab = "مكتمل" | "مؤرشف" | "معدل";
+type FilterTab = "الكل" | "مكتمل" | "مؤرشف" | "معدل";
 
 export const WasteListPage: React.FC = () => {
   const { auth } = useAuth();
@@ -39,7 +39,7 @@ export const WasteListPage: React.FC = () => {
   const [locationId, setLocationId] = useState("");
   const [adminNotes, setAdminNotes] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeFilter, setActiveFilter] = useState<FilterTab>("مكتمل");
+  const [activeFilter, setActiveFilter] = useState<FilterTab>("الكل");
   const [showEditHistory, setShowEditHistory] = useState(false);
   const [editHistoryId, setEditHistoryId] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -149,6 +149,16 @@ export const WasteListPage: React.FC = () => {
     toast({ title: "تم أرشفة سجل الهالك بنجاح" });
   };
 
+  const handleUnarchive = async (id: string) => {
+    const { error } = await supabase.from("waste_records").update({ status: "مكتمل" }).eq("id", id);
+    if (error) {
+      toast({ title: "خطأ", description: error.message, variant: "destructive" });
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ["waste-records"] });
+    toast({ title: "تم إلغاء أرشفة سجل الهالك بنجاح" });
+  };
+
   const handleDelete = async () => {
     if (!deleteRecord) return;
     try {
@@ -183,7 +193,9 @@ export const WasteListPage: React.FC = () => {
 
   const filtered = useMemo(() => {
     let list = wasteRecords;
-    if (activeFilter === "مكتمل") {
+    if (activeFilter === "الكل") {
+      // show all
+    } else if (activeFilter === "مكتمل") {
       list = list.filter((wr: any) => wr.status === "مكتمل" || wr.status === "مسودة");
     } else if (activeFilter === "مؤرشف") {
       list = list.filter((wr: any) => wr.status === "مؤرشف");
@@ -217,7 +229,7 @@ export const WasteListPage: React.FC = () => {
 
       {/* Filter Tabs */}
       <div className="flex items-center gap-2">
-        {(["مكتمل", "مؤرشف", "معدل"] as FilterTab[]).map(tab => (
+        {(["الكل", "مكتمل", "مؤرشف", "معدل"] as FilterTab[]).map(tab => (
           <Button
             key={tab}
             variant={activeFilter === tab ? "default" : "outline"}
@@ -226,7 +238,8 @@ export const WasteListPage: React.FC = () => {
           >
             {tab}
             <Badge variant="secondary" className="mr-2 text-xs">
-              {tab === "مكتمل" ? wasteRecords.filter((s: any) => s.status === "مكتمل" || s.status === "مسودة").length
+              {tab === "الكل" ? wasteRecords.length
+                : tab === "مكتمل" ? wasteRecords.filter((s: any) => s.status === "مكتمل" || s.status === "مسودة").length
                 : tab === "مؤرشف" ? wasteRecords.filter((s: any) => s.status === "مؤرشف").length
                 : wasteRecords.filter((s: any) => s.is_edited === true).length}
             </Badge>
@@ -271,26 +284,30 @@ export const WasteListPage: React.FC = () => {
                 </TableCell>
                 <TableCell className="font-semibold">{Number(wr.total_cost).toFixed(2)}</TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/waste/${wr.id}`)} title="عرض">
+                <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`/waste/${wr.id}`)}>
                       <Eye size={14} />
                     </Button>
-                    {wr.status === "مكتمل" && (
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleArchive(wr.id)} title="أرشفة">
-                        <Archive size={14} />
-                      </Button>
-                    )}
                     {wr.status === "مؤرشف" && (
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/waste/${wr.id}?edit=true`)} title="تعديل">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`/waste/${wr.id}?edit=true`)}>
                         <Pencil size={14} />
                       </Button>
                     )}
-                    {wr.is_edited && activeFilter === "معدل" && (
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditHistoryId(wr.id); setShowEditHistory(true); }} title="تفاصيل التعديل">
+                    {wr.status === "مكتمل" ? (
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleArchive(wr.id)}>
+                        <ToggleLeft size={14} />
+                      </Button>
+                    ) : wr.status === "مؤرشف" ? (
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleUnarchive(wr.id)}>
+                        <ToggleRight size={14} />
+                      </Button>
+                    ) : null}
+                    {wr.is_edited && (
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditHistoryId(wr.id); setShowEditHistory(true); }}>
                         <History size={14} />
                       </Button>
                     )}
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => { setDeleteRecord(wr); setShowDeleteConfirm(true); }} title="حذف">
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => { setDeleteRecord(wr); setShowDeleteConfirm(true); }}>
                       <Trash2 size={14} />
                     </Button>
                   </div>

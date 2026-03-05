@@ -11,11 +11,11 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, Search, Archive, Pencil, Eye, Trash2 } from "lucide-react";
+import { Plus, Search, Pencil, Eye, Trash2, ToggleLeft, ToggleRight, History } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
-type FilterStatus = "الكل" | "مكتمل" | "مؤرشف";
+type FilterStatus = "الكل" | "مكتمل" | "مؤرشف" | "معدل";
 
 export const PurchaseInvoicesTab: React.FC = () => {
   const { auth } = useAuth();
@@ -88,7 +88,8 @@ export const PurchaseInvoicesTab: React.FC = () => {
 
   const filtered = useMemo(() => {
     let result = orders;
-    if (filter === "مكتمل") result = result.filter((o: any) => o.status === "مكتمل");
+    if (filter === "معدل") result = result.filter((o: any) => o.is_edited);
+    else if (filter === "مكتمل") result = result.filter((o: any) => o.status === "مكتمل");
     else if (filter === "مؤرشف") result = result.filter((o: any) => o.status === "مؤرشف");
 
     if (searchQuery.trim()) {
@@ -117,7 +118,7 @@ export const PurchaseInvoicesTab: React.FC = () => {
           <Input placeholder="بحث برقم الفاتورة أو المورد أو المبلغ..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="glass-input pr-9" />
         </div>
         <div className="flex gap-2">
-          {(["الكل", "مكتمل", "مؤرشف"] as FilterStatus[]).map((s) => (
+          {(["الكل", "مكتمل", "مؤرشف", "معدل"] as FilterStatus[]).map((s) => (
             <Button key={s} variant={filter === s ? "default" : "outline"} size="sm" onClick={() => setFilter(s)}>{s}</Button>
           ))}
         </div>
@@ -149,29 +150,38 @@ export const PurchaseInvoicesTab: React.FC = () => {
                   <TableCell>{new Date(o.date).toLocaleDateString("ar-EG")}</TableCell>
                   <TableCell className="text-sm">{o.creator_name || "—"}</TableCell>
                   <TableCell>
-                    <Badge variant={o.status === "مكتمل" ? "default" : "secondary"} className={o.status === "مكتمل" ? "bg-emerald-500/15 text-emerald-600 border-emerald-500/30" : "bg-amber-500/15 text-amber-600 border-amber-500/30"}>
-                      {o.status}
-                    </Badge>
+                    {o.is_edited ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/15 text-blue-400">● معدّل</span>
+                    ) : o.status === "مكتمل" ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/15 text-green-400">● مكتمل</span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/15 text-red-400">● مؤرشف</span>
+                    )}
                   </TableCell>
                   <TableCell className="font-semibold">{Number(o.total_amount).toFixed(2)}</TableCell>
                   <TableCell>
-                     <div className="flex gap-1">
-                       <Button variant="ghost" size="sm" className="gap-1" onClick={() => navigate(`/purchases/view-invoice/${o.id}?view=true`)}>
-                         <Eye size={14} /> عرض
+                     <div className="flex items-center gap-1">
+                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`/purchases/view-invoice/${o.id}?view=true`)}>
+                         <Eye size={14} />
                        </Button>
                        {o.status === "مؤرشف" && (
-                         <Button variant="ghost" size="sm" className="gap-1" onClick={() => navigate(`/purchases/edit-invoice/${o.id}`)}>
-                           <Pencil size={14} /> تعديل
+                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`/purchases/edit-invoice/${o.id}`)}>
+                           <Pencil size={14} />
                          </Button>
                        )}
-                      <Button variant="ghost" size="sm" className="gap-1" onClick={() => toggleArchiveMutation.mutate({ id: o.id, status: o.status })}>
-                        <Archive size={14} />
-                        {o.status === "مؤرشف" ? "إلغاء الأرشفة" : "أرشفة"}
-                      </Button>
-                      <Button variant="ghost" size="sm" className="gap-1 text-destructive" onClick={() => { setDeleteOrder(o); setShowDeleteConfirm(true); }}>
-                        <Trash2 size={14} /> حذف
-                      </Button>
-                    </div>
+                       {o.status === "مكتمل" ? (
+                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleArchiveMutation.mutate({ id: o.id, status: o.status })}>
+                           <ToggleLeft size={14} />
+                         </Button>
+                       ) : o.status === "مؤرشف" ? (
+                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleArchiveMutation.mutate({ id: o.id, status: o.status })}>
+                           <ToggleRight size={14} />
+                         </Button>
+                       ) : null}
+                       <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => { setDeleteOrder(o); setShowDeleteConfirm(true); }}>
+                         <Trash2 size={14} />
+                       </Button>
+                     </div>
                   </TableCell>
                 </TableRow>
               ))

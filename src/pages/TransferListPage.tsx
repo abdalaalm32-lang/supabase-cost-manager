@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-type StatusFilter = "all" | "مكتمل" | "مؤرشف";
+type StatusFilter = "all" | "مكتمل" | "مؤرشف" | "edited";
 
 export const TransferListPage: React.FC = () => {
   const { auth } = useAuth();
@@ -47,7 +47,9 @@ export const TransferListPage: React.FC = () => {
 
   const filtered = useMemo(() => {
     let items = records;
-    if (statusFilter !== "all") {
+    if (statusFilter === "edited") {
+      items = items.filter((r: any) => r.is_edited);
+    } else if (statusFilter !== "all") {
       items = items.filter((r: any) => r.status === statusFilter);
     }
     if (search.trim()) {
@@ -114,6 +116,13 @@ export const TransferListPage: React.FC = () => {
     }
   };
 
+  const getStatusBadgeWithEdited = (status: string, isEdited: boolean) => {
+    if (isEdited) {
+      return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/15 text-blue-400">● معدّل</span>;
+    }
+    return getStatusBadge(status);
+  };
+
   return (
     <div className="space-y-4 animate-fade-in-up">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -137,14 +146,14 @@ export const TransferListPage: React.FC = () => {
           />
         </div>
         <div className="flex gap-1">
-          {(["all", "مكتمل", "مؤرشف"] as StatusFilter[]).map(f => (
+          {(["all", "مكتمل", "مؤرشف", "edited"] as StatusFilter[]).map(f => (
             <Button
               key={f}
               variant={statusFilter === f ? "default" : "outline"}
               size="sm"
               onClick={() => setStatusFilter(f)}
             >
-              {f === "all" ? "الكل" : f}
+              {f === "all" ? "الكل" : f === "edited" ? "معدّل" : f}
             </Button>
           ))}
         </div>
@@ -177,7 +186,7 @@ export const TransferListPage: React.FC = () => {
                   <TableCell>{r.source_name || "—"}</TableCell>
                   <TableCell>{r.destination_name || "—"}</TableCell>
                   <TableCell className="text-sm">{r.creator_name || "—"}</TableCell>
-                  <TableCell>{getStatusBadge(r.status)}</TableCell>
+                  <TableCell>{getStatusBadgeWithEdited(r.status, r.is_edited)}</TableCell>
                   <TableCell>{Number(r.total_cost || 0).toFixed(2)}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">

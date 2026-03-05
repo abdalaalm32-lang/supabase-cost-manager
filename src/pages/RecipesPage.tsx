@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { RecipePrintExport, MaterialUsagePrintExport } from "@/components/RecipePrintExport";
 
 // Local types
 interface LocalIngredient {
@@ -72,6 +73,7 @@ export const RecipesPage: React.FC = () => {
   // Global raw material search
   const [globalSearch, setGlobalSearch] = useState("");
   const [showGlobalResults, setShowGlobalResults] = useState(false);
+  const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
 
   // Queries
   const { data: branches = [] } = useQuery({

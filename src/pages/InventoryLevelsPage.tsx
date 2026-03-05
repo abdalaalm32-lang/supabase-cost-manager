@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from "react";
+import { ExportButtons } from "@/components/ExportButtons";
+import { PrintButton } from "@/components/PrintButton";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -455,8 +457,20 @@ export const InventoryLevelsPage: React.FC = () => {
             <CardTitle className="text-sm font-bold flex items-center gap-2">
               <BarChart3 size={16} /> جدول مستويات المخزون ({processedItems.length} صنف)
             </CardTitle>
+            <div className="flex items-center gap-2">
+              <PrintButton
+                data={processedItems.map((item: any) => ({ code: item.code || "—", name: item.name, category: item.catName, stock: item.currentStock.toFixed(2), min: item.minLevel, max: item.maxLevel, reorder: item.reorderLevel, unit: item.unit, status: item.statusLabel }))}
+                columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الصنف" }, { key: "category", label: "المجموعة" }, { key: "stock", label: "الرصيد" }, { key: "min", label: "الحد الأدنى" }, { key: "max", label: "الحد الأقصى" }, { key: "reorder", label: "نقطة الطلب" }, { key: "unit", label: "الوحدة" }, { key: "status", label: "الحالة" }]}
+                title="مستويات المخزون"
+              />
+              <ExportButtons
+                data={processedItems.map((item: any) => ({ code: item.code || "—", name: item.name, category: item.catName, stock: item.currentStock.toFixed(2), min: item.minLevel, max: item.maxLevel, reorder: item.reorderLevel, unit: item.unit, status: item.statusLabel }))}
+                columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الصنف" }, { key: "category", label: "المجموعة" }, { key: "stock", label: "الرصيد" }, { key: "min", label: "الحد الأدنى" }, { key: "max", label: "الحد الأقصى" }, { key: "reorder", label: "نقطة الطلب" }, { key: "unit", label: "الوحدة" }, { key: "status", label: "الحالة" }]}
+                filename="مستويات_المخزون"
+                title="مستويات المخزون"
+              />
+            </div>
           </div>
-        </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>

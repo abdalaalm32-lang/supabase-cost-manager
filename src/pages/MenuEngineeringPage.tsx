@@ -280,6 +280,7 @@ export const MenuEngineeringPage: React.FC = () => {
         profitLevel,
         popularityLevel,
         strategic,
+        decision: DECISIONS[strategic],
       };
     });
 

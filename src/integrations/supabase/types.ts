@@ -471,6 +471,7 @@ export type Database = {
           salaries: number
           start_date: string
           status: string
+          tax_rate: number
           turn_over: number
         }
         Insert: {
@@ -494,6 +495,7 @@ export type Database = {
           salaries?: number
           start_date: string
           status?: string
+          tax_rate?: number
           turn_over?: number
         }
         Update: {
@@ -517,6 +519,7 @@ export type Database = {
           salaries?: number
           start_date?: string
           status?: string
+          tax_rate?: number
           turn_over?: number
         }
         Relationships: [

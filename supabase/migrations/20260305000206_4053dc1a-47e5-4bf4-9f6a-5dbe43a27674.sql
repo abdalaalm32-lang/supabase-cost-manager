@@ -1,0 +1,1 @@
+ALTER TABLE public.menu_costing_periods ADD COLUMN tax_rate numeric NOT NULL DEFAULT 0;

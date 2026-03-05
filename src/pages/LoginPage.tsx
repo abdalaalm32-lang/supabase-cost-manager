@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { toast } from "sonner";
 import loginBg from "@/assets/login-bg.jpg";
+import logo3m from "@/assets/logo-3m.png";
 
 type ResetStep = "email" | "otp" | "newPassword";
 
@@ -134,10 +135,8 @@ export const LoginPage: React.FC = () => {
         <div className="bg-card/60 backdrop-blur-2xl border border-border/30 rounded-3xl shadow-2xl shadow-black/40 p-8 sm:p-10">
           {/* Logo */}
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl gradient-primary mb-4 shadow-lg shadow-primary/20">
-              <span className="text-2xl font-black text-primary-foreground">3M</span>
-            </div>
-            <h1 className="text-3xl font-black tracking-tight text-gradient">
+            <img src={logo3m} alt="3M GSC Logo" className="w-28 h-28 mx-auto mb-3 object-contain drop-shadow-lg" />
+            <h1 className="text-2xl font-black tracking-tight text-gradient">
               3M GSC
             </h1>
             <p className="text-xs text-muted-foreground mt-1.5 font-medium">
@@ -302,8 +301,10 @@ export const LoginPage: React.FC = () => {
             </>
           )}
 
-          <div className="mt-8 text-[9px] text-muted-foreground/20 font-bold uppercase tracking-[0.2em] text-center">
-            POWERED BY MOHAMED ABDELAAL
+          <div className="mt-8 text-center">
+            <span className="text-[11px] text-muted-foreground/50 font-semibold tracking-[0.15em]" style={{ fontFamily: "'Cairo', sans-serif", letterSpacing: '0.18em' }}>
+              Designed by <span className="text-primary/60 font-bold">Mohamed Abdel Aal</span>
+            </span>
           </div>
         </div>
       </div>

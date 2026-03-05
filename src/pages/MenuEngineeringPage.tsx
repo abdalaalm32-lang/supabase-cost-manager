@@ -30,8 +30,8 @@ const THRESHOLDS = {
 };
 
 type EngClass = "kitchen" | "bar";
-type ProfitLevel = "مرتفع" | "متوسط" | "منخفض";
-type PopularityLevel = "مرتفع" | "متوسط" | "منخفض";
+type ProfitLevel = "عالية" | "منخفضة";
+type PopularityLevel = "عالية" | "منخفضة";
 type Strategic = "Stars" | "Puzzles" | "Plow Horses" | "Dogs";
 
 interface EngRow {
@@ -50,6 +50,7 @@ interface EngRow {
   profitLevel: ProfitLevel;
   popularityLevel: PopularityLevel;
   strategic: Strategic;
+  decision: string;
 }
 
 const COLORS = {
@@ -66,32 +67,34 @@ const STRATEGIC_ICONS: Record<Strategic, React.ReactNode> = {
   Dogs: <Dog size={14} />,
 };
 
+const DECISIONS: Record<Strategic, string> = {
+  Stars: "حافظ عليه وروّج له",
+  Puzzles: "زوّد المبيعات",
+  "Plow Horses": "حسّن الربحية",
+  Dogs: "احذف أو عدّل",
+};
+
 function getProfitLevel(profitRatio: number, cls: EngClass): ProfitLevel {
   const t = THRESHOLDS[cls];
-  if (profitRatio > t.high) return "مرتفع";
-  if (profitRatio >= t.medium) return "متوسط";
-  return "منخفض";
+  return profitRatio >= t.medium ? "عالية" : "منخفضة";
 }
 
 function getPopularityLevel(salesSharePct: number, totalItems: number): PopularityLevel {
-  if (totalItems === 0) return "منخفض";
+  if (totalItems === 0) return "منخفضة";
   const avgShare = 100 / totalItems;
-  if (salesSharePct > avgShare * 1.2) return "مرتفع";
-  if (salesSharePct >= avgShare * 0.8) return "متوسط";
-  return "منخفض";
+  return salesSharePct >= avgShare * 0.8 ? "عالية" : "منخفضة";
 }
 
 function getStrategic(profit: ProfitLevel, popularity: PopularityLevel): Strategic {
-  if (profit === "مرتفع" && (popularity === "مرتفع" || popularity === "متوسط")) return "Stars";
-  if (profit === "مرتفع" && popularity === "منخفض") return "Puzzles";
-  if ((profit === "متوسط" || profit === "منخفض") && (popularity === "مرتفع" || popularity === "متوسط")) return "Plow Horses";
+  if (profit === "عالية" && popularity === "عالية") return "Stars";
+  if (profit === "عالية" && popularity === "منخفضة") return "Puzzles";
+  if (profit === "منخفضة" && popularity === "عالية") return "Plow Horses";
   return "Dogs";
 }
 
 const levelBadgeClass: Record<string, string> = {
-  "مرتفع": "bg-green-500/15 text-green-400 border-green-500/30",
-  "متوسط": "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
-  "منخفض": "bg-red-500/15 text-red-400 border-red-500/30",
+  "عالية": "bg-green-500/15 text-green-400 border-green-500/30",
+  "منخفضة": "bg-red-500/15 text-red-400 border-red-500/30",
 };
 
 const strategicBadgeClass: Record<Strategic, string> = {
@@ -277,6 +280,7 @@ export const MenuEngineeringPage: React.FC = () => {
         profitLevel,
         popularityLevel,
         strategic,
+        decision: DECISIONS[strategic],
       };
     });
 
@@ -405,9 +409,8 @@ export const MenuEngineeringPage: React.FC = () => {
           <CardContent className="p-4 text-center">
             <p className="text-xs text-muted-foreground">نسب الربحية ({activeTab === "kitchen" ? "مطبخ" : "بار"})</p>
             <div className="flex gap-1 justify-center mt-1 text-xs">
-              <Badge className={levelBadgeClass["مرتفع"]}>{">"}{t.high}%</Badge>
-              <Badge className={levelBadgeClass["متوسط"]}>{t.medium}-{t.high}%</Badge>
-              <Badge className={levelBadgeClass["منخفض"]}>{"<"}{t.medium}%</Badge>
+              <Badge className={levelBadgeClass["عالية"]}>{"≥"}{t.medium}% عالية</Badge>
+              <Badge className={levelBadgeClass["منخفضة"]}>{"<"}{t.medium}% منخفضة</Badge>
             </div>
           </CardContent>
         </Card>
@@ -445,12 +448,13 @@ export const MenuEngineeringPage: React.FC = () => {
                   <TableHead className="text-right text-xs">ربح الكاتجوري</TableHead>
                   <TableHead className="text-right text-xs">شعبية الكاتجوري</TableHead>
                   <TableHead className="text-right text-xs">التصنيف</TableHead>
+                  <TableHead className="text-right text-xs">القرار</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {engineeringData.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={15} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={16} className="text-center py-8 text-muted-foreground">
                       لا توجد بيانات - تأكد من تكويد تصنيف هندسة المنيو للخامات وربطها بالوصفات
                     </TableCell>
                   </TableRow>
@@ -477,6 +481,11 @@ export const MenuEngineeringPage: React.FC = () => {
                           {row.strategic}
                         </Badge>
                       </TableCell>
+                      <TableCell>
+                        <span className={`text-[10px] font-semibold ${strategicBadgeClass[row.strategic].replace(/bg-\S+/g, '').trim()}`}>
+                          {row.decision}
+                        </span>
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -492,7 +501,7 @@ export const MenuEngineeringPage: React.FC = () => {
                     <TableCell className="text-xs">—</TableCell>
                     <TableCell className="text-xs">—</TableCell>
                     <TableCell className="text-xs">{totals.totalProfit.toFixed(2)}</TableCell>
-                    <TableCell colSpan={5} className="text-xs">—</TableCell>
+                    <TableCell colSpan={6} className="text-xs">—</TableCell>
                   </TableRow>
                 )}
               </TableBody>

@@ -30,8 +30,8 @@ const THRESHOLDS = {
 };
 
 type EngClass = "kitchen" | "bar";
-type ProfitLevel = "مرتفع" | "متوسط" | "منخفض";
-type PopularityLevel = "مرتفع" | "متوسط" | "منخفض";
+type ProfitLevel = "عالية" | "منخفضة";
+type PopularityLevel = "عالية" | "منخفضة";
 type Strategic = "Stars" | "Puzzles" | "Plow Horses" | "Dogs";
 
 interface EngRow {
@@ -50,6 +50,7 @@ interface EngRow {
   profitLevel: ProfitLevel;
   popularityLevel: PopularityLevel;
   strategic: Strategic;
+  decision: string;
 }
 
 const COLORS = {
@@ -66,25 +67,28 @@ const STRATEGIC_ICONS: Record<Strategic, React.ReactNode> = {
   Dogs: <Dog size={14} />,
 };
 
+const DECISIONS: Record<Strategic, string> = {
+  Stars: "حافظ عليه وروّج له",
+  Puzzles: "زوّد المبيعات",
+  "Plow Horses": "حسّن الربحية",
+  Dogs: "احذف أو عدّل",
+};
+
 function getProfitLevel(profitRatio: number, cls: EngClass): ProfitLevel {
   const t = THRESHOLDS[cls];
-  if (profitRatio > t.high) return "مرتفع";
-  if (profitRatio >= t.medium) return "متوسط";
-  return "منخفض";
+  return profitRatio >= t.medium ? "عالية" : "منخفضة";
 }
 
 function getPopularityLevel(salesSharePct: number, totalItems: number): PopularityLevel {
-  if (totalItems === 0) return "منخفض";
+  if (totalItems === 0) return "منخفضة";
   const avgShare = 100 / totalItems;
-  if (salesSharePct > avgShare * 1.2) return "مرتفع";
-  if (salesSharePct >= avgShare * 0.8) return "متوسط";
-  return "منخفض";
+  return salesSharePct >= avgShare * 0.8 ? "عالية" : "منخفضة";
 }
 
 function getStrategic(profit: ProfitLevel, popularity: PopularityLevel): Strategic {
-  if (profit === "مرتفع" && (popularity === "مرتفع" || popularity === "متوسط")) return "Stars";
-  if (profit === "مرتفع" && popularity === "منخفض") return "Puzzles";
-  if ((profit === "متوسط" || profit === "منخفض") && (popularity === "مرتفع" || popularity === "متوسط")) return "Plow Horses";
+  if (profit === "عالية" && popularity === "عالية") return "Stars";
+  if (profit === "عالية" && popularity === "منخفضة") return "Puzzles";
+  if (profit === "منخفضة" && popularity === "عالية") return "Plow Horses";
   return "Dogs";
 }
 

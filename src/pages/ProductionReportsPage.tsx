@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { ExportButtons } from "@/components/ExportButtons";
+import { PrintButton } from "@/components/PrintButton";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -282,12 +283,65 @@ export const ProductionReportsPage: React.FC = () => {
           <p className="text-muted-foreground text-sm mt-1">تحليل كثافة وتكاليف عمليات الإنتاج</p>
         </div>
         <div className="flex gap-2 print:hidden">
-          <Button variant="outline" size="sm" onClick={exportCSV}>
-            <FileSpreadsheet size={16} className="ml-1" /> تصدير Excel
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => window.print()}>
-            <FileText size={16} className="ml-1" /> طباعة PDF
-          </Button>
+          <ExportButtons
+            data={processedData.map((i, idx) => ({
+              "#": idx + 1,
+              الكود: i.code,
+              "اسم الصنف": i.name,
+              المجموعة: i.catName,
+              "كثافة الإنتاج": i.productionCount,
+              "إجمالي الكمية": i.totalProducedQty.toFixed(2),
+              الوحدة: i.stockUnit,
+              "الرصيد الحالي": i.currentStock.toFixed(2),
+              "متوسط التكلفة": i.avgCost.toFixed(2),
+              "إجمالي تكلفة الإنتاج": i.totalProductionCost.toFixed(2),
+              "آخر تاريخ إنتاج": i.lastProductionDate,
+            }))}
+            columns={[
+              { key: "#", label: "#" },
+              { key: "الكود", label: "الكود" },
+              { key: "اسم الصنف", label: "اسم الصنف" },
+              { key: "المجموعة", label: "المجموعة" },
+              { key: "كثافة الإنتاج", label: "كثافة الإنتاج" },
+              { key: "إجمالي الكمية", label: "إجمالي الكمية" },
+              { key: "الوحدة", label: "الوحدة" },
+              { key: "الرصيد الحالي", label: "الرصيد الحالي" },
+              { key: "متوسط التكلفة", label: "متوسط التكلفة" },
+              { key: "إجمالي تكلفة الإنتاج", label: "إجمالي تكلفة الإنتاج" },
+              { key: "آخر تاريخ إنتاج", label: "آخر تاريخ إنتاج" },
+            ]}
+            filename="تقارير_الإنتاج"
+            title="تقارير عمليات الإنتاج"
+          />
+          <PrintButton
+            data={processedData.map((i, idx) => ({
+              "#": idx + 1,
+              الكود: i.code,
+              "اسم الصنف": i.name,
+              المجموعة: i.catName,
+              "كثافة الإنتاج": i.productionCount,
+              "إجمالي الكمية": i.totalProducedQty.toFixed(2),
+              الوحدة: i.stockUnit,
+              "الرصيد الحالي": i.currentStock.toFixed(2),
+              "متوسط التكلفة": i.avgCost.toFixed(2),
+              "إجمالي تكلفة الإنتاج": i.totalProductionCost.toFixed(2),
+              "آخر تاريخ إنتاج": i.lastProductionDate,
+            }))}
+            columns={[
+              { key: "#", label: "#" },
+              { key: "الكود", label: "الكود" },
+              { key: "اسم الصنف", label: "اسم الصنف" },
+              { key: "المجموعة", label: "المجموعة" },
+              { key: "كثافة الإنتاج", label: "كثافة الإنتاج" },
+              { key: "إجمالي الكمية", label: "إجمالي الكمية" },
+              { key: "الوحدة", label: "الوحدة" },
+              { key: "الرصيد الحالي", label: "الرصيد الحالي" },
+              { key: "متوسط التكلفة", label: "متوسط التكلفة" },
+              { key: "إجمالي تكلفة الإنتاج", label: "إجمالي تكلفة الإنتاج" },
+              { key: "آخر تاريخ إنتاج", label: "آخر تاريخ إنتاج" },
+            ]}
+            title="تقارير عمليات الإنتاج"
+          />
         </div>
       </div>
 

@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useRef } from "react";
 import { ExportButtons } from "@/components/ExportButtons";
+import { PrintButton } from "@/components/PrintButton";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -361,12 +362,69 @@ export const PurchaseReportsPage: React.FC = () => {
           <p className="text-muted-foreground text-sm mt-1">تحليل شامل لعمليات الشراء والموردين والخامات</p>
         </div>
         <div className="flex gap-2 print:hidden">
-          <Button variant="outline" size="sm" onClick={exportCSV}>
-            <FileSpreadsheet size={16} className="ml-1" /> تصدير Excel
-          </Button>
-          <Button variant="outline" size="sm" onClick={exportPDF}>
-            <FileText size={16} className="ml-1" /> طباعة PDF
-          </Button>
+          <ExportButtons
+            data={filteredData.map((i, idx) => ({
+              "#": idx + 1,
+              الكود: i.code || "",
+              "اسم الخامة": i.name,
+              المجموعة: i.categoryName,
+              "عدد مرات الشراء": i.purchaseCount,
+              "المورد الأكثر شراءً": `${i.topSupplier} (${i.topSupplierCount})`,
+              "إجمالي الكمية": i.totalQty.toFixed(2),
+              الوحدة: i.unit,
+              "التكلفة المعيارية": i.standardCost.toFixed(2),
+              "متوسط التكلفة": i.avgCost.toFixed(2),
+              "فرق السعر": i.priceDiff.toFixed(2),
+              "إجمالي القيمة": i.totalValue.toFixed(2),
+            }))}
+            columns={[
+              { key: "#", label: "#" },
+              { key: "الكود", label: "الكود" },
+              { key: "اسم الخامة", label: "اسم الخامة" },
+              { key: "المجموعة", label: "المجموعة" },
+              { key: "عدد مرات الشراء", label: "عدد مرات الشراء" },
+              { key: "المورد الأكثر شراءً", label: "المورد الأكثر شراءً" },
+              { key: "إجمالي الكمية", label: "إجمالي الكمية" },
+              { key: "الوحدة", label: "الوحدة" },
+              { key: "التكلفة المعيارية", label: "التكلفة المعيارية" },
+              { key: "متوسط التكلفة", label: "متوسط التكلفة" },
+              { key: "فرق السعر", label: "فرق السعر" },
+              { key: "إجمالي القيمة", label: "إجمالي القيمة" },
+            ]}
+            filename="تقرير_المشتريات"
+            title="تقارير المشتريات"
+          />
+          <PrintButton
+            data={filteredData.map((i, idx) => ({
+              "#": idx + 1,
+              الكود: i.code || "",
+              "اسم الخامة": i.name,
+              المجموعة: i.categoryName,
+              "عدد مرات الشراء": i.purchaseCount,
+              "المورد الأكثر شراءً": `${i.topSupplier} (${i.topSupplierCount})`,
+              "إجمالي الكمية": i.totalQty.toFixed(2),
+              الوحدة: i.unit,
+              "التكلفة المعيارية": i.standardCost.toFixed(2),
+              "متوسط التكلفة": i.avgCost.toFixed(2),
+              "فرق السعر": i.priceDiff.toFixed(2),
+              "إجمالي القيمة": i.totalValue.toFixed(2),
+            }))}
+            columns={[
+              { key: "#", label: "#" },
+              { key: "الكود", label: "الكود" },
+              { key: "اسم الخامة", label: "اسم الخامة" },
+              { key: "المجموعة", label: "المجموعة" },
+              { key: "عدد مرات الشراء", label: "عدد مرات الشراء" },
+              { key: "المورد الأكثر شراءً", label: "المورد الأكثر شراءً" },
+              { key: "إجمالي الكمية", label: "إجمالي الكمية" },
+              { key: "الوحدة", label: "الوحدة" },
+              { key: "التكلفة المعيارية", label: "التكلفة المعيارية" },
+              { key: "متوسط التكلفة", label: "متوسط التكلفة" },
+              { key: "فرق السعر", label: "فرق السعر" },
+              { key: "إجمالي القيمة", label: "إجمالي القيمة" },
+            ]}
+            title="تقارير المشتريات"
+          />
         </div>
       </div>
 

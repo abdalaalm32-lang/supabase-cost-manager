@@ -261,12 +261,69 @@ export const InventoryLevelsPage: React.FC = () => {
           <p className="text-muted-foreground text-sm mt-1">مراقبة مستويات الأصناف وتنبيهات إعادة الطلب</p>
         </div>
         <div className="flex gap-2 print:hidden">
-          <Button variant="outline" size="sm" onClick={exportCSV}>
-            <FileSpreadsheet size={16} className="ml-1" /> تصدير Excel
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => window.print()}>
-            <FileText size={16} className="ml-1" /> طباعة PDF
-          </Button>
+          <ExportButtons
+            data={processedItems.map((i: any, idx: number) => ({
+              "#": idx + 1,
+              الكود: i.code || "",
+              "اسم الصنف": i.name,
+              المجموعة: i.catName,
+              "الرصيد الحالي": i.currentStock.toFixed(2),
+              الوحدة: i.stock_unit,
+              "متوسط التكلفة": Number(i.avg_cost).toFixed(2),
+              "إجمالي القيمة": i.totalValue.toFixed(2),
+              "الحد الأدنى": i.minLevel,
+              "إعادة الطلب": i.reorderLevel,
+              "الحد الأقصى": i.maxLevel,
+              الحالة: i.status,
+            }))}
+            columns={[
+              { key: "#", label: "#" },
+              { key: "الكود", label: "الكود" },
+              { key: "اسم الصنف", label: "اسم الصنف" },
+              { key: "المجموعة", label: "المجموعة" },
+              { key: "الرصيد الحالي", label: "الرصيد الحالي" },
+              { key: "الوحدة", label: "الوحدة" },
+              { key: "متوسط التكلفة", label: "متوسط التكلفة" },
+              { key: "إجمالي القيمة", label: "إجمالي القيمة" },
+              { key: "الحد الأدنى", label: "الحد الأدنى" },
+              { key: "إعادة الطلب", label: "إعادة الطلب" },
+              { key: "الحد الأقصى", label: "الحد الأقصى" },
+              { key: "الحالة", label: "الحالة" },
+            ]}
+            filename="مستويات_المخزون"
+            title="مستويات المخزون"
+          />
+          <PrintButton
+            data={processedItems.map((i: any, idx: number) => ({
+              "#": idx + 1,
+              الكود: i.code || "",
+              "اسم الصنف": i.name,
+              المجموعة: i.catName,
+              "الرصيد الحالي": i.currentStock.toFixed(2),
+              الوحدة: i.stock_unit,
+              "متوسط التكلفة": Number(i.avg_cost).toFixed(2),
+              "إجمالي القيمة": i.totalValue.toFixed(2),
+              "الحد الأدنى": i.minLevel,
+              "إعادة الطلب": i.reorderLevel,
+              "الحد الأقصى": i.maxLevel,
+              الحالة: i.status,
+            }))}
+            columns={[
+              { key: "#", label: "#" },
+              { key: "الكود", label: "الكود" },
+              { key: "اسم الصنف", label: "اسم الصنف" },
+              { key: "المجموعة", label: "المجموعة" },
+              { key: "الرصيد الحالي", label: "الرصيد الحالي" },
+              { key: "الوحدة", label: "الوحدة" },
+              { key: "متوسط التكلفة", label: "متوسط التكلفة" },
+              { key: "إجمالي القيمة", label: "إجمالي القيمة" },
+              { key: "الحد الأدنى", label: "الحد الأدنى" },
+              { key: "إعادة الطلب", label: "إعادة الطلب" },
+              { key: "الحد الأقصى", label: "الحد الأقصى" },
+              { key: "الحالة", label: "الحالة" },
+            ]}
+            title="مستويات المخزون"
+          />
         </div>
       </div>
 

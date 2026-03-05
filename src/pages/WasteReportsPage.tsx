@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { ExportButtons } from "@/components/ExportButtons";
+import { PrintButton } from "@/components/PrintButton";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -394,12 +395,65 @@ export const WasteReportsPage: React.FC = () => {
           <p className="text-muted-foreground text-sm mt-1">تحليل خسائر الهالك وأسبابه وتوزيعه</p>
         </div>
         <div className="flex gap-2 print:hidden">
-          <Button variant="outline" size="sm" onClick={exportCSV}>
-            <FileSpreadsheet size={16} className="ml-1" /> تصدير Excel
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => window.print()}>
-            <FileText size={16} className="ml-1" /> طباعة PDF
-          </Button>
+          <ExportButtons
+            data={processedData.map((i, idx) => ({
+              "#": idx + 1,
+              الكود: i.code,
+              "اسم الصنف": i.name,
+              المجموعة: i.catName,
+              "إجمالي كمية الهالك": i.totalWasteQty.toFixed(2),
+              الوحدة: i.unit,
+              "متوسط التكلفة": i.avgCost.toFixed(2),
+              "إجمالي الخسارة": i.totalLoss.toFixed(2),
+              "السبب الأكثر شيوعاً": getTopReason(i.reasons),
+              "مرات التكرار": i.occurrences,
+              "آخر تاريخ هالك": i.lastWasteDate,
+            }))}
+            columns={[
+              { key: "#", label: "#" },
+              { key: "الكود", label: "الكود" },
+              { key: "اسم الصنف", label: "اسم الصنف" },
+              { key: "المجموعة", label: "المجموعة" },
+              { key: "إجمالي كمية الهالك", label: "إجمالي كمية الهالك" },
+              { key: "الوحدة", label: "الوحدة" },
+              { key: "متوسط التكلفة", label: "متوسط التكلفة" },
+              { key: "إجمالي الخسارة", label: "إجمالي الخسارة" },
+              { key: "السبب الأكثر شيوعاً", label: "السبب الأكثر شيوعاً" },
+              { key: "مرات التكرار", label: "مرات التكرار" },
+              { key: "آخر تاريخ هالك", label: "آخر تاريخ هالك" },
+            ]}
+            filename="تقارير_الهالك"
+            title="تقارير الهالك"
+          />
+          <PrintButton
+            data={processedData.map((i, idx) => ({
+              "#": idx + 1,
+              الكود: i.code,
+              "اسم الصنف": i.name,
+              المجموعة: i.catName,
+              "إجمالي كمية الهالك": i.totalWasteQty.toFixed(2),
+              الوحدة: i.unit,
+              "متوسط التكلفة": i.avgCost.toFixed(2),
+              "إجمالي الخسارة": i.totalLoss.toFixed(2),
+              "السبب الأكثر شيوعاً": getTopReason(i.reasons),
+              "مرات التكرار": i.occurrences,
+              "آخر تاريخ هالك": i.lastWasteDate,
+            }))}
+            columns={[
+              { key: "#", label: "#" },
+              { key: "الكود", label: "الكود" },
+              { key: "اسم الصنف", label: "اسم الصنف" },
+              { key: "المجموعة", label: "المجموعة" },
+              { key: "إجمالي كمية الهالك", label: "إجمالي كمية الهالك" },
+              { key: "الوحدة", label: "الوحدة" },
+              { key: "متوسط التكلفة", label: "متوسط التكلفة" },
+              { key: "إجمالي الخسارة", label: "إجمالي الخسارة" },
+              { key: "السبب الأكثر شيوعاً", label: "السبب الأكثر شيوعاً" },
+              { key: "مرات التكرار", label: "مرات التكرار" },
+              { key: "آخر تاريخ هالك", label: "آخر تاريخ هالك" },
+            ]}
+            title="تقارير الهالك"
+          />
         </div>
       </div>
 

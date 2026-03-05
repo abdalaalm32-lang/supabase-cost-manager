@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { ExportButtons } from "@/components/ExportButtons";
+import { PrintButton } from "@/components/PrintButton";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -256,12 +257,69 @@ export const CostAdjustmentReportsPage: React.FC = () => {
           <p className="text-muted-foreground text-sm mt-1">تحليل عمليات تعديل التكلفة واتجاهات التغيير</p>
         </div>
         <div className="flex gap-2 print:hidden">
-          <Button variant="outline" size="sm" onClick={exportCSV}>
-            <FileSpreadsheet size={16} className="ml-1" /> تصدير Excel
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => window.print()}>
-            <FileText size={16} className="ml-1" /> طباعة PDF
-          </Button>
+          <ExportButtons
+            data={processedData.map((r: any, i: number) => ({
+              "#": i + 1,
+              "رقم السجل": r.recordNumber,
+              التاريخ: r.date,
+              الصنف: r.itemName,
+              الكود: r.code,
+              الموقع: r.branchName,
+              المجموعة: r.catName,
+              "التكلفة السابقة": r.oldCost.toFixed(2),
+              "التكلفة الجديدة": r.newCost.toFixed(2),
+              "فرق القيمة": r.diff.toFixed(2),
+              "نسبة التغيير %": r.diffPercent.toFixed(1),
+              البيان: r.notes,
+            }))}
+            columns={[
+              { key: "#", label: "#" },
+              { key: "رقم السجل", label: "رقم السجل" },
+              { key: "التاريخ", label: "التاريخ" },
+              { key: "الصنف", label: "الصنف" },
+              { key: "الكود", label: "الكود" },
+              { key: "الموقع", label: "الموقع" },
+              { key: "المجموعة", label: "المجموعة" },
+              { key: "التكلفة السابقة", label: "التكلفة السابقة" },
+              { key: "التكلفة الجديدة", label: "التكلفة الجديدة" },
+              { key: "فرق القيمة", label: "فرق القيمة" },
+              { key: "نسبة التغيير %", label: "نسبة التغيير %" },
+              { key: "البيان", label: "البيان" },
+            ]}
+            filename="تقارير_تعديل_التكاليف"
+            title="تقارير تعديل التكاليف"
+          />
+          <PrintButton
+            data={processedData.map((r: any, i: number) => ({
+              "#": i + 1,
+              "رقم السجل": r.recordNumber,
+              التاريخ: r.date,
+              الصنف: r.itemName,
+              الكود: r.code,
+              الموقع: r.branchName,
+              المجموعة: r.catName,
+              "التكلفة السابقة": r.oldCost.toFixed(2),
+              "التكلفة الجديدة": r.newCost.toFixed(2),
+              "فرق القيمة": r.diff.toFixed(2),
+              "نسبة التغيير %": r.diffPercent.toFixed(1),
+              البيان: r.notes,
+            }))}
+            columns={[
+              { key: "#", label: "#" },
+              { key: "رقم السجل", label: "رقم السجل" },
+              { key: "التاريخ", label: "التاريخ" },
+              { key: "الصنف", label: "الصنف" },
+              { key: "الكود", label: "الكود" },
+              { key: "الموقع", label: "الموقع" },
+              { key: "المجموعة", label: "المجموعة" },
+              { key: "التكلفة السابقة", label: "التكلفة السابقة" },
+              { key: "التكلفة الجديدة", label: "التكلفة الجديدة" },
+              { key: "فرق القيمة", label: "فرق القيمة" },
+              { key: "نسبة التغيير %", label: "نسبة التغيير %" },
+              { key: "البيان", label: "البيان" },
+            ]}
+            title="تقارير تعديل التكاليف"
+          />
         </div>
       </div>
 

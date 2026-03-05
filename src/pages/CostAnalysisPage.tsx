@@ -555,6 +555,9 @@ export const CostAnalysisPage: React.FC = () => {
     return group?.items || [];
   }, [chartCategoryFilter, grouped, calcData]);
 
+  const fmtNum = (n: number) => Number(n.toFixed(2)).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtQty = (n: number) => Number(n.toFixed(3)).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 3 });
+
   const exportColumns = [
     { key: "code", label: "كود الصنف" },
     { key: "name", label: "اسم الصنف" },
@@ -614,9 +617,6 @@ export const CostAnalysisPage: React.FC = () => {
 
   const handlePrint = () => window.print();
   const hasFilters = dateFrom || dateTo || locationFilter !== "all" || categoryFilter !== "all" || departmentFilter !== "all";
-
-  const fmtNum = (n: number) => Number(n.toFixed(2)).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const fmtQty = (n: number) => Number(n.toFixed(3)).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 3 });
 
   const VarianceArrow = ({ value }: { value: number }) => {
     if (value > 0) return <TrendingUp className="h-3 w-3 inline ml-1 text-emerald-500 animate-bounce" />;

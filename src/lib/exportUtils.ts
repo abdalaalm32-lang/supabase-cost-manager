@@ -13,20 +13,24 @@ export interface ExportOptions {
   filename: string;
   columns: ExportColumn[];
   data: Record<string, any>[];
+  /** Optional two-row header: array of { label, colSpan } for the top row */
+  headerGroups?: { label: string; colSpan: number }[];
+  /** Mark rows as "group-total" or "grand-total" via a __rowType field */
 }
 
 // Dark theme colors matching the system
-const DARK_BG: [number, number, number] = [15, 18, 30];        // --background dark
-const DARK_CARD: [number, number, number] = [18, 22, 38];       // --card dark
-const DARK_ROW_ALT: [number, number, number] = [22, 28, 48];    // slightly lighter
-const PRIMARY: [number, number, number] = [56, 189, 248];       // hsl(199,89%,60%) ≈ #38BDF8
-const PRIMARY_DIM: [number, number, number] = [14, 165, 233];   // #0EA5E9
-const TEXT_LIGHT: [number, number, number] = [226, 232, 240];   // --foreground dark
-const TEXT_MUTED: [number, number, number] = [148, 163, 184];   // muted
+const DARK_BG: [number, number, number] = [15, 18, 30];
+const DARK_CARD: [number, number, number] = [18, 22, 38];
+const DARK_ROW_ALT: [number, number, number] = [22, 28, 48];
+const PRIMARY_DIM: [number, number, number] = [14, 165, 233];
+const TEXT_LIGHT: [number, number, number] = [226, 232, 240];
+const TEXT_MUTED: [number, number, number] = [148, 163, 184];
 const BORDER_DARK: [number, number, number] = [40, 50, 70];
 const WHITE: [number, number, number] = [255, 255, 255];
+const GROUP_TOTAL_BG: [number, number, number] = [28, 38, 62];
+const GRAND_TOTAL_BG: [number, number, number] = [35, 48, 78];
 
-// Excel hex colors (dark theme)
+// Excel hex colors
 const XL_DARK_BG = "0F121E";
 const XL_DARK_CARD = "121626";
 const XL_DARK_ALT = "161C30";
@@ -35,8 +39,9 @@ const XL_PRIMARY_LIGHT = "38BDF8";
 const XL_TEXT = "E2E8F0";
 const XL_TEXT_MUTED = "94A3B8";
 const XL_BORDER = "283246";
+const XL_GROUP_TOTAL = "1C263E";
+const XL_GRAND_TOTAL = "23304E";
 
-// ─── Helper: load font as base64 ───────────────────────────────────
 async function loadFontBase64(url: string): Promise<string> {
   const res = await fetch(url);
   const buf = await res.arrayBuffer();
@@ -48,55 +53,77 @@ async function loadFontBase64(url: string): Promise<string> {
   return btoa(binary);
 }
 
-// ─── Excel Export (dark themed, styled, Arabic-ready) ───────────────
-export async function exportToExcel({ title, filename, columns, data }: ExportOptions) {
+// ─── Excel Export ───────────────────────────────────────────────────
+export async function exportToExcel({ title, filename, columns, data, headerGroups }: ExportOptions) {
   const wb = new ExcelJS.Workbook();
   wb.creator = "Cost Management System";
   const ws = wb.addWorksheet(title.substring(0, 31));
-
-  // RTL
   (ws as any).views = [{ rightToLeft: true }];
 
-  // Column definitions
-  ws.columns = columns.map((col) => {
-    const maxLen = Math.max(
-      col.label.length,
-      ...data.map((r) => String(r[col.key] ?? "").length)
-    );
-    return {
-      header: col.label,
-      key: col.key,
-      width: Math.min(Math.max(maxLen + 4, 14), 40),
-    };
+  // Column definitions (reversed for RTL display)
+  const revCols = [...columns].reverse();
+  ws.columns = revCols.map((col) => {
+    const maxLen = Math.max(col.label.length, ...data.map((r) => String(r[col.key] ?? "").length));
+    return { header: col.label, key: col.key, width: Math.min(Math.max(maxLen + 3, 10), 35) };
   });
 
-  // Title row (insert before header)
+  // Title row
   ws.spliceRows(1, 0, []);
   const titleCell = ws.getCell("A1");
   titleCell.value = title;
-  titleCell.font = { bold: true, color: { argb: `FF${XL_PRIMARY_LIGHT}` }, size: 16, name: "Cairo" };
+  titleCell.font = { bold: true, color: { argb: `FF${XL_PRIMARY_LIGHT}` }, size: 14, name: "Cairo" };
   titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${XL_DARK_BG}` } };
   titleCell.alignment = { horizontal: "center", vertical: "middle" };
   ws.mergeCells(1, 1, 1, columns.length);
-  ws.getRow(1).height = 36;
+  ws.getRow(1).height = 32;
 
   // Date row
   ws.spliceRows(2, 0, []);
   const dateCell = ws.getCell("A2");
   const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
   dateCell.value = `Cost Management System  •  ${dateStr}`;
-  dateCell.font = { color: { argb: `FF${XL_TEXT_MUTED}` }, size: 10, name: "Cairo" };
+  dateCell.font = { color: { argb: `FF${XL_TEXT_MUTED}` }, size: 9, name: "Cairo" };
   dateCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${XL_DARK_BG}` } };
   dateCell.alignment = { horizontal: "center", vertical: "middle" };
   ws.mergeCells(2, 1, 2, columns.length);
-  ws.getRow(2).height = 24;
+  ws.getRow(2).height = 20;
 
-  // Header row is now row 3
-  const headerRow = ws.getRow(3);
-  headerRow.height = 30;
+  // If headerGroups provided, insert a merged group header row before the column headers
+  let dataStartRow = 4; // default: row 3 = headers, row 4+ = data
+  if (headerGroups && headerGroups.length > 0) {
+    ws.spliceRows(3, 0, []);
+    const groupRow = ws.getRow(3);
+    groupRow.height = 26;
+    // Reverse the header groups for RTL
+    const revGroups = [...headerGroups].reverse();
+    let colIdx = 1;
+    for (const grp of revGroups) {
+      const cell = ws.getCell(3, colIdx);
+      cell.value = grp.label;
+      cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10, name: "Cairo" };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${XL_PRIMARY}` } };
+      cell.alignment = { horizontal: "center", vertical: "middle" };
+      cell.border = {
+        top: { style: "thin", color: { argb: `FF${XL_BORDER}` } },
+        bottom: { style: "thin", color: { argb: `FF${XL_BORDER}` } },
+        left: { style: "thin", color: { argb: `FF${XL_BORDER}` } },
+        right: { style: "thin", color: { argb: `FF${XL_BORDER}` } },
+      };
+      if (grp.colSpan > 1) {
+        ws.mergeCells(3, colIdx, 3, colIdx + grp.colSpan - 1);
+      }
+      colIdx += grp.colSpan;
+    }
+    dataStartRow = 5; // row 3 = group header, row 4 = sub headers, row 5+ = data
+  }
+
+  // Style the column header row
+  const headerRowNum = headerGroups ? 4 : 3;
+  const headerRow = ws.getRow(headerRowNum);
+  headerRow.height = 26;
   headerRow.eachCell((cell) => {
-    cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 11, name: "Cairo" };
-    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${XL_PRIMARY}` } };
+    cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 9, name: "Cairo" };
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF0B7EC5` } };
     cell.alignment = { horizontal: "center", vertical: "middle" };
     cell.border = {
       top: { style: "thin", color: { argb: `FF${XL_BORDER}` } },
@@ -107,18 +134,21 @@ export async function exportToExcel({ title, filename, columns, data }: ExportOp
   });
 
   // Data rows
-  data.forEach((row, idx) => {
-    const r = ws.addRow(columns.map((col) => row[col.key] ?? "—"));
-    r.height = 24;
-    const isAlt = idx % 2 === 1;
+  let altIdx = 0;
+  data.forEach((row) => {
+    const rowType = row.__rowType as string | undefined;
+    const r = ws.addRow(revCols.map((col) => row[col.key] ?? ""));
+    r.height = 22;
+
+    const bgColor = rowType === "grand-total" ? XL_GRAND_TOTAL
+      : rowType === "group-total" ? XL_GROUP_TOTAL
+      : altIdx % 2 === 1 ? XL_DARK_ALT : XL_DARK_CARD;
+    const isBold = rowType === "grand-total" || rowType === "group-total";
+
     r.eachCell((cell) => {
-      cell.font = { size: 11, name: "Cairo", color: { argb: `FF${XL_TEXT}` } };
+      cell.font = { size: 9, name: "Cairo", color: { argb: `FF${XL_TEXT}` }, bold: isBold };
       cell.alignment = { horizontal: "center", vertical: "middle" };
-      cell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: isAlt ? `FF${XL_DARK_ALT}` : `FF${XL_DARK_CARD}` },
-      };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${bgColor}` } };
       cell.border = {
         top: { style: "hair", color: { argb: `FF${XL_BORDER}` } },
         bottom: { style: "hair", color: { argb: `FF${XL_BORDER}` } },
@@ -126,34 +156,32 @@ export async function exportToExcel({ title, filename, columns, data }: ExportOp
         right: { style: "hair", color: { argb: `FF${XL_BORDER}` } },
       };
     });
+    if (!rowType) altIdx++;
   });
 
-  // Footer row
+  // Footer
   const footerRow = ws.addRow([]);
   ws.mergeCells(footerRow.number, 1, footerRow.number, columns.length);
   const footerCell = ws.getCell(`A${footerRow.number}`);
   footerCell.value = "Powered by Mohamed Abdel Aal";
-  footerCell.font = { italic: true, color: { argb: `FF${XL_TEXT_MUTED}` }, size: 9, name: "Cairo" };
+  footerCell.font = { italic: true, color: { argb: `FF${XL_TEXT_MUTED}` }, size: 8, name: "Cairo" };
   footerCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${XL_DARK_BG}` } };
   footerCell.alignment = { horizontal: "center", vertical: "middle" };
-  footerRow.height = 22;
+  footerRow.height = 20;
 
   const buffer = await wb.xlsx.writeBuffer();
-  const blob = new Blob([buffer], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
-  saveAs(blob, `${filename}.xlsx`);
+  saveAs(new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `${filename}.xlsx`);
 }
 
-// ─── PDF Export (Cairo font, dark theme) ────────────────────────────
-export async function exportToPDF({ title, filename, columns, data }: ExportOptions) {
+// ─── PDF Export ─────────────────────────────────────────────────────
+export async function exportToPDF({ title, filename, columns, data, headerGroups }: ExportOptions) {
   const doc = new jsPDF({
     orientation: columns.length > 5 ? "landscape" : "portrait",
     unit: "mm",
     format: "a4",
   });
 
-  // Load & register Cairo font
+  // Load Cairo font
   let fontLoaded = false;
   try {
     const cairoBase64 = await loadFontBase64("/fonts/Cairo-Regular.ttf");
@@ -163,7 +191,7 @@ export async function exportToPDF({ title, filename, columns, data }: ExportOpti
     doc.setFont("Cairo");
     fontLoaded = true;
   } catch (e) {
-    console.warn("Could not load Cairo font, falling back to Amiri", e);
+    console.warn("Could not load Cairo font", e);
     try {
       const amiriBase64 = await loadFontBase64("/fonts/Amiri-Regular.ttf");
       doc.addFileToVFS("Amiri-Regular.ttf", amiriBase64);
@@ -171,9 +199,7 @@ export async function exportToPDF({ title, filename, columns, data }: ExportOpti
       doc.addFont("Amiri-Regular.ttf", "Amiri", "bold");
       doc.setFont("Amiri");
       fontLoaded = true;
-    } catch {
-      console.warn("No Arabic font available");
-    }
+    } catch { /* fallback */ }
   }
 
   const fontName = fontLoaded ? (doc.getFont().fontName || "Cairo") : "helvetica";
@@ -182,13 +208,13 @@ export async function exportToPDF({ title, filename, columns, data }: ExportOpti
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
 
-  // ── Full dark background ──
+  // Dark background
   doc.setFillColor(...DARK_BG);
   doc.rect(0, 0, pageWidth, pageHeight, "F");
 
-  // ── Header bar ──
+  // Header bar
   doc.setFillColor(...PRIMARY_DIM);
-  doc.rect(0, 0, pageWidth, 34, "F");
+  doc.rect(0, 0, pageWidth, 30, "F");
 
   // Logo
   let logoImg: string | null = null;
@@ -203,113 +229,114 @@ export async function exportToPDF({ title, filename, columns, data }: ExportOpti
   } catch { /* no logo */ }
 
   if (logoImg) {
-    try {
-      doc.addImage(logoImg, "PNG", pageWidth - 35, 5, 24, 24);
-    } catch { /* skip */ }
+    try { doc.addImage(logoImg, "PNG", pageWidth - 30, 3, 22, 22); } catch { /* skip */ }
   }
 
-  // System name
   doc.setTextColor(...WHITE);
-  doc.setFontSize(10);
+  doc.setFontSize(8);
   doc.setFont(fontName, "normal");
-  doc.text("Cost Management System", 14, 12);
+  doc.text("Cost Management System", 10, 10);
 
-  // Title
-  doc.setFontSize(16);
+  doc.setFontSize(13);
   doc.setFont(fontName, "bold");
-  doc.text(title, pageWidth / 2, 22, { align: "center" });
+  doc.text(title, pageWidth / 2, 19, { align: "center" });
 
-  // Date
-  doc.setFontSize(9);
+  doc.setFontSize(7);
   doc.setFont(fontName, "normal");
   doc.setTextColor(...TEXT_MUTED);
-  const dateStr = new Date().toLocaleDateString("ar-EG", {
-    year: "numeric", month: "long", day: "numeric",
-  });
-  doc.text(dateStr, 14, 30);
+  const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
+  doc.text(dateStr, 10, 26);
 
-  // Table
-  const headers = columns.map((c) => c.label);
-  const rows = data.map((row) =>
-    columns.map((col) => {
+  // Build headers - reversed for RTL (right = first column)
+  const revCols = [...columns].reverse();
+  const subHeaders = revCols.map((c) => c.label);
+
+  // Build head array
+  let headRows: any[][] = [];
+  if (headerGroups && headerGroups.length > 0) {
+    // Build the top row with colSpan - reversed for RTL
+    const revGroups = [...headerGroups].reverse();
+    const topRow: any[] = [];
+    for (const grp of revGroups) {
+      topRow.push({ content: grp.label, colSpan: grp.colSpan, styles: { halign: "center" as const } });
+    }
+    headRows = [topRow, subHeaders];
+  } else {
+    headRows = [subHeaders];
+  }
+
+  // Build body rows - reversed columns
+  const bodyRows = data.map((row) => {
+    const rowType = row.__rowType as string | undefined;
+    const cells = revCols.map((col) => {
       const val = row[col.key];
-      return val !== null && val !== undefined ? String(val) : "—";
-    })
-  );
+      const content = val !== null && val !== undefined ? String(val) : "—";
+      if (rowType === "grand-total") {
+        return { content, styles: { fontStyle: "bold" as const, fillColor: GRAND_TOTAL_BG, textColor: [56, 189, 248] as [number, number, number] } };
+      }
+      if (rowType === "group-total") {
+        return { content, styles: { fontStyle: "bold" as const, fillColor: GROUP_TOTAL_BG, textColor: TEXT_LIGHT } };
+      }
+      return content;
+    });
+    return cells;
+  });
 
-  // Dynamic font size based on column count
   const colCount = columns.length;
-  const bodyFontSize = colCount > 12 ? 5 : colCount > 8 ? 6 : colCount > 5 ? 7 : 8;
+  const bodyFontSize = colCount > 14 ? 4.5 : colCount > 12 ? 5 : colCount > 8 ? 5.5 : colCount > 5 ? 6.5 : 7;
   const headFontSize = bodyFontSize + 0.5;
 
   autoTable(doc, {
-    head: [headers],
-    body: rows,
-    startY: 40,
+    head: headRows,
+    body: bodyRows,
+    startY: 34,
     theme: "grid",
-    tableWidth: "auto",
     styles: {
       font: fontName,
       fontSize: bodyFontSize,
-      cellPadding: 1.5,
-      halign: "right",
+      cellPadding: 1.2,
+      halign: "center",
       valign: "middle",
       lineColor: BORDER_DARK,
       lineWidth: 0.15,
       textColor: TEXT_LIGHT,
       fillColor: DARK_CARD,
       overflow: "linebreak",
-      cellWidth: "wrap",
     },
     headStyles: {
       fillColor: PRIMARY_DIM,
       textColor: WHITE,
       fontSize: headFontSize,
       fontStyle: "bold",
-      halign: "right",
-      cellPadding: 2,
+      halign: "center",
+      cellPadding: 1.5,
     },
     alternateRowStyles: {
       fillColor: DARK_ROW_ALT,
     },
-    margin: { top: 40, right: 5, bottom: 20, left: 5 },
+    margin: { top: 34, right: 4, bottom: 18, left: 4 },
+    tableWidth: "auto",
     didDrawPage: (pageData: any) => {
-      // Dark background on each page
-      doc.setFillColor(...DARK_BG);
-      // Don't overdraw already-rendered content, just footer area
+      // Footer area
       doc.setFillColor(20, 24, 40);
-      doc.rect(0, pageHeight - 16, pageWidth, 16, "F");
-
-      // Footer
-      doc.setFontSize(8);
+      doc.rect(0, pageHeight - 14, pageWidth, 14, "F");
+      doc.setFontSize(6);
       doc.setTextColor(...TEXT_MUTED);
       doc.setFont(fontName, "normal");
-      doc.text(
-        "Powered by Mohamed Abdel Aal",
-        pageWidth / 2,
-        pageHeight - 7,
-        { align: "center" }
-      );
-      doc.text(
-        `${pageData.pageNumber}`,
-        pageWidth - 15,
-        pageHeight - 7,
-        { align: "center" }
-      );
+      doc.text("Powered by Mohamed Abdel Aal", pageWidth / 2, pageHeight - 6, { align: "center" });
+      doc.text(`${pageData.pageNumber}`, pageWidth - 10, pageHeight - 6, { align: "center" });
 
       // Header on subsequent pages
       if (pageData.pageNumber > 1) {
+        doc.setFillColor(...DARK_BG);
+        doc.rect(0, 0, pageWidth, 10, "F");
         doc.setFillColor(...PRIMARY_DIM);
-        doc.rect(0, 0, pageWidth, 14, "F");
+        doc.rect(0, 0, pageWidth, 10, "F");
         doc.setTextColor(...WHITE);
-        doc.setFontSize(10);
+        doc.setFontSize(8);
         doc.setFont(fontName, "bold");
-        doc.text(title, pageWidth / 2, 9, { align: "center" });
+        doc.text(title, pageWidth / 2, 7, { align: "center" });
       }
-    },
-    // Fill dark background before table on new pages
-    didDrawCell: (cellData: any) => {
-      // handled by styles
     },
   });
 

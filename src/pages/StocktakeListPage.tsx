@@ -17,9 +17,8 @@ import {
 } from "@/components/ui/table";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, Plus, Search, Archive, Pencil, Eye, History } from "lucide-react";
+import { CalendarIcon, Plus, Search, Archive, Pencil, Eye, History, Printer } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
-import { PrintButton } from "@/components/PrintButton";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -209,6 +208,119 @@ export const StocktakeListPage: React.FC = () => {
     setShowEditHistory(true);
   };
 
+  const handlePrintStocktake = async (record: any) => {
+    const { data: items } = await supabase
+      .from("stocktake_items")
+      .select("*, stock_items(name, code, stock_unit)")
+      .eq("stocktake_id", record.id);
+
+    const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
+    const logoSrc = `${window.location.origin}/logo.png`;
+    const locName = getLocationName(record);
+
+    let itemsHTML = "";
+    let totalDiffValue = 0;
+    (items || []).forEach((item: any, idx: number) => {
+      const diff = Number(item.counted_qty) - Number(item.book_qty);
+      const diffValue = diff * Number(item.avg_cost);
+      totalDiffValue += diffValue;
+      const si = item.stock_items;
+      itemsHTML += `<tr>
+        <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${idx + 1}</td>
+        <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${si?.code || "—"}</td>
+        <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:right;">${si?.name || "—"}</td>
+        <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${si?.stock_unit || "—"}</td>
+        <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${Number(item.book_qty).toFixed(2)}</td>
+        <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${Number(item.counted_qty).toFixed(2)}</td>
+        <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;${diff !== 0 ? (diff > 0 ? 'color:green;' : 'color:red;') : ''}">${diff.toFixed(2)}</td>
+        <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${Number(item.avg_cost).toFixed(2)}</td>
+        <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;${diffValue !== 0 ? (diffValue > 0 ? 'color:green;' : 'color:red;') : ''}">${diffValue.toFixed(2)}</td>
+      </tr>`;
+    });
+    itemsHTML += `<tr style="font-weight:bold;background:#f5f5f5;">
+      <td colspan="6" style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">إجمالي قيمة الفروقات</td>
+      <td colspan="3" style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;${totalDiffValue !== 0 ? (totalDiffValue > 0 ? 'color:green;' : 'color:red;') : ''}">${totalDiffValue.toFixed(2)}</td>
+    </tr>`;
+
+    const printHTML = `<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>جرد ${record.record_number || ""}</title>
+  <style>
+    @font-face { font-family:'CairoLocal'; src:url('${window.location.origin}/fonts/Cairo-Regular.ttf') format('truetype'); font-display:swap; }
+    @font-face { font-family:'AmiriLocal'; src:url('${window.location.origin}/fonts/Amiri-Regular.ttf') format('truetype'); font-display:swap; }
+    @font-face { font-family:'AmiriBold'; src:url('${window.location.origin}/fonts/Amiri-Bold.ttf') format('truetype'); font-display:swap; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'CairoLocal','AmiriLocal',sans-serif; direction:rtl; padding:20px; color:#000; background:#fff; }
+    @media print { @page { size:auto; margin:10mm; } body { padding:0; } }
+    .header { text-align:center; margin-bottom:15px; border-bottom:2px solid #000; padding-bottom:10px; display:flex; align-items:center; justify-content:center; gap:10px; }
+    .logo { width:40px; height:40px; object-fit:contain; }
+    .header h1 { font-size:18px; font-weight:bold; font-family:'AmiriBold','CairoLocal',sans-serif; }
+    .header p { font-size:11px; }
+    .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:15px; border:1px solid #000; padding:10px; }
+    .info-item { font-size:11px; }
+    .info-item strong { font-family:'AmiriBold','CairoLocal',sans-serif; }
+    table { width:100%; border-collapse:collapse; margin-bottom:15px; }
+    th { border:1px solid #000; padding:5px 6px; font-size:10px; text-align:center; font-family:'AmiriBold','CairoLocal',sans-serif; background:#f0f0f0; }
+    .signatures { display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; margin-top:30px; }
+    .sig-box { text-align:center; border-top:1px solid #000; padding-top:8px; font-size:11px; }
+    .footer { text-align:center; margin-top:20px; font-size:9px; border-top:1px solid #000; padding-top:8px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="${logoSrc}" alt="Logo" class="logo" />
+    <div>
+      <h1>محضر جرد</h1>
+      <p>Cost Management System • ${dateStr}</p>
+    </div>
+  </div>
+  <div class="info-grid">
+    <div class="info-item"><strong>رقم الجرد:</strong> ${record.record_number || "—"}</div>
+    <div class="info-item"><strong>التاريخ:</strong> ${record.date || "—"}</div>
+    <div class="info-item"><strong>نوع الجرد:</strong> ${record.type || "—"}</div>
+    <div class="info-item"><strong>الموقع:</strong> ${locName}</div>
+    <div class="info-item"><strong>المنشئ:</strong> ${record.creator_name || "—"}</div>
+    <div class="info-item"><strong>الحالة:</strong> ${record.is_edited ? "معدّل" : record.status || "—"}</div>
+    ${record.notes ? `<div class="info-item" style="grid-column:span 2;"><strong>ملاحظات:</strong> ${record.notes}</div>` : ""}
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>م</th>
+        <th>الكود</th>
+        <th>اسم الصنف</th>
+        <th>الوحدة</th>
+        <th>الرصيد الدفتري</th>
+        <th>الكمية الفعلية</th>
+        <th>الفرق</th>
+        <th>متوسط التكلفة</th>
+        <th>قيمة الفرق</th>
+      </tr>
+    </thead>
+    <tbody>${itemsHTML}</tbody>
+  </table>
+  <div class="signatures">
+    <div class="sig-box">لجنة الجرد</div>
+    <div class="sig-box">أمين المخزن</div>
+    <div class="sig-box">المدير المسؤول</div>
+  </div>
+  <div class="footer">Powered by Mohamed Abdel Aal</div>
+  <script>
+    (async function(){
+      try { if(document.fonts && document.fonts.ready) await document.fonts.ready; } catch(e){}
+      window.print();
+      window.onafterprint = function(){ window.close(); };
+    })();
+  </script>
+</body>
+</html>`;
+
+    const w = window.open("", "_blank");
+    if (w) { w.document.write(printHTML); w.document.close(); }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in-up">
       <div className="flex items-center justify-between">
@@ -246,11 +358,6 @@ export const StocktakeListPage: React.FC = () => {
           data={filtered.map((st: any) => ({ record: st.record_number || "—", date: st.date, type: st.type, location: getLocationName(st), status: st.is_edited ? "معدل" : st.status, diff: getDiffValue(st.id).toFixed(2) }))}
           columns={[{ key: "record", label: "رقم الجرد" }, { key: "date", label: "تاريخ الجرد" }, { key: "type", label: "نوع الجرد" }, { key: "location", label: "الفرع / المخزن" }, { key: "status", label: "الحالة" }, { key: "diff", label: "قيمة الفروقات" }]}
           filename="الجرد_الدوري"
-          title="الجرد الدوري"
-        />
-        <PrintButton
-          data={filtered.map((st: any) => ({ record: st.record_number || "—", date: st.date, type: st.type, location: getLocationName(st), status: st.is_edited ? "معدل" : st.status, diff: getDiffValue(st.id).toFixed(2) }))}
-          columns={[{ key: "record", label: "رقم الجرد" }, { key: "date", label: "تاريخ الجرد" }, { key: "type", label: "نوع الجرد" }, { key: "location", label: "الفرع / المخزن" }, { key: "status", label: "الحالة" }, { key: "diff", label: "قيمة الفروقات" }]}
           title="الجرد الدوري"
         />
       </div>
@@ -310,6 +417,9 @@ export const StocktakeListPage: React.FC = () => {
                           <History size={14} />
                         </Button>
                       )}
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handlePrintStocktake(st)} title="طباعة">
+                        <Printer size={14} />
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>

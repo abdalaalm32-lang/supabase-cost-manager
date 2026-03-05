@@ -562,18 +562,30 @@ export const CostAnalysisPage: React.FC = () => {
     { key: "code", label: "كود الصنف" },
     { key: "name", label: "اسم الصنف" },
     { key: "unit", label: "الوحدة" },
-    { key: "openQty", label: "أول المدة - كمية" },
-    { key: "openVal", label: "أول المدة - قيمة" },
-    { key: "inQty", label: "الوارد - كمية" },
-    { key: "inVal", label: "الوارد - قيمة" },
-    { key: "outQty", label: "المنصرف - كمية" },
-    { key: "outVal", label: "المنصرف - قيمة" },
-    { key: "bookQty", label: "الدفتري - كمية" },
-    { key: "bookVal", label: "الدفتري - قيمة" },
-    { key: "countQty", label: "الفعلي - كمية" },
-    { key: "countVal", label: "الفعلي - قيمة" },
-    { key: "varQty", label: "التباين - كمية" },
-    { key: "varVal", label: "التباين - قيمة" },
+    { key: "openQty", label: "كمية" },
+    { key: "openVal", label: "قيمة" },
+    { key: "inQty", label: "كمية" },
+    { key: "inVal", label: "قيمة" },
+    { key: "outQty", label: "كمية" },
+    { key: "outVal", label: "قيمة" },
+    { key: "bookQty", label: "كمية" },
+    { key: "bookVal", label: "قيمة" },
+    { key: "countQty", label: "كمية" },
+    { key: "countVal", label: "قيمة" },
+    { key: "varQty", label: "كمية" },
+    { key: "varVal", label: "قيمة" },
+  ];
+
+  const exportHeaderGroups = [
+    { label: "كود الصنف", colSpan: 1 },
+    { label: "اسم الصنف", colSpan: 1 },
+    { label: "الوحدة", colSpan: 1 },
+    { label: "جرد أول المدة", colSpan: 2 },
+    { label: "الوارد", colSpan: 2 },
+    { label: "المنصرف", colSpan: 2 },
+    { label: "الرصيد الدفتري", colSpan: 2 },
+    { label: "الجرد الفعلي", colSpan: 2 },
+    { label: "التباين", colSpan: 2 },
   ];
 
   const exportData = useMemo(() => {
@@ -598,21 +610,60 @@ export const CostAnalysisPage: React.FC = () => {
           varVal: fmtNum(item.varVal),
         });
       }
+      // Group total row
+      const ct = catTotals(g.items);
+      rows.push({
+        __rowType: "group-total",
+        code: "",
+        name: `إجمالي: ${g.catName}`,
+        unit: "",
+        openQty: "",
+        openVal: fmtNum(ct.openVal),
+        inQty: "",
+        inVal: fmtNum(ct.inVal),
+        outQty: "",
+        outVal: fmtNum(ct.outVal),
+        bookQty: "",
+        bookVal: fmtNum(ct.bookVal),
+        countQty: "",
+        countVal: fmtNum(ct.countVal),
+        varQty: "",
+        varVal: fmtNum(ct.varVal),
+      });
     }
+    // Grand total row
+    rows.push({
+      __rowType: "grand-total",
+      code: "",
+      name: "الإجمالي العام",
+      unit: "",
+      openQty: "",
+      openVal: fmtNum(grandTotals.openVal),
+      inQty: "",
+      inVal: fmtNum(grandTotals.inVal),
+      outQty: "",
+      outVal: fmtNum(grandTotals.outVal),
+      bookQty: "",
+      bookVal: fmtNum(grandTotals.bookVal),
+      countQty: "",
+      countVal: fmtNum(grandTotals.countVal),
+      varQty: "",
+      varVal: fmtNum(grandTotals.varVal),
+    });
     return rows;
-  }, [grouped]);
+  }, [grouped, grandTotals]);
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     try {
-      exportToExcel({ title: "تحليل التكاليف", filename: "تحليل_التكاليف", columns: exportColumns, data: exportData });
+      await exportToExcel({ title: "تحليل التكاليف", filename: "تحليل_التكاليف", columns: exportColumns, data: exportData, headerGroups: exportHeaderGroups });
       toast.success("تم تصدير الملف بنجاح");
-    } catch { toast.error("حدث خطأ أثناء التصدير"); }
+    } catch (e) { console.error(e); toast.error("حدث خطأ أثناء التصدير"); }
   };
   const handleExportPdf = async () => {
     try {
-      await exportToPDF({ title: "تحليل التكاليف", filename: "تحليل_التكاليف", columns: exportColumns, data: exportData });
+      await exportToPDF({ title: "تحليل التكاليف", filename: "تحليل_التكاليف", columns: exportColumns, data: exportData, headerGroups: exportHeaderGroups });
       toast.success("تم تصدير الملف بنجاح");
-    } catch { toast.error("حدث خطأ أثناء التصدير"); }
+    } catch (e) { console.error(e); toast.error("حدث خطأ أثناء التصدير"); }
   };
 
   const handlePrint = () => window.print();

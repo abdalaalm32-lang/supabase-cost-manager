@@ -25,7 +25,17 @@ import {
   CheckCircle2,
   Clock,
   Edit3,
+  Printer,
+  FileText,
+  FileSpreadsheet,
+  Loader2,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { RecipePrintExport, MaterialUsagePrintExport } from "@/components/RecipePrintExport";

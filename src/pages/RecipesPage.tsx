@@ -736,6 +736,17 @@ ${allTablesHTML}
             </>
           )}
 
+          <Select value={selectedEngClass} onValueChange={setSelectedEngClass}>
+            <SelectTrigger className="h-9 text-sm">
+              <SelectValue placeholder="تصنيف المنيو" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">كل التصنيفات</SelectItem>
+              <SelectItem value="kitchen">Kitchen</SelectItem>
+              <SelectItem value="bar">Bar</SelectItem>
+            </SelectContent>
+          </Select>
+
           {/* Product Search */}
           <div className="relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

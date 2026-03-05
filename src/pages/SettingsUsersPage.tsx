@@ -483,7 +483,7 @@ export const SettingsUsersPage: React.FC = () => {
             </Button>
           </div>
 
-          <ScrollArea className="flex-1 min-h-0 max-h-[55vh] px-1">
+          <ScrollArea className="flex-1 min-h-0 max-h-[60vh] px-1">
             {activeTab === "account" && (
               <div className="space-y-4 py-2">
                 <div className="space-y-2">

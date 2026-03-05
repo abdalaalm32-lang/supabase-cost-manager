@@ -89,6 +89,7 @@ export const RecipesPage: React.FC = () => {
   // All recipes print/export
   const [loadingAllPdf, setLoadingAllPdf] = useState(false);
   const [loadingAllExcel, setLoadingAllExcel] = useState(false);
+  const [selectedPrintCategory, setSelectedPrintCategory] = useState<string>("all");
 
   const { data: branches = [] } = useQuery({
     queryKey: ["branches-active", companyId],
@@ -447,8 +448,16 @@ export const RecipesPage: React.FC = () => {
   // === Print / Export ALL recipes for selected branch ===
 
   const allRecipesData = useMemo(() => {
+    if (selectedBranch === "all") return [];
     // Get products that have recipes & match branch filter
-    const products = filteredProducts.filter((p: any) => !!recipeMap[p.id]);
+    let products = filteredProducts.filter((p: any) => !!recipeMap[p.id]);
+    // Filter by category if not "all"
+    if (selectedPrintCategory !== "all") {
+      products = products.filter((p: any) => {
+        const catName = p.category || posCategories.find((c: any) => c.id === p.category_id)?.name || "";
+        return catName === selectedPrintCategory || p.category_id === selectedPrintCategory;
+      });
+    }
     return products.map((p: any) => {
       const recipe = recipeMap[p.id];
       const ings = (recipe.recipe_ingredients || []).map((ri: any) => {
@@ -462,7 +471,7 @@ export const RecipesPage: React.FC = () => {
       const totalCost = ings.reduce((s: number, i: any) => s + i.cost, 0);
       return { product: p, ingredients: ings, totalCost };
     });
-  }, [filteredProducts, recipeMap, allStockItems]);
+  }, [filteredProducts, recipeMap, allStockItems, selectedBranch, selectedPrintCategory, posCategories]);
 
   const handlePrintAllRecipes = (withCost: boolean) => {
     if (allRecipesData.length === 0) return;
@@ -669,7 +678,7 @@ ${allTablesHTML}
           <h2 className="font-bold text-sm">المنتجات</h2>
 
           {/* Branch Filter */}
-          <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+          <Select value={selectedBranch} onValueChange={(v) => { setSelectedBranch(v); setSelectedPrintCategory("all"); }}>
             <SelectTrigger className="h-9 text-sm">
               <SelectValue placeholder="كل الفروع" />
             </SelectTrigger>
@@ -683,27 +692,48 @@ ${allTablesHTML}
             </SelectContent>
           </Select>
 
-          {/* Print/Export All Recipes */}
-          {allRecipesData.length > 0 && (
-            <div className="flex items-center gap-1 flex-wrap">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-1 h-7 text-xs w-full">
-                    <Printer size={12} /> طباعة الكل
+          {/* Print/Export All Recipes - requires branch selection */}
+          {selectedBranch !== "all" && (
+            <>
+              {/* Category filter for print */}
+              <Select value={selectedPrintCategory} onValueChange={setSelectedPrintCategory}>
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder="تصنيف الطباعة" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">كل التصنيفات</SelectItem>
+                  {posCategories
+                    .filter((c: any) => !c.branch_id || c.branch_id === selectedBranch)
+                    .map((c: any) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+
+              {allRecipesData.length > 0 && (
+                <div className="flex items-center gap-1 flex-wrap">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="gap-1 h-7 text-xs w-full">
+                        <Printer size={12} /> طباعة الكل ({allRecipesData.length})
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handlePrintAllRecipes(false)}>الكميات فقط</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handlePrintAllRecipes(true)}>بالتكلفة</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <Button variant="outline" size="sm" className="gap-1 h-7 text-xs flex-1" onClick={handleExportAllPdf} disabled={loadingAllPdf}>
+                    {loadingAllPdf ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />} PDF
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handlePrintAllRecipes(false)}>الكميات فقط</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handlePrintAllRecipes(true)}>بالتكلفة</DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Button variant="outline" size="sm" className="gap-1 h-7 text-xs flex-1" onClick={handleExportAllPdf} disabled={loadingAllPdf}>
-                {loadingAllPdf ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />} PDF
-              </Button>
-              <Button variant="outline" size="sm" className="gap-1 h-7 text-xs flex-1" onClick={handleExportAllExcel} disabled={loadingAllExcel}>
-                {loadingAllExcel ? <Loader2 size={12} className="animate-spin" /> : <FileSpreadsheet size={12} className="text-green-600" />} Excel
-              </Button>
-            </div>
+                  <Button variant="outline" size="sm" className="gap-1 h-7 text-xs flex-1" onClick={handleExportAllExcel} disabled={loadingAllExcel}>
+                    {loadingAllExcel ? <Loader2 size={12} className="animate-spin" /> : <FileSpreadsheet size={12} className="text-green-600" />} Excel
+                  </Button>
+                </div>
+              )}
+            </>
           )}
 
           <Select value={selectedEngClass} onValueChange={setSelectedEngClass}>

@@ -93,9 +93,8 @@ function getStrategic(profit: ProfitLevel, popularity: PopularityLevel): Strateg
 }
 
 const levelBadgeClass: Record<string, string> = {
-  "مرتفع": "bg-green-500/15 text-green-400 border-green-500/30",
-  "متوسط": "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
-  "منخفض": "bg-red-500/15 text-red-400 border-red-500/30",
+  "عالية": "bg-green-500/15 text-green-400 border-green-500/30",
+  "منخفضة": "bg-red-500/15 text-red-400 border-red-500/30",
 };
 
 const strategicBadgeClass: Record<Strategic, string> = {

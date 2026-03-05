@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { RecipePrintExport } from "@/components/RecipePrintExport";
 
 interface LocalIngredient {
   id?: string;
@@ -309,6 +310,15 @@ export const ProductionRecipesPage: React.FC = () => {
               )}
               {recipeId && (
                 <Button onClick={handleDeleteRecipe} variant="destructive" size="sm"><Trash2 size={14} /> حذف</Button>
+              )}
+              {ingredients.length > 0 && (
+                <RecipePrintExport
+                  productName={selectedProduct.name}
+                  productCode={selectedProduct.code}
+                  ingredients={ingredients}
+                  totalCost={totalIngredientsCost}
+                  type="production"
+                />
               )}
             </>
           )}

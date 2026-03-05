@@ -285,6 +285,7 @@ export type Database = {
           created_at: string
           date: string
           id: string
+          is_edited: boolean
           notes: string | null
           record_number: string | null
           status: string
@@ -296,6 +297,7 @@ export type Database = {
           created_at?: string
           date?: string
           id?: string
+          is_edited?: boolean
           notes?: string | null
           record_number?: string | null
           status?: string
@@ -307,6 +309,7 @@ export type Database = {
           created_at?: string
           date?: string
           id?: string
+          is_edited?: boolean
           notes?: string | null
           record_number?: string | null
           status?: string

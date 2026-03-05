@@ -196,7 +196,7 @@ export const AddCostAdjustmentPage: React.FC = () => {
         const { error } = await supabase.from("cost_adjustments").update({
           branch_id: destinationType === "branch" ? destinationId : null,
           branch_name: locationName || null,
-          date, notes: notes || null, status,
+          date, notes: notes || null, status, is_edited: true,
         }).eq("id", editId!);
         if (error) throw error;
 

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { ExportButtons } from "@/components/ExportButtons";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -546,7 +547,15 @@ export const TransferReportsPage: React.FC = () => {
         <CardContent className="pt-4 pb-2">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-bold flex items-center gap-1"><ArrowRightLeft size={16} /> تفاصيل الأصناف المحوّلة</h3>
-            <span className="text-xs text-muted-foreground">{fmtInt(processedData.length)} صنف</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">{fmtInt(processedData.length)} صنف</span>
+              <ExportButtons
+                data={processedData.map((item: any) => ({ code: item.code, name: item.name, category: item.catName, qty: fmt(item.totalTransferQty), unit: item.unit, cost: fmt(item.totalCost), occurrences: item.occurrences, lastDate: item.lastTransferDate }))}
+                columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الصنف" }, { key: "category", label: "المجموعة" }, { key: "qty", label: "إجمالي الكمية" }, { key: "unit", label: "الوحدة" }, { key: "cost", label: "إجمالي التكلفة" }, { key: "occurrences", label: "مرات التحويل" }, { key: "lastDate", label: "آخر تحويل" }]}
+                filename="تقارير_التحويلات"
+                title="تقارير التحويلات"
+              />
+            </div>
           </div>
           <div className="overflow-x-auto">
             <Table>

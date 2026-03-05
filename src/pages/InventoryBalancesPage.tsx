@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Search, Store, Warehouse } from "lucide-react";
+import { ExportButtons } from "@/components/ExportButtons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLocationStock } from "@/hooks/useLocationStock";
 
@@ -147,7 +148,15 @@ export const InventoryBalancesPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in-up">
-      <h1 className="text-2xl font-bold">أرصدة المخزون</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">أرصدة المخزون</h1>
+        <ExportButtons
+          data={filtered.map((item: any) => ({ code: item.code || "—", name: item.name, category: getCatName(item.category_id), unit: item.stock_unit, locations: getLocationNames(item.id), stock: getDisplayStock(item).toFixed(2), avgCost: Number(item.avg_cost).toFixed(2), value: (getDisplayStock(item) * Number(item.avg_cost)).toFixed(2) }))}
+          columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الصنف" }, { key: "category", label: "المجموعة" }, { key: "unit", label: "الوحدة" }, { key: "locations", label: "المواقع" }, { key: "stock", label: "الرصيد" }, { key: "avgCost", label: "متوسط التكلفة" }, { key: "value", label: "قيمة المخزون" }]}
+          filename="أرصدة_المخزون"
+          title="أرصدة المخزون"
+        />
+      </div>
 
       {/* Search Bar */}
       <div className="flex items-center gap-3">

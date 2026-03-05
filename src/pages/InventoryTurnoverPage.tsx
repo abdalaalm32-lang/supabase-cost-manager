@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef } from "react";
+import { ExportButtons } from "@/components/ExportButtons";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -862,6 +863,15 @@ export const InventoryTurnoverPage: React.FC = () => {
 
       {/* Table */}
       <Card>
+        <div className="flex items-center justify-between px-4 pt-4 pb-2">
+          <h3 className="text-sm font-bold">جدول تحليل حركة المخزون</h3>
+          <ExportButtons
+            data={filteredData.map((i: any) => ({ code: i.code || "—", name: i.name, category: i.categoryName, unit: i.unit, stock: i.currentStock.toFixed(2), value: i.currentInventoryValue.toFixed(2), consumption: i.totalConsumptionQty.toFixed(2), turnover: i.turnoverRate.toFixed(2), holding: i.holdingDays >= 999 ? "∞" : i.holdingDays.toFixed(1), speed: i.speedLabel, recommendation: i.recommendation }))}
+            columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الصنف" }, { key: "category", label: "المجموعة" }, { key: "unit", label: "الوحدة" }, { key: "stock", label: "المخزون" }, { key: "value", label: "القيمة" }, { key: "consumption", label: "الاستهلاك" }, { key: "turnover", label: "معدل الدوران" }, { key: "holding", label: "فترة الاحتفاظ" }, { key: "speed", label: "التصنيف" }, { key: "recommendation", label: "التوصية" }]}
+            filename="تحليل_حركة_المخزون"
+            title="تحليل حركة المخزون"
+          />
+        </div>
         <CardContent className="p-0" ref={tableRef}>
           <div className="overflow-x-auto">
             <Table>

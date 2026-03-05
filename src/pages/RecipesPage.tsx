@@ -682,7 +682,29 @@ ${allTablesHTML}
             </SelectContent>
           </Select>
 
-          {/* Menu Engineering Classification Filter */}
+          {/* Print/Export All Recipes */}
+          {allRecipesData.length > 0 && (
+            <div className="flex items-center gap-1 flex-wrap">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1 h-7 text-xs w-full">
+                    <Printer size={12} /> طباعة الكل
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handlePrintAllRecipes(false)}>الكميات فقط</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handlePrintAllRecipes(true)}>بالتكلفة</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button variant="outline" size="sm" className="gap-1 h-7 text-xs flex-1" onClick={handleExportAllPdf} disabled={loadingAllPdf}>
+                {loadingAllPdf ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />} PDF
+              </Button>
+              <Button variant="outline" size="sm" className="gap-1 h-7 text-xs flex-1" onClick={handleExportAllExcel} disabled={loadingAllExcel}>
+                {loadingAllExcel ? <Loader2 size={12} className="animate-spin" /> : <FileSpreadsheet size={12} className="text-green-600" />} Excel
+              </Button>
+            </div>
+          )}
+
           <Select value={selectedEngClass} onValueChange={setSelectedEngClass}>
             <SelectTrigger className="h-9 text-sm">
               <SelectValue placeholder="تصنيف المنيو" />

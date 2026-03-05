@@ -183,9 +183,9 @@ export const IndirectExpensesPage: React.FC = () => {
   };
 
   const breakEvenPoint = (p: CostingPeriod) => {
-    const dailySales = expectedDailySales(p);
-    const monthly = monthlyExpectedSales(p);
-    return monthly > 0 ? totalIndirectCost(p) / (dailySales / monthly) : 0;
+    const denominator = 1 - (avgDirectCostPct / 100);
+    if (denominator <= 0) return 0;
+    return (totalIndirectCost(p) / 30) / denominator;
   };
 
   const handleAddCustomExpense = () => {
@@ -564,27 +564,35 @@ export const IndirectExpensesPage: React.FC = () => {
               <table className="w-full text-sm">
                 <tbody>
                   <tr>
-                    <td className="px-6 py-3 bg-[hsl(40,30%,85%)] text-right font-semibold border-b border-border w-1/2">
+                    <td className="px-6 py-3 bg-muted text-right font-semibold border-b border-border w-1/2">
                       Indirect Cost Per.
                     </td>
-                    <td className="px-6 py-3 bg-[hsl(0,50%,90%)] text-center font-bold border-b border-border w-1/2">
+                    <td className="px-6 py-3 bg-card text-center font-bold border-b border-border w-1/2 text-destructive">
                       {indirectPctValue.toFixed(2)}%
                     </td>
                   </tr>
                   <tr>
-                    <td className="px-6 py-3 bg-[hsl(40,30%,85%)] text-right font-semibold border-b border-border">
+                    <td className="px-6 py-3 bg-muted text-right font-semibold border-b border-border">
                       Avg Direct Cost Per.
                     </td>
-                    <td className="px-6 py-3 bg-[hsl(40,50%,88%)] text-center font-bold border-b border-border">
+                    <td className="px-6 py-3 bg-card text-center font-bold border-b border-border text-warning">
                       {avgDirectCostPct.toFixed(2)}%
                     </td>
                   </tr>
                   <tr>
-                    <td className="px-6 py-3 bg-[hsl(40,30%,85%)] text-right font-semibold">
+                    <td className="px-6 py-3 bg-muted text-right font-semibold border-b border-border">
                       Net Profit Per.
                     </td>
-                    <td className={`px-6 py-3 text-center font-bold ${netProfitPct >= 0 ? 'bg-[hsl(120,40%,85%)]' : 'bg-[hsl(0,50%,90%)]'}`}>
+                    <td className={`px-6 py-3 bg-card text-center font-bold border-b border-border ${netProfitPct >= 0 ? 'text-success' : 'text-destructive'}`}>
                       {netProfitPct.toFixed(2)}%
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-6 py-3 bg-muted text-right font-semibold">
+                      Break-Even Point (Daily)
+                    </td>
+                    <td className="px-6 py-3 bg-card text-center font-bold text-primary">
+                      {selectedPeriod ? breakEvenPoint(selectedPeriod).toLocaleString(undefined, { maximumFractionDigits: 2 }) : '0'}
                     </td>
                   </tr>
                 </tbody>

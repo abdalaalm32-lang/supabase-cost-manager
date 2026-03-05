@@ -155,7 +155,7 @@ export const RecipePrintExport: React.FC<RecipePrintExportProps> = ({
   };
 
   const getExportData = () => {
-    return ingredients.map((ing) => {
+    const rows = ingredients.map((ing) => {
       const cost = (ing.qty / (ing.conversion_factor || 1)) * ing.avg_cost;
       return {
         name: ing.name,
@@ -166,6 +166,17 @@ export const RecipePrintExport: React.FC<RecipePrintExportProps> = ({
         total: cost.toFixed(2),
       };
     });
+    // Add total row
+    rows.push({
+      name: "إجمالي التكلفة",
+      code: "",
+      unit: "",
+      qty: "" as any,
+      avg_cost: "",
+      total: totalCost.toFixed(2),
+      __rowType: "grand-total",
+    } as any);
+    return rows;
   };
 
   const exportColumns: ExportColumn[] = [

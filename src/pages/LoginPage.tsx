@@ -135,12 +135,9 @@ export const LoginPage: React.FC = () => {
         <div className="bg-card/60 backdrop-blur-2xl border border-border/30 rounded-3xl shadow-2xl shadow-black/40 p-8 sm:p-10">
           {/* Logo */}
           <div className="text-center mb-8">
-            <img src={logo3m} alt="3M GSC Logo" className="w-28 h-28 mx-auto mb-3 object-contain drop-shadow-lg" />
-            <h1 className="text-2xl font-black tracking-tight text-gradient">
-              3M GSC
-            </h1>
-            <p className="text-xs text-muted-foreground mt-1.5 font-medium">
-              نظام إدارة التكاليف والتحليل المالي
+            <img src={logo3m} alt="3M GSC Logo" className="w-36 h-36 mx-auto mb-3 object-contain drop-shadow-lg" />
+            <p className="text-sm text-primary/80 mt-1 italic font-semibold tracking-wide" style={{ fontFamily: "'Georgia', serif", letterSpacing: '0.12em' }}>
+              Cost Management System
             </p>
           </div>
 
@@ -303,7 +300,7 @@ export const LoginPage: React.FC = () => {
 
           <div className="mt-8 text-center">
             <span className="text-[11px] text-muted-foreground/50 font-semibold tracking-[0.15em]" style={{ fontFamily: "'Cairo', sans-serif", letterSpacing: '0.18em' }}>
-              Designed by <span className="text-primary/60 font-bold">Mohamed Abdel Aal</span>
+              Powered by <span className="text-primary/60 font-bold">Mohamed Abdel Aal</span>
             </span>
           </div>
         </div>

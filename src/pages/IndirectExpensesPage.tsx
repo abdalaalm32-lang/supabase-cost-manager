@@ -185,7 +185,10 @@ export const IndirectExpensesPage: React.FC = () => {
   const breakEvenPoint = (p: CostingPeriod) => {
     const denominator = 1 - (avgDirectCostPct / 100);
     if (denominator <= 0) return 0;
-    return (totalIndirectCost(p) / 30) / denominator;
+    const start = new Date(p.start_date);
+    const end = new Date(p.end_date);
+    const days = Math.max(1, Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+    return (totalIndirectCost(p) / days) / denominator;
   };
 
   const handleAddCustomExpense = () => {

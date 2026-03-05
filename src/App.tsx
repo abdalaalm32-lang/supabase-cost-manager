@@ -9,6 +9,7 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from
 import logo3m from "@/assets/logo-3m.png";
 import loginBg from "@/assets/login-bg.jpg";
 import { LoginPage } from "@/pages/LoginPage";
+import { InstallPWA } from "@/components/InstallPWA";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { PlaceholderPage } from "@/pages/PlaceholderPage";
 import { RecipesPage } from "@/pages/RecipesPage";
@@ -92,7 +93,7 @@ const SuspendedOverlay = () => (
     <div className="absolute inset-0 bg-background/60 backdrop-blur-xl" />
     <div className="relative z-10 text-center p-8 max-w-md">
       <div className="w-20 h-20 rounded-full bg-destructive/15 flex items-center justify-center mx-auto mb-6">
-        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-destructive"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-destructive"><circle cx="12" cy="12" r="10" /><line x1="4.93" y1="4.93" x2="19.07" y2="19.07" /></svg>
       </div>
       <h2 className="text-2xl font-black text-foreground mb-3">تم إيقاف الحساب</h2>
       <p className="text-muted-foreground text-sm mb-6">
@@ -160,7 +161,7 @@ const CompanyDeactivatedOverlay: React.FC<{ isOwner: boolean }> = ({ isOwner }) 
       <div className="absolute inset-0 bg-background/60 backdrop-blur-xl" />
       <div className="relative z-10 text-center p-8 max-w-md">
         <div className="w-20 h-20 rounded-full bg-destructive/15 flex items-center justify-center mx-auto mb-6">
-          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-destructive"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-destructive"><circle cx="12" cy="12" r="10" /><line x1="4.93" y1="4.93" x2="19.07" y2="19.07" /></svg>
         </div>
         {isOwner ? (
           <>
@@ -205,7 +206,7 @@ const CompanyDeactivatedOverlay: React.FC<{ isOwner: boolean }> = ({ isOwner }) 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { auth } = useAuth();
   const qc = useQueryClient();
-  
+
   // Check if company is active (priority check before individual status)
   const { data: companyStatus } = useQuery({
     queryKey: ["company-active-status", auth.profile?.company_id],
@@ -235,15 +236,15 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
   if (!auth.isReady) return null;
   if (!auth.session) return <Navigate to="/login" replace />;
-  
+
   // Company deactivation check FIRST (not for admins)
   if (!auth.isAdmin && companyStatus && !companyStatus.active) {
     return <CompanyDeactivatedOverlay isOwner={auth.isOwner} />;
   }
-  
+
   // Individual user suspension check
   if (auth.profile && auth.profile.status !== "نشط") return <SuspendedOverlay />;
-  
+
   return <>{children}</>;
 };
 
@@ -387,6 +388,7 @@ const App = () => {
             <Sonner />
             {!isOnline && <OfflineScreen />}
             <AppRoutes />
+            <InstallPWA />
           </TooltipProvider>
         </AuthProvider>
       </BrowserRouter>

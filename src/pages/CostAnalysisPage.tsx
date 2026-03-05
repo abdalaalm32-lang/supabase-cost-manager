@@ -119,7 +119,7 @@ export const CostAnalysisPage: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("stock_items").select("*, inventory_categories:category_id(id, name)")
-        .eq("company_id", companyId!).eq("active", true).order("name");
+        .eq("company_id", companyId!).eq("active", true).order("created_at", { ascending: true });
       if (error) throw error;
       return data;
     },

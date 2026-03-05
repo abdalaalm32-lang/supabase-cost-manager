@@ -19,6 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, Plus, Search, Archive, Pencil, Eye, History } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
+import { PrintButton } from "@/components/PrintButton";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";

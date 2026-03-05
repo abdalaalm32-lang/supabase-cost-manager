@@ -20,6 +20,7 @@ import {
   Layers, Filter, Trash2,
 } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
+import { PrintButton } from "@/components/PrintButton";
 import { useToast } from "@/hooks/use-toast";
 
 type StatusFilter = "all" | "مكتمل" | "مؤرشف" | "edited";

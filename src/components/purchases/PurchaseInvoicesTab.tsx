@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Search, Pencil, Eye, Trash2, ToggleLeft, ToggleRight, History } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
+import { PrintButton } from "@/components/PrintButton";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 

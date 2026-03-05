@@ -72,6 +72,10 @@ const getDaysInPeriod = (start: string, end: string) => {
   return Math.max(1, Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1);
 };
 
+interface CostOverride {
+  pos_item_id: string; side_cost: number; consumables_pct: number | null; packing_cost: number;
+}
+
 export const IndirectExpensesPage: React.FC = () => {
   const { auth } = useAuth();
   const [periods, setPeriods] = useState<CostingPeriod[]>([]);
@@ -83,6 +87,11 @@ export const IndirectExpensesPage: React.FC = () => {
   const [newCustomName, setNewCustomName] = useState("");
   const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
   const [selectedBranchId, setSelectedBranchId] = useState<string>("all");
+  const [posItems, setPosItems] = useState<any[]>([]);
+  const [recipeCosts, setRecipeCosts] = useState<Map<string, number>>(new Map());
+  const [costOverrides, setCostOverrides] = useState<Map<string, CostOverride>>(new Map());
+  const [categoryPackingItems, setCategoryPackingItems] = useState<any[]>([]);
+  const [categorySideCostItems, setCategorySideCostItems] = useState<any[]>([]);
 
   const companyId = auth.profile?.company_id;
 

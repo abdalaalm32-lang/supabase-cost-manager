@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { ExportButtons } from "@/components/ExportButtons";
+import { PrintButton } from "@/components/PrintButton";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -307,12 +308,71 @@ export const TransferReportsPage: React.FC = () => {
           <p className="text-muted-foreground text-sm mt-1">تحليل حركة التحويلات بين الفروع والمخازن</p>
         </div>
         <div className="flex gap-2 print:hidden">
-          <Button variant="outline" size="sm" onClick={exportCSV}>
-            <FileSpreadsheet size={16} className="ml-1" /> تصدير Excel
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => window.print()}>
-            <FileText size={16} className="ml-1" /> طباعة PDF
-          </Button>
+          <ExportButtons
+            data={processedData.map((i, idx) => {
+              const r = getTopRoute(i.routes);
+              return {
+                "#": idx + 1,
+                الكود: i.code,
+                "اسم الصنف": i.name,
+                المجموعة: i.catName,
+                من: r.source,
+                إلى: r.destination,
+                "إجمالي الكمية": i.totalTransferQty.toFixed(2),
+                الوحدة: i.unit,
+                "إجمالي التكلفة": i.totalCost.toFixed(2),
+                "مرات التحويل": i.occurrences,
+                "آخر تحويل": i.lastTransferDate,
+              };
+            })}
+            columns={[
+              { key: "#", label: "#" },
+              { key: "الكود", label: "الكود" },
+              { key: "اسم الصنف", label: "اسم الصنف" },
+              { key: "المجموعة", label: "المجموعة" },
+              { key: "من", label: "من" },
+              { key: "إلى", label: "إلى" },
+              { key: "إجمالي الكمية", label: "إجمالي الكمية" },
+              { key: "الوحدة", label: "الوحدة" },
+              { key: "إجمالي التكلفة", label: "إجمالي التكلفة" },
+              { key: "مرات التحويل", label: "مرات التحويل" },
+              { key: "آخر تحويل", label: "آخر تحويل" },
+            ]}
+            filename="تقارير_التحويلات"
+            title="تقارير أذونات الصرف والتحويل"
+          />
+          <PrintButton
+            data={processedData.map((i, idx) => {
+              const r = getTopRoute(i.routes);
+              return {
+                "#": idx + 1,
+                الكود: i.code,
+                "اسم الصنف": i.name,
+                المجموعة: i.catName,
+                من: r.source,
+                إلى: r.destination,
+                "إجمالي الكمية": i.totalTransferQty.toFixed(2),
+                الوحدة: i.unit,
+                "إجمالي التكلفة": i.totalCost.toFixed(2),
+                "مرات التحويل": i.occurrences,
+                "آخر تحويل": i.lastTransferDate,
+              };
+            })}
+            columns={[
+              { key: "#", label: "#" },
+              { key: "الكود", label: "الكود" },
+              { key: "اسم الصنف", label: "اسم الصنف" },
+              { key: "المجموعة", label: "المجموعة" },
+              { key: "من", label: "من" },
+              { key: "إلى", label: "إلى" },
+              { key: "إجمالي الكمية", label: "إجمالي الكمية" },
+              { key: "الوحدة", label: "الوحدة" },
+              { key: "إجمالي التكلفة", label: "إجمالي التكلفة" },
+              { key: "مرات التحويل", label: "مرات التحويل" },
+              { key: "آخر تحويل", label: "آخر تحويل" },
+            ]}
+            title="تقارير أذونات الصرف والتحويل"
+          />
         </div>
       </div>
 

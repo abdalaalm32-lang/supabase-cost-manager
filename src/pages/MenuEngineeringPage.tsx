@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useMemo } from "react";
+import { ExportButtons } from "@/components/ExportButtons";
+import { PrintButton } from "@/components/PrintButton";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -343,6 +345,87 @@ export const MenuEngineeringPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <BarChart3 size={28} className="text-primary" />
           <h1 className="text-2xl font-bold">هندسة المنيو</h1>
+        </div>
+        <div className="flex items-center gap-2 print:hidden">
+          <ExportButtons
+            data={engineeringData.map((r, idx) => ({
+              "#": idx + 1,
+              الصنف: r.name,
+              "كمية المبيعات": r.qty,
+              "سعر البيع": r.price.toFixed(2),
+              "التكلفة المباشرة": r.directCost.toFixed(2),
+              "إجمالي المبيعات": r.totalSales.toFixed(2),
+              "إجمالي تكلفة المبيعات": r.totalCostSales.toFixed(2),
+              "النسبة للتكلفة %": r.costRatio.toFixed(1),
+              "صافي ربح الصنف": r.netProfit.toFixed(2),
+              "إجمالي الربح": r.totalProfit.toFixed(2),
+              "نسبة الربح %": r.profitRatio.toFixed(1),
+              "% مبيعات الصنف": r.salesSharePct.toFixed(1),
+              الربحية: r.profitLevel,
+              الشعبية: r.popularityLevel,
+              التصنيف: r.strategic,
+              القرار: r.decision,
+            }))}
+            columns={[
+              { key: "#", label: "#" },
+              { key: "الصنف", label: "الصنف" },
+              { key: "كمية المبيعات", label: "كمية المبيعات" },
+              { key: "سعر البيع", label: "سعر البيع" },
+              { key: "التكلفة المباشرة", label: "التكلفة المباشرة" },
+              { key: "إجمالي المبيعات", label: "إجمالي المبيعات" },
+              { key: "إجمالي تكلفة المبيعات", label: "إجمالي تكلفة المبيعات" },
+              { key: "النسبة للتكلفة %", label: "النسبة للتكلفة %" },
+              { key: "صافي ربح الصنف", label: "صافي ربح الصنف" },
+              { key: "إجمالي الربح", label: "إجمالي الربح" },
+              { key: "نسبة الربح %", label: "نسبة الربح %" },
+              { key: "% مبيعات الصنف", label: "% مبيعات الصنف" },
+              { key: "الربحية", label: "الربحية" },
+              { key: "الشعبية", label: "الشعبية" },
+              { key: "التصنيف", label: "التصنيف" },
+              { key: "القرار", label: "القرار" },
+            ]}
+            filename="هندسة_المنيو"
+            title={`هندسة المنيو - ${activeTab === "kitchen" ? "المطبخ" : "البار"}`}
+          />
+          <PrintButton
+            data={engineeringData.map((r, idx) => ({
+              "#": idx + 1,
+              الصنف: r.name,
+              "كمية المبيعات": r.qty,
+              "سعر البيع": r.price.toFixed(2),
+              "التكلفة المباشرة": r.directCost.toFixed(2),
+              "إجمالي المبيعات": r.totalSales.toFixed(2),
+              "إجمالي تكلفة المبيعات": r.totalCostSales.toFixed(2),
+              "النسبة للتكلفة %": r.costRatio.toFixed(1),
+              "صافي ربح الصنف": r.netProfit.toFixed(2),
+              "إجمالي الربح": r.totalProfit.toFixed(2),
+              "نسبة الربح %": r.profitRatio.toFixed(1),
+              "% مبيعات الصنف": r.salesSharePct.toFixed(1),
+              الربحية: r.profitLevel,
+              الشعبية: r.popularityLevel,
+              التصنيف: r.strategic,
+              القرار: r.decision,
+            }))}
+            columns={[
+              { key: "#", label: "#" },
+              { key: "الصنف", label: "الصنف" },
+              { key: "كمية المبيعات", label: "كمية المبيعات" },
+              { key: "سعر البيع", label: "سعر البيع" },
+              { key: "التكلفة المباشرة", label: "التكلفة المباشرة" },
+              { key: "إجمالي المبيعات", label: "إجمالي المبيعات" },
+              { key: "إجمالي تكلفة المبيعات", label: "إجمالي تكلفة المبيعات" },
+              { key: "النسبة للتكلفة %", label: "النسبة للتكلفة %" },
+              { key: "صافي ربح الصنف", label: "صافي ربح الصنف" },
+              { key: "إجمالي الربح", label: "إجمالي الربح" },
+              { key: "نسبة الربح %", label: "نسبة الربح %" },
+              { key: "% مبيعات الصنف", label: "% مبيعات الصنف" },
+              { key: "الربحية", label: "الربحية" },
+              { key: "الشعبية", label: "الشعبية" },
+              { key: "التصنيف", label: "التصنيف" },
+              { key: "القرار", label: "القرار" },
+            ]}
+            title={`هندسة المنيو - ${activeTab === "kitchen" ? "المطبخ" : "البار"}`}
+          />
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           <Select value={selectedBranch} onValueChange={setSelectedBranch}>

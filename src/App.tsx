@@ -6,6 +6,8 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
+import logo3m from "@/assets/logo-3m.png";
+import loginBg from "@/assets/login-bg.jpg";
 import { LoginPage } from "@/pages/LoginPage";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { PlaceholderPage } from "@/pages/PlaceholderPage";
@@ -55,6 +57,35 @@ import { SystemLayout } from "@/components/SystemLayout";
 import { AdminMessagesPage } from "@/pages/AdminMessagesPage";
 
 const queryClient = new QueryClient();
+
+const OfflineScreen = () => (
+  <div className="fixed inset-0 z-[200] flex items-center justify-center">
+    <img src={loginBg} alt="" className="absolute inset-0 w-full h-full object-cover" />
+    <div className="absolute inset-0 bg-[hsl(220,60%,8%)]/80 backdrop-blur-sm" />
+    <div className="relative z-10 text-center p-8">
+      <img src={logo3m} alt="3M GSC Logo" className="w-36 h-36 mx-auto mb-6 object-contain drop-shadow-lg" />
+      <h2 className="text-2xl font-black text-foreground mb-3">لا يوجد اتصال بالإنترنت</h2>
+      <p className="text-muted-foreground text-sm max-w-xs mx-auto">
+        عليك الاتصال بالإنترنت لاستكمال استخدام النظام
+      </p>
+    </div>
+  </div>
+);
+
+const useOnlineStatus = () => {
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  useEffect(() => {
+    const goOnline = () => setIsOnline(true);
+    const goOffline = () => setIsOnline(false);
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+    };
+  }, []);
+  return isOnline;
+};
 
 const SuspendedOverlay = () => (
   <div className="fixed inset-0 z-[100] flex items-center justify-center">
@@ -243,9 +274,13 @@ const AppRoutes = () => {
 
   if (!auth.isReady) {
     return (
-      <div className="min-h-screen flex items-center justify-center gradient-bg">
-        <div className="text-center animate-fade-in-up">
-          <h1 className="text-4xl font-black text-gradient mb-2">3M GSC</h1>
+      <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
+        <img src={loginBg} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-[hsl(220,60%,8%)]/75 backdrop-blur-sm" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[hsl(199,89%,40%)]/15 via-transparent to-[hsl(260,60%,30%)]/10" />
+        <div className="relative z-10 text-center animate-fade-in-up">
+          <img src={logo3m} alt="3M GSC Logo" className="w-32 h-32 mx-auto mb-4 object-contain drop-shadow-lg" />
+          <h1 className="text-3xl font-black text-gradient mb-2">3M GSC</h1>
           <p className="text-muted-foreground text-sm">جاري التحميل...</p>
         </div>
       </div>
@@ -341,18 +376,22 @@ const AppRoutes = () => {
   );
 };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <BrowserRouter>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <AppRoutes />
-        </TooltipProvider>
-      </AuthProvider>
-    </BrowserRouter>
-  </QueryClientProvider>
-);
+const App = () => {
+  const isOnline = useOnlineStatus();
+  return (
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            {!isOnline && <OfflineScreen />}
+            <AppRoutes />
+          </TooltipProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

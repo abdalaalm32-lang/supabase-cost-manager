@@ -4,8 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+  import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertTriangle, FileText, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,6 +27,7 @@ interface CostingPeriod {
   media: number; bills: number; salaries: number; other_expenses: number;
   maintenance: number; rent: number; default_consumables_pct: number;
   default_packing_cost: number; custom_expenses: { name: string; value: number }[];
+  tax_rate: number; branch_id: string | null;
 }
 
 interface CostOverride {
@@ -66,7 +66,6 @@ export const MenuFinalReportPage: React.FC = () => {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [selectedBranchId, setSelectedBranchId] = useState("all");
   const [activeTab, setActiveTab] = useState("kitchen");
-  const [taxRate, setTaxRate] = useState(14);
   const [loading, setLoading] = useState(true);
 
   const companyId = auth.profile?.company_id;
@@ -120,7 +119,19 @@ export const MenuFinalReportPage: React.FC = () => {
     setLoading(false);
   };
 
+  const filteredPeriods = useMemo(() => {
+    if (selectedBranchId === "all") return periods;
+    return periods.filter(p => p.branch_id === selectedBranchId || !p.branch_id);
+  }, [periods, selectedBranchId]);
+
   const selectedPeriod = periods.find(p => p.id === selectedPeriodId);
+
+  // Auto-select first filtered period when branch changes
+  useEffect(() => {
+    if (filteredPeriods.length > 0 && !filteredPeriods.find(p => p.id === selectedPeriodId)) {
+      setSelectedPeriodId(filteredPeriods[0].id);
+    }
+  }, [filteredPeriods, selectedPeriodId]);
 
   const filteredPosItems = useMemo(() => {
     let items = posItems;
@@ -184,10 +195,11 @@ export const MenuFinalReportPage: React.FC = () => {
       // Net Take Away = Total Price - Total Cost - Indirect
       cat.netTakeAway = cat.totalPrice - cat.totalCost - cat.totalIndirect;
       // Net Table = (Total Price * (1 - taxRate/100)) - Total Cost - Indirect
-      cat.netTable = (cat.totalPrice * (1 - taxRate / 100)) - cat.totalCost - cat.totalIndirect;
+      const periodTaxRate = selectedPeriod?.tax_rate || 0;
+      cat.netTable = (cat.totalPrice * (1 - periodTaxRate / 100)) - cat.totalCost - cat.totalIndirect;
     }
     return Array.from(map.values());
-  }, [filteredPosItems, selectedPeriod, recipes, costOverrides, indirectCostPct, categoryPackingItems, categorySideCostItems, taxRate]);
+  }, [filteredPosItems, selectedPeriod, recipes, costOverrides, indirectCostPct, categoryPackingItems, categorySideCostItems]);
 
   const grandTotals = useMemo(() => {
     const t = { totalPrice: 0, totalCost: 0, totalProfit: 0, totalIndirect: 0, itemCount: 0, netTakeAway: 0, netTable: 0, totalPacking: 0, totalConsumables: 0 };
@@ -302,7 +314,7 @@ export const MenuFinalReportPage: React.FC = () => {
                 </TableRow>
                 <TableRow>
                   <TableCell className="text-sm font-bold" colSpan={2}>
-                    صافي ربح Net Table (بعد ضريبة {taxRate}%)
+                    صافي ربح Net Table (بعد ضريبة {selectedPeriod?.tax_rate || 0}%)
                   </TableCell>
                   <TableCell className="text-center text-sm font-bold">{fmt(grandTotals.netTable)}</TableCell>
                   <TableCell className="text-center text-sm font-bold">{grandTotals.totalPrice > 0 ? fmtPct(grandTotals.netTable / grandTotals.totalPrice * 100) : "0%"}</TableCell>
@@ -377,20 +389,8 @@ export const MenuFinalReportPage: React.FC = () => {
           التقرير النهائي
         </h1>
         <div className="flex items-center gap-3 flex-wrap">
-          <span className="text-sm text-muted-foreground">نسبة الضريبة:</span>
-          <div className="flex items-center gap-1">
-            <Input
-              type="number"
-              value={taxRate}
-              onChange={e => setTaxRate(parseFloat(e.target.value) || 0)}
-              className="w-20 h-9 text-center text-sm"
-              min={0}
-              max={100}
-            />
-            <span className="text-sm">%</span>
-          </div>
           <span className="text-sm text-muted-foreground">الفرع:</span>
-          <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
+          <Select value={selectedBranchId} onValueChange={(val) => { setSelectedBranchId(val); setSelectedPeriodId(""); }}>
             <SelectTrigger className="w-[160px]"><SelectValue placeholder="كل الفروع" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">كل الفروع</SelectItem>
@@ -401,7 +401,7 @@ export const MenuFinalReportPage: React.FC = () => {
           <Select value={selectedPeriodId} onValueChange={setSelectedPeriodId}>
             <SelectTrigger className="w-[200px]"><SelectValue placeholder="اختر الفترة" /></SelectTrigger>
             <SelectContent>
-              {periods.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+              {filteredPeriods.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
             </SelectContent>
           </Select>
           <Button variant="outline" size="sm" onClick={() => window.print()}>

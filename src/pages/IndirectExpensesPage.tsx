@@ -311,6 +311,39 @@ export const IndirectExpensesPage: React.FC = () => {
   const total = selectedPeriod ? totalIndirectCost(selectedPeriod) : 0;
   const monthSales = selectedPeriod ? monthlyExpectedSales(selectedPeriod) : 0;
 
+  // Calculate Avg Direct Cost %
+  const avgDirectCostPct = (() => {
+    if (!selectedPeriod || posItems.length === 0) return 0;
+    const filteredItems = selectedBranchId !== "all" 
+      ? posItems.filter(i => i.branch_id === selectedBranchId) 
+      : posItems;
+    
+    let totalPrice = 0;
+    let totalDirectCost = 0;
+    const getCatPackingCost = (catName: string) => categoryPackingItems.filter((p: any) => p.category_name === catName).reduce((s: number, p: any) => s + p.cost, 0);
+    const getCatSideCost = (catName: string) => categorySideCostItems.filter((p: any) => p.category_name === catName).reduce((s: number, p: any) => s + p.cost, 0);
+
+    for (const item of filteredItems) {
+      const catName = item.category || "بدون تصنيف";
+      const mainCost = recipeCosts.get(item.id) || 0;
+      const override = costOverrides.get(item.id);
+      const sideCost = (override?.side_cost || 0) + getCatSideCost(catName);
+      const isBar = item.menu_engineering_class?.toLowerCase() === "bar";
+      const defaultPct = isBar ? (selectedPeriod.default_consumables_pct_bar ?? selectedPeriod.default_consumables_pct) : selectedPeriod.default_consumables_pct;
+      const consumablesPct = override?.consumables_pct ?? defaultPct;
+      const consumables = (item.price * consumablesPct) / 100;
+      const packingCost = getCatPackingCost(catName);
+      const finalDirectCost = mainCost + sideCost + consumables + packingCost;
+
+      totalPrice += item.price;
+      totalDirectCost += finalDirectCost;
+    }
+    return totalPrice > 0 ? (totalDirectCost / totalPrice) * 100 : 0;
+  })();
+
+  const indirectPctValue = selectedPeriod ? indirectCostPct(selectedPeriod) : 0;
+  const netProfitPct = 100 - indirectPctValue - avgDirectCostPct;
+
   return (
     <div className="space-y-6 animate-fade-in-up" dir="rtl">
       <div className="flex items-center justify-between flex-wrap gap-4">

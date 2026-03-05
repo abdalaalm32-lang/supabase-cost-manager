@@ -165,6 +165,11 @@ export const TransferListPage: React.FC = () => {
           filename="أذونات_التحويل"
           title="أذونات الصرف والتحويل"
         />
+        <PrintButton
+          data={filtered.map((r: any) => ({ record: r.record_number || "—", date: r.date, from: r.source_name || "—", to: r.destination_name || "—", creator: r.creator_name || "—", status: r.is_edited ? "معدل" : r.status, cost: Number(r.total_cost || 0).toFixed(2) }))}
+          columns={[{ key: "record", label: "رقم الإذن" }, { key: "date", label: "التاريخ" }, { key: "from", label: "من" }, { key: "to", label: "إلى" }, { key: "creator", label: "المنشئ" }, { key: "status", label: "الحالة" }, { key: "cost", label: "إجمالي التكلفة" }]}
+          title="أذونات الصرف والتحويل"
+        />
       </div>
 
       <div className="glass-card overflow-hidden">

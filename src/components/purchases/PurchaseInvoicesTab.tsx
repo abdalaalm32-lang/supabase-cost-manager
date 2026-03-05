@@ -130,6 +130,11 @@ export const PurchaseInvoicesTab: React.FC = () => {
           filename="فواتير_المشتريات"
           title="فواتير المشتريات"
         />
+        <PrintButton
+          data={filtered.map((o: any) => ({ invoice: o.invoice_number || "—", supplier: o.supplier_name, date: new Date(o.date).toLocaleDateString("ar-EG"), creator: o.creator_name || "—", status: o.is_edited ? "معدل" : o.status, total: Number(o.total_amount).toFixed(2) }))}
+          columns={[{ key: "invoice", label: "رقم الفاتورة" }, { key: "supplier", label: "المورد" }, { key: "date", label: "التاريخ" }, { key: "creator", label: "المنشئ" }, { key: "status", label: "الحالة" }, { key: "total", label: "الإجمالي" }]}
+          title="فواتير المشتريات"
+        />
       </div>
 
       <div className="glass-card overflow-hidden">

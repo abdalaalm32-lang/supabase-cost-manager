@@ -205,6 +205,11 @@ export const ProductionListPage: React.FC = () => {
           filename="عمليات_الإنتاج"
           title="عمليات الإنتاج"
         />
+        <PrintButton
+          data={filtered.map((r: any) => ({ record: r.record_number || "—", date: r.date, product: r.product_name, location: r.branch_name || "—", creator: r.creator_name || "—", status: r.is_edited ? "معدل" : r.status, cost: Number(r.total_production_cost).toFixed(2) }))}
+          columns={[{ key: "record", label: "رقم العملية" }, { key: "date", label: "التاريخ" }, { key: "product", label: "المنتج" }, { key: "location", label: "الموقع" }, { key: "creator", label: "المنشئ" }, { key: "status", label: "الحالة" }, { key: "cost", label: "إجمالي التكلفة" }]}
+          title="عمليات الإنتاج"
+        />
       </div>
 
       {/* Table */}

@@ -25,7 +25,7 @@ interface CostingPeriod {
   id: string; name: string; start_date: string; end_date: string;
   expected_sales: number; capacity: number; turn_over: number; avg_check: number;
   media: number; bills: number; salaries: number; other_expenses: number;
-  maintenance: number; rent: number; default_consumables_pct: number;
+  maintenance: number; rent: number; default_consumables_pct: number; default_consumables_pct_bar: number;
   default_packing_cost: number; custom_expenses: { name: string; value: number }[];
   tax_rate: number; branch_id: string | null;
 }
@@ -180,7 +180,9 @@ export const MenuFinalReportPage: React.FC = () => {
       const mainCost = recipes.get(item.id) || 0;
       const override = costOverrides.get(item.id);
       const sideCost = (override?.side_cost || 0) + getCatSideCost(catName);
-      const consumablesPct = override?.consumables_pct ?? selectedPeriod.default_consumables_pct;
+      const isBar = item.menu_engineering_class?.toLowerCase() === "bar";
+      const defaultPct = isBar ? (selectedPeriod.default_consumables_pct_bar ?? selectedPeriod.default_consumables_pct) : selectedPeriod.default_consumables_pct;
+      const consumablesPct = override?.consumables_pct ?? defaultPct;
       const consumables = (item.price * consumablesPct) / 100;
       const packingCost = getCatPackingCost(catName);
       const finalDirectCost = mainCost + sideCost + consumables + packingCost;

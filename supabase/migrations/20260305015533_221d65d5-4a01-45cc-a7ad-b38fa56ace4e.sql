@@ -1,0 +1,1 @@
+ALTER TABLE public.menu_costing_periods ADD COLUMN default_consumables_pct_bar numeric NOT NULL DEFAULT 1;

@@ -459,6 +459,7 @@ export type Database = {
           created_at: string
           custom_expenses: Json
           default_consumables_pct: number
+          default_consumables_pct_bar: number
           default_packing_cost: number
           end_date: string
           expected_sales: number
@@ -483,6 +484,7 @@ export type Database = {
           created_at?: string
           custom_expenses?: Json
           default_consumables_pct?: number
+          default_consumables_pct_bar?: number
           default_packing_cost?: number
           end_date: string
           expected_sales?: number
@@ -507,6 +509,7 @@ export type Database = {
           created_at?: string
           custom_expenses?: Json
           default_consumables_pct?: number
+          default_consumables_pct_bar?: number
           default_packing_cost?: number
           end_date?: string
           expected_sales?: number

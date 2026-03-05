@@ -35,6 +35,7 @@ interface CostingPeriod {
   maintenance: number;
   rent: number;
   default_consumables_pct: number;
+  default_consumables_pct_bar: number;
   default_packing_cost: number;
   tax_rate: number;
   status: string;
@@ -58,6 +59,7 @@ const emptyForm = {
   maintenance: 0,
   rent: 0,
   default_consumables_pct: 1,
+  default_consumables_pct_bar: 1,
   default_packing_cost: 0,
   tax_rate: 0,
   custom_expenses: [] as CustomExpense[],
@@ -179,6 +181,7 @@ export const IndirectExpensesPage: React.FC = () => {
       maintenance: form.maintenance,
       rent: form.rent,
       default_consumables_pct: form.default_consumables_pct,
+      default_consumables_pct_bar: form.default_consumables_pct_bar,
       default_packing_cost: form.default_packing_cost,
       tax_rate: form.tax_rate,
       custom_expenses: form.custom_expenses as any,
@@ -220,6 +223,7 @@ export const IndirectExpensesPage: React.FC = () => {
       maintenance: p.maintenance,
       rent: p.rent,
       default_consumables_pct: p.default_consumables_pct,
+      default_consumables_pct_bar: (p as any).default_consumables_pct_bar || 1,
       default_packing_cost: p.default_packing_cost,
       tax_rate: (p as any).tax_rate || 0,
       custom_expenses: p.custom_expenses || [],
@@ -392,8 +396,9 @@ export const IndirectExpensesPage: React.FC = () => {
 
               <div className="border-t pt-4">
                 <h3 className="font-semibold mb-3">إعدادات التكاليف الافتراضية</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><Label>نسبة المستهلكات الافتراضية (%)</Label><Input type="number" step="0.1" value={form.default_consumables_pct} onChange={(e) => setForm({ ...form, default_consumables_pct: parseFloat(e.target.value) || 0 })} /></div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div><Label>نسبة مستهلكات المطبخ (%)</Label><Input type="number" step="0.1" value={form.default_consumables_pct} onChange={(e) => setForm({ ...form, default_consumables_pct: parseFloat(e.target.value) || 0 })} /></div>
+                  <div><Label>نسبة مستهلكات البار (%)</Label><Input type="number" step="0.1" value={form.default_consumables_pct_bar} onChange={(e) => setForm({ ...form, default_consumables_pct_bar: parseFloat(e.target.value) || 0 })} /></div>
                   <div><Label>نسبة الضريبة (%)</Label><Input type="number" step="0.1" value={form.tax_rate} onChange={(e) => setForm({ ...form, tax_rate: parseFloat(e.target.value) || 0 })} /></div>
                 </div>
               </div>

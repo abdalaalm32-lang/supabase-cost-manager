@@ -47,6 +47,7 @@ interface CostingPeriod {
   maintenance: number;
   rent: number;
   default_consumables_pct: number;
+  default_consumables_pct_bar: number;
   default_packing_cost: number;
   custom_expenses: { name: string; value: number }[];
   tax_rate: number;
@@ -253,7 +254,9 @@ export const MenuAnalysisPage: React.FC = () => {
       const override = costOverrides.get(item.id);
       const sideCost = override?.side_cost || 0;
       const categorySideCost = getCategorySideCost(catName);
-      const consumablesPct = override?.consumables_pct ?? selectedPeriod.default_consumables_pct;
+      const isBar = item.menu_engineering_class?.toLowerCase() === "bar";
+      const defaultPct = isBar ? (selectedPeriod.default_consumables_pct_bar ?? selectedPeriod.default_consumables_pct) : selectedPeriod.default_consumables_pct;
+      const consumablesPct = override?.consumables_pct ?? defaultPct;
       const consumables = (item.price * consumablesPct) / 100;
       const packingCost = getCategoryPackingCost(catName);
 

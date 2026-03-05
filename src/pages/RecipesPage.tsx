@@ -86,7 +86,10 @@ export const RecipesPage: React.FC = () => {
   const [showGlobalResults, setShowGlobalResults] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
 
-  // Queries
+  // All recipes print/export
+  const [loadingAllPdf, setLoadingAllPdf] = useState(false);
+  const [loadingAllExcel, setLoadingAllExcel] = useState(false);
+
   const { data: branches = [] } = useQuery({
     queryKey: ["branches-active", companyId],
     queryFn: async () => {

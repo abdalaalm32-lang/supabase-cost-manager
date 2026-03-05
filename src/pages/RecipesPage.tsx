@@ -89,6 +89,7 @@ export const RecipesPage: React.FC = () => {
   // All recipes print/export
   const [loadingAllPdf, setLoadingAllPdf] = useState(false);
   const [loadingAllExcel, setLoadingAllExcel] = useState(false);
+  const [selectedPrintCategory, setSelectedPrintCategory] = useState<string>("all");
 
   const { data: branches = [] } = useQuery({
     queryKey: ["branches-active", companyId],

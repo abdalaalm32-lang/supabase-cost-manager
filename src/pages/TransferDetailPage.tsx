@@ -473,6 +473,11 @@ export const TransferDetailPage: React.FC = () => {
           <Button variant="outline" size="sm" onClick={() => navigate("/transfers")}>
             <ArrowRight size={14} /> رجوع
           </Button>
+          {!isNew && items.length > 0 && (
+            <Button variant="outline" size="sm" onClick={handlePrintDetail}>
+              <Printer size={14} /> طباعة
+            </Button>
+          )}
           {(!isLocked) && (
             <>
               <Button variant="outline" size="sm" onClick={() => handleSave(true)}>

@@ -90,7 +90,7 @@ export const MenuFinalReportPage: React.FC = () => {
     setLoading(true);
     const [periodsRes, itemsRes, recipesRes, overridesRes, branchesRes] = await Promise.all([
       supabase.from("menu_costing_periods").select("*").eq("company_id", companyId!).order("created_at", { ascending: false }),
-      supabase.from("pos_items").select("*").eq("company_id", companyId!).eq("active", true),
+      supabase.from("pos_items").select("*, categories:category_id(name)").eq("company_id", companyId!).eq("active", true),
       supabase.from("recipes").select("id, menu_item_id, recipe_ingredients(stock_item_id, qty, stock_items:stock_item_id(avg_cost, conversion_factor))").eq("company_id", companyId!),
       supabase.from("pos_item_cost_settings").select("*").eq("company_id", companyId!),
       supabase.from("branches").select("id, name").eq("company_id", companyId!).eq("active", true),
@@ -99,7 +99,13 @@ export const MenuFinalReportPage: React.FC = () => {
       setPeriods(periodsRes.data as unknown as CostingPeriod[]);
       if (periodsRes.data.length > 0 && !selectedPeriodId) setSelectedPeriodId(periodsRes.data[0].id);
     }
-    if (itemsRes.data) setPosItems(itemsRes.data as PosItem[]);
+    if (itemsRes.data) {
+      const mapped = (itemsRes.data as any[]).map(item => ({
+        ...item,
+        category: item.categories?.name || item.category || null,
+      }));
+      setPosItems(mapped as PosItem[]);
+    }
     if (branchesRes.data) setBranches(branchesRes.data as Branch[]);
     const recipeCostMap = new Map<string, number>();
     if (recipesRes.data) {
@@ -136,8 +142,8 @@ export const MenuFinalReportPage: React.FC = () => {
   const filteredPosItems = useMemo(() => {
     let items = posItems;
     if (selectedBranchId !== "all") items = items.filter(i => i.branch_id === selectedBranchId);
-    if (activeTab === "kitchen") items = items.filter(i => i.menu_engineering_class === "Kitchen" || !i.menu_engineering_class);
-    else items = items.filter(i => i.menu_engineering_class === "Bar");
+    if (activeTab === "kitchen") items = items.filter(i => !i.menu_engineering_class || i.menu_engineering_class.toLowerCase() === "kitchen");
+    else items = items.filter(i => i.menu_engineering_class?.toLowerCase() === "bar");
     return items;
   }, [posItems, selectedBranchId, activeTab]);
 

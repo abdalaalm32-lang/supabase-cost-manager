@@ -558,7 +558,41 @@ export const IndirectExpensesPage: React.FC = () => {
             </Card>
           </div>
 
-          {/* Expense breakdown */}
+          {/* Profitability Summary Table */}
+          <Card>
+            <CardContent className="p-0 overflow-hidden rounded-lg">
+              <table className="w-full text-sm">
+                <tbody>
+                  <tr>
+                    <td className="px-6 py-3 bg-[hsl(40,30%,85%)] text-right font-semibold border-b border-border w-1/2">
+                      Indirect Cost Per.
+                    </td>
+                    <td className="px-6 py-3 bg-[hsl(0,50%,90%)] text-center font-bold border-b border-border w-1/2">
+                      {indirectPctValue.toFixed(2)}%
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-6 py-3 bg-[hsl(40,30%,85%)] text-right font-semibold border-b border-border">
+                      Avg Direct Cost Per.
+                    </td>
+                    <td className="px-6 py-3 bg-[hsl(40,50%,88%)] text-center font-bold border-b border-border">
+                      {avgDirectCostPct.toFixed(2)}%
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-6 py-3 bg-[hsl(40,30%,85%)] text-right font-semibold">
+                      Net Profit Per.
+                    </td>
+                    <td className={`px-6 py-3 text-center font-bold ${netProfitPct >= 0 ? 'bg-[hsl(120,40%,85%)]' : 'bg-[hsl(0,50%,90%)]'}`}>
+                      {netProfitPct.toFixed(2)}%
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
+
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card>
               <CardHeader><CardTitle className="text-lg">توزيع المصاريف</CardTitle></CardHeader>

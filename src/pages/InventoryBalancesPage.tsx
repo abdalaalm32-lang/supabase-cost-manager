@@ -140,6 +140,7 @@ export const InventoryBalancesPage: React.FC = () => {
   const totalValue = useMemo(() => {
     return filtered.reduce((sum: number, item: any) => {
       const stock = getDisplayStock(item);
+      if (stock <= 0) return sum;
       return sum + stock * Number(item.avg_cost);
     }, 0);
   }, [filtered, locationStockMap, isLocationFiltered]);
@@ -254,7 +255,8 @@ export const InventoryBalancesPage: React.FC = () => {
                 <>
                   {filtered.map((item: any) => {
                     const stock = getDisplayStock(item);
-                    const inventoryValue = stock * Number(item.avg_cost);
+                    const displayAvgCost = stock <= 0 ? 0 : Number(item.avg_cost);
+                    const inventoryValue = stock <= 0 ? 0 : stock * Number(item.avg_cost);
                     return (
                       <TableRow key={item.id}>
                         <TableCell className="font-mono text-xs">{item.code || "—"}</TableCell>
@@ -267,7 +269,7 @@ export const InventoryBalancesPage: React.FC = () => {
                         <TableCell className="ring-2 ring-primary/40 rounded bg-primary/5 font-bold text-primary">
                           {stock.toFixed(2)}
                         </TableCell>
-                        <TableCell>{Number(item.avg_cost).toFixed(2)}</TableCell>
+                        <TableCell>{displayAvgCost.toFixed(2)}</TableCell>
                         <TableCell className="font-semibold">{inventoryValue.toFixed(2)}</TableCell>
                       </TableRow>
                     );

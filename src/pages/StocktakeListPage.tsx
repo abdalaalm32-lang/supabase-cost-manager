@@ -240,7 +240,13 @@ export const StocktakeListPage: React.FC = () => {
     });
     const totalValue = (items || []).reduce((s: number, item: any) => s + Number(item.counted_qty) * Number(item.avg_cost), 0);
     itemsHTML += `<tr style="font-weight:bold;background:#f5f5f5;">
-      <td colspan="6" style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">الإجمالي</td>
+      <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;"></td>
+      <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;"></td>
+      <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">الإجمالي</td>
+      <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;"></td>
+      <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;"></td>
+      <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;"></td>
+      <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;"></td>
       <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;"></td>
       <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${totalValue.toFixed(2)}</td>
       <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;${totalDiffValue !== 0 ? (totalDiffValue > 0 ? 'color:green;' : 'color:red;') : ''}">${totalDiffValue.toFixed(2)}</td>

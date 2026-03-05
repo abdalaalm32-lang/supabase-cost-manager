@@ -25,10 +25,21 @@ import {
   CheckCircle2,
   Clock,
   Edit3,
+  Printer,
+  FileText,
+  FileSpreadsheet,
+  Loader2,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { RecipePrintExport, MaterialUsagePrintExport } from "@/components/RecipePrintExport";
+import { exportToExcel, exportToPDF, type ExportColumn } from "@/lib/exportUtils";
 
 // Local types
 interface LocalIngredient {
@@ -75,7 +86,10 @@ export const RecipesPage: React.FC = () => {
   const [showGlobalResults, setShowGlobalResults] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
 
-  // Queries
+  // All recipes print/export
+  const [loadingAllPdf, setLoadingAllPdf] = useState(false);
+  const [loadingAllExcel, setLoadingAllExcel] = useState(false);
+
   const { data: branches = [] } = useQuery({
     queryKey: ["branches-active", companyId],
     queryFn: async () => {
@@ -430,6 +444,131 @@ export const RecipesPage: React.FC = () => {
 
   const isLocked = recipeStatus === "ready" && !isEditing;
 
+  // === Print / Export ALL recipes for selected branch ===
+
+  const allRecipesData = useMemo(() => {
+    // Get products that have recipes & match branch filter
+    const products = filteredProducts.filter((p: any) => !!recipeMap[p.id]);
+    return products.map((p: any) => {
+      const recipe = recipeMap[p.id];
+      const ings = (recipe.recipe_ingredients || []).map((ri: any) => {
+        const si = allStockItems.find((s: any) => s.id === ri.stock_item_id);
+        const qty = Number(ri.qty);
+        const cf = Number(si?.conversion_factor || 1);
+        const avgCost = Number(si?.avg_cost || 0);
+        const cost = (qty / cf) * avgCost;
+        return { name: si?.name || "—", code: si?.code || "—", unit: si?.recipe_unit || si?.stock_unit || "كجم", qty, avgCost, cost };
+      });
+      const totalCost = ings.reduce((s: number, i: any) => s + i.cost, 0);
+      return { product: p, ingredients: ings, totalCost };
+    });
+  }, [filteredProducts, recipeMap, allStockItems]);
+
+  const handlePrintAllRecipes = (withCost: boolean) => {
+    if (allRecipesData.length === 0) return;
+    const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
+    const logoSrc = `${window.location.origin}/logo.png`;
+    const branchName = selectedBranch === "all" ? "كل الفروع" : branches.find((b: any) => b.id === selectedBranch)?.name || "";
+
+    let allTablesHTML = "";
+    let grandTotal = 0;
+
+    allRecipesData.forEach((rd: any) => {
+      grandTotal += rd.totalCost;
+      allTablesHTML += `<h3 style="margin-top:15px;font-size:13px;font-weight:bold;font-family:'AmiriBold','CairoLocal',sans-serif;">${rd.product.name} ${rd.product.code ? `(${rd.product.code})` : ""} ${withCost ? `— سعر البيع: ${Number(rd.product.price).toFixed(2)}` : ""}</h3>`;
+      allTablesHTML += `<table><thead><tr><th>م</th><th>الكود</th><th>الخامة</th><th>الوحدة</th><th>الكمية</th>`;
+      if (withCost) allTablesHTML += `<th>م. التكلفة</th><th>الإجمالي</th>`;
+      allTablesHTML += `</tr></thead><tbody>`;
+      rd.ingredients.forEach((ing: any, idx: number) => {
+        const td = (v: string) => `<td style="border:1px solid #000;padding:3px 5px;font-size:9px;text-align:center;">${v}</td>`;
+        allTablesHTML += `<tr>${td(String(idx + 1))}${td(ing.code)}${td(ing.name)}${td(ing.unit)}${td(String(ing.qty))}`;
+        if (withCost) allTablesHTML += `${td(ing.avgCost.toFixed(2))}${td(ing.cost.toFixed(2))}`;
+        allTablesHTML += `</tr>`;
+      });
+      if (withCost) {
+        allTablesHTML += `<tr style="font-weight:bold;background:#f5f5f5;"><td colspan="6" style="border:1px solid #000;padding:3px 5px;font-size:9px;text-align:center;">إجمالي التكلفة</td><td style="border:1px solid #000;padding:3px 5px;font-size:9px;text-align:center;">${rd.totalCost.toFixed(2)}</td></tr>`;
+      }
+      allTablesHTML += `</tbody></table>`;
+    });
+
+    if (withCost) {
+      allTablesHTML += `<div style="margin-top:15px;padding:8px;border:2px solid #000;text-align:center;font-weight:bold;font-size:13px;font-family:'AmiriBold','CairoLocal',sans-serif;">إجمالي تكلفة جميع الوصفات: ${grandTotal.toFixed(2)}</div>`;
+    }
+
+    const html = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>جميع الوصفات</title>
+<style>
+@font-face { font-family:'CairoLocal'; src:url('${window.location.origin}/fonts/Cairo-Regular.ttf') format('truetype'); }
+@font-face { font-family:'AmiriBold'; src:url('${window.location.origin}/fonts/Amiri-Bold.ttf') format('truetype'); }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'CairoLocal',sans-serif; direction:rtl; padding:20px; color:#000; background:#fff; }
+@media print { @page { size:auto; margin:8mm; } body { padding:0; } table { page-break-inside:auto; } tr { page-break-inside:avoid; } }
+.header { text-align:center; margin-bottom:15px; border-bottom:2px solid #000; padding-bottom:10px; display:flex; align-items:center; justify-content:center; gap:10px; }
+.logo { width:40px; height:40px; object-fit:contain; }
+.header h1 { font-size:18px; font-weight:bold; font-family:'AmiriBold','CairoLocal',sans-serif; }
+.header p { font-size:11px; }
+table { width:100%; border-collapse:collapse; margin-bottom:5px; }
+th { border:1px solid #000; padding:4px 5px; font-size:9px; text-align:center; font-family:'AmiriBold','CairoLocal',sans-serif; background:#f0f0f0; }
+.footer { text-align:center; margin-top:20px; font-size:9px; border-top:1px solid #000; padding-top:8px; }
+</style></head><body>
+<div class="header"><img src="${logoSrc}" alt="Logo" class="logo" /><div><h1>جميع الوصفات${branchName ? ` — ${branchName}` : ""}</h1><p>Cost Management System • ${dateStr}</p></div></div>
+${allTablesHTML}
+<div class="footer">Powered by Mohamed Abdel Aal</div>
+<script>(async function(){ try { if(document.fonts && document.fonts.ready) await document.fonts.ready; } catch(e){} window.print(); window.onafterprint = function(){ window.close(); }; })();</script>
+</body></html>`;
+    const w = window.open("", "_blank");
+    if (w) { w.document.write(html); w.document.close(); }
+  };
+
+  const handleExportAllExcel = async () => {
+    if (allRecipesData.length === 0) return;
+    setLoadingAllExcel(true);
+    try {
+      const rows: Record<string, any>[] = [];
+      allRecipesData.forEach((rd: any) => {
+        rd.ingredients.forEach((ing: any) => {
+          rows.push({ product: rd.product.name, productCode: rd.product.code || "—", name: ing.name, code: ing.code, unit: ing.unit, qty: ing.qty, avgCost: ing.avgCost.toFixed(2), total: ing.cost.toFixed(2) });
+        });
+        rows.push({ product: "", productCode: "", name: "إجمالي التكلفة", code: "", unit: "", qty: "", avgCost: "", total: rd.totalCost.toFixed(2), __rowType: "group-total" });
+      });
+      const grandTotal = allRecipesData.reduce((s: number, r: any) => s + r.totalCost, 0);
+      rows.push({ product: "", productCode: "", name: "إجمالي جميع الوصفات", code: "", unit: "", qty: "", avgCost: "", total: grandTotal.toFixed(2), __rowType: "grand-total" });
+      const cols: ExportColumn[] = [
+        { key: "product", label: "المنتج" }, { key: "productCode", label: "كود المنتج" },
+        { key: "name", label: "الخامة" }, { key: "code", label: "كود الخامة" },
+        { key: "unit", label: "الوحدة" }, { key: "qty", label: "الكمية" },
+        { key: "avgCost", label: "م. التكلفة" }, { key: "total", label: "الإجمالي" },
+      ];
+      const branchName = selectedBranch === "all" ? "كل الفروع" : branches.find((b: any) => b.id === selectedBranch)?.name || "";
+      await exportToExcel({ title: `جميع الوصفات — ${branchName}`, filename: `وصفات_${branchName}`, columns: cols, data: rows });
+    } catch { /* ignore */ }
+    finally { setLoadingAllExcel(false); }
+  };
+
+  const handleExportAllPdf = async () => {
+    if (allRecipesData.length === 0) return;
+    setLoadingAllPdf(true);
+    try {
+      const rows: Record<string, any>[] = [];
+      allRecipesData.forEach((rd: any) => {
+        rd.ingredients.forEach((ing: any) => {
+          rows.push({ product: rd.product.name, productCode: rd.product.code || "—", name: ing.name, code: ing.code, unit: ing.unit, qty: ing.qty, avgCost: ing.avgCost.toFixed(2), total: ing.cost.toFixed(2) });
+        });
+        rows.push({ product: "", productCode: "", name: "إجمالي التكلفة", code: "", unit: "", qty: "", avgCost: "", total: rd.totalCost.toFixed(2), __rowType: "group-total" });
+      });
+      const grandTotal = allRecipesData.reduce((s: number, r: any) => s + r.totalCost, 0);
+      rows.push({ product: "", productCode: "", name: "إجمالي جميع الوصفات", code: "", unit: "", qty: "", avgCost: "", total: grandTotal.toFixed(2), __rowType: "grand-total" });
+      const cols: ExportColumn[] = [
+        { key: "product", label: "المنتج" }, { key: "productCode", label: "كود المنتج" },
+        { key: "name", label: "الخامة" }, { key: "code", label: "كود الخامة" },
+        { key: "unit", label: "الوحدة" }, { key: "qty", label: "الكمية" },
+        { key: "avgCost", label: "م. التكلفة" }, { key: "total", label: "الإجمالي" },
+      ];
+      const branchName = selectedBranch === "all" ? "كل الفروع" : branches.find((b: any) => b.id === selectedBranch)?.name || "";
+      await exportToPDF({ title: `جميع الوصفات — ${branchName}`, filename: `وصفات_${branchName}`, columns: cols, data: rows });
+    } catch { /* ignore */ }
+    finally { setLoadingAllPdf(false); }
+  };
+
   return (
     <div className="space-y-4 animate-fade-in-up">
       {/* Header */}
@@ -544,7 +683,29 @@ export const RecipesPage: React.FC = () => {
             </SelectContent>
           </Select>
 
-          {/* Menu Engineering Classification Filter */}
+          {/* Print/Export All Recipes */}
+          {allRecipesData.length > 0 && (
+            <div className="flex items-center gap-1 flex-wrap">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1 h-7 text-xs w-full">
+                    <Printer size={12} /> طباعة الكل
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handlePrintAllRecipes(false)}>الكميات فقط</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handlePrintAllRecipes(true)}>بالتكلفة</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button variant="outline" size="sm" className="gap-1 h-7 text-xs flex-1" onClick={handleExportAllPdf} disabled={loadingAllPdf}>
+                {loadingAllPdf ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />} PDF
+              </Button>
+              <Button variant="outline" size="sm" className="gap-1 h-7 text-xs flex-1" onClick={handleExportAllExcel} disabled={loadingAllExcel}>
+                {loadingAllExcel ? <Loader2 size={12} className="animate-spin" /> : <FileSpreadsheet size={12} className="text-green-600" />} Excel
+              </Button>
+            </div>
+          )}
+
           <Select value={selectedEngClass} onValueChange={setSelectedEngClass}>
             <SelectTrigger className="h-9 text-sm">
               <SelectValue placeholder="تصنيف المنيو" />

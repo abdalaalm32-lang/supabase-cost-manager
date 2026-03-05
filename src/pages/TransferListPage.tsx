@@ -157,7 +157,7 @@ export const TransferListPage: React.FC = () => {
     body { font-family:'CairoLocal','AmiriLocal',sans-serif; direction:rtl; padding:20px; color:#000; background:#fff; }
     @media print { @page { size:auto; margin:10mm; } body { padding:0; } }
     .header { text-align:center; margin-bottom:15px; border-bottom:2px solid #000; padding-bottom:10px; display:flex; align-items:center; justify-content:center; gap:10px; }
-    .logo { width:40px; height:40px; object-fit:contain; }
+    .logo { width:80px; height:80px; object-fit:contain; }
     .header h1 { font-size:18px; font-weight:bold; font-family:'AmiriBold','CairoLocal',sans-serif; }
     .header p { font-size:11px; }
     .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:15px; border:1px solid #000; padding:10px; }

@@ -19,6 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, Plus, Search, Archive, Pencil, Eye, History } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
+import { PrintButton } from "@/components/PrintButton";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -240,12 +241,19 @@ export const StocktakeListPage: React.FC = () => {
         <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input placeholder="بحث..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pr-9" />
       </div>
-      <ExportButtons
-        data={filtered.map((st: any) => ({ record: st.record_number || "—", date: st.date, type: st.type, location: getLocationName(st), status: st.is_edited ? "معدل" : st.status, diff: getDiffValue(st.id).toFixed(2) }))}
-        columns={[{ key: "record", label: "رقم الجرد" }, { key: "date", label: "تاريخ الجرد" }, { key: "type", label: "نوع الجرد" }, { key: "location", label: "الفرع / المخزن" }, { key: "status", label: "الحالة" }, { key: "diff", label: "قيمة الفروقات" }]}
-        filename="الجرد_الدوري"
-        title="الجرد الدوري"
-      />
+      <div className="flex items-center gap-2">
+        <ExportButtons
+          data={filtered.map((st: any) => ({ record: st.record_number || "—", date: st.date, type: st.type, location: getLocationName(st), status: st.is_edited ? "معدل" : st.status, diff: getDiffValue(st.id).toFixed(2) }))}
+          columns={[{ key: "record", label: "رقم الجرد" }, { key: "date", label: "تاريخ الجرد" }, { key: "type", label: "نوع الجرد" }, { key: "location", label: "الفرع / المخزن" }, { key: "status", label: "الحالة" }, { key: "diff", label: "قيمة الفروقات" }]}
+          filename="الجرد_الدوري"
+          title="الجرد الدوري"
+        />
+        <PrintButton
+          data={filtered.map((st: any) => ({ record: st.record_number || "—", date: st.date, type: st.type, location: getLocationName(st), status: st.is_edited ? "معدل" : st.status, diff: getDiffValue(st.id).toFixed(2) }))}
+          columns={[{ key: "record", label: "رقم الجرد" }, { key: "date", label: "تاريخ الجرد" }, { key: "type", label: "نوع الجرد" }, { key: "location", label: "الفرع / المخزن" }, { key: "status", label: "الحالة" }, { key: "diff", label: "قيمة الفروقات" }]}
+          title="الجرد الدوري"
+        />
+      </div>
 
       <div className="glass-card overflow-hidden">
         <Table>

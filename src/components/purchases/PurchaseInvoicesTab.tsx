@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Search, Pencil, Eye, Trash2, ToggleLeft, ToggleRight, History } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
+import { PrintButton } from "@/components/PrintButton";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
@@ -127,6 +128,11 @@ export const PurchaseInvoicesTab: React.FC = () => {
           data={filtered.map((o: any) => ({ invoice: o.invoice_number || "—", supplier: o.supplier_name, date: new Date(o.date).toLocaleDateString("ar-EG"), creator: o.creator_name || "—", status: o.is_edited ? "معدل" : o.status, total: Number(o.total_amount).toFixed(2) }))}
           columns={[{ key: "invoice", label: "رقم الفاتورة" }, { key: "supplier", label: "المورد" }, { key: "date", label: "التاريخ" }, { key: "creator", label: "المنشئ" }, { key: "status", label: "الحالة" }, { key: "total", label: "الإجمالي" }]}
           filename="فواتير_المشتريات"
+          title="فواتير المشتريات"
+        />
+        <PrintButton
+          data={filtered.map((o: any) => ({ invoice: o.invoice_number || "—", supplier: o.supplier_name, date: new Date(o.date).toLocaleDateString("ar-EG"), creator: o.creator_name || "—", status: o.is_edited ? "معدل" : o.status, total: Number(o.total_amount).toFixed(2) }))}
+          columns={[{ key: "invoice", label: "رقم الفاتورة" }, { key: "supplier", label: "المورد" }, { key: "date", label: "التاريخ" }, { key: "creator", label: "المنشئ" }, { key: "status", label: "الحالة" }, { key: "total", label: "الإجمالي" }]}
           title="فواتير المشتريات"
         />
       </div>

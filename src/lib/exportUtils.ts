@@ -18,17 +18,17 @@ export interface ExportOptions {
   /** Mark rows as "group-total" or "grand-total" via a __rowType field */
 }
 
-// Dark theme colors matching the system
-const DARK_BG: [number, number, number] = [15, 18, 30];
-const DARK_CARD: [number, number, number] = [18, 22, 38];
-const DARK_ROW_ALT: [number, number, number] = [22, 28, 48];
-const PRIMARY_DIM: [number, number, number] = [14, 165, 233];
-const TEXT_LIGHT: [number, number, number] = [226, 232, 240];
-const TEXT_MUTED: [number, number, number] = [148, 163, 184];
-const BORDER_DARK: [number, number, number] = [40, 50, 70];
+// Black & White PDF colors
+const WHITE_BG: [number, number, number] = [255, 255, 255];
+const LIGHT_GRAY: [number, number, number] = [245, 245, 245];
+const HEADER_BG: [number, number, number] = [60, 60, 60];
+const BLACK: [number, number, number] = [0, 0, 0];
 const WHITE: [number, number, number] = [255, 255, 255];
-const GROUP_TOTAL_BG: [number, number, number] = [28, 38, 62];
-const GRAND_TOTAL_BG: [number, number, number] = [35, 48, 78];
+const TEXT_DARK: [number, number, number] = [30, 30, 30];
+const TEXT_MUTED_BW: [number, number, number] = [120, 120, 120];
+const BORDER_BW: [number, number, number] = [180, 180, 180];
+const GROUP_TOTAL_BW: [number, number, number] = [230, 230, 230];
+const GRAND_TOTAL_BW: [number, number, number] = [210, 210, 210];
 
 // Excel hex colors
 const XL_DARK_BG = "0F121E";
@@ -208,12 +208,12 @@ export async function exportToPDF({ title, filename, columns, data, headerGroups
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
 
-  // Dark background
-  doc.setFillColor(...DARK_BG);
+  // White background
+  doc.setFillColor(...WHITE_BG);
   doc.rect(0, 0, pageWidth, pageHeight, "F");
 
-  // Header bar
-  doc.setFillColor(...PRIMARY_DIM);
+  // Header bar - dark gray
+  doc.setFillColor(...HEADER_BG);
   doc.rect(0, 0, pageWidth, 30, "F");
 
   // Logo
@@ -243,7 +243,7 @@ export async function exportToPDF({ title, filename, columns, data, headerGroups
 
   doc.setFontSize(7);
   doc.setFont(fontName, "normal");
-  doc.setTextColor(...TEXT_MUTED);
+  doc.setTextColor(200, 200, 200);
   const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
   doc.text(dateStr, 10, 26);
 
@@ -254,7 +254,6 @@ export async function exportToPDF({ title, filename, columns, data, headerGroups
   // Build head array
   let headRows: any[][] = [];
   if (headerGroups && headerGroups.length > 0) {
-    // Build the top row with colSpan - reversed for RTL
     const revGroups = [...headerGroups].reverse();
     const topRow: any[] = [];
     for (const grp of revGroups) {
@@ -272,10 +271,10 @@ export async function exportToPDF({ title, filename, columns, data, headerGroups
       const val = row[col.key];
       const content = val !== null && val !== undefined ? String(val) : "—";
       if (rowType === "grand-total") {
-        return { content, styles: { fontStyle: "bold" as const, fillColor: GRAND_TOTAL_BG, textColor: [56, 189, 248] as [number, number, number] } };
+        return { content, styles: { fontStyle: "bold" as const, fillColor: GRAND_TOTAL_BW, textColor: BLACK } };
       }
       if (rowType === "group-total") {
-        return { content, styles: { fontStyle: "bold" as const, fillColor: GROUP_TOTAL_BG, textColor: TEXT_LIGHT } };
+        return { content, styles: { fontStyle: "bold" as const, fillColor: GROUP_TOTAL_BW, textColor: TEXT_DARK } };
       }
       return content;
     });
@@ -297,14 +296,14 @@ export async function exportToPDF({ title, filename, columns, data, headerGroups
       cellPadding: 1.2,
       halign: "center",
       valign: "middle",
-      lineColor: BORDER_DARK,
+      lineColor: BORDER_BW,
       lineWidth: 0.15,
-      textColor: TEXT_LIGHT,
-      fillColor: DARK_CARD,
+      textColor: TEXT_DARK,
+      fillColor: WHITE_BG,
       overflow: "linebreak",
     },
     headStyles: {
-      fillColor: PRIMARY_DIM,
+      fillColor: HEADER_BG,
       textColor: WHITE,
       fontSize: headFontSize,
       fontStyle: "bold",
@@ -312,25 +311,23 @@ export async function exportToPDF({ title, filename, columns, data, headerGroups
       cellPadding: 1.5,
     },
     alternateRowStyles: {
-      fillColor: DARK_ROW_ALT,
+      fillColor: LIGHT_GRAY,
     },
     margin: { top: 34, right: 4, bottom: 18, left: 4 },
     tableWidth: "auto",
     didDrawPage: (pageData: any) => {
       // Footer area
-      doc.setFillColor(20, 24, 40);
+      doc.setFillColor(240, 240, 240);
       doc.rect(0, pageHeight - 14, pageWidth, 14, "F");
       doc.setFontSize(6);
-      doc.setTextColor(...TEXT_MUTED);
+      doc.setTextColor(...TEXT_MUTED_BW);
       doc.setFont(fontName, "normal");
       doc.text("Powered by Mohamed Abdel Aal", pageWidth / 2, pageHeight - 6, { align: "center" });
       doc.text(`${pageData.pageNumber}`, pageWidth - 10, pageHeight - 6, { align: "center" });
 
       // Header on subsequent pages
       if (pageData.pageNumber > 1) {
-        doc.setFillColor(...DARK_BG);
-        doc.rect(0, 0, pageWidth, 10, "F");
-        doc.setFillColor(...PRIMARY_DIM);
+        doc.setFillColor(...HEADER_BG);
         doc.rect(0, 0, pageWidth, 10, "F");
         doc.setTextColor(...WHITE);
         doc.setFontSize(8);

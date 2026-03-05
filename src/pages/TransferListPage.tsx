@@ -15,6 +15,7 @@ import {
   Plus, Search, Eye, Pencil, ToggleLeft, ToggleRight, ArrowLeftRight, Trash2,
 } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
+import { PrintButton } from "@/components/PrintButton";
 import { useToast } from "@/hooks/use-toast";
 
 type StatusFilter = "all" | "مكتمل" | "مؤرشف" | "edited";
@@ -162,6 +163,11 @@ export const TransferListPage: React.FC = () => {
           data={filtered.map((r: any) => ({ record: r.record_number || "—", date: r.date, from: r.source_name || "—", to: r.destination_name || "—", creator: r.creator_name || "—", status: r.is_edited ? "معدل" : r.status, cost: Number(r.total_cost || 0).toFixed(2) }))}
           columns={[{ key: "record", label: "رقم الإذن" }, { key: "date", label: "التاريخ" }, { key: "from", label: "من" }, { key: "to", label: "إلى" }, { key: "creator", label: "المنشئ" }, { key: "status", label: "الحالة" }, { key: "cost", label: "إجمالي التكلفة" }]}
           filename="أذونات_التحويل"
+          title="أذونات الصرف والتحويل"
+        />
+        <PrintButton
+          data={filtered.map((r: any) => ({ record: r.record_number || "—", date: r.date, from: r.source_name || "—", to: r.destination_name || "—", creator: r.creator_name || "—", status: r.is_edited ? "معدل" : r.status, cost: Number(r.total_cost || 0).toFixed(2) }))}
+          columns={[{ key: "record", label: "رقم الإذن" }, { key: "date", label: "التاريخ" }, { key: "from", label: "من" }, { key: "to", label: "إلى" }, { key: "creator", label: "المنشئ" }, { key: "status", label: "الحالة" }, { key: "cost", label: "إجمالي التكلفة" }]}
           title="أذونات الصرف والتحويل"
         />
       </div>

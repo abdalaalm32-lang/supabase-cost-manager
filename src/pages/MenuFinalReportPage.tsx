@@ -231,7 +231,8 @@ export const MenuFinalReportPage: React.FC = () => {
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Table */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-4">
+          {/* Table 1: Category Breakdown */}
           <div className="border rounded-xl overflow-hidden">
             <Table>
               <TableHeader>
@@ -259,81 +260,60 @@ export const MenuFinalReportPage: React.FC = () => {
                 ))}
               </TableBody>
             </Table>
-
-            {/* Summary rows */}
-            <div className="border-t bg-muted/30">
-              <Table>
-                <TableBody>
-                  <TableRow>
-                    <TableCell className="text-sm font-bold" colSpan={2}>
-                      إجمالي سعر بيع {activeTab === "kitchen" ? "المطبخ" : "البار"}
-                    </TableCell>
-                    <TableCell className="text-center text-sm font-bold" colSpan={2}>{fmt(grandTotals.totalPrice)}</TableCell>
-                    <TableCell colSpan={2}></TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="text-sm font-bold" colSpan={2}>
-                      إجمالي تكلفة مباشرة {activeTab === "kitchen" ? "المطبخ" : "البار"}
-                    </TableCell>
-                    <TableCell className="text-center text-sm font-bold" colSpan={2}>{fmt(grandTotals.totalCost)}</TableCell>
-                    <TableCell className="text-center text-sm" colSpan={2}>{fmtPct(grandTotals.totalPrice > 0 ? grandTotals.totalCost / grandTotals.totalPrice * 100 : 0)}</TableCell>
-                  </TableRow>
-                  <TableRow className="bg-orange-500/10">
-                    <TableCell className="text-sm font-bold text-orange-600" colSpan={2}>
-                      إجمالي تكلفة غير مباشرة {activeTab === "kitchen" ? "المطبخ" : "البار"}
-                    </TableCell>
-                    <TableCell className="text-center text-sm font-bold text-orange-600" colSpan={2}>{fmt(grandTotals.totalIndirect)}</TableCell>
-                    <TableCell className="text-center text-sm text-orange-600" colSpan={2}>{fmtPct(indirectCostPct * 100)}</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="text-sm font-bold" colSpan={2}>
-                      صافي ربح Net Take Away
-                    </TableCell>
-                    <TableCell className="text-center text-sm font-bold" colSpan={2}>{fmt(grandTotals.netTakeAway)}</TableCell>
-                    <TableCell className="text-center text-sm" colSpan={2}>{grandTotals.totalPrice > 0 ? fmtPct(grandTotals.netTakeAway / grandTotals.totalPrice * 100) : "0%"}</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="text-sm font-bold" colSpan={2}>
-                      صافي ربح Net Table (بعد ضريبة {taxRate}%)
-                    </TableCell>
-                    <TableCell className="text-center text-sm font-bold" colSpan={2}>{fmt(grandTotals.netTable)}</TableCell>
-                    <TableCell className="text-center text-sm" colSpan={2}>{grandTotals.totalPrice > 0 ? fmtPct(grandTotals.netTable / grandTotals.totalPrice * 100) : "0%"}</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="text-sm font-bold" colSpan={2}>عدد الأصناف</TableCell>
-                    <TableCell className="text-center text-sm font-bold" colSpan={2}>{grandTotals.itemCount}</TableCell>
-                    <TableCell colSpan={2}></TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </div>
-
-            {/* Packing & Consumables percentages */}
-            <div className="border-t bg-muted/20">
-              <Table>
-                <TableBody>
-                  <TableRow>
-                    <TableCell className="text-sm font-bold" colSpan={3}>
-                      إجمالي نسبة التغليف ({activeTab === "kitchen" ? "مطبخ" : "بار"})
-                    </TableCell>
-                    <TableCell className="text-center text-sm font-bold" colSpan={3}>{fmtPct(totalPackingPer)}</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="text-sm font-bold" colSpan={3}>
-                      إجمالي نسبة المستهلكات ({activeTab === "kitchen" ? "مطبخ" : "بار"})
-                    </TableCell>
-                    <TableCell className="text-center text-sm font-bold" colSpan={3}>{fmtPct(totalConsumablesPer)}</TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </div>
-
             {/* Cost percentage legend */}
             <div className="border-t p-3 flex items-center gap-4 text-xs">
               <div className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-emerald-500 inline-block"></span> 20% : 40%</div>
               <div className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-red-500 inline-block"></span> أقل من 20%</div>
               <div className="flex items-center gap-1"><span className="w-4 h-3 rounded bg-yellow-500 inline-block"></span> أكثر من 40%</div>
             </div>
+          </div>
+
+          {/* Table 2: Summary Totals */}
+          <div className="border rounded-xl overflow-hidden">
+            <Table>
+              <TableBody>
+                <TableRow>
+                  <TableCell className="text-sm font-bold" colSpan={2}>
+                    إجمالي سعر بيع {activeTab === "kitchen" ? "المطبخ" : "البار"}
+                  </TableCell>
+                  <TableCell className="text-center text-sm font-bold">{fmt(grandTotals.totalPrice)}</TableCell>
+                  <TableCell className="text-center text-sm font-bold">Percentage</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="text-sm font-bold" colSpan={2}>
+                    إجمالي تكلفة مباشرة {activeTab === "kitchen" ? "المطبخ" : "البار"}
+                  </TableCell>
+                  <TableCell className="text-center text-sm font-bold">{fmt(grandTotals.totalCost)}</TableCell>
+                  <TableCell className="text-center text-sm font-bold">{fmtPct(grandTotals.totalPrice > 0 ? grandTotals.totalCost / grandTotals.totalPrice * 100 : 0)}</TableCell>
+                </TableRow>
+                <TableRow className="bg-blue-200/40">
+                  <TableCell className="text-sm font-bold" colSpan={2}>
+                    إجمالي تكلفة غير مباشرة {activeTab === "kitchen" ? "المطبخ" : "البار"}
+                  </TableCell>
+                  <TableCell className="text-center text-sm font-bold">{fmt(grandTotals.totalIndirect)}</TableCell>
+                  <TableCell className="text-center text-sm font-bold">{fmtPct(indirectCostPct * 100)}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="text-sm font-bold" colSpan={2}>
+                    صافي ربح Net Take Away
+                  </TableCell>
+                  <TableCell className="text-center text-sm font-bold">{fmt(grandTotals.netTakeAway)}</TableCell>
+                  <TableCell className="text-center text-sm font-bold">{grandTotals.totalPrice > 0 ? fmtPct(grandTotals.netTakeAway / grandTotals.totalPrice * 100) : "0%"}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="text-sm font-bold" colSpan={2}>
+                    صافي ربح Net Table (بعد ضريبة {taxRate}%)
+                  </TableCell>
+                  <TableCell className="text-center text-sm font-bold">{fmt(grandTotals.netTable)}</TableCell>
+                  <TableCell className="text-center text-sm font-bold">{grandTotals.totalPrice > 0 ? fmtPct(grandTotals.netTable / grandTotals.totalPrice * 100) : "0%"}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="text-sm font-bold" colSpan={2}>عدد الأصناف</TableCell>
+                  <TableCell className="text-center text-sm font-bold">{grandTotals.itemCount}</TableCell>
+                  <TableCell></TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
           </div>
         </div>
 

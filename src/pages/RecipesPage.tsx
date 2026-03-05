@@ -512,7 +512,7 @@ export const RecipesPage: React.FC = () => {
 body { font-family:'CairoLocal',sans-serif; direction:rtl; padding:20px; color:#000; background:#fff; }
 @media print { @page { size:auto; margin:8mm; } body { padding:0; } table { page-break-inside:auto; } tr { page-break-inside:avoid; } }
 .header { text-align:center; margin-bottom:15px; border-bottom:2px solid #000; padding-bottom:10px; display:flex; align-items:center; justify-content:center; gap:10px; }
-.logo { width:40px; height:40px; object-fit:contain; }
+.logo { width:80px; height:80px; object-fit:contain; }
 .header h1 { font-size:18px; font-weight:bold; font-family:'AmiriBold','CairoLocal',sans-serif; }
 .header p { font-size:11px; }
 table { width:100%; border-collapse:collapse; margin-bottom:5px; }

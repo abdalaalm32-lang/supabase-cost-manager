@@ -90,8 +90,8 @@ export const PrintButton: React.FC<PrintButtonProps> = ({ data, columns, title, 
       gap: 10px;
     }
     .logo {
-      width: 36px;
-      height: 36px;
+      width: 80px;
+      height: 80px;
       object-fit: contain;
       flex-shrink: 0;
     }

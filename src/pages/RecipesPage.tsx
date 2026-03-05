@@ -505,6 +505,16 @@ export const RecipesPage: React.FC = () => {
                   </Button>
                 </>
               )}
+              {ingredients.length > 0 && (
+                <RecipePrintExport
+                  productName={selectedProduct.name}
+                  productCode={selectedProduct.code}
+                  productPrice={Number(selectedProduct.price)}
+                  ingredients={ingredients}
+                  totalCost={totalIngredientsCost}
+                  type="pos"
+                />
+              )}
             </>
           )}
         </div>

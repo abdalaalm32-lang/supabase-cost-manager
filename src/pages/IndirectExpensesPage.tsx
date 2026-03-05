@@ -113,13 +113,55 @@ export const IndirectExpensesPage: React.FC = () => {
     setLoading(false);
   };
 
+  const fetchCostData = async () => {
+    if (!companyId) return;
+    const [itemsRes, recipesRes, overridesRes] = await Promise.all([
+      supabase.from("pos_items").select("*, categories:category_id(name)").eq("company_id", companyId).eq("active", true),
+      supabase.from("recipes").select("id, menu_item_id, recipe_ingredients(stock_item_id, qty, stock_items:stock_item_id(avg_cost, conversion_factor))").eq("company_id", companyId),
+      supabase.from("pos_item_cost_settings").select("*").eq("company_id", companyId),
+    ]);
+    if (itemsRes.data) {
+      setPosItems((itemsRes.data as any[]).map(item => ({ ...item, category: item.categories?.name || item.category || null })));
+    }
+    const recipeCostMap = new Map<string, number>();
+    if (recipesRes.data) {
+      for (const recipe of recipesRes.data as any[]) {
+        let totalCost = 0;
+        for (const ing of recipe.recipe_ingredients || []) {
+          const si = ing.stock_items;
+          if (si) totalCost += ing.qty * (si.avg_cost / (si.conversion_factor || 1));
+        }
+        recipeCostMap.set(recipe.menu_item_id, totalCost);
+      }
+    }
+    setRecipeCosts(recipeCostMap);
+    const overrideMap = new Map<string, CostOverride>();
+    if (overridesRes.data) for (const o of overridesRes.data as any[]) overrideMap.set(o.pos_item_id, o as CostOverride);
+    setCostOverrides(overrideMap);
+  };
+
+  const fetchPackingSideCosts = async () => {
+    if (!companyId || !selectedPeriod) return;
+    const [packRes, sideRes] = await Promise.all([
+      supabase.from("category_packing_items").select("*").eq("company_id", companyId).eq("period_id", selectedPeriod.id),
+      supabase.from("category_side_costs" as any).select("*").eq("company_id", companyId).eq("period_id", selectedPeriod.id),
+    ]);
+    if (packRes.data) setCategoryPackingItems(packRes.data);
+    if (sideRes.data) setCategorySideCostItems(sideRes.data as any[]);
+  };
+
   useEffect(() => {
     fetchPeriods();
     if (companyId) {
       supabase.from("branches").select("id, name").eq("company_id", companyId).eq("active", true)
         .then(({ data }) => { if (data) setBranches(data); });
+      fetchCostData();
     }
   }, [companyId]);
+
+  useEffect(() => {
+    fetchPackingSideCosts();
+  }, [selectedPeriod?.id, companyId]);
 
   const totalIndirectCost = (p: CostingPeriod) => {
     const base = p.media + p.bills + p.salaries + p.other_expenses + p.maintenance + p.rent;

@@ -181,40 +181,44 @@ export async function exportToPDF({ title, filename, columns, data, headerGroups
     format: "a4",
   });
 
-  // Load Cairo font
-  let fontLoaded = false;
+  const processArabicText = (value: unknown) => {
+    const raw = value !== null && value !== undefined && String(value).trim() !== "" ? String(value) : "—";
+    const arabicParser = (doc as any).processArabic;
+    return typeof arabicParser === "function" ? arabicParser(raw) : raw;
+  };
+
+  // Load Arabic font (prefer Amiri with real bold support)
+  let fontName = "helvetica";
   try {
-    const cairoBase64 = await loadFontBase64("/fonts/Cairo-Regular.ttf");
-    doc.addFileToVFS("Cairo-Regular.ttf", cairoBase64);
-    doc.addFont("Cairo-Regular.ttf", "Cairo", "normal");
-    doc.addFont("Cairo-Regular.ttf", "Cairo", "bold");
-    doc.setFont("Cairo");
-    fontLoaded = true;
-  } catch (e) {
-    console.warn("Could not load Cairo font", e);
+    const amiriRegular = await loadFontBase64("/fonts/Amiri-Regular.ttf");
+    const amiriBold = await loadFontBase64("/fonts/Amiri-Bold.ttf");
+    doc.addFileToVFS("Amiri-Regular.ttf", amiriRegular);
+    doc.addFileToVFS("Amiri-Bold.ttf", amiriBold);
+    doc.addFont("Amiri-Regular.ttf", "Amiri", "normal");
+    doc.addFont("Amiri-Bold.ttf", "Amiri", "bold");
+    fontName = "Amiri";
+  } catch (amiriErr) {
+    console.warn("Could not load Amiri font", amiriErr);
     try {
-      const amiriBase64 = await loadFontBase64("/fonts/Amiri-Regular.ttf");
-      doc.addFileToVFS("Amiri-Regular.ttf", amiriBase64);
-      doc.addFont("Amiri-Regular.ttf", "Amiri", "normal");
-      doc.addFont("Amiri-Regular.ttf", "Amiri", "bold");
-      doc.setFont("Amiri");
-      fontLoaded = true;
-    } catch { /* fallback */ }
+      const cairoBase64 = await loadFontBase64("/fonts/Cairo-Regular.ttf");
+      doc.addFileToVFS("Cairo-Regular.ttf", cairoBase64);
+      doc.addFont("Cairo-Regular.ttf", "Cairo", "normal");
+      doc.addFont("Cairo-Regular.ttf", "Cairo", "bold");
+      fontName = "Cairo";
+    } catch (cairoErr) {
+      console.warn("Could not load Cairo font", cairoErr);
+      fontName = "helvetica";
+    }
   }
 
-  const fontName = fontLoaded ? (doc.getFont().fontName || "Cairo") : "helvetica";
   doc.setLanguage("ar");
+  if (typeof (doc as any).setR2L === "function") {
+    (doc as any).setR2L(true);
+  }
+  doc.setFont(fontName, "normal");
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-
-  // White background
-  doc.setFillColor(...WHITE_BG);
-  doc.rect(0, 0, pageWidth, pageHeight, "F");
-
-  // Header bar - dark gray
-  doc.setFillColor(...HEADER_BG);
-  doc.rect(0, 0, pageWidth, 30, "F");
 
   // Logo
   let logoImg: string | null = null;
@@ -226,59 +230,71 @@ export async function exportToPDF({ title, filename, columns, data, headerGroups
       reader.onloadend = () => resolve(reader.result as string);
       reader.readAsDataURL(blob);
     });
-  } catch { /* no logo */ }
-
-  if (logoImg) {
-    try { doc.addImage(logoImg, "PNG", pageWidth - 30, 3, 22, 22); } catch { /* skip */ }
+  } catch {
+    logoImg = null;
   }
 
-  doc.setTextColor(...WHITE);
-  doc.setFontSize(8);
-  doc.setFont(fontName, "normal");
-  doc.text("Cost Management System", 10, 10);
+  if (logoImg) {
+    try {
+      doc.addImage(logoImg, "PNG", pageWidth - 26, 5, 16, 16);
+    } catch {
+      // skip logo drawing if image format fails
+    }
+  }
 
-  doc.setFontSize(13);
-  doc.setFont(fontName, "bold");
-  doc.text(title, pageWidth / 2, 19, { align: "center" });
-
-  doc.setFontSize(7);
-  doc.setFont(fontName, "normal");
-  doc.setTextColor(200, 200, 200);
   const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
-  doc.text(dateStr, 10, 26);
 
-  // Build headers - reversed for RTL (right = first column)
+  doc.setTextColor(...BLACK);
+  doc.setFont(fontName, "bold");
+  doc.setFontSize(13);
+  doc.text(processArabicText(title), pageWidth / 2, 11, { align: "center" });
+
+  doc.setFont(fontName, "normal");
+  doc.setFontSize(8);
+  doc.text(processArabicText(`Cost Management System • ${dateStr}`), pageWidth / 2, 17, { align: "center" });
+
+  doc.setDrawColor(...BLACK);
+  doc.setLineWidth(0.2);
+  doc.line(8, 21, pageWidth - 8, 21);
+
+  // Headers - reversed for RTL
   const revCols = [...columns].reverse();
-  const subHeaders = revCols.map((c) => c.label);
+  const subHeaders = revCols.map((c) => processArabicText(c.label));
 
-  // Build head array
   let headRows: any[][] = [];
   if (headerGroups && headerGroups.length > 0) {
     const revGroups = [...headerGroups].reverse();
-    const topRow: any[] = [];
-    for (const grp of revGroups) {
-      topRow.push({ content: grp.label, colSpan: grp.colSpan, styles: { halign: "center" as const } });
-    }
+    const topRow = revGroups.map((grp) => ({
+      content: processArabicText(grp.label),
+      colSpan: grp.colSpan,
+      styles: {
+        halign: "center" as const,
+        fillColor: WHITE_BG,
+        textColor: BLACK,
+      },
+    }));
     headRows = [topRow, subHeaders];
   } else {
     headRows = [subHeaders];
   }
 
-  // Build body rows - reversed columns
+  // Body rows - reversed columns
   const bodyRows = data.map((row) => {
     const rowType = row.__rowType as string | undefined;
-    const cells = revCols.map((col) => {
-      const val = row[col.key];
-      const content = val !== null && val !== undefined ? String(val) : "—";
-      if (rowType === "grand-total") {
-        return { content, styles: { fontStyle: "bold" as const, fillColor: GRAND_TOTAL_BW, textColor: BLACK } };
-      }
-      if (rowType === "group-total") {
-        return { content, styles: { fontStyle: "bold" as const, fillColor: GROUP_TOTAL_BW, textColor: TEXT_DARK } };
+    return revCols.map((col) => {
+      const content = processArabicText(row[col.key]);
+      if (rowType === "grand-total" || rowType === "group-total") {
+        return {
+          content,
+          styles: {
+            fontStyle: "bold" as const,
+            textColor: BLACK,
+            fillColor: WHITE_BG,
+          },
+        };
       }
       return content;
     });
-    return cells;
   });
 
   const colCount = columns.length;
@@ -288,51 +304,53 @@ export async function exportToPDF({ title, filename, columns, data, headerGroups
   autoTable(doc, {
     head: headRows,
     body: bodyRows,
-    startY: 34,
+    startY: 24,
     theme: "grid",
     styles: {
       font: fontName,
+      fontStyle: "normal",
       fontSize: bodyFontSize,
       cellPadding: 1.2,
       halign: "center",
       valign: "middle",
-      lineColor: BORDER_BW,
-      lineWidth: 0.15,
-      textColor: TEXT_DARK,
+      lineColor: BLACK,
+      lineWidth: 0.1,
+      textColor: BLACK,
       fillColor: WHITE_BG,
       overflow: "linebreak",
     },
     headStyles: {
-      fillColor: HEADER_BG,
-      textColor: WHITE,
+      fillColor: WHITE_BG,
+      textColor: BLACK,
+      font: fontName,
       fontSize: headFontSize,
       fontStyle: "bold",
       halign: "center",
-      cellPadding: 1.5,
+      cellPadding: 1.4,
+      lineColor: BLACK,
+      lineWidth: 0.15,
     },
-    alternateRowStyles: {
-      fillColor: LIGHT_GRAY,
+    bodyStyles: {
+      fillColor: WHITE_BG,
+      textColor: BLACK,
     },
-    margin: { top: 34, right: 4, bottom: 18, left: 4 },
+    margin: { top: 24, right: 4, bottom: 14, left: 4 },
     tableWidth: "auto",
     didDrawPage: (pageData: any) => {
-      // Footer area
-      doc.setFillColor(240, 240, 240);
-      doc.rect(0, pageHeight - 14, pageWidth, 14, "F");
-      doc.setFontSize(6);
-      doc.setTextColor(...TEXT_MUTED_BW);
+      doc.setTextColor(...BLACK);
       doc.setFont(fontName, "normal");
-      doc.text("Powered by Mohamed Abdel Aal", pageWidth / 2, pageHeight - 6, { align: "center" });
-      doc.text(`${pageData.pageNumber}`, pageWidth - 10, pageHeight - 6, { align: "center" });
+      doc.setFontSize(6.5);
+      doc.text("Powered by Mohamed Abdel Aal", 8, pageHeight - 5, { align: "left" });
+      doc.text(processArabicText(`صفحة ${pageData.pageNumber}`), pageWidth - 8, pageHeight - 5, { align: "right" });
 
-      // Header on subsequent pages
       if (pageData.pageNumber > 1) {
-        doc.setFillColor(...HEADER_BG);
-        doc.rect(0, 0, pageWidth, 10, "F");
-        doc.setTextColor(...WHITE);
-        doc.setFontSize(8);
+        doc.setTextColor(...BLACK);
         doc.setFont(fontName, "bold");
-        doc.text(title, pageWidth / 2, 7, { align: "center" });
+        doc.setFontSize(8);
+        doc.text(processArabicText(title), pageWidth / 2, 8, { align: "center" });
+        doc.setDrawColor(...BLACK);
+        doc.setLineWidth(0.2);
+        doc.line(8, 10, pageWidth - 8, 10);
       }
     },
   });

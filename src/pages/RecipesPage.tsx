@@ -413,11 +413,18 @@ export const RecipesPage: React.FC = () => {
       const usedIn = recipes.filter((r: any) =>
         (r.recipe_ingredients || []).some((ri: any) => ri.stock_item_id === si.id),
       );
-      const productNames = usedIn.map((r: any) => {
+      const usageDetails = usedIn.map((r: any) => {
         const product = posItems.find((p: any) => p.id === r.menu_item_id);
-        return product?.name || "—";
+        const ri = (r.recipe_ingredients || []).find((ri: any) => ri.stock_item_id === si.id);
+        return {
+          productName: product?.name || "—",
+          qty: Number(ri?.qty || 0),
+          unit: si.recipe_unit || si.stock_unit || "كجم",
+          avgCost: Number(si.avg_cost || 0),
+          conversionFactor: Number(si.conversion_factor || 1),
+        };
       });
-      return { ...si, usedInCount: usedIn.length, productNames };
+      return { ...si, usedInCount: usedIn.length, usageDetails };
     });
   }, [globalSearch, allStockItems, recipes, posItems]);
 

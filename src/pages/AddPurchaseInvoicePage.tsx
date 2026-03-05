@@ -196,7 +196,7 @@ export const AddPurchaseInvoicePage: React.FC = () => {
       if (status === "مكتمل") {
         for (const item of items) {
           if (item.stock_item_id) {
-            // Get current stock item data for weighted average calculation
+            // Get current avg_cost from stock_items
             const { data: currentItem } = await supabase
               .from("stock_items")
               .select("current_stock, avg_cost")
@@ -204,19 +204,24 @@ export const AddPurchaseInvoicePage: React.FC = () => {
               .single();
             
             if (currentItem) {
-              const oldStock = Number(currentItem.current_stock) || 0;
+              // Get ACTUAL global stock using DB function (accurate across all movements)
+              const { data: actualStockResult } = await supabase.rpc("get_actual_global_stock", {
+                p_stock_item_id: item.stock_item_id,
+              });
+              const oldStock = Number(actualStockResult) || 0;
               const oldAvgCost = Number(currentItem.avg_cost) || 0;
               const newQty = Number(item.quantity) || 0;
               const newUnitCost = Number(item.unit_cost) || 0;
               
-              // Weighted average cost = (old_stock * old_avg + new_qty * new_cost) / (old_stock + new_qty)
+              // If actual stock is 0, use last purchase price directly
+              // Otherwise use weighted average
               const totalStock = oldStock + newQty;
-              const newAvgCost = totalStock > 0
-                ? ((oldStock * oldAvgCost) + (newQty * newUnitCost)) / totalStock
-                : newUnitCost;
+              const newAvgCost = oldStock === 0
+                ? newUnitCost
+                : ((oldStock * oldAvgCost) + (newQty * newUnitCost)) / totalStock;
               
               await supabase.from("stock_items").update({
-                current_stock: totalStock,
+                current_stock: (Number(currentItem.current_stock) || 0) + newQty,
                 avg_cost: newAvgCost,
               }).eq("id", item.stock_item_id);
             }

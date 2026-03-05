@@ -214,18 +214,23 @@ export const EditPurchaseInvoicePage: React.FC = () => {
               .single();
             
             if (currentItem) {
-              const oldStock = Number(currentItem.current_stock) || 0;
+              // Get ACTUAL global stock using DB function (accurate across all movements)
+              const { data: actualStockResult } = await supabase.rpc("get_actual_global_stock", {
+                p_stock_item_id: item.stock_item_id,
+              });
+              const oldStock = Number(actualStockResult) || 0;
               const oldAvgCost = Number(currentItem.avg_cost) || 0;
               const newQty = Number(item.quantity) || 0;
               const newUnitCost = Number(item.unit_cost) || 0;
               
+              // If actual stock is 0, use last purchase price directly
               const totalStock = oldStock + newQty;
-              const newAvgCost = totalStock > 0
-                ? ((oldStock * oldAvgCost) + (newQty * newUnitCost)) / totalStock
-                : newUnitCost;
+              const newAvgCost = oldStock === 0
+                ? newUnitCost
+                : ((oldStock * oldAvgCost) + (newQty * newUnitCost)) / totalStock;
               
               await supabase.from("stock_items").update({
-                current_stock: totalStock,
+                current_stock: (Number(currentItem.current_stock) || 0) + newQty,
                 avg_cost: newAvgCost,
               }).eq("id", item.stock_item_id);
             }

@@ -2203,6 +2203,10 @@ export type Database = {
         Args: { p_company_id: string }
         Returns: string
       }
+      get_actual_global_stock: {
+        Args: { p_stock_item_id: string }
+        Returns: number
+      }
       get_user_company_id: { Args: never; Returns: string }
       get_user_roles: {
         Args: { _user_id: string }

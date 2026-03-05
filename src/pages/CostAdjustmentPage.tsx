@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Plus, Search, Archive, Pencil, Trash2, Eye } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Eye, ToggleLeft, ToggleRight } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -16,7 +16,7 @@ import {
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
-type FilterStatus = "الكل" | "مكتمل" | "مؤرشف";
+type FilterStatus = "الكل" | "مكتمل" | "مؤرشف" | "معدل";
 
 export const CostAdjustmentPage: React.FC = () => {
   const { auth } = useAuth();
@@ -81,6 +81,7 @@ export const CostAdjustmentPage: React.FC = () => {
     let result = records;
     if (filter === "مكتمل") result = result.filter((r: any) => r.status === "مكتمل");
     else if (filter === "مؤرشف") result = result.filter((r: any) => r.status === "مؤرشف");
+    else if (filter === "معدل") result = result.filter((r: any) => r.status === "مكتمل" && (r as any).is_edited === true);
 
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
@@ -117,7 +118,7 @@ export const CostAdjustmentPage: React.FC = () => {
           <Input placeholder="بحث برقم السجل أو الموقع أو الملاحظات..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="glass-input pr-9" />
         </div>
         <div className="flex gap-2">
-          {(["الكل", "مكتمل", "مؤرشف"] as FilterStatus[]).map((s) => (
+          {(["الكل", "مكتمل", "مؤرشف", "معدل"] as FilterStatus[]).map((s) => (
             <Button key={s} variant={filter === s ? "default" : "outline"} size="sm" onClick={() => setFilter(s)}>{s}</Button>
           ))}
         </div>
@@ -146,29 +147,32 @@ export const CostAdjustmentPage: React.FC = () => {
                 <TableCell>{new Date(r.date).toLocaleDateString("ar-EG")}</TableCell>
                 <TableCell>{getLocation(r)}</TableCell>
                 <TableCell>
-                  <Badge variant={r.status === "مكتمل" ? "default" : "secondary"} className={r.status === "مكتمل" ? "bg-emerald-500/15 text-emerald-600 border-emerald-500/30" : "bg-amber-500/15 text-amber-600 border-amber-500/30"}>
-                    {r.status}
-                  </Badge>
+                  {(r as any).is_edited && r.status === "مكتمل" ? (
+                    <Badge className="bg-blue-500/15 text-blue-400 border-blue-500/30">● معدّل</Badge>
+                  ) : (
+                    <Badge variant={r.status === "مكتمل" ? "default" : "secondary"} className={r.status === "مكتمل" ? "bg-emerald-500/15 text-emerald-600 border-emerald-500/30" : "bg-amber-500/15 text-amber-600 border-amber-500/30"}>
+                      {r.status}
+                    </Badge>
+                  )}
                 </TableCell>
                 <TableCell>{r.cost_adjustment_items?.length || 0}</TableCell>
                 <TableCell>
                    <div className="flex gap-1">
-                     <Button variant="ghost" size="sm" className="gap-1" onClick={() => navigate(`/cost-adjustment/view/${r.id}?view=true`)}>
-                       <Eye size={14} /> عرض
+                     <Button variant="ghost" size="icon" className="h-7 w-7" title="عرض" onClick={() => navigate(`/cost-adjustment/view/${r.id}?view=true`)}>
+                       <Eye size={14} />
                      </Button>
                      {r.status === "مؤرشف" && (
-                       <Button variant="ghost" size="sm" className="gap-1" onClick={() => navigate(`/cost-adjustment/edit/${r.id}`)}>
-                         <Pencil size={14} /> تعديل
+                       <Button variant="ghost" size="icon" className="h-7 w-7" title="تعديل" onClick={() => navigate(`/cost-adjustment/edit/${r.id}`)}>
+                         <Pencil size={14} />
                        </Button>
                      )}
-                    <Button variant="ghost" size="sm" className="gap-1" onClick={() => toggleArchiveMutation.mutate({ id: r.id, status: r.status })}>
-                      <Archive size={14} />
-                      {r.status === "مؤرشف" ? "إلغاء الأرشفة" : "أرشفة"}
+                    <Button variant="ghost" size="icon" className="h-7 w-7" title={r.status === "مؤرشف" ? "إلغاء الأرشفة" : "أرشفة"} onClick={() => toggleArchiveMutation.mutate({ id: r.id, status: r.status })}>
+                      {r.status === "مؤرشف" ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="sm" className="gap-1 text-destructive">
-                          <Trash2 size={14} /> حذف
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" title="حذف">
+                          <Trash2 size={14} />
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>

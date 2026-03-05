@@ -1,0 +1,1 @@
+ALTER TABLE public.cost_adjustments ADD COLUMN is_edited boolean NOT NULL DEFAULT false;

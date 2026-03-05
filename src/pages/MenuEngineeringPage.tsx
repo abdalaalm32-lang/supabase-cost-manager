@@ -481,6 +481,11 @@ export const MenuEngineeringPage: React.FC = () => {
                           {row.strategic}
                         </Badge>
                       </TableCell>
+                      <TableCell>
+                        <span className={`text-[10px] font-semibold ${strategicBadgeClass[row.strategic].replace(/bg-\S+/g, '').trim()}`}>
+                          {row.decision}
+                        </span>
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -496,7 +501,7 @@ export const MenuEngineeringPage: React.FC = () => {
                     <TableCell className="text-xs">—</TableCell>
                     <TableCell className="text-xs">—</TableCell>
                     <TableCell className="text-xs">{totals.totalProfit.toFixed(2)}</TableCell>
-                    <TableCell colSpan={5} className="text-xs">—</TableCell>
+                    <TableCell colSpan={6} className="text-xs">—</TableCell>
                   </TableRow>
                 )}
               </TableBody>

@@ -113,6 +113,7 @@ const adminSettingsItem: NavItem = {
   id: "settings", path: "/settings", label: "لوحة تحكم الأدمن", icon: Shield,
   children: [
     { id: "settings-companies", path: "/settings/companies", label: "إدارة الشركات", icon: Building2 },
+    { id: "settings-subscription-log", path: "/settings/subscription-log", label: "سجلات الشركات", icon: Shield },
     { id: "settings-messages", path: "/settings/messages", label: "رسائل العملاء", icon: MessageSquare },
     { id: "settings-warehouses", path: "/settings/warehouses", label: "المخازن", icon: Settings },
     { id: "settings-branches", path: "/settings/branches", label: "الفروع", icon: Settings },

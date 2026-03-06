@@ -167,6 +167,8 @@ export const AdminCompaniesPage: React.FC = () => {
       if (subType === "months" && subMonths) {
         subEndDate = new Date(subStartDate);
         subEndDate.setMonth(subEndDate.getMonth() + subMonths);
+      } else if (subType === "minutes" && subMinutes) {
+        subEndDate = new Date(subStartDate.getTime() + subMinutes * 60 * 1000);
       }
 
       const res = await supabase.functions.invoke("create-company", {

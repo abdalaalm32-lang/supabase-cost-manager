@@ -56,6 +56,7 @@ import { MenuAnalysisPage } from "@/pages/MenuAnalysisPage";
 import { MenuFinalReportPage } from "@/pages/MenuFinalReportPage";
 import { SystemLayout } from "@/components/SystemLayout";
 import { AdminMessagesPage } from "@/pages/AdminMessagesPage";
+import { AdminSubscriptionLogPage } from "@/pages/AdminSubscriptionLogPage";
 
 const queryClient = new QueryClient();
 
@@ -407,6 +408,7 @@ const AppRoutes = () => {
                 <Route path="/settings" element={<AdminGuard><Navigate to="/settings/companies" replace /></AdminGuard>} />
                 <Route path="/settings/companies" element={<AdminGuard><AdminCompaniesPage /></AdminGuard>} />
                 <Route path="/settings/messages" element={<AdminGuard><AdminMessagesPage /></AdminGuard>} />
+                <Route path="/settings/subscription-log" element={<AdminGuard><AdminSubscriptionLogPage /></AdminGuard>} />
                 <Route path="/settings/users" element={<AdminGuard><SettingsUsersPage /></AdminGuard>} />
                 <Route path="/settings/warehouses" element={<AdminGuard><SettingsWarehousesPage /></AdminGuard>} />
                 <Route path="/settings/branches" element={<AdminGuard><SettingsBranchesPage /></AdminGuard>} />

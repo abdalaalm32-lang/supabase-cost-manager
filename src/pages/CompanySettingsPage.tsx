@@ -582,7 +582,14 @@ export const CompanySettingsPage: React.FC = () => {
                 )}
                 <div className="space-y-2">
                   <Label>الدور الوظيفي</Label>
-                  <Select value={formJobRoleId} onValueChange={setFormJobRoleId}>
+                  <Select value={formJobRoleId} onValueChange={(val) => {
+                    setFormJobRoleId(val);
+                    // Auto-fill permissions from job role defaults
+                    const selectedRole = jobRoles?.find((jr) => jr.id === val);
+                    if (selectedRole && (selectedRole as any).default_permissions) {
+                      setFormPermissions((selectedRole as any).default_permissions);
+                    }
+                  }}>
                     <SelectTrigger className="glass-input"><SelectValue placeholder="اختر الدور" /></SelectTrigger>
                     <SelectContent>{jobRoles?.map((jr) => <SelectItem key={jr.id} value={jr.id}>{jr.name}</SelectItem>)}</SelectContent>
                   </Select>

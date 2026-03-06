@@ -291,6 +291,7 @@ export const AdminCompaniesPage: React.FC = () => {
   const resetAddForm = () => {
     setCompanyName(""); setCompanyCode(""); setOwnerName(""); setOwnerEmail(""); setOwnerPassword("");
     setMaxBranches(2); setMaxWarehouses(1);
+    setSubType("unlimited"); setSubMinutes(undefined); setSubMonths(undefined); setSubStart(undefined); setSubEnd(undefined);
   };
 
   const openEditUser = (user: any) => {

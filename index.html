@@ -1,47 +1,45 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>3M CMS</title>
+    <meta name="description" content="3M GSC - Supabase Cost Manager" />
+    <meta name="author" content="3M GSC" />
 
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>3M GSC</title>
-  <meta name="description" content="3M GSC - Supabase Cost Manager" />
-  <meta name="author" content="3M GSC" />
+    <!-- PWA settings -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#ffffff" />
+    <link rel="apple-touch-icon" href="/logo.png" />
 
-  <!-- PWA settings -->
-  <link rel="manifest" href="/manifest.json" />
-  <meta name="theme-color" content="#ffffff" />
-  <link rel="apple-touch-icon" href="/logo.png" />
+    <link rel="icon" type="image/png" href="/logo.png" />
 
-  <link rel="icon" type="image/png" href="/logo.png" />
+    <meta property="og:title" content="3M GSC" />
+    <meta property="og:description" content="3M GSC - Supabase Cost Manager" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/logo.png" />
 
-  <meta property="og:title" content="3M GSC" />
-  <meta property="og:description" content="3M GSC - Supabase Cost Manager" />
-  <meta property="og:type" content="website" />
-  <meta property="og:image" content="/logo.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@3mgsc" />
+    <meta name="twitter:image" content="/logo.png" />
+  </head>
 
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:site" content="@3mgsc" />
-  <meta name="twitter:image" content="/logo.png" />
-</head>
-
-<body>
-  <div id="root"></div>
-  <script type="module" src="/src/main.tsx"></script>
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').then(
-          (registration) => {
-            console.log('ServiceWorker registration successful with scope: ', registration.scope);
-          },
-          (err) => {
-            console.log('ServiceWorker registration failed: ', err);
-          }
-        );
-      });
-    }
-  </script>
-</body>
-
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').then(
+            (registration) => {
+              console.log('ServiceWorker registration successful with scope: ', registration.scope);
+            },
+            (err) => {
+              console.log('ServiceWorker registration failed: ', err);
+            }
+          );
+        });
+      }
+    </script>
+  </body>
 </html>

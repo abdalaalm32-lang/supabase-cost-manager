@@ -59,6 +59,11 @@ export const AdminCompaniesPage: React.FC = () => {
   const [ownerPassword, setOwnerPassword] = useState("");
   const [maxBranches, setMaxBranches] = useState(2);
   const [maxWarehouses, setMaxWarehouses] = useState(1);
+  const [subType, setSubType] = useState("unlimited");
+  const [subMinutes, setSubMinutes] = useState<number | undefined>(undefined);
+  const [subMonths, setSubMonths] = useState<number | undefined>(undefined);
+  const [subStart, setSubStart] = useState<Date | undefined>(undefined);
+  const [subEnd, setSubEnd] = useState<Date | undefined>(undefined);
 
   // Edit user form
   const [editFormPermissions, setEditFormPermissions] = useState<string[]>([]);

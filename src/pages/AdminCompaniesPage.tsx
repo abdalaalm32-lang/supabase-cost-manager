@@ -89,6 +89,18 @@ export const AdminCompaniesPage: React.FC = () => {
   const [resetConfirmText, setResetConfirmText] = useState("");
   const [isResetting, setIsResetting] = useState(false);
 
+  // Renew subscription dialog
+  const [isRenewOpen, setIsRenewOpen] = useState(false);
+  const [renewTarget, setRenewTarget] = useState<any>(null);
+  const [renewType, setRenewType] = useState("months");
+  const [renewMonths, setRenewMonths] = useState<number>(1);
+  const [renewDays, setRenewDays] = useState<number>(30);
+  const [renewNotes, setRenewNotes] = useState("");
+
+  // Subscription log dialog
+  const [isLogOpen, setIsLogOpen] = useState(false);
+  const [logTargetCompany, setLogTargetCompany] = useState<any>(null);
+
   // Fetch all companies (admin only)
   const { data: companies, isLoading } = useQuery({
     queryKey: ["admin-companies"],

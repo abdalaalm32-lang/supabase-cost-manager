@@ -167,6 +167,8 @@ export const AdminCompaniesPage: React.FC = () => {
       if (subType === "months" && subMonths) {
         subEndDate = new Date(subStartDate);
         subEndDate.setMonth(subEndDate.getMonth() + subMonths);
+      } else if (subType === "minutes" && subMinutes) {
+        subEndDate = new Date(subStartDate.getTime() + subMinutes * 60 * 1000);
       }
 
       const res = await supabase.functions.invoke("create-company", {
@@ -188,7 +190,21 @@ export const AdminCompaniesPage: React.FC = () => {
       if (res.data?.error) throw new Error(res.data.error);
       return res.data;
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
+      // Log company creation
+      if (data?.company_id) {
+        supabase.from("company_subscription_log").insert({
+          company_id: data.company_id,
+          action: "إنشاء",
+          previous_type: "—",
+          new_type: subType,
+          new_end: subType !== "unlimited" && data?.subscription_end ? data.subscription_end : null,
+          notes: `تم إنشاء الشركة - اشتراك: ${subType === "unlimited" ? "غير محدود" : subType === "months" ? `${subMonths} شهر` : `${subMinutes} دقيقة`}`,
+          created_by: auth.user?.id || null,
+        }).then(() => {
+          queryClient.invalidateQueries({ queryKey: ["subscription-log"] });
+        });
+      }
       toast.success("تم إنشاء الشركة والمالك بنجاح");
       setIsAddCompanyOpen(false);
       resetAddForm();
@@ -198,14 +214,24 @@ export const AdminCompaniesPage: React.FC = () => {
   });
 
   const toggleCompanyActive = useMutation({
-    mutationFn: async ({ companyId, active }: { companyId: string; active: boolean }) => {
+    mutationFn: async ({ companyId, active, companyName }: { companyId: string; active: boolean; companyName?: string }) => {
       const { error } = await supabase.from("companies").update({ active }).eq("id", companyId);
       if (error) throw error;
+      // Log the event
+      await supabase.from("company_subscription_log").insert({
+        company_id: companyId,
+        action: active ? "تفعيل" : "تعطيل",
+        previous_type: "—",
+        new_type: "—",
+        notes: active ? "تم إعادة تفعيل الشركة" : "تم تعطيل الشركة",
+        created_by: auth.user?.id || null,
+      });
     },
     onSuccess: (_, { active }) => {
       toast.success(active ? "تم تفعيل الشركة" : "تم تعطيل الشركة");
       queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
       queryClient.invalidateQueries({ queryKey: ["admin-company-profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["subscription-log"] });
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -529,7 +555,7 @@ export const AdminCompaniesPage: React.FC = () => {
                               <span className="text-xs text-muted-foreground">{company.active ? "نشط" : "معطل"}</span>
                               <Switch
                                 checked={company.active}
-                                onCheckedChange={(checked) => toggleCompanyActive.mutate({ companyId: company.id, active: checked })}
+                                onCheckedChange={(checked) => toggleCompanyActive.mutate({ companyId: company.id, active: checked, companyName: company.name })}
                                 dir="ltr"
                               />
                             </div>
@@ -597,8 +623,28 @@ export const AdminCompaniesPage: React.FC = () => {
                             </div>
                             {company.subscription_type === "minutes" && (
                               <div className="space-y-1">
-                                <Label className="text-xs">الدقائق</Label>
-                                <Input type="number" className="w-24 h-8 text-xs text-center" value={company.subscription_minutes || ""} onChange={(e) => updateCompanySubscription.mutate({ companyId: company.id, subscription_type: "minutes", subscription_minutes: Number(e.target.value), subscription_start: company.subscription_start, subscription_end: company.subscription_end })} min={1} />
+                                <Label className="text-xs">عدد الدقائق</Label>
+                                <Input
+                                  type="number"
+                                  className="w-24 h-8 text-xs text-center"
+                                  value={company.subscription_minutes || ""}
+                                  onChange={(e) => {
+                                    const mins = Number(e.target.value);
+                                    if (!mins || mins <= 0) return;
+                                    const now = new Date();
+                                    const endDate = new Date(now.getTime() + mins * 60 * 1000);
+                                    updateCompanySubscription.mutate({
+                                      companyId: company.id,
+                                      subscription_type: "minutes",
+                                      subscription_minutes: mins,
+                                      subscription_start: now.toISOString(),
+                                      subscription_end: endDate.toISOString(),
+                                    });
+                                  }}
+                                  min={1}
+                                  placeholder="مثال: 2"
+                                />
+                                <p className="text-[10px] text-muted-foreground">بعد الحفظ سيبدأ العد التنازلي</p>
                               </div>
                             )}
                             {company.subscription_type !== "unlimited" && (

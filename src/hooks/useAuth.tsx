@@ -97,7 +97,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    return () => subscription.unsubscribe();
+    // Periodic session validation - detects deleted users
+    const sessionCheck = setInterval(async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { error } = await supabase.auth.getUser();
+        if (error) {
+          // User was deleted or token is invalid
+          await supabase.auth.signOut();
+        }
+      }
+    }, 30000); // Check every 30 seconds
+
+    return () => {
+      subscription.unsubscribe();
+      clearInterval(sessionCheck);
+    };
   }, []);
 
   // Listen for role changes in realtime

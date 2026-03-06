@@ -482,7 +482,61 @@ export const AdminCompaniesPage: React.FC = () => {
                     </div>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    <div className="border-t border-border/30 p-4">
+                    <div className="border-t border-border/30 p-4 space-y-4">
+                      {/* Subscription Management */}
+                      {company.code !== "GSC-ADMIN" && (
+                        <div className="p-3 rounded-xl border border-border/50 bg-muted/20 space-y-3">
+                          <h4 className="text-sm font-bold flex items-center gap-2"><Clock className="h-4 w-4" />إدارة الاشتراك</h4>
+                          <div className="flex flex-wrap items-end gap-3">
+                            <div className="space-y-1">
+                              <Label className="text-xs">النوع</Label>
+                              <Select
+                                value={company.subscription_type || "unlimited"}
+                                onValueChange={(val) => {
+                                  const startDate = company.subscription_start || new Date().toISOString();
+                                  updateCompanySubscription.mutate({
+                                    companyId: company.id,
+                                    subscription_type: val,
+                                    subscription_minutes: val === "minutes" ? (company.subscription_minutes || 1000) : null,
+                                    subscription_start: val !== "unlimited" ? startDate : null,
+                                    subscription_end: val !== "unlimited" ? company.subscription_end : null,
+                                  });
+                                }}
+                              >
+                                <SelectTrigger className="w-32 h-8 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="unlimited">غير محدود</SelectItem>
+                                  <SelectItem value="months">بالأشهر</SelectItem>
+                                  <SelectItem value="minutes">بالدقائق</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            {company.subscription_type === "minutes" && (
+                              <div className="space-y-1">
+                                <Label className="text-xs">الدقائق</Label>
+                                <Input type="number" className="w-24 h-8 text-xs text-center" value={company.subscription_minutes || ""} onChange={(e) => updateCompanySubscription.mutate({ companyId: company.id, subscription_type: "minutes", subscription_minutes: Number(e.target.value), subscription_start: company.subscription_start, subscription_end: company.subscription_end })} min={1} />
+                              </div>
+                            )}
+                            {company.subscription_type !== "unlimited" && (
+                              <>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">بداية</Label>
+                                  <Input type="date" className="w-36 h-8 text-xs" value={company.subscription_start ? format(new Date(company.subscription_start), "yyyy-MM-dd") : ""} onChange={(e) => updateCompanySubscription.mutate({ companyId: company.id, subscription_type: company.subscription_type, subscription_minutes: company.subscription_minutes, subscription_start: e.target.value ? new Date(e.target.value).toISOString() : null, subscription_end: company.subscription_end })} />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">نهاية</Label>
+                                  <Input type="date" className="w-36 h-8 text-xs" value={company.subscription_end ? format(new Date(company.subscription_end), "yyyy-MM-dd") : ""} onChange={(e) => updateCompanySubscription.mutate({ companyId: company.id, subscription_type: company.subscription_type, subscription_minutes: company.subscription_minutes, subscription_start: company.subscription_start, subscription_end: e.target.value ? new Date(e.target.value).toISOString() : null })} />
+                                </div>
+                              </>
+                            )}
+                          </div>
+                          {company.subscription_type !== "unlimited" && company.subscription_end && (
+                            <p className={cn("text-xs font-medium", new Date(company.subscription_end) < new Date() ? "text-destructive" : "text-muted-foreground")}>
+                              {new Date(company.subscription_end) < new Date() ? "⚠️ الاشتراك منتهي!" : `⏳ ينتهي في ${format(new Date(company.subscription_end), "yyyy-MM-dd")}`}
+                            </p>
+                          )}
+                        </div>
+                      )}
                       <Table>
                         <TableHeader>
                           <TableRow>

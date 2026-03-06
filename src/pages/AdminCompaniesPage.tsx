@@ -388,6 +388,12 @@ export const AdminCompaniesPage: React.FC = () => {
                         <span className="text-xs text-muted-foreground">
                           الحد: {company.max_branches} فروع / {company.max_warehouses} مخازن / {company.max_users ?? 5} مستخدمين
                         </span>
+                        {company.subscription_type !== "unlimited" && (
+                          <Badge variant={company.subscription_end && new Date(company.subscription_end) < new Date() ? "destructive" : "secondary"} className="text-xs">
+                            {company.subscription_type === "months" ? "اشتراك شهري" : "اشتراك بالدقائق"}
+                            {company.subscription_end && ` - ينتهي ${format(new Date(company.subscription_end), "yyyy-MM-dd")}`}
+                          </Badge>
+                        )}
                       </div>
                       <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                         {company.code !== "GSC-ADMIN" && (

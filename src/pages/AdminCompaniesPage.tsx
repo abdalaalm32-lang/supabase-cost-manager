@@ -607,8 +607,28 @@ export const AdminCompaniesPage: React.FC = () => {
                             </div>
                             {company.subscription_type === "minutes" && (
                               <div className="space-y-1">
-                                <Label className="text-xs">الدقائق</Label>
-                                <Input type="number" className="w-24 h-8 text-xs text-center" value={company.subscription_minutes || ""} onChange={(e) => updateCompanySubscription.mutate({ companyId: company.id, subscription_type: "minutes", subscription_minutes: Number(e.target.value), subscription_start: company.subscription_start, subscription_end: company.subscription_end })} min={1} />
+                                <Label className="text-xs">عدد الدقائق</Label>
+                                <Input
+                                  type="number"
+                                  className="w-24 h-8 text-xs text-center"
+                                  value={company.subscription_minutes || ""}
+                                  onChange={(e) => {
+                                    const mins = Number(e.target.value);
+                                    if (!mins || mins <= 0) return;
+                                    const now = new Date();
+                                    const endDate = new Date(now.getTime() + mins * 60 * 1000);
+                                    updateCompanySubscription.mutate({
+                                      companyId: company.id,
+                                      subscription_type: "minutes",
+                                      subscription_minutes: mins,
+                                      subscription_start: now.toISOString(),
+                                      subscription_end: endDate.toISOString(),
+                                    });
+                                  }}
+                                  min={1}
+                                  placeholder="مثال: 2"
+                                />
+                                <p className="text-[10px] text-muted-foreground">بعد الحفظ سيبدأ العد التنازلي</p>
                               </div>
                             )}
                             {company.subscription_type !== "unlimited" && (

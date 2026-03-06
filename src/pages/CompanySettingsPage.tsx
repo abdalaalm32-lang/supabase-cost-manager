@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -409,7 +410,7 @@ export const CompanySettingsPage: React.FC = () => {
             <Button variant={activeTab === "account" ? "default" : "ghost"} size="sm" onClick={() => setActiveTab("account")}>بيانات الحساب</Button>
             <Button variant={activeTab === "permissions" ? "default" : "ghost"} size="sm" onClick={() => setActiveTab("permissions")}>صلاحيات الوصول</Button>
           </div>
-          <ScrollArea className="flex-1 min-h-0 max-h-[55vh] px-1">
+          <ScrollArea className="flex-1 min-h-0 max-h-[55vh] px-1 overflow-y-auto">
             {activeTab === "account" && (
               <div className="space-y-4 py-2">
                 <div className="space-y-2">

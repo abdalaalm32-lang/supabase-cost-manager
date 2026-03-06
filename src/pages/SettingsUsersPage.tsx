@@ -478,7 +478,7 @@ export const SettingsUsersPage: React.FC = () => {
 
       {/* Add/Edit User Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) { setIsDialogOpen(false); resetForm(); } else setIsDialogOpen(true); }}>
-        <DialogContent className="max-w-2xl h-[90vh] overflow-hidden flex flex-col" dir="rtl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col" dir="rtl">
           <DialogHeader>
             <DialogTitle>{detailUser ? "تعديل المستخدم" : "إضافة مستخدم جديد"}</DialogTitle>
           </DialogHeader>
@@ -492,7 +492,7 @@ export const SettingsUsersPage: React.FC = () => {
             </Button>
           </div>
 
-          <ScrollArea className="flex-1 min-h-0 h-full px-1">
+          <ScrollArea className="flex-1 min-h-0 h-[50vh] px-1 overflow-y-auto">
             {activeTab === "account" && (
               <div className="space-y-4 py-2">
                 <div className="space-y-2">

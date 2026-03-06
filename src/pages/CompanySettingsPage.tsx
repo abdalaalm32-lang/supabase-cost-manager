@@ -21,7 +21,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
-  Users, UserCheck, Plus, Eye, CalendarIcon, Clock, KeyRound, Trash2, AlertTriangle, RotateCcw, Building2, Briefcase, X, Pencil
+  Users, UserCheck, Plus, Eye, CalendarIcon, Clock, KeyRound, Trash2, AlertTriangle, RotateCcw, Building2, Briefcase, X, Pencil, ChevronDown
 } from "lucide-react";
 
 const ALL_PERMISSIONS = [
@@ -407,57 +407,122 @@ export const CompanySettingsPage: React.FC = () => {
           </div>
           
           {/* Add new role */}
-          <div className="flex gap-2">
-            <Input
-              className="glass-input flex-1"
-              placeholder="اسم الدور الوظيفي الجديد..."
-              value={newJobRoleName}
-              onChange={(e) => setNewJobRoleName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") addJobRole.mutate(); }}
-            />
-            <Button className="gradient-primary text-primary-foreground gap-1" onClick={() => addJobRole.mutate()} disabled={addJobRole.isPending || !newJobRoleName.trim()}>
-              <Plus className="h-4 w-4" />
-              إضافة
-            </Button>
+          <div className="space-y-3 p-4 rounded-xl border border-dashed border-border bg-muted/20">
+            <div className="flex gap-2">
+              <Input
+                className="glass-input flex-1"
+                placeholder="اسم الدور الوظيفي الجديد..."
+                value={newJobRoleName}
+                onChange={(e) => setNewJobRoleName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && newJobRoleName.trim()) addJobRole.mutate(); }}
+              />
+              <Button className="gradient-primary text-primary-foreground gap-1" onClick={() => addJobRole.mutate()} disabled={addJobRole.isPending || !newJobRoleName.trim()}>
+                <Plus className="h-4 w-4" />
+                إضافة
+              </Button>
+            </div>
+            {newJobRoleName.trim() && (
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">صلاحيات الوصول الافتراضية:</Label>
+                <div className="flex flex-wrap gap-2">
+                  {ALL_PERMISSIONS.map((perm) => (
+                    <button
+                      key={perm.key}
+                      type="button"
+                      className={cn(
+                        "text-xs px-3 py-1.5 rounded-lg border transition-colors",
+                        newJobRolePerms.includes(perm.key)
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-muted/50 text-muted-foreground border-border hover:border-primary/50"
+                      )}
+                      onClick={() => setNewJobRolePerms(prev => prev.includes(perm.key) ? prev.filter(k => k !== perm.key) : [...prev, perm.key])}
+                    >
+                      {perm.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Roles list */}
           {allJobRoles && allJobRoles.length > 0 ? (
             <div className="space-y-2">
-              {allJobRoles.map((role) => (
-                <div key={role.id} className="flex items-center justify-between gap-2 p-3 rounded-xl border border-border bg-muted/30">
-                  {editingJobRole?.id === role.id ? (
-                    <div className="flex items-center gap-2 flex-1">
-                      <Input
-                        className="glass-input flex-1"
-                        value={editJobRoleName}
-                        onChange={(e) => setEditJobRoleName(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === "Enter") updateJobRole.mutate(); }}
-                        autoFocus
-                      />
-                      <Button size="sm" onClick={() => updateJobRole.mutate()} disabled={updateJobRole.isPending}>حفظ</Button>
-                      <Button size="sm" variant="ghost" onClick={() => setEditingJobRole(null)}>إلغاء</Button>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex items-center gap-2">
-                        <Briefcase className="h-4 w-4 text-muted-foreground" />
-                        <span className={`text-sm font-medium ${!role.active ? "line-through text-muted-foreground" : "text-foreground"}`}>{role.name}</span>
-                        {!role.active && <Badge variant="secondary" className="text-[10px]">معطل</Badge>}
+              {allJobRoles.map((role) => {
+                const rolePerms: string[] = (role as any).default_permissions || ["dashboard"];
+                const isExpanded = expandedRoleId === role.id;
+                return (
+                  <div key={role.id} className="rounded-xl border border-border bg-muted/30 overflow-hidden">
+                    {editingJobRole?.id === role.id ? (
+                      <div className="p-3 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Input
+                            className="glass-input flex-1"
+                            value={editJobRoleName}
+                            onChange={(e) => setEditJobRoleName(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") updateJobRole.mutate(); }}
+                            autoFocus
+                          />
+                          <Button size="sm" onClick={() => updateJobRole.mutate()} disabled={updateJobRole.isPending}>حفظ</Button>
+                          <Button size="sm" variant="ghost" onClick={() => setEditingJobRole(null)}>إلغاء</Button>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs text-muted-foreground">صلاحيات الوصول الافتراضية:</Label>
+                          <div className="flex flex-wrap gap-2">
+                            {ALL_PERMISSIONS.map((perm) => (
+                              <button
+                                key={perm.key}
+                                type="button"
+                                className={cn(
+                                  "text-xs px-3 py-1.5 rounded-lg border transition-colors",
+                                  editJobRolePerms.includes(perm.key)
+                                    ? "bg-primary text-primary-foreground border-primary"
+                                    : "bg-muted/50 text-muted-foreground border-border hover:border-primary/50"
+                                )}
+                                onClick={() => setEditJobRolePerms(prev => prev.includes(perm.key) ? prev.filter(k => k !== perm.key) : [...prev, perm.key])}
+                              >
+                                {perm.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { setEditingJobRole(role); setEditJobRoleName(role.name); }}>
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Switch checked={role.active} onCheckedChange={(checked) => toggleJobRoleActive.mutate({ id: role.id, active: checked })} />
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => deleteJobRole.mutate(role.id)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              ))}
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between gap-2 p-3">
+                          <div className="flex items-center gap-2 cursor-pointer flex-1" onClick={() => setExpandedRoleId(isExpanded ? null : role.id)}>
+                            <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", isExpanded && "rotate-180")} />
+                            <Briefcase className="h-4 w-4 text-muted-foreground" />
+                            <span className={cn("text-sm font-medium", !role.active ? "line-through text-muted-foreground" : "text-foreground")}>{role.name}</span>
+                            <Badge variant="secondary" className="text-[10px]">{rolePerms.length} صلاحية</Badge>
+                            {!role.active && <Badge variant="destructive" className="text-[10px]">معطل</Badge>}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { setEditingJobRole(role); setEditJobRoleName(role.name); setEditJobRolePerms(rolePerms); }}>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Switch checked={role.active} onCheckedChange={(checked) => toggleJobRoleActive.mutate({ id: role.id, active: checked })} />
+                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => deleteJobRole.mutate(role.id)}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                        {isExpanded && (
+                          <div className="px-3 pb-3 border-t border-border pt-2">
+                            <p className="text-xs text-muted-foreground mb-2">الصلاحيات الافتراضية:</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {rolePerms.map((key) => {
+                                const label = ALL_PERMISSIONS.find(p => p.key === key)?.label || key;
+                                return <Badge key={key} variant="secondary" className="text-[10px]">{label}</Badge>;
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <p className="text-sm text-muted-foreground text-center py-4">لا توجد أدوار وظيفية بعد. أضف أدوار ليتم عرضها عند إضافة المستخدمين.</p>

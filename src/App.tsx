@@ -203,6 +203,34 @@ const CompanyDeactivatedOverlay: React.FC<{ isOwner: boolean }> = ({ isOwner }) 
   );
 };
 
+const SubscriptionExpiredOverlay: React.FC<{ type: "company" | "user" }> = ({ type }) => {
+  const { logout } = useAuth();
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+      <div className="absolute inset-0 bg-background/60 backdrop-blur-xl" />
+      <div className="relative z-10 text-center p-8 max-w-md">
+        <div className="w-20 h-20 rounded-full bg-amber-500/15 flex items-center justify-center mx-auto mb-6">
+          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-500"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+        </div>
+        <h2 className="text-2xl font-black text-foreground mb-3">
+          {type === "company" ? "انتهت مدة اشتراك الشركة" : "انتهت مدة اشتراكك"}
+        </h2>
+        <p className="text-muted-foreground text-sm mb-6">
+          {type === "company"
+            ? "انتهت مدة اشتراك الشركة في النظام. تواصل مع الإدارة لتجديد الاشتراك."
+            : "انتهت مدة اشتراكك في النظام. تواصل مع مدير الشركة لتجديد الاشتراك."}
+        </p>
+        <button
+          onClick={() => logout()}
+          className="bg-destructive text-destructive-foreground px-6 py-3 rounded-xl font-bold text-sm"
+        >
+          تسجيل الخروج
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { auth } = useAuth();
   const qc = useQueryClient();

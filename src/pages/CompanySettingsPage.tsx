@@ -81,8 +81,11 @@ export const CompanySettingsPage: React.FC = () => {
 
   // Job roles management
   const [newJobRoleName, setNewJobRoleName] = useState("");
+  const [newJobRolePerms, setNewJobRolePerms] = useState<string[]>(["dashboard"]);
   const [editingJobRole, setEditingJobRole] = useState<any>(null);
   const [editJobRoleName, setEditJobRoleName] = useState("");
+  const [editJobRolePerms, setEditJobRolePerms] = useState<string[]>(["dashboard"]);
+  const [expandedRoleId, setExpandedRoleId] = useState<string | null>(null);
 
   const { data: profiles, isLoading } = useQuery({
     queryKey: ["company-users", companyId],

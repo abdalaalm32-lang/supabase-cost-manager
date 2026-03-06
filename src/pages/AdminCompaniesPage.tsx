@@ -197,6 +197,23 @@ export const AdminCompaniesPage: React.FC = () => {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const updateCompanySubscription = useMutation({
+    mutationFn: async ({ companyId, subscription_type, subscription_minutes, subscription_start, subscription_end }: { companyId: string; subscription_type: string; subscription_minutes?: number | null; subscription_start?: string | null; subscription_end?: string | null }) => {
+      const { error } = await supabase.from("companies").update({
+        subscription_type,
+        subscription_minutes: subscription_minutes || null,
+        subscription_start: subscription_start || null,
+        subscription_end: subscription_end || null,
+      }).eq("id", companyId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("تم تحديث الاشتراك");
+      queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const updateUserFromAdmin = useMutation({
     mutationFn: async () => {
       if (!editingUser) return;

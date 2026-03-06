@@ -207,13 +207,13 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   const { auth } = useAuth();
   const qc = useQueryClient();
 
-  // Check if company is active (priority check before individual status)
+  // Check if company is active and subscription status
   const { data: companyStatus } = useQuery({
     queryKey: ["company-active-status", auth.profile?.company_id],
     queryFn: async () => {
       const { data } = await supabase
         .from("companies")
-        .select("active")
+        .select("active, subscription_type, subscription_minutes, subscription_start, subscription_end")
         .eq("id", auth.profile!.company_id)
         .single();
       return data;

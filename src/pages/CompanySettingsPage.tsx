@@ -21,7 +21,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
-  Users, UserCheck, Plus, Eye, CalendarIcon, Clock, KeyRound, Trash2, AlertTriangle, RotateCcw, Building2
+  Users, UserCheck, Plus, Eye, CalendarIcon, Clock, KeyRound, Trash2, AlertTriangle, RotateCcw, Building2, Briefcase, X, Pencil
 } from "lucide-react";
 
 const ALL_PERMISSIONS = [

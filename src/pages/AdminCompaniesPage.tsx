@@ -550,6 +550,49 @@ export const AdminCompaniesPage: React.FC = () => {
                   <Input type="number" className="glass-input" value={maxWarehouses} onChange={(e) => setMaxWarehouses(Number(e.target.value))} min={0} />
                 </div>
               </div>
+              {/* Subscription Section */}
+              <div className="border-t border-border pt-4 space-y-4">
+                <h3 className="font-bold text-sm flex items-center gap-2"><Clock className="h-4 w-4" />مدة الاشتراك</h3>
+                <div className="space-y-2">
+                  <Label>نوع الاشتراك</Label>
+                  <Select value={subType} onValueChange={setSubType}>
+                    <SelectTrigger className="glass-input"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unlimited">غير محدود</SelectItem>
+                      <SelectItem value="months">بالأشهر</SelectItem>
+                      <SelectItem value="minutes">بالدقائق</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {subType === "months" && (
+                  <div className="space-y-2">
+                    <Label>عدد الأشهر</Label>
+                    <Input type="number" className="glass-input" value={subMonths || ""} onChange={(e) => setSubMonths(Number(e.target.value) || undefined)} min={1} placeholder="مثال: 6" />
+                  </div>
+                )}
+                {subType === "minutes" && (
+                  <div className="space-y-2">
+                    <Label>عدد الدقائق</Label>
+                    <Input type="number" className="glass-input" value={subMinutes || ""} onChange={(e) => setSubMinutes(Number(e.target.value) || undefined)} min={1} placeholder="مثال: 1000" />
+                  </div>
+                )}
+                {subType !== "unlimited" && (
+                  <div className="space-y-2">
+                    <Label>تاريخ بدء الاشتراك</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className={cn("w-full justify-start text-right font-normal glass-input", !subStart && "text-muted-foreground")}>
+                          <CalendarIcon className="ml-2 h-4 w-4" />
+                          {subStart ? format(subStart, "yyyy-MM-dd") : "اختر تاريخ البدء"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={subStart} onSelect={setSubStart} />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                )}
+              </div>
               <div className="border-t border-border pt-4 space-y-4">
                 <h3 className="font-bold text-sm">بيانات المالك</h3>
                 <div className="space-y-2">

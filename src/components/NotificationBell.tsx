@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Bell, MessageSquare, X, Clock, CheckCheck } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { toast } from "sonner";
 
 const NOTIFICATION_SOUND_URL = "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2JkJONh3x0bnZ/i5GRjIF2bGVqc4CMk5GJfnNpZGhxfomRk4+FenBnaHF8h5GUj4V6cGlqc3+JkpOPhntyaWlxfYiRko+GfHJpanJ+iZKSjoZ8c2lqcn6IkZGOhnxzamtzf4qTk46Ge3FoanF9iJKTj4d8c2prcn+JkZKOhXtyaWpzf4mSkY2FfHNranOAipKSjoZ8c2prc3+JkZGNhXxzamtzf4qSkY2FfHNra3OAipKRjYV8c2trc4CKkpGNhXxzamtzgIqSkY2FfHNra3OAipGRjYV8c2trc4CKkZGNhXxzamtzgIqRkY2FfHNra3SAipGRjYV8c2tsc4CKkZGNhXxza2xzgIqRkY2FfHNrbHSAipGRjYZ8c2tsc4CKkZCMhXxza2xzgIqRkIyFfHNrbHOAipGQjIV8c2tsc4CKkJCMhXxza2x0gYqQkIyFfHNrbHSBipCQjIV8c2tsc4CKkJCMhXxza2xzgIqQkIyFfHNrbHOAio+QjIV8c2tsc4CKj4+MhXxza2xzgIqPj4yFfXRsbHOAio+PjIV9dGtsc4CKj4+MhX10bGxzgIqPj4yFfXRsbHOAio+PjIV9dGxsc4CLj4+MhX10bGxzgIuPj4yFfXRsbHOAi4+PjIV9dGxsc4CLj4+MhX10bGxzgIuPjoyFfXRsbHOAi46OjIV9dGxsc4CLjo6MhX10bGxzgIuOjoyFfXRsbHOAi46OjIV9dGxsc4CLjo6MhX10bGxzgIuOjoyFfXRsbHOAi46OjIV9dGxsc4CLjo6MhX50bGxzgIuOjoyF";
 

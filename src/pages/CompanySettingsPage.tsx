@@ -291,6 +291,63 @@ export const CompanySettingsPage: React.FC = () => {
 
   const handleSave = () => { detailUser ? updateUser.mutate() : createUser.mutate(); };
 
+  // Job role CRUD
+  const addJobRole = useMutation({
+    mutationFn: async () => {
+      if (!newJobRoleName.trim()) throw new Error("اسم الدور مطلوب");
+      const { error } = await supabase.from("job_roles").insert({ company_id: companyId!, name: newJobRoleName.trim() });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("تم إضافة الدور الوظيفي");
+      setNewJobRoleName("");
+      queryClient.invalidateQueries({ queryKey: ["all-job-roles"] });
+      queryClient.invalidateQueries({ queryKey: ["job-roles"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const updateJobRole = useMutation({
+    mutationFn: async () => {
+      if (!editingJobRole || !editJobRoleName.trim()) throw new Error("اسم الدور مطلوب");
+      const { error } = await supabase.from("job_roles").update({ name: editJobRoleName.trim() }).eq("id", editingJobRole.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("تم تعديل الدور الوظيفي");
+      setEditingJobRole(null);
+      queryClient.invalidateQueries({ queryKey: ["all-job-roles"] });
+      queryClient.invalidateQueries({ queryKey: ["job-roles"] });
+      queryClient.invalidateQueries({ queryKey: ["company-users"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const toggleJobRoleActive = useMutation({
+    mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
+      const { error } = await supabase.from("job_roles").update({ active }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["all-job-roles"] });
+      queryClient.invalidateQueries({ queryKey: ["job-roles"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const deleteJobRole = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("job_roles").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("تم حذف الدور الوظيفي");
+      queryClient.invalidateQueries({ queryKey: ["all-job-roles"] });
+      queryClient.invalidateQueries({ queryKey: ["job-roles"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   return (
     <div className="space-y-6" dir="rtl">
       {/* Company Info */}

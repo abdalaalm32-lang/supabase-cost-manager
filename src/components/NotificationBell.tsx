@@ -79,7 +79,28 @@ export const NotificationBell: React.FC = () => {
     },
   });
 
-  // Subscribe to realtime
+  const playSuccessSound = useCallback(() => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const playNote = (freq: number, start: number, dur: number) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.18, audioCtx.currentTime + start);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + start + dur);
+        osc.start(audioCtx.currentTime + start);
+        osc.stop(audioCtx.currentTime + start + dur);
+      };
+      playNote(523, 0, 0.15);
+      playNote(659, 0.12, 0.15);
+      playNote(784, 0.24, 0.3);
+    } catch {}
+  }, []);
+
+  // Subscribe to realtime - support tickets
   React.useEffect(() => {
     if (!auth.isAdmin && !auth.isOwner) return;
     const channel = supabase
@@ -93,6 +114,62 @@ export const NotificationBell: React.FC = () => {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [auth.isAdmin, auth.isOwner]);
+
+  // Subscribe to realtime - subscription renewals (for owner)
+  React.useEffect(() => {
+    if (!auth.isOwner || auth.isAdmin) return;
+    const companyId = auth.profile?.company_id;
+    if (!companyId) return;
+
+    const channel = supabase
+      .channel("subscription-renewal-notify")
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "company_subscription_log",
+        filter: `company_id=eq.${companyId}`,
+      }, (payload: any) => {
+        const rec = payload.new;
+        if (rec.action === "تجديد") {
+          playSuccessSound();
+          const fromDate = rec.previous_end
+            ? new Date(rec.previous_end).toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+            : "الآن";
+          const toDate = rec.new_end
+            ? new Date(rec.new_end).toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+            : "";
+
+          toast.success(
+            <div className="flex items-start gap-3" dir="rtl">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                <svg className="w-6 h-6 text-emerald-500 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" style={{ strokeDasharray: 24, strokeDashoffset: 24, animation: "draw 0.6s ease-out 0.2s forwards" }} />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <p className="font-bold text-emerald-600 text-sm mb-1">✅ تم تجديد الاشتراك بنجاح</p>
+                <p className="text-xs text-muted-foreground">من: {fromDate}</p>
+                <p className="text-xs text-muted-foreground">إلى: {toDate}</p>
+              </div>
+            </div>,
+            {
+              duration: 8000,
+              style: {
+                background: "hsl(var(--background))",
+                border: "2px solid hsl(142, 71%, 45%)",
+                borderRadius: "16px",
+                boxShadow: "0 0 20px rgba(34,197,94,0.2)",
+              },
+            }
+          );
+          // Refresh company data to update overlay
+          queryClient.invalidateQueries({ queryKey: ["company-info"] });
+          queryClient.invalidateQueries({ queryKey: ["company-subscription"] });
+        }
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [auth.isOwner, auth.isAdmin, auth.profile?.company_id, playSuccessSound, queryClient]);
 
   const count = notifications?.length || 0;
   if (!auth.isAdmin && !auth.isOwner) return null;

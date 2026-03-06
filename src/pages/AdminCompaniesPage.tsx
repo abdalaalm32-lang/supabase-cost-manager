@@ -314,7 +314,63 @@ export const AdminCompaniesPage: React.FC = () => {
       if (logError) throw logError;
     },
     onSuccess: () => {
-      toast.success("تم تجديد الاشتراك بنجاح");
+      // Play success sound
+      try {
+        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const playNote = (freq: number, start: number, dur: number) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.type = "sine";
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0.18, audioCtx.currentTime + start);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + start + dur);
+          osc.start(audioCtx.currentTime + start);
+          osc.stop(audioCtx.currentTime + start + dur);
+        };
+        playNote(523, 0, 0.15);
+        playNote(659, 0.12, 0.15);
+        playNote(784, 0.24, 0.3);
+      } catch {}
+
+      const fromDate = renewTarget?.subscription_end
+        ? new Date(renewTarget.subscription_end).toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+        : "الآن";
+      const toDate = (() => {
+        const now = new Date();
+        const currentEnd = renewTarget?.subscription_end ? new Date(renewTarget.subscription_end) : now;
+        const startFrom = currentEnd > now ? currentEnd : now;
+        const nd = new Date(startFrom);
+        if (renewType === "months") nd.setMonth(nd.getMonth() + renewMonths);
+        else nd.setDate(nd.getDate() + renewDays);
+        return nd.toLocaleDateString("ar-EG", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+      })();
+
+      toast.success(
+        <div className="flex items-start gap-3" dir="rtl">
+          <div className="flex-shrink-0 w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
+            <svg className="w-6 h-6 text-emerald-500 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" className="animate-[draw_0.5s_ease-out_forwards]" style={{ strokeDasharray: 24, strokeDashoffset: 24, animation: "draw 0.6s ease-out 0.2s forwards" }} />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <p className="font-bold text-emerald-600 text-sm mb-1">✅ تم تجديد الاشتراك بنجاح</p>
+            <p className="text-xs text-muted-foreground">من: {fromDate}</p>
+            <p className="text-xs text-muted-foreground">إلى: {toDate}</p>
+          </div>
+        </div>,
+        {
+          duration: 6000,
+          style: {
+            background: "hsl(var(--background))",
+            border: "2px solid hsl(142, 71%, 45%)",
+            borderRadius: "16px",
+            boxShadow: "0 0 20px rgba(34,197,94,0.2)",
+          },
+        }
+      );
+
       setIsRenewOpen(false);
       setRenewTarget(null);
       setRenewNotes("");

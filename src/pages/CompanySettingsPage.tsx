@@ -298,12 +298,16 @@ export const CompanySettingsPage: React.FC = () => {
   const addJobRole = useMutation({
     mutationFn: async () => {
       if (!newJobRoleName.trim()) throw new Error("اسم الدور مطلوب");
-      const { error } = await supabase.from("job_roles").insert({ company_id: companyId!, name: newJobRoleName.trim() });
+      const { error } = await supabase.from("job_roles").insert({
+        company_id: companyId!, name: newJobRoleName.trim(),
+        default_permissions: newJobRolePerms,
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("تم إضافة الدور الوظيفي");
       setNewJobRoleName("");
+      setNewJobRolePerms(["dashboard"]);
       queryClient.invalidateQueries({ queryKey: ["all-job-roles"] });
       queryClient.invalidateQueries({ queryKey: ["job-roles"] });
     },
@@ -313,7 +317,10 @@ export const CompanySettingsPage: React.FC = () => {
   const updateJobRole = useMutation({
     mutationFn: async () => {
       if (!editingJobRole || !editJobRoleName.trim()) throw new Error("اسم الدور مطلوب");
-      const { error } = await supabase.from("job_roles").update({ name: editJobRoleName.trim() }).eq("id", editingJobRole.id);
+      const { error } = await supabase.from("job_roles").update({
+        name: editJobRoleName.trim(),
+        default_permissions: editJobRolePerms,
+      } as any).eq("id", editingJobRole.id);
       if (error) throw error;
     },
     onSuccess: () => {

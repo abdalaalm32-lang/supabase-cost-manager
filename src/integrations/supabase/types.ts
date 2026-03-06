@@ -490,6 +490,7 @@ export type Database = {
           active: boolean
           company_id: string
           created_at: string
+          default_permissions: string[]
           id: string
           name: string
         }
@@ -497,6 +498,7 @@ export type Database = {
           active?: boolean
           company_id: string
           created_at?: string
+          default_permissions?: string[]
           id?: string
           name: string
         }
@@ -504,6 +506,7 @@ export type Database = {
           active?: boolean
           company_id?: string
           created_at?: string
+          default_permissions?: string[]
           id?: string
           name?: string
         }

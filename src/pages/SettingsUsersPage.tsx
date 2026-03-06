@@ -520,7 +520,13 @@ export const SettingsUsersPage: React.FC = () => {
 
                 <div className="space-y-2">
                   <Label>الدور الوظيفي</Label>
-                  <Select value={formJobRoleId} onValueChange={setFormJobRoleId}>
+                  <Select value={formJobRoleId} onValueChange={(val) => {
+                    setFormJobRoleId(val);
+                    const selectedRole = jobRoles?.find((jr) => jr.id === val);
+                    if (selectedRole && (selectedRole as any).default_permissions) {
+                      setFormPermissions((selectedRole as any).default_permissions);
+                    }
+                  }}>
                     <SelectTrigger className="glass-input"><SelectValue placeholder="اختر الدور الوظيفي" /></SelectTrigger>
                     <SelectContent>
                       {jobRoles?.map((jr) => (

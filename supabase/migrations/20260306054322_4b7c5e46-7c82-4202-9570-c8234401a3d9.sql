@@ -1,0 +1,1 @@
+ALTER TABLE public.job_roles ADD COLUMN default_permissions text[] NOT NULL DEFAULT ARRAY['dashboard']::text[];

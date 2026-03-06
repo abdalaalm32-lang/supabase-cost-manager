@@ -15,9 +15,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 import {
-  Building2, Plus, ChevronDown, ChevronUp, Users, Eye, KeyRound, Trash2, UserCheck, Settings2, RotateCcw, AlertTriangle, Search
+  Building2, Plus, ChevronDown, ChevronUp, Users, Eye, KeyRound, Trash2, UserCheck, Settings2, RotateCcw, AlertTriangle, Search, CalendarIcon, Clock
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
@@ -56,6 +59,11 @@ export const AdminCompaniesPage: React.FC = () => {
   const [ownerPassword, setOwnerPassword] = useState("");
   const [maxBranches, setMaxBranches] = useState(2);
   const [maxWarehouses, setMaxWarehouses] = useState(1);
+  const [subType, setSubType] = useState("unlimited");
+  const [subMinutes, setSubMinutes] = useState<number | undefined>(undefined);
+  const [subMonths, setSubMonths] = useState<number | undefined>(undefined);
+  const [subStart, setSubStart] = useState<Date | undefined>(undefined);
+  const [subEnd, setSubEnd] = useState<Date | undefined>(undefined);
 
   // Edit user form
   const [editFormPermissions, setEditFormPermissions] = useState<string[]>([]);
@@ -127,6 +135,13 @@ export const AdminCompaniesPage: React.FC = () => {
         .maybeSingle();
       if (existingProfile) throw new Error("هذا البريد الإلكتروني مستخدم بالفعل");
 
+      const subStartDate = subStart || new Date();
+      let subEndDate = subEnd;
+      if (subType === "months" && subMonths) {
+        subEndDate = new Date(subStartDate);
+        subEndDate.setMonth(subEndDate.getMonth() + subMonths);
+      }
+
       const res = await supabase.functions.invoke("create-company", {
         body: {
           company_name: companyName,
@@ -136,6 +151,10 @@ export const AdminCompaniesPage: React.FC = () => {
           owner_name: ownerName,
           max_branches: maxBranches,
           max_warehouses: maxWarehouses,
+          subscription_type: subType,
+          subscription_minutes: subType === "minutes" ? subMinutes : undefined,
+          subscription_start: subType !== "unlimited" ? subStartDate.toISOString() : undefined,
+          subscription_end: subType !== "unlimited" && subEndDate ? subEndDate.toISOString() : undefined,
         },
       });
       if (res.error) throw new Error(res.error.message);
@@ -173,6 +192,23 @@ export const AdminCompaniesPage: React.FC = () => {
     },
     onSuccess: () => {
       toast.success("تم تحديث الحدود");
+      queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const updateCompanySubscription = useMutation({
+    mutationFn: async ({ companyId, subscription_type, subscription_minutes, subscription_start, subscription_end }: { companyId: string; subscription_type: string; subscription_minutes?: number | null; subscription_start?: string | null; subscription_end?: string | null }) => {
+      const { error } = await supabase.from("companies").update({
+        subscription_type,
+        subscription_minutes: subscription_minutes || null,
+        subscription_start: subscription_start || null,
+        subscription_end: subscription_end || null,
+      }).eq("id", companyId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("تم تحديث الاشتراك");
       queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
     },
     onError: (e: any) => toast.error(e.message),
@@ -272,6 +308,7 @@ export const AdminCompaniesPage: React.FC = () => {
   const resetAddForm = () => {
     setCompanyName(""); setCompanyCode(""); setOwnerName(""); setOwnerEmail(""); setOwnerPassword("");
     setMaxBranches(2); setMaxWarehouses(1);
+    setSubType("unlimited"); setSubMinutes(undefined); setSubMonths(undefined); setSubStart(undefined); setSubEnd(undefined);
   };
 
   const openEditUser = (user: any) => {
@@ -368,6 +405,12 @@ export const AdminCompaniesPage: React.FC = () => {
                         <span className="text-xs text-muted-foreground">
                           الحد: {company.max_branches} فروع / {company.max_warehouses} مخازن / {company.max_users ?? 5} مستخدمين
                         </span>
+                        {company.subscription_type !== "unlimited" && (
+                          <Badge variant={company.subscription_end && new Date(company.subscription_end) < new Date() ? "destructive" : "secondary"} className="text-xs">
+                            {company.subscription_type === "months" ? "اشتراك شهري" : "اشتراك بالدقائق"}
+                            {company.subscription_end && ` - ينتهي ${format(new Date(company.subscription_end), "yyyy-MM-dd")}`}
+                          </Badge>
+                        )}
                       </div>
                       <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                         {company.code !== "GSC-ADMIN" && (
@@ -439,7 +482,61 @@ export const AdminCompaniesPage: React.FC = () => {
                     </div>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    <div className="border-t border-border/30 p-4">
+                    <div className="border-t border-border/30 p-4 space-y-4">
+                      {/* Subscription Management */}
+                      {company.code !== "GSC-ADMIN" && (
+                        <div className="p-3 rounded-xl border border-border/50 bg-muted/20 space-y-3">
+                          <h4 className="text-sm font-bold flex items-center gap-2"><Clock className="h-4 w-4" />إدارة الاشتراك</h4>
+                          <div className="flex flex-wrap items-end gap-3">
+                            <div className="space-y-1">
+                              <Label className="text-xs">النوع</Label>
+                              <Select
+                                value={company.subscription_type || "unlimited"}
+                                onValueChange={(val) => {
+                                  const startDate = company.subscription_start || new Date().toISOString();
+                                  updateCompanySubscription.mutate({
+                                    companyId: company.id,
+                                    subscription_type: val,
+                                    subscription_minutes: val === "minutes" ? (company.subscription_minutes || 1000) : null,
+                                    subscription_start: val !== "unlimited" ? startDate : null,
+                                    subscription_end: val !== "unlimited" ? company.subscription_end : null,
+                                  });
+                                }}
+                              >
+                                <SelectTrigger className="w-32 h-8 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="unlimited">غير محدود</SelectItem>
+                                  <SelectItem value="months">بالأشهر</SelectItem>
+                                  <SelectItem value="minutes">بالدقائق</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            {company.subscription_type === "minutes" && (
+                              <div className="space-y-1">
+                                <Label className="text-xs">الدقائق</Label>
+                                <Input type="number" className="w-24 h-8 text-xs text-center" value={company.subscription_minutes || ""} onChange={(e) => updateCompanySubscription.mutate({ companyId: company.id, subscription_type: "minutes", subscription_minutes: Number(e.target.value), subscription_start: company.subscription_start, subscription_end: company.subscription_end })} min={1} />
+                              </div>
+                            )}
+                            {company.subscription_type !== "unlimited" && (
+                              <>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">بداية</Label>
+                                  <Input type="date" className="w-36 h-8 text-xs" value={company.subscription_start ? format(new Date(company.subscription_start), "yyyy-MM-dd") : ""} onChange={(e) => updateCompanySubscription.mutate({ companyId: company.id, subscription_type: company.subscription_type, subscription_minutes: company.subscription_minutes, subscription_start: e.target.value ? new Date(e.target.value).toISOString() : null, subscription_end: company.subscription_end })} />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">نهاية</Label>
+                                  <Input type="date" className="w-36 h-8 text-xs" value={company.subscription_end ? format(new Date(company.subscription_end), "yyyy-MM-dd") : ""} onChange={(e) => updateCompanySubscription.mutate({ companyId: company.id, subscription_type: company.subscription_type, subscription_minutes: company.subscription_minutes, subscription_start: company.subscription_start, subscription_end: e.target.value ? new Date(e.target.value).toISOString() : null })} />
+                                </div>
+                              </>
+                            )}
+                          </div>
+                          {company.subscription_type !== "unlimited" && company.subscription_end && (
+                            <p className={cn("text-xs font-medium", new Date(company.subscription_end) < new Date() ? "text-destructive" : "text-muted-foreground")}>
+                              {new Date(company.subscription_end) < new Date() ? "⚠️ الاشتراك منتهي!" : `⏳ ينتهي في ${format(new Date(company.subscription_end), "yyyy-MM-dd")}`}
+                            </p>
+                          )}
+                        </div>
+                      )}
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -529,6 +626,49 @@ export const AdminCompaniesPage: React.FC = () => {
                   <Label>حد المخازن</Label>
                   <Input type="number" className="glass-input" value={maxWarehouses} onChange={(e) => setMaxWarehouses(Number(e.target.value))} min={0} />
                 </div>
+              </div>
+              {/* Subscription Section */}
+              <div className="border-t border-border pt-4 space-y-4">
+                <h3 className="font-bold text-sm flex items-center gap-2"><Clock className="h-4 w-4" />مدة الاشتراك</h3>
+                <div className="space-y-2">
+                  <Label>نوع الاشتراك</Label>
+                  <Select value={subType} onValueChange={setSubType}>
+                    <SelectTrigger className="glass-input"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unlimited">غير محدود</SelectItem>
+                      <SelectItem value="months">بالأشهر</SelectItem>
+                      <SelectItem value="minutes">بالدقائق</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {subType === "months" && (
+                  <div className="space-y-2">
+                    <Label>عدد الأشهر</Label>
+                    <Input type="number" className="glass-input" value={subMonths || ""} onChange={(e) => setSubMonths(Number(e.target.value) || undefined)} min={1} placeholder="مثال: 6" />
+                  </div>
+                )}
+                {subType === "minutes" && (
+                  <div className="space-y-2">
+                    <Label>عدد الدقائق</Label>
+                    <Input type="number" className="glass-input" value={subMinutes || ""} onChange={(e) => setSubMinutes(Number(e.target.value) || undefined)} min={1} placeholder="مثال: 1000" />
+                  </div>
+                )}
+                {subType !== "unlimited" && (
+                  <div className="space-y-2">
+                    <Label>تاريخ بدء الاشتراك</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className={cn("w-full justify-start text-right font-normal glass-input", !subStart && "text-muted-foreground")}>
+                          <CalendarIcon className="ml-2 h-4 w-4" />
+                          {subStart ? format(subStart, "yyyy-MM-dd") : "اختر تاريخ البدء"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={subStart} onSelect={setSubStart} />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                )}
               </div>
               <div className="border-t border-border pt-4 space-y-4">
                 <h3 className="font-bold text-sm">بيانات المالك</h3>

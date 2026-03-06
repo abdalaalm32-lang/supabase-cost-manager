@@ -207,6 +207,10 @@ export type Database = {
           max_warehouses: number
           name: string
           owner_id: string | null
+          subscription_end: string | null
+          subscription_minutes: number | null
+          subscription_start: string | null
+          subscription_type: string
         }
         Insert: {
           active?: boolean
@@ -218,6 +222,10 @@ export type Database = {
           max_warehouses?: number
           name: string
           owner_id?: string | null
+          subscription_end?: string | null
+          subscription_minutes?: number | null
+          subscription_start?: string | null
+          subscription_type?: string
         }
         Update: {
           active?: boolean
@@ -229,6 +237,10 @@ export type Database = {
           max_warehouses?: number
           name?: string
           owner_id?: string | null
+          subscription_end?: string | null
+          subscription_minutes?: number | null
+          subscription_start?: string | null
+          subscription_type?: string
         }
         Relationships: []
       }

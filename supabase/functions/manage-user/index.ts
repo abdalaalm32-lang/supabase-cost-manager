@@ -62,7 +62,13 @@ Deno.serve(async (req) => {
       _company_id: callerProfile.company_id,
     });
 
-    if (!isAdmin && !isOwner) {
+    // Check if caller is system admin (has 'admin' role in user_roles)
+    const { data: isSysAdmin } = await supabaseAdmin.rpc("has_role", {
+      _user_id: callerUser.id,
+      _role: "admin",
+    });
+
+    if (!isAdmin && !isOwner && !isSysAdmin) {
       return new Response(JSON.stringify({ error: "يجب أن تكون مديراً أو مالكاً" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -71,14 +77,22 @@ Deno.serve(async (req) => {
 
     const { action, target_user_id, new_password } = await req.json();
 
-    // Verify target user is in same company
+    // Verify target user exists; system admins can manage any company's users
     const { data: targetProfile } = await supabaseAdmin
       .from("profiles")
       .select("company_id, user_id")
       .eq("user_id", target_user_id)
       .single();
 
-    if (!targetProfile || targetProfile.company_id !== callerProfile.company_id) {
+    if (!targetProfile) {
+      return new Response(JSON.stringify({ error: "المستخدم غير موجود" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Non-system-admins must be in the same company
+    if (!isSysAdmin && targetProfile.company_id !== callerProfile.company_id) {
       return new Response(JSON.stringify({ error: "المستخدم غير موجود في شركتك" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -79,6 +79,11 @@ export const CompanySettingsPage: React.FC = () => {
   const [isEditCompanyName, setIsEditCompanyName] = useState(false);
   const [editCompanyName, setEditCompanyName] = useState("");
 
+  // Job roles management
+  const [newJobRoleName, setNewJobRoleName] = useState("");
+  const [editingJobRole, setEditingJobRole] = useState<any>(null);
+  const [editJobRoleName, setEditJobRoleName] = useState("");
+
   const { data: profiles, isLoading } = useQuery({
     queryKey: ["company-users", companyId],
     queryFn: async () => {

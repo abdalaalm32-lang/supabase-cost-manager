@@ -64,6 +64,10 @@ Deno.serve(async (req) => {
       owner_name,
       max_branches,
       max_warehouses,
+      subscription_type,
+      subscription_minutes,
+      subscription_start,
+      subscription_end,
     } = await req.json();
 
     if (!company_name || !owner_email || !owner_password || !owner_name) {
@@ -76,14 +80,20 @@ Deno.serve(async (req) => {
     const code = company_code || `GSC-${Math.floor(1000 + Math.random() * 9000)}`;
 
     // Create company
+    const companyInsert: any = {
+      name: company_name,
+      code,
+      max_branches: max_branches || 2,
+      max_warehouses: max_warehouses || 1,
+      subscription_type: subscription_type || "unlimited",
+    };
+    if (subscription_minutes) companyInsert.subscription_minutes = subscription_minutes;
+    if (subscription_start) companyInsert.subscription_start = subscription_start;
+    if (subscription_end) companyInsert.subscription_end = subscription_end;
+
     const { data: company, error: companyError } = await supabaseAdmin
       .from("companies")
-      .insert({
-        name: company_name,
-        code,
-        max_branches: max_branches || 2,
-        max_warehouses: max_warehouses || 1,
-      })
+      .insert(companyInsert)
       .select()
       .single();
 

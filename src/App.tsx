@@ -242,8 +242,27 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     return <CompanyDeactivatedOverlay isOwner={auth.isOwner} />;
   }
 
+  // Company subscription expiry check (not for admins)
+  if (!auth.isAdmin && companyStatus && companyStatus.subscription_type !== "unlimited" && companyStatus.subscription_end) {
+    const endDate = new Date(companyStatus.subscription_end);
+    if (endDate < new Date()) {
+      return <SubscriptionExpiredOverlay type="company" />;
+    }
+  }
+
   // Individual user suspension check
   if (auth.profile && auth.profile.status !== "نشط") return <SuspendedOverlay />;
+
+  // Individual user subscription expiry check (not for admins/owners)
+  if (!auth.isAdmin && !auth.isOwner && auth.profile) {
+    const p = auth.profile as any;
+    if (p.subscription_type && p.subscription_type !== "unlimited" && p.subscription_end) {
+      const endDate = new Date(p.subscription_end);
+      if (endDate < new Date()) {
+        return <SubscriptionExpiredOverlay type="user" />;
+      }
+    }
+  }
 
   return <>{children}</>;
 };

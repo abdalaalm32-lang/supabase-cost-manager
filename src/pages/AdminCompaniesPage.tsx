@@ -619,6 +619,36 @@ export const AdminCompaniesPage: React.FC = () => {
                               {new Date(company.subscription_end) < new Date() ? "⚠️ الاشتراك منتهي!" : `⏳ ينتهي في ${format(new Date(company.subscription_end), "yyyy-MM-dd")}`}
                             </p>
                           )}
+                          <div className="flex items-center gap-2 pt-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1 text-xs"
+                              onClick={() => {
+                                setRenewTarget(company);
+                                setRenewType("months");
+                                setRenewMonths(1);
+                                setRenewDays(30);
+                                setRenewNotes("");
+                                setIsRenewOpen(true);
+                              }}
+                            >
+                              <RefreshCw className="h-3.5 w-3.5" />
+                              تجديد الاشتراك
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="gap-1 text-xs"
+                              onClick={() => {
+                                setLogTargetCompany(company);
+                                setIsLogOpen(true);
+                              }}
+                            >
+                              <History className="h-3.5 w-3.5" />
+                              سجل التجديدات
+                            </Button>
+                          </div>
                         </div>
                       )}
                       <Table>

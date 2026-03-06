@@ -132,14 +132,14 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
   const [deniedModule, setDeniedModule] = useState("");
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
-  // Fetch company code
+  // Fetch company code and name
   const { data: companyData } = useQuery({
-    queryKey: ["company-code", auth.profile?.company_id],
+    queryKey: ["company-info", auth.profile?.company_id],
     queryFn: async () => {
       if (!auth.profile?.company_id) return null;
       const { data } = await supabase
         .from("companies")
-        .select("code")
+        .select("code, name")
         .eq("id", auth.profile.company_id)
         .maybeSingle();
       return data;
@@ -148,6 +148,7 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
   });
 
   const companyCode = companyData?.code || "";
+  const resolvedCompanyName = auth.isAdmin ? "الإدارة" : (companyData?.name || companyName);
 
   const allNavItems = [...mainNavItems];
 
@@ -286,7 +287,7 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
               <div className="flex items-center gap-2 flex-1 min-w-0">
                 <img src={logo3m} alt="3M GSC" className="h-10 w-auto object-contain" />
                 <div className="min-w-0">
-                  <p className="text-[10px] text-sidebar-foreground/60 truncate">{companyName}</p>
+                  <p className="text-[10px] text-sidebar-foreground/60 truncate">{resolvedCompanyName}</p>
                   {companyCode && (
                     <p className="text-[9px] font-mono text-primary/70 mt-0.5">
                       كود: {companyCode}
@@ -327,7 +328,7 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-foreground truncate">{userName}</p>
-                <p className="text-[10px] text-muted-foreground truncate">{companyName}</p>
+                <p className="text-[10px] text-muted-foreground truncate">{resolvedCompanyName}</p>
                 {companyCode && (
                   <p className="text-[9px] font-mono text-primary/60">كود: {companyCode}</p>
                 )}
@@ -356,7 +357,7 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span className="font-semibold text-foreground">{userName}</span>
             <span className="text-xs">•</span>
-            <span className="text-xs">{companyName}</span>
+            <span className="text-xs font-medium text-primary">{resolvedCompanyName}</span>
           </div>
           <div className="flex items-center gap-2">
             <button

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useMemo } from "react";
 import { ExportButtons } from "@/components/ExportButtons";
 import { useAuth } from "@/hooks/useAuth";
@@ -421,7 +422,7 @@ export const CostAdjustmentReportsPage: React.FC = () => {
                 <BarChart data={topItemsChart} layout="vertical" margin={{ top: 20, right: 20, bottom: 20, left: 60 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis type="number" fontSize={11} tick={{ fill: "hsl(var(--muted-foreground))" }} tickMargin={10} />
-                  <YAxis dataKey="name" type="category" fontSize={11} tick={{ fill: "hsl(var(--muted-foreground))" }} width={55} tickMargin={10} />
+                  <YAxis dataKey="name" type="category" fontSize={11} tick={{ fill: "hsl(var(--muted-foreground))" }} width={90} tickMargin={60} />
                   <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
                   <Bar dataKey="value" name="إجمالي التغيير" fill="hsl(221, 83%, 53%)" radius={[0, 4, 4, 0]} />
                 </BarChart>

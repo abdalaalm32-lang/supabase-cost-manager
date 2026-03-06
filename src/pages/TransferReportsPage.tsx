@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useMemo } from "react";
 import { ExportButtons } from "@/components/ExportButtons";
 import { useAuth } from "@/hooks/useAuth";
@@ -115,7 +116,7 @@ export const TransferReportsPage: React.FC = () => {
     const stockMap = new Map<string, any>();
     for (const si of stockItems) stockMap.set(si.id, si);
 
-    let filteredItems = transferItems.filter((ti: any) => {
+    const filteredItems = transferItems.filter((ti: any) => {
       const rec = ti.transfers;
       if (!rec) return false;
       if (dateFrom && rec.date < format(dateFrom, "yyyy-MM-dd")) return false;
@@ -503,7 +504,32 @@ export const TransferReportsPage: React.FC = () => {
               {routeDistChart.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                    <Pie data={routeDistChart} cx="50%" cy="50%" outerRadius={70} dataKey="value" label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                    <Pie 
+                      data={routeDistChart} 
+                      cx="50%" 
+                      cy="50%" 
+                      outerRadius={70} 
+                      dataKey="value" 
+                      labelLine={true}
+                      label={({ cx, cy, midAngle, outerRadius, percent, name }) => {
+                        const RADIAN = Math.PI / 180;
+                        const radius = outerRadius + 120;
+                        const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                        const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                        return (
+                          <text 
+                            x={x} 
+                            y={y} 
+                            fill="hsl(var(--foreground))" 
+                            textAnchor={x > cx ? "start" : "end"} 
+                            dominantBaseline="central"
+                            className="text-[10px] font-medium"
+                          >
+                            {name} {(percent * 100).toFixed(0)}%
+                          </text>
+                        );
+                      }}
+                    >
                       {routeDistChart.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                     </Pie>
                     <Tooltip />
@@ -522,7 +548,32 @@ export const TransferReportsPage: React.FC = () => {
               {categoryDistChart.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                    <Pie data={categoryDistChart} cx="50%" cy="50%" outerRadius={70} dataKey="value" label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                    <Pie 
+                      data={categoryDistChart} 
+                      cx="50%" 
+                      cy="50%" 
+                      outerRadius={70} 
+                      dataKey="value" 
+                      labelLine={true}
+                      label={({ cx, cy, midAngle, outerRadius, percent, name }) => {
+                        const RADIAN = Math.PI / 180;
+                        const radius = outerRadius + 80;
+                        const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                        const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                        return (
+                          <text 
+                            x={x} 
+                            y={y} 
+                            fill="hsl(var(--foreground))" 
+                            textAnchor={x > cx ? "start" : "end"} 
+                            dominantBaseline="central"
+                            className="text-[10px] font-medium"
+                          >
+                            {name} {(percent * 100).toFixed(0)}%
+                          </text>
+                        );
+                      }}
+                    >
                       {categoryDistChart.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                     </Pie>
                     <Tooltip />

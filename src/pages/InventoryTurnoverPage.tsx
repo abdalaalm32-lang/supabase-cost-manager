@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useMemo, useRef } from "react";
 import { ExportButtons } from "@/components/ExportButtons";
 import { PrintButton } from "@/components/PrintButton";
@@ -781,7 +782,33 @@ export const InventoryTurnoverPage: React.FC = () => {
           <CardContent>
             <ResponsiveContainer width="100%" height={260}>
               <RechartsPieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                <Pie data={speedDistChart} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={({ name, value }) => `${name} (${value})`}>
+                <Pie 
+                  data={speedDistChart} 
+                  dataKey="value" 
+                  nameKey="name" 
+                  cx="50%" 
+                  cy="50%" 
+                  outerRadius={70} 
+                  labelLine={true}
+                  label={({ cx, cy, midAngle, outerRadius, percent, name, value }) => {
+                    const RADIAN = Math.PI / 180;
+                    const radius = outerRadius + 90;
+                    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                    return (
+                      <text 
+                        x={x} 
+                        y={y} 
+                        fill="hsl(var(--foreground))" 
+                        textAnchor={x > cx ? "start" : "end"} 
+                        dominantBaseline="central"
+                        className="text-[10px] font-medium"
+                      >
+                        {name} ({value})
+                      </text>
+                    );
+                  }}
+                >
                   {speedDistChart.map((entry, i) => (
                     <Cell key={i} fill={entry.color} />
                   ))}
@@ -804,7 +831,7 @@ export const InventoryTurnoverPage: React.FC = () => {
               <BarChart data={topSlowItems} layout="vertical" margin={{ top: 20, right: 80, bottom: 20, left: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis type="number" tickMargin={10} />
-                <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 11 }} tickMargin={10} />
+                <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 11 }} tickMargin={90} />
                 <Tooltip />
                 <Bar dataKey="القيمة_المجمدة" fill="hsl(0, 84%, 60%)" radius={[0, 4, 4, 0]} />
               </BarChart>
@@ -822,7 +849,33 @@ export const InventoryTurnoverPage: React.FC = () => {
           <CardContent>
             <ResponsiveContainer width="100%" height={260}>
               <RechartsPieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                <Pie data={lockedCapitalChart} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70} label={({ name, value }) => `${name}: ${fmtInt(value)}`}>
+                <Pie 
+                  data={lockedCapitalChart} 
+                  dataKey="value" 
+                  nameKey="name" 
+                  cx="50%" 
+                  cy="50%" 
+                  outerRadius={70} 
+                  labelLine={true}
+                  label={({ cx, cy, midAngle, outerRadius, percent, name, value }) => {
+                    const RADIAN = Math.PI / 180;
+                    const radius = outerRadius + 90;
+                    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                    return (
+                      <text 
+                        x={x} 
+                        y={y} 
+                        fill="hsl(var(--foreground))" 
+                        textAnchor={x > cx ? "start" : "end"} 
+                        dominantBaseline="central"
+                        className="text-[10px] font-medium"
+                      >
+                        {name}: {fmtInt(value)}
+                      </text>
+                    );
+                  }}
+                >
                   {lockedCapitalChart.map((_, i) => (
                     <Cell key={i} fill={COLORS[i % COLORS.length]} />
                   ))}
@@ -845,7 +898,7 @@ export const InventoryTurnoverPage: React.FC = () => {
               <BarChart data={turnoverByCategory} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" tick={{ fontSize: 10 }} tickMargin={10} />
-                <YAxis tickMargin={10} />
+                <YAxis tickMargin={50} />
                 <Tooltip />
                 <Bar dataKey="متوسط_الدوران" fill="hsl(221, 83%, 53%)" radius={[4, 4, 0, 0]} />
               </BarChart>

@@ -639,7 +639,7 @@ export const MenuEngineeringPage: React.FC = () => {
                     <BarChart data={topProfitItems} layout="vertical" margin={{ top: 20, right: 20, bottom: 20, left: 80 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(217, 33%, 18%)" />
                       <XAxis type="number" tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 10 }} tickMargin={10} />
-                      <YAxis dataKey="name" type="category" tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 10 }} width={75} tickMargin={10} />
+                      <YAxis dataKey="name" type="category" tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 10 }} width={95} tickMargin={70} />
                       <Tooltip contentStyle={{ backgroundColor: "hsl(222, 47%, 8%)", border: "1px solid hsl(217, 33%, 18%)", borderRadius: "8px", color: "#000" }} />
                       <Bar dataKey="profit" fill="hsl(145, 65%, 45%)" name="الربح" radius={[0, 4, 4, 0]} />
                       <Bar dataKey="sales" fill="hsl(199, 89%, 60%)" name="المبيعات" radius={[0, 4, 4, 0]} />

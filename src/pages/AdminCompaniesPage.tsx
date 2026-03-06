@@ -135,6 +135,13 @@ export const AdminCompaniesPage: React.FC = () => {
         .maybeSingle();
       if (existingProfile) throw new Error("هذا البريد الإلكتروني مستخدم بالفعل");
 
+      const subStartDate = subStart || new Date();
+      let subEndDate = subEnd;
+      if (subType === "months" && subMonths) {
+        subEndDate = new Date(subStartDate);
+        subEndDate.setMonth(subEndDate.getMonth() + subMonths);
+      }
+
       const res = await supabase.functions.invoke("create-company", {
         body: {
           company_name: companyName,
@@ -144,6 +151,10 @@ export const AdminCompaniesPage: React.FC = () => {
           owner_name: ownerName,
           max_branches: maxBranches,
           max_warehouses: maxWarehouses,
+          subscription_type: subType,
+          subscription_minutes: subType === "minutes" ? subMinutes : undefined,
+          subscription_start: subType !== "unlimited" ? subStartDate.toISOString() : undefined,
+          subscription_end: subType !== "unlimited" && subEndDate ? subEndDate.toISOString() : undefined,
         },
       });
       if (res.error) throw new Error(res.error.message);

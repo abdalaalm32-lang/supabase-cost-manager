@@ -135,6 +135,21 @@ export const AdminCompaniesPage: React.FC = () => {
     !searchCode || c.code?.toLowerCase().includes(searchCode.toLowerCase()) || c.name?.toLowerCase().includes(searchCode.toLowerCase())
   ) || [];
 
+  // Fetch subscription log for a company
+  const { data: subscriptionLogs } = useQuery({
+    queryKey: ["subscription-log", logTargetCompany?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("company_subscription_log")
+        .select("*")
+        .eq("company_id", logTargetCompany!.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!logTargetCompany?.id,
+  });
+
   const createCompany = useMutation({
     mutationFn: async () => {
       if (!companyName || !ownerEmail || !ownerPassword || !ownerName) throw new Error("جميع الحقول مطلوبة");

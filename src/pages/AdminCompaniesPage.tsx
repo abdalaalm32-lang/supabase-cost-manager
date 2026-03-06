@@ -241,6 +241,63 @@ export const AdminCompaniesPage: React.FC = () => {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const renewSubscription = useMutation({
+    mutationFn: async () => {
+      if (!renewTarget) throw new Error("لا توجد شركة محددة");
+      const now = new Date();
+      // Start from current end date if still valid, otherwise from now
+      const currentEnd = renewTarget.subscription_end ? new Date(renewTarget.subscription_end) : now;
+      const startFrom = currentEnd > now ? currentEnd : now;
+      
+      let newEnd: Date;
+      let durationDays: number | null = null;
+      let durationMonths: number | null = null;
+
+      if (renewType === "months") {
+        newEnd = new Date(startFrom);
+        newEnd.setMonth(newEnd.getMonth() + renewMonths);
+        durationMonths = renewMonths;
+        durationDays = Math.round((newEnd.getTime() - startFrom.getTime()) / (1000 * 60 * 60 * 24));
+      } else {
+        newEnd = new Date(startFrom);
+        newEnd.setDate(newEnd.getDate() + renewDays);
+        durationDays = renewDays;
+      }
+
+      // Update company subscription
+      const { error: updateError } = await supabase.from("companies").update({
+        subscription_type: renewType === "months" ? "months" : "months",
+        subscription_start: (currentEnd > now ? renewTarget.subscription_start : now.toISOString()),
+        subscription_end: newEnd.toISOString(),
+      }).eq("id", renewTarget.id);
+      if (updateError) throw updateError;
+
+      // Log the renewal
+      const { error: logError } = await supabase.from("company_subscription_log").insert({
+        company_id: renewTarget.id,
+        action: "تجديد",
+        previous_type: renewTarget.subscription_type || "unlimited",
+        new_type: renewType === "months" ? "months" : "months",
+        previous_end: renewTarget.subscription_end || null,
+        new_end: newEnd.toISOString(),
+        duration_days: durationDays,
+        duration_months: durationMonths,
+        notes: renewNotes || null,
+        created_by: auth.user?.id || null,
+      });
+      if (logError) throw logError;
+    },
+    onSuccess: () => {
+      toast.success("تم تجديد الاشتراك بنجاح");
+      setIsRenewOpen(false);
+      setRenewTarget(null);
+      setRenewNotes("");
+      queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
+      queryClient.invalidateQueries({ queryKey: ["subscription-log"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const updateUserFromAdmin = useMutation({
     mutationFn: async () => {
       if (!editingUser) return;

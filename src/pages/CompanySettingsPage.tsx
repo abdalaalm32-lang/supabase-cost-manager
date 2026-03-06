@@ -386,6 +386,75 @@ export const CompanySettingsPage: React.FC = () => {
         </CardContent>
       </Card>
 
+      {/* Job Roles Management */}
+      <Card className="glass-card">
+        <CardContent className="p-5 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center">
+              <Briefcase className="h-5 w-5 text-accent-foreground" />
+            </div>
+            <h3 className="text-lg font-bold text-foreground">الأدوار الوظيفية</h3>
+          </div>
+          
+          {/* Add new role */}
+          <div className="flex gap-2">
+            <Input
+              className="glass-input flex-1"
+              placeholder="اسم الدور الوظيفي الجديد..."
+              value={newJobRoleName}
+              onChange={(e) => setNewJobRoleName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") addJobRole.mutate(); }}
+            />
+            <Button className="gradient-primary text-primary-foreground gap-1" onClick={() => addJobRole.mutate()} disabled={addJobRole.isPending || !newJobRoleName.trim()}>
+              <Plus className="h-4 w-4" />
+              إضافة
+            </Button>
+          </div>
+
+          {/* Roles list */}
+          {allJobRoles && allJobRoles.length > 0 ? (
+            <div className="space-y-2">
+              {allJobRoles.map((role) => (
+                <div key={role.id} className="flex items-center justify-between gap-2 p-3 rounded-xl border border-border bg-muted/30">
+                  {editingJobRole?.id === role.id ? (
+                    <div className="flex items-center gap-2 flex-1">
+                      <Input
+                        className="glass-input flex-1"
+                        value={editJobRoleName}
+                        onChange={(e) => setEditJobRoleName(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") updateJobRole.mutate(); }}
+                        autoFocus
+                      />
+                      <Button size="sm" onClick={() => updateJobRole.mutate()} disabled={updateJobRole.isPending}>حفظ</Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEditingJobRole(null)}>إلغاء</Button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <Briefcase className="h-4 w-4 text-muted-foreground" />
+                        <span className={`text-sm font-medium ${!role.active ? "line-through text-muted-foreground" : "text-foreground"}`}>{role.name}</span>
+                        {!role.active && <Badge variant="secondary" className="text-[10px]">معطل</Badge>}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { setEditingJobRole(role); setEditJobRoleName(role.name); }}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Switch checked={role.active} onCheckedChange={(checked) => toggleJobRoleActive.mutate({ id: role.id, active: checked })} />
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => deleteJobRole.mutate(role.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-4">لا توجد أدوار وظيفية بعد. أضف أدوار ليتم عرضها عند إضافة المستخدمين.</p>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="glass-card">

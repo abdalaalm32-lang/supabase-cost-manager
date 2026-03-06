@@ -957,6 +957,104 @@ export const AdminCompaniesPage: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Renew Subscription Dialog */}
+      <Dialog open={isRenewOpen} onOpenChange={(open) => { if (!open) { setIsRenewOpen(false); setRenewTarget(null); } }}>
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RefreshCw className="h-5 w-5 text-primary" />
+              تجديد اشتراك: {renewTarget?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {renewTarget?.subscription_end && (
+              <div className={cn("p-3 rounded-lg text-sm", new Date(renewTarget.subscription_end) < new Date() ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground")}>
+                {new Date(renewTarget.subscription_end) < new Date()
+                  ? `⚠️ الاشتراك منتهي منذ ${format(new Date(renewTarget.subscription_end), "yyyy-MM-dd")}`
+                  : `⏳ الاشتراك الحالي ينتهي في ${format(new Date(renewTarget.subscription_end), "yyyy-MM-dd")}`}
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>طريقة التجديد</Label>
+              <Select value={renewType} onValueChange={setRenewType}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="months">بالأشهر</SelectItem>
+                  <SelectItem value="days">بالأيام</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {renewType === "months" ? (
+              <div className="space-y-2">
+                <Label>عدد الأشهر</Label>
+                <Input type="number" value={renewMonths} onChange={(e) => setRenewMonths(Number(e.target.value) || 1)} min={1} />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label>عدد الأيام</Label>
+                <Input type="number" value={renewDays} onChange={(e) => setRenewDays(Number(e.target.value) || 1)} min={1} />
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>ملاحظات (اختياري)</Label>
+              <Input value={renewNotes} onChange={(e) => setRenewNotes(e.target.value)} placeholder="مثال: تجديد سنوي" />
+            </div>
+          </div>
+          <div className="flex gap-2 pt-3 border-t border-border">
+            <Button className="flex-1 gradient-primary text-primary-foreground font-bold" onClick={() => renewSubscription.mutate()} disabled={renewSubscription.isPending}>
+              {renewSubscription.isPending ? "جاري التجديد..." : "تجديد الاشتراك"}
+            </Button>
+            <Button variant="outline" onClick={() => setIsRenewOpen(false)}>إلغاء</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Subscription Log Dialog */}
+      <Dialog open={isLogOpen} onOpenChange={(open) => { if (!open) { setIsLogOpen(false); setLogTargetCompany(null); } }}>
+        <DialogContent className="max-w-2xl max-h-[80vh]" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-5 w-5 text-primary" />
+              سجل تجديدات: {logTargetCompany?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh]">
+            {!subscriptionLogs || subscriptionLogs.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">لا توجد سجلات تجديد</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-right">التاريخ</TableHead>
+                    <TableHead className="text-right">الإجراء</TableHead>
+                    <TableHead className="text-right">المدة</TableHead>
+                    <TableHead className="text-right">من</TableHead>
+                    <TableHead className="text-right">إلى</TableHead>
+                    <TableHead className="text-right">ملاحظات</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {subscriptionLogs.map((log: any) => (
+                    <TableRow key={log.id}>
+                      <TableCell className="text-xs">{format(new Date(log.created_at), "yyyy-MM-dd HH:mm")}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="text-xs">{log.action}</Badge>
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {log.duration_months ? `${log.duration_months} شهر` : log.duration_days ? `${log.duration_days} يوم` : "—"}
+                      </TableCell>
+                      <TableCell className="text-xs">{log.previous_end ? format(new Date(log.previous_end), "yyyy-MM-dd") : "—"}</TableCell>
+                      <TableCell className="text-xs">{log.new_end ? format(new Date(log.new_end), "yyyy-MM-dd") : "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{log.notes || "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

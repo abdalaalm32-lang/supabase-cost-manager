@@ -190,7 +190,21 @@ export const AdminCompaniesPage: React.FC = () => {
       if (res.data?.error) throw new Error(res.data.error);
       return res.data;
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
+      // Log company creation
+      if (data?.company_id) {
+        supabase.from("company_subscription_log").insert({
+          company_id: data.company_id,
+          action: "إنشاء",
+          previous_type: "—",
+          new_type: subType,
+          new_end: subType !== "unlimited" && data?.subscription_end ? data.subscription_end : null,
+          notes: `تم إنشاء الشركة - اشتراك: ${subType === "unlimited" ? "غير محدود" : subType === "months" ? `${subMonths} شهر` : `${subMinutes} دقيقة`}`,
+          created_by: auth.user?.id || null,
+        }).then(() => {
+          queryClient.invalidateQueries({ queryKey: ["subscription-log"] });
+        });
+      }
       toast.success("تم إنشاء الشركة والمالك بنجاح");
       setIsAddCompanyOpen(false);
       resetAddForm();

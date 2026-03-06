@@ -198,14 +198,24 @@ export const AdminCompaniesPage: React.FC = () => {
   });
 
   const toggleCompanyActive = useMutation({
-    mutationFn: async ({ companyId, active }: { companyId: string; active: boolean }) => {
+    mutationFn: async ({ companyId, active, companyName }: { companyId: string; active: boolean; companyName?: string }) => {
       const { error } = await supabase.from("companies").update({ active }).eq("id", companyId);
       if (error) throw error;
+      // Log the event
+      await supabase.from("company_subscription_log").insert({
+        company_id: companyId,
+        action: active ? "تفعيل" : "تعطيل",
+        previous_type: "—",
+        new_type: "—",
+        notes: active ? "تم إعادة تفعيل الشركة" : "تم تعطيل الشركة",
+        created_by: auth.user?.id || null,
+      });
     },
     onSuccess: (_, { active }) => {
       toast.success(active ? "تم تفعيل الشركة" : "تم تعطيل الشركة");
       queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
       queryClient.invalidateQueries({ queryKey: ["admin-company-profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["subscription-log"] });
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -529,7 +539,7 @@ export const AdminCompaniesPage: React.FC = () => {
                               <span className="text-xs text-muted-foreground">{company.active ? "نشط" : "معطل"}</span>
                               <Switch
                                 checked={company.active}
-                                onCheckedChange={(checked) => toggleCompanyActive.mutate({ companyId: company.id, active: checked })}
+                                onCheckedChange={(checked) => toggleCompanyActive.mutate({ companyId: company.id, active: checked, companyName: company.name })}
                                 dir="ltr"
                               />
                             </div>

@@ -118,6 +118,16 @@ export const CompanySettingsPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  const { data: allJobRoles } = useQuery({
+    queryKey: ["all-job-roles", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("job_roles").select("*").eq("company_id", companyId!).order("created_at", { ascending: true });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
   const { data: companyData } = useQuery({
     queryKey: ["company", companyId],
     queryFn: async () => {

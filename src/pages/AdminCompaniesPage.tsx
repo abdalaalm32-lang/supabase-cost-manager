@@ -20,7 +20,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
-  Building2, Plus, ChevronDown, ChevronUp, Users, Eye, KeyRound, Trash2, UserCheck, Settings2, RotateCcw, AlertTriangle, Search, CalendarIcon, Clock
+  Building2, Plus, ChevronDown, ChevronUp, Users, Eye, KeyRound, Trash2, UserCheck, Settings2, RotateCcw, AlertTriangle, Search, CalendarIcon, Clock, RefreshCw, History
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
@@ -89,6 +89,18 @@ export const AdminCompaniesPage: React.FC = () => {
   const [resetConfirmText, setResetConfirmText] = useState("");
   const [isResetting, setIsResetting] = useState(false);
 
+  // Renew subscription dialog
+  const [isRenewOpen, setIsRenewOpen] = useState(false);
+  const [renewTarget, setRenewTarget] = useState<any>(null);
+  const [renewType, setRenewType] = useState("months");
+  const [renewMonths, setRenewMonths] = useState<number>(1);
+  const [renewDays, setRenewDays] = useState<number>(30);
+  const [renewNotes, setRenewNotes] = useState("");
+
+  // Subscription log dialog
+  const [isLogOpen, setIsLogOpen] = useState(false);
+  const [logTargetCompany, setLogTargetCompany] = useState<any>(null);
+
   // Fetch all companies (admin only)
   const { data: companies, isLoading } = useQuery({
     queryKey: ["admin-companies"],
@@ -122,6 +134,21 @@ export const AdminCompaniesPage: React.FC = () => {
   const filteredCompanies = companies?.filter(c =>
     !searchCode || c.code?.toLowerCase().includes(searchCode.toLowerCase()) || c.name?.toLowerCase().includes(searchCode.toLowerCase())
   ) || [];
+
+  // Fetch subscription log for a company
+  const { data: subscriptionLogs } = useQuery({
+    queryKey: ["subscription-log", logTargetCompany?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("company_subscription_log")
+        .select("*")
+        .eq("company_id", logTargetCompany!.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!logTargetCompany?.id,
+  });
 
   const createCompany = useMutation({
     mutationFn: async () => {
@@ -210,6 +237,63 @@ export const AdminCompaniesPage: React.FC = () => {
     onSuccess: () => {
       toast.success("تم تحديث الاشتراك");
       queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const renewSubscription = useMutation({
+    mutationFn: async () => {
+      if (!renewTarget) throw new Error("لا توجد شركة محددة");
+      const now = new Date();
+      // Start from current end date if still valid, otherwise from now
+      const currentEnd = renewTarget.subscription_end ? new Date(renewTarget.subscription_end) : now;
+      const startFrom = currentEnd > now ? currentEnd : now;
+      
+      let newEnd: Date;
+      let durationDays: number | null = null;
+      let durationMonths: number | null = null;
+
+      if (renewType === "months") {
+        newEnd = new Date(startFrom);
+        newEnd.setMonth(newEnd.getMonth() + renewMonths);
+        durationMonths = renewMonths;
+        durationDays = Math.round((newEnd.getTime() - startFrom.getTime()) / (1000 * 60 * 60 * 24));
+      } else {
+        newEnd = new Date(startFrom);
+        newEnd.setDate(newEnd.getDate() + renewDays);
+        durationDays = renewDays;
+      }
+
+      // Update company subscription
+      const { error: updateError } = await supabase.from("companies").update({
+        subscription_type: renewType === "months" ? "months" : "months",
+        subscription_start: (currentEnd > now ? renewTarget.subscription_start : now.toISOString()),
+        subscription_end: newEnd.toISOString(),
+      }).eq("id", renewTarget.id);
+      if (updateError) throw updateError;
+
+      // Log the renewal
+      const { error: logError } = await supabase.from("company_subscription_log").insert({
+        company_id: renewTarget.id,
+        action: "تجديد",
+        previous_type: renewTarget.subscription_type || "unlimited",
+        new_type: renewType === "months" ? "months" : "months",
+        previous_end: renewTarget.subscription_end || null,
+        new_end: newEnd.toISOString(),
+        duration_days: durationDays,
+        duration_months: durationMonths,
+        notes: renewNotes || null,
+        created_by: auth.user?.id || null,
+      });
+      if (logError) throw logError;
+    },
+    onSuccess: () => {
+      toast.success("تم تجديد الاشتراك بنجاح");
+      setIsRenewOpen(false);
+      setRenewTarget(null);
+      setRenewNotes("");
+      queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
+      queryClient.invalidateQueries({ queryKey: ["subscription-log"] });
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -535,6 +619,36 @@ export const AdminCompaniesPage: React.FC = () => {
                               {new Date(company.subscription_end) < new Date() ? "⚠️ الاشتراك منتهي!" : `⏳ ينتهي في ${format(new Date(company.subscription_end), "yyyy-MM-dd")}`}
                             </p>
                           )}
+                          <div className="flex items-center gap-2 pt-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1 text-xs"
+                              onClick={() => {
+                                setRenewTarget(company);
+                                setRenewType("months");
+                                setRenewMonths(1);
+                                setRenewDays(30);
+                                setRenewNotes("");
+                                setIsRenewOpen(true);
+                              }}
+                            >
+                              <RefreshCw className="h-3.5 w-3.5" />
+                              تجديد الاشتراك
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="gap-1 text-xs"
+                              onClick={() => {
+                                setLogTargetCompany(company);
+                                setIsLogOpen(true);
+                              }}
+                            >
+                              <History className="h-3.5 w-3.5" />
+                              سجل التجديدات
+                            </Button>
+                          </div>
                         </div>
                       )}
                       <Table>
@@ -841,6 +955,104 @@ export const AdminCompaniesPage: React.FC = () => {
             </Button>
             <Button variant="outline" onClick={() => { setResetStep(0); setResetConfirmText(""); }}>إلغاء</Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Renew Subscription Dialog */}
+      <Dialog open={isRenewOpen} onOpenChange={(open) => { if (!open) { setIsRenewOpen(false); setRenewTarget(null); } }}>
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RefreshCw className="h-5 w-5 text-primary" />
+              تجديد اشتراك: {renewTarget?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {renewTarget?.subscription_end && (
+              <div className={cn("p-3 rounded-lg text-sm", new Date(renewTarget.subscription_end) < new Date() ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground")}>
+                {new Date(renewTarget.subscription_end) < new Date()
+                  ? `⚠️ الاشتراك منتهي منذ ${format(new Date(renewTarget.subscription_end), "yyyy-MM-dd")}`
+                  : `⏳ الاشتراك الحالي ينتهي في ${format(new Date(renewTarget.subscription_end), "yyyy-MM-dd")}`}
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>طريقة التجديد</Label>
+              <Select value={renewType} onValueChange={setRenewType}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="months">بالأشهر</SelectItem>
+                  <SelectItem value="days">بالأيام</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {renewType === "months" ? (
+              <div className="space-y-2">
+                <Label>عدد الأشهر</Label>
+                <Input type="number" value={renewMonths} onChange={(e) => setRenewMonths(Number(e.target.value) || 1)} min={1} />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label>عدد الأيام</Label>
+                <Input type="number" value={renewDays} onChange={(e) => setRenewDays(Number(e.target.value) || 1)} min={1} />
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>ملاحظات (اختياري)</Label>
+              <Input value={renewNotes} onChange={(e) => setRenewNotes(e.target.value)} placeholder="مثال: تجديد سنوي" />
+            </div>
+          </div>
+          <div className="flex gap-2 pt-3 border-t border-border">
+            <Button className="flex-1 gradient-primary text-primary-foreground font-bold" onClick={() => renewSubscription.mutate()} disabled={renewSubscription.isPending}>
+              {renewSubscription.isPending ? "جاري التجديد..." : "تجديد الاشتراك"}
+            </Button>
+            <Button variant="outline" onClick={() => setIsRenewOpen(false)}>إلغاء</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Subscription Log Dialog */}
+      <Dialog open={isLogOpen} onOpenChange={(open) => { if (!open) { setIsLogOpen(false); setLogTargetCompany(null); } }}>
+        <DialogContent className="max-w-2xl max-h-[80vh]" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-5 w-5 text-primary" />
+              سجل تجديدات: {logTargetCompany?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh]">
+            {!subscriptionLogs || subscriptionLogs.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">لا توجد سجلات تجديد</p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-right">التاريخ</TableHead>
+                    <TableHead className="text-right">الإجراء</TableHead>
+                    <TableHead className="text-right">المدة</TableHead>
+                    <TableHead className="text-right">من</TableHead>
+                    <TableHead className="text-right">إلى</TableHead>
+                    <TableHead className="text-right">ملاحظات</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {subscriptionLogs.map((log: any) => (
+                    <TableRow key={log.id}>
+                      <TableCell className="text-xs">{format(new Date(log.created_at), "yyyy-MM-dd HH:mm")}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="text-xs">{log.action}</Badge>
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {log.duration_months ? `${log.duration_months} شهر` : log.duration_days ? `${log.duration_days} يوم` : "—"}
+                      </TableCell>
+                      <TableCell className="text-xs">{log.previous_end ? format(new Date(log.previous_end), "yyyy-MM-dd") : "—"}</TableCell>
+                      <TableCell className="text-xs">{log.new_end ? format(new Date(log.new_end), "yyyy-MM-dd") : "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{log.notes || "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </ScrollArea>
         </DialogContent>
       </Dialog>
     </div>

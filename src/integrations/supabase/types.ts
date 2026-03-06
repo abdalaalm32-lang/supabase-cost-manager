@@ -244,6 +244,59 @@ export type Database = {
         }
         Relationships: []
       }
+      company_subscription_log: {
+        Row: {
+          action: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          duration_days: number | null
+          duration_months: number | null
+          id: string
+          new_end: string | null
+          new_type: string
+          notes: string | null
+          previous_end: string | null
+          previous_type: string | null
+        }
+        Insert: {
+          action?: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          duration_days?: number | null
+          duration_months?: number | null
+          id?: string
+          new_end?: string | null
+          new_type: string
+          notes?: string | null
+          previous_end?: string | null
+          previous_type?: string | null
+        }
+        Update: {
+          action?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          duration_days?: number | null
+          duration_months?: number | null
+          id?: string
+          new_end?: string | null
+          new_type?: string
+          notes?: string | null
+          previous_end?: string | null
+          previous_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_subscription_log_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cost_adjustment_items: {
         Row: {
           cost_adjustment_id: string

@@ -38,6 +38,7 @@ export const WasteListPage: React.FC = () => {
   const [date, setDate] = useState<Date>(new Date());
   const [locationType, setLocationType] = useState<"branch" | "warehouse">("branch");
   const [locationId, setLocationId] = useState("");
+  const [departmentId, setDepartmentId] = useState("");
   const [adminNotes, setAdminNotes] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterTab>("الكل");
@@ -73,6 +74,16 @@ export const WasteListPage: React.FC = () => {
     queryKey: ["warehouses-active", companyId],
     queryFn: async () => {
       const { data, error } = await supabase.from("warehouses").select("*").eq("active", true).order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
+  const { data: departments = [] } = useQuery({
+    queryKey: ["departments-active", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("departments").select("*").eq("active", true).order("name");
       if (error) throw error;
       return data;
     },
@@ -128,6 +139,10 @@ export const WasteListPage: React.FC = () => {
       insertData.branch_name = b?.name || "";
     } else {
       insertData.warehouse_id = locationId;
+    }
+
+    if (departmentId && departmentId !== "none") {
+      insertData.department_id = departmentId;
     }
 
     const { data, error } = await supabase.from("waste_records").insert(insertData).select().single();
@@ -338,7 +353,7 @@ export const WasteListPage: React.FC = () => {
     <div className="space-y-6 animate-fade-in-up">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">إدارة الهالك</h1>
-        <Button onClick={() => { setShowDialog(true); setLocationId(""); setAdminNotes(""); setDate(new Date()); }}>
+        <Button onClick={() => { setShowDialog(true); setLocationId(""); setDepartmentId(""); setAdminNotes(""); setDate(new Date()); }}>
           <Plus size={16} /> إضافة هالك
         </Button>
       </div>
@@ -483,6 +498,19 @@ export const WasteListPage: React.FC = () => {
                 <SelectContent>
                   {(locationType === "branch" ? branches : warehouses).map((loc: any) => (
                     <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label>القسم (اختياري)</Label>
+              <Select value={departmentId} onValueChange={setDepartmentId}>
+                <SelectTrigger><SelectValue placeholder="اختر القسم..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">بدون قسم</SelectItem>
+                  {departments.map((dep: any) => (
+                    <SelectItem key={dep.id} value={dep.id}>{dep.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

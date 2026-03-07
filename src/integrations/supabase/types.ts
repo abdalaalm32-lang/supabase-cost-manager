@@ -2271,6 +2271,7 @@ export type Database = {
           created_at: string
           creator_name: string | null
           date: string
+          department_id: string | null
           id: string
           is_edited: boolean
           notes: string | null
@@ -2286,6 +2287,7 @@ export type Database = {
           created_at?: string
           creator_name?: string | null
           date?: string
+          department_id?: string | null
           id?: string
           is_edited?: boolean
           notes?: string | null
@@ -2301,6 +2303,7 @@ export type Database = {
           created_at?: string
           creator_name?: string | null
           date?: string
+          department_id?: string | null
           id?: string
           is_edited?: boolean
           notes?: string | null
@@ -2322,6 +2325,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waste_records_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
             referencedColumns: ["id"]
           },
           {

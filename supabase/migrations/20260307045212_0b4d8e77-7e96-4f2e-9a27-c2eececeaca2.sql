@@ -1,0 +1,1 @@
+ALTER TABLE public.waste_records ADD COLUMN department_id uuid REFERENCES public.departments(id) DEFAULT NULL;

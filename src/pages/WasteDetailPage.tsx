@@ -152,7 +152,9 @@ export const WasteDetailPage: React.FC = () => {
     return wasteRecord.branch_id || wasteRecord.warehouse_id || null;
   }, [wasteRecord]);
 
-  const { getLocationStock } = useLocationStock(wasteLocationId, wasteLocationType);
+  const wasteDepartmentId = wasteRecord?.department_id || null;
+
+  const { getLocationStock } = useLocationStock(wasteLocationId, wasteLocationType, wasteDepartmentId);
 
   const getStockItemInfo = useCallback((siId: string | null) => {
     if (!siId) return null;
@@ -171,6 +173,12 @@ export const WasteDetailPage: React.FC = () => {
     }
     return "";
   }, [wasteRecord, branches, warehouses]);
+
+  const departmentName = useMemo(() => {
+    if (!wasteRecord?.department_id) return "";
+    const dep = departments.find((d: any) => d.id === wasteRecord.department_id);
+    return dep?.name || "";
+  }, [wasteRecord, departments]);
 
   const existingStockItemIds = useMemo(() => new Set(wasteItems.map((i: any) => i.stock_item_id)), [wasteItems]);
 
@@ -477,6 +485,15 @@ export const WasteDetailPage: React.FC = () => {
           <p className="text-xs text-muted-foreground mb-1">الموقع</p>
           <p className="font-semibold text-sm">{locationName || "—"}</p>
         </div>
+        {departmentName && (
+          <div className="glass-card p-4 text-center">
+            <div className="flex items-center justify-center mb-2">
+              <Package size={18} className="text-primary" />
+            </div>
+            <p className="text-xs text-muted-foreground mb-1">القسم</p>
+            <p className="font-semibold text-sm">{departmentName}</p>
+          </div>
+        )}
         <div className="glass-card p-4 text-center">
           <div className="flex items-center justify-center mb-2">
             <User size={18} className="text-muted-foreground" />

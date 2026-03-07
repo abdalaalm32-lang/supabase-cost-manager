@@ -82,7 +82,7 @@ export function useLocationStock(
     queryFn: async () => {
       const { data, error } = await supabase
         .from("waste_items")
-        .select("stock_item_id, quantity, waste_records!inner(id, status, branch_id, warehouse_id, company_id)")
+        .select("stock_item_id, quantity, waste_records!inner(id, status, branch_id, warehouse_id, company_id, department_id)")
         .eq("waste_records.company_id", companyId!)
         .eq("waste_records.status", "مكتمل");
       if (error) throw error;
@@ -213,10 +213,11 @@ export function useLocationStock(
       }
     }
 
-    // Waste OUT
+    // Waste OUT (filter by department if departmentId is provided)
     for (const wi of wasteItems) {
       const wr = wi.waste_records;
       if (match(wr.branch_id, wr.warehouse_id)) {
+        if (departmentId && wr.department_id !== departmentId) continue;
         sub(wi.stock_item_id, Number(wi.quantity));
       }
     }

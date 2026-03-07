@@ -181,17 +181,19 @@ export function useLocationStock(
       }
     }
 
-    // Production produced IN
+    // Production produced IN (filter by department if departmentId is provided)
     for (const pr of productionRecords) {
       if (match(pr.branch_id, pr.warehouse_id)) {
+        if (departmentId && pr.department_id !== departmentId) continue;
         add(pr.product_id, Number(pr.produced_qty));
       }
     }
 
-    // Production ingredients OUT
+    // Production ingredients OUT (filter by department if departmentId is provided)
     for (const ing of productionIngredients) {
       const pr = ing.production_records;
       if (match(pr.branch_id, pr.warehouse_id)) {
+        if (departmentId && pr.department_id !== departmentId) continue;
         sub(ing.stock_item_id, Number(ing.required_qty));
       }
     }

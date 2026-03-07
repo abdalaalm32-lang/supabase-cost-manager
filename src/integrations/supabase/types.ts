@@ -1242,6 +1242,7 @@ export type Database = {
           created_at: string
           creator_name: string | null
           date: string
+          department_id: string | null
           id: string
           invoice_number: string | null
           is_edited: boolean | null
@@ -1258,6 +1259,7 @@ export type Database = {
           created_at?: string
           creator_name?: string | null
           date?: string
+          department_id?: string | null
           id?: string
           invoice_number?: string | null
           is_edited?: boolean | null
@@ -1274,6 +1276,7 @@ export type Database = {
           created_at?: string
           creator_name?: string | null
           date?: string
+          department_id?: string | null
           id?: string
           invoice_number?: string | null
           is_edited?: boolean | null
@@ -1297,6 +1300,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
             referencedColumns: ["id"]
           },
           {

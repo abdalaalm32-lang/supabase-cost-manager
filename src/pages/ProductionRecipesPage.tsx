@@ -114,14 +114,23 @@ export const ProductionRecipesPage: React.FC = () => {
     return map;
   }, [recipes]);
 
+  const categoryMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    categories.forEach((c: any) => { map[c.id] = c.name; });
+    return map;
+  }, [categories]);
+
   const filteredProducts = useMemo(() => {
     let items = productItems;
     if (productSearch.trim()) {
       const q = productSearch.trim().toLowerCase();
-      items = items.filter((p: any) => p.name.toLowerCase().includes(q) || (p.code || "").toLowerCase().includes(q));
+      items = items.filter((p: any) => {
+        const catName = (p.category_id ? categoryMap[p.category_id] : "") || "";
+        return p.name.toLowerCase().includes(q) || (p.code || "").toLowerCase().includes(q) || catName.toLowerCase().includes(q);
+      });
     }
     return items;
-  }, [productItems, productSearch]);
+  }, [productItems, productSearch, categoryMap]);
 
   const selectedProduct = useMemo(() => {
     if (!selectedProductId) return null;
@@ -337,7 +346,7 @@ export const ProductionRecipesPage: React.FC = () => {
           <h2 className="font-bold text-sm">المنتجات المصنعة</h2>
           <div className="relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="بحث منتج..." value={productSearch} onChange={e => setProductSearch(e.target.value)} className="pr-9 h-9 text-sm" />
+            <Input placeholder="بحث بمنتج أو مجموعة..." value={productSearch} onChange={e => setProductSearch(e.target.value)} className="pr-9 h-9 text-sm" />
           </div>
           <div className="space-y-1.5">
             {filteredProducts.length === 0 ? (

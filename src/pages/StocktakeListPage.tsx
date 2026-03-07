@@ -43,6 +43,7 @@ export const StocktakeListPage: React.FC = () => {
   const [date, setDate] = useState<Date>(new Date());
   const [locationType, setLocationType] = useState<"branch" | "warehouse">("branch");
   const [locationId, setLocationId] = useState("");
+  const [departmentId, setDepartmentId] = useState("");
   const [stocktakeType, setStocktakeType] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterTab>("مكتمل");
@@ -77,6 +78,16 @@ export const StocktakeListPage: React.FC = () => {
     queryKey: ["warehouses-active", companyId],
     queryFn: async () => {
       const { data, error } = await supabase.from("warehouses").select("*").eq("active", true).order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
+  const { data: departments = [] } = useQuery({
+    queryKey: ["departments-active", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("departments").select("*").eq("active", true).order("name");
       if (error) throw error;
       return data;
     },

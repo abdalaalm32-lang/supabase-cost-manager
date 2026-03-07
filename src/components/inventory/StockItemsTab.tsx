@@ -258,6 +258,7 @@ export const StockItemsTab: React.FC = () => {
       qc.invalidateQueries({ queryKey: ["stock-items"] });
       qc.invalidateQueries({ queryKey: ["stock-item-locations"] });
       qc.invalidateQueries({ queryKey: ["stock-item-departments"] });
+      toast.success(editId ? "تم التعديل" : "تم إضافة الصنف");
       setOpen(false);
       resetForm();
     },

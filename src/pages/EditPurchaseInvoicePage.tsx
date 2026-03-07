@@ -41,6 +41,7 @@ export const EditPurchaseInvoicePage: React.FC = () => {
   const companyId = auth.profile?.company_id;
 
   const [supplierId, setSupplierId] = useState("");
+  const [departmentId, setDepartmentId] = useState("");
   const [destinationType, setDestinationType] = useState<"branch" | "warehouse" | "">("");
   const [destinationId, setDestinationId] = useState("");
   const [date, setDate] = useState("");
@@ -75,6 +76,7 @@ export const EditPurchaseInvoicePage: React.FC = () => {
   useEffect(() => {
     if (order && existingItems && !loaded) {
       setSupplierId(order.supplier_id || "");
+      setDepartmentId((order as any).department_id || "");
       setDate(order.date);
       setNotes(order.notes || "");
       if (order.branch_id) { setDestinationType("branch"); setDestinationId(order.branch_id); }
@@ -117,6 +119,16 @@ export const EditPurchaseInvoicePage: React.FC = () => {
     queryKey: ["warehouses-active", companyId],
     queryFn: async () => {
       const { data, error } = await supabase.from("warehouses").select("*").eq("active", true).order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
+  const { data: departments = [] } = useQuery({
+    queryKey: ["departments-active", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("departments").select("*").eq("active", true).order("name");
       if (error) throw error;
       return data;
     },
@@ -186,10 +198,11 @@ export const EditPurchaseInvoicePage: React.FC = () => {
       const { error: orderErr } = await supabase.from("purchase_orders").update({
         supplier_id: supplierId,
         supplier_name: selectedSupplier?.name || "",
+        department_id: departmentId || null,
         branch_id: destinationType === "branch" ? destinationId : null,
         warehouse_id: destinationType === "warehouse" ? destinationId : null,
         date, notes: notes || null, total_amount: totalAmount, status, is_edited: true,
-      }).eq("id", id!);
+      } as any).eq("id", id!);
       if (orderErr) throw orderErr;
 
       // Delete old items and re-insert
@@ -310,6 +323,18 @@ export const EditPurchaseInvoicePage: React.FC = () => {
                {submitted && !destinationId && <p className="text-sm text-destructive">مطلوب</p>}
              </div>
            )}
+
+           <div className="space-y-2">
+             <Label>القسم المستلم</Label>
+             <Select value={departmentId} onValueChange={setDepartmentId} disabled={isViewOnly}>
+               <SelectTrigger><SelectValue placeholder="اختر القسم" /></SelectTrigger>
+               <SelectContent>
+                 {departments.map((d: any) => (
+                   <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                 ))}
+               </SelectContent>
+             </Select>
+           </div>
          </div>
          <div className="space-y-2">
            <Label>ملاحظات (اختياري)</Label>

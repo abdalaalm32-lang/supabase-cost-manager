@@ -298,9 +298,11 @@ export const CostAnalysisPage: React.FC = () => {
         const poDate = (pi as any).purchase_orders?.date;
         const poBranch = (pi as any).purchase_orders?.branch_id;
         const poWarehouse = (pi as any).purchase_orders?.warehouse_id;
+        const poDept = (pi as any).purchase_orders?.department_id;
         if (!poDate || !inDateRange(poDate)) continue;
         if (branchFilter !== "all" && poBranch !== branchFilter) continue;
         if (warehouseFilter !== "all" && poWarehouse !== warehouseFilter) continue;
+        if (departmentFilter !== "all" && poDept !== departmentFilter) continue;
         if (!pi.stock_item_id) continue;
         const calc = map.get(pi.stock_item_id);
         if (calc) {
@@ -314,6 +316,7 @@ export const CostAnalysisPage: React.FC = () => {
         if (!inDateRange(pr.date)) continue;
         if (branchFilter !== "all" && pr.branch_id !== branchFilter) continue;
         if (warehouseFilter !== "all" && (pr as any).warehouse_id !== warehouseFilter) continue;
+        if (departmentFilter !== "all" && pr.department_id !== departmentFilter) continue;
         if (!pr.product_id) continue;
         const calc = map.get(pr.product_id);
         if (calc) {
@@ -327,9 +330,11 @@ export const CostAnalysisPage: React.FC = () => {
         const prDate = (ing as any).production_records?.date;
         const prBranch = (ing as any).production_records?.branch_id;
         const prWarehouse = (ing as any).production_records?.warehouse_id;
+        const prDept = (ing as any).production_records?.department_id;
         if (!prDate || !inDateRange(prDate)) continue;
         if (branchFilter !== "all" && prBranch !== branchFilter) continue;
         if (warehouseFilter !== "all" && prWarehouse !== warehouseFilter) continue;
+        if (departmentFilter !== "all" && prDept !== departmentFilter) continue;
         if (!ing.stock_item_id) continue;
         const calc = map.get(ing.stock_item_id);
         if (calc) {
@@ -374,9 +379,11 @@ export const CostAnalysisPage: React.FC = () => {
         const wrDate = (wi as any).waste_records?.date;
         const wrBranch = (wi as any).waste_records?.branch_id;
         const wrWarehouse = (wi as any).waste_records?.warehouse_id;
+        const wrDept = (wi as any).waste_records?.department_id;
         if (!wrDate || !inDateRange(wrDate)) continue;
         if (branchFilter !== "all" && wrBranch !== branchFilter) continue;
         if (warehouseFilter !== "all" && wrWarehouse !== warehouseFilter) continue;
+        if (departmentFilter !== "all" && wrDept !== departmentFilter) continue;
         if (!wi.stock_item_id) continue;
         const calc = map.get(wi.stock_item_id);
         if (calc) {
@@ -390,6 +397,8 @@ export const CostAnalysisPage: React.FC = () => {
         const trDate = (ti as any).transfers?.date;
         const trSource = (ti as any).transfers?.source_id;
         const trDest = (ti as any).transfers?.destination_id;
+        const trSourceDept = (ti as any).transfers?.source_department_id;
+        const trDestDept = (ti as any).transfers?.destination_department_id;
         if (!trDate || !inDateRange(trDate)) continue;
         if (!ti.stock_item_id) continue;
         const calc = map.get(ti.stock_item_id);
@@ -399,18 +408,20 @@ export const CostAnalysisPage: React.FC = () => {
         const selectedLocationId = branchFilter !== "all" ? branchFilter : warehouseFilter !== "all" ? warehouseFilter : null;
 
         if (selectedLocationId) {
-          // When filtering by a specific location:
-          // If source matches → outgoing from this location
+          // Source matches → outgoing (filter by source department if dept filter active)
           if (trSource === selectedLocationId) {
-            calc.outQty += qty;
+            if (departmentFilter === "all" || trSourceDept === departmentFilter) {
+              calc.outQty += qty;
+            }
           }
-          // If destination matches → incoming to this location
+          // Destination matches → incoming (filter by destination department if dept filter active)
           if (trDest === selectedLocationId) {
-            calc.inQty += qty;
+            if (departmentFilter === "all" || trDestDept === departmentFilter) {
+              calc.inQty += qty;
+            }
           }
         } else {
-          // No location filter: transfers are internal moves, don't affect totals
-          // (items stay within the company, no net change)
+          // No location filter: internal transfers, no net change
         }
       }
     }

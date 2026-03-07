@@ -152,7 +152,9 @@ export const WasteDetailPage: React.FC = () => {
     return wasteRecord.branch_id || wasteRecord.warehouse_id || null;
   }, [wasteRecord]);
 
-  const { getLocationStock } = useLocationStock(wasteLocationId, wasteLocationType);
+  const wasteDepartmentId = wasteRecord?.department_id || null;
+
+  const { getLocationStock } = useLocationStock(wasteLocationId, wasteLocationType, wasteDepartmentId);
 
   const getStockItemInfo = useCallback((siId: string | null) => {
     if (!siId) return null;

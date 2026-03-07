@@ -143,6 +143,10 @@ export const StocktakeListPage: React.FC = () => {
       insertData.warehouse_id = locationId;
     }
 
+    if (departmentId) {
+      insertData.department_id = departmentId;
+    }
+
     const { data, error } = await supabase.from("stocktakes").insert(insertData).select().single();
     if (error) {
       toast({ title: "خطأ في إنشاء الجرد", description: error.message, variant: "destructive" });

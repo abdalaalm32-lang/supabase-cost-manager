@@ -1988,12 +1988,14 @@ export type Database = {
           created_at: string
           creator_name: string | null
           date: string
+          destination_department_id: string | null
           destination_id: string | null
           destination_name: string | null
           id: string
           is_edited: boolean
           notes: string | null
           record_number: string | null
+          source_department_id: string | null
           source_id: string | null
           source_name: string | null
           status: string
@@ -2004,12 +2006,14 @@ export type Database = {
           created_at?: string
           creator_name?: string | null
           date?: string
+          destination_department_id?: string | null
           destination_id?: string | null
           destination_name?: string | null
           id?: string
           is_edited?: boolean
           notes?: string | null
           record_number?: string | null
+          source_department_id?: string | null
           source_id?: string | null
           source_name?: string | null
           status?: string
@@ -2020,12 +2024,14 @@ export type Database = {
           created_at?: string
           creator_name?: string | null
           date?: string
+          destination_department_id?: string | null
           destination_id?: string | null
           destination_name?: string | null
           id?: string
           is_edited?: boolean
           notes?: string | null
           record_number?: string | null
+          source_department_id?: string | null
           source_id?: string | null
           source_name?: string | null
           status?: string
@@ -2037,6 +2043,20 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transfers_destination_department_id_fkey"
+            columns: ["destination_department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transfers_source_department_id_fkey"
+            columns: ["source_department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
             referencedColumns: ["id"]
           },
         ]

@@ -37,7 +37,7 @@ export function useLocationStock(
     queryFn: async () => {
       const { data, error } = await supabase
         .from("production_records")
-        .select("product_id, produced_qty, branch_id, warehouse_id")
+        .select("product_id, produced_qty, branch_id, warehouse_id, department_id")
         .eq("company_id", companyId!)
         .eq("status", "مكتمل");
       if (error) throw error;
@@ -52,7 +52,7 @@ export function useLocationStock(
     queryFn: async () => {
       const { data, error } = await supabase
         .from("production_ingredients")
-        .select("stock_item_id, required_qty, production_records!inner(id, status, branch_id, warehouse_id, company_id)")
+        .select("stock_item_id, required_qty, production_records!inner(id, status, branch_id, warehouse_id, department_id, company_id)")
         .eq("production_records.company_id", companyId!)
         .eq("production_records.status", "مكتمل");
       if (error) throw error;

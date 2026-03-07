@@ -41,6 +41,7 @@ export const AddPurchaseInvoicePage: React.FC = () => {
   const companyId = auth.profile?.company_id;
 
   const [supplierId, setSupplierId] = useState("");
+  const [departmentId, setDepartmentId] = useState("");
   const [destinationType, setDestinationType] = useState<"branch" | "warehouse" | "">("");
   const [destinationId, setDestinationId] = useState("");
   const [date, setDate] = useState<Date>(new Date());
@@ -75,6 +76,16 @@ export const AddPurchaseInvoicePage: React.FC = () => {
     queryKey: ["warehouses-active", companyId],
     queryFn: async () => {
       const { data, error } = await supabase.from("warehouses").select("*").eq("active", true).order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
+  const { data: departments = [] } = useQuery({
+    queryKey: ["departments-active", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("departments").select("*").eq("active", true).order("name");
       if (error) throw error;
       return data;
     },
@@ -165,6 +176,7 @@ export const AddPurchaseInvoicePage: React.FC = () => {
           company_id: companyId!,
           supplier_id: supplierId,
           supplier_name: selectedSupplier?.name || "",
+          department_id: departmentId || null,
           branch_id: destinationType === "branch" ? destinationId : null,
           warehouse_id: destinationType === "warehouse" ? destinationId : null,
           date: format(date, "yyyy-MM-dd"),
@@ -173,7 +185,7 @@ export const AddPurchaseInvoicePage: React.FC = () => {
           status,
           invoice_number: invoiceNum,
           creator_name: auth.profile?.full_name || "",
-        })
+        } as any)
         .select("id")
         .single();
       if (orderErr) throw orderErr;
@@ -318,6 +330,18 @@ export const AddPurchaseInvoicePage: React.FC = () => {
               {submitted && !destinationId && <p className="text-sm text-destructive">هذا الحقل مطلوب</p>}
             </div>
           )}
+
+          <div className="space-y-2">
+            <Label>القسم المستلم</Label>
+            <Select value={departmentId} onValueChange={setDepartmentId}>
+              <SelectTrigger><SelectValue placeholder="اختر القسم" /></SelectTrigger>
+              <SelectContent>
+                {departments.map((d: any) => (
+                  <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <div className="space-y-2">

@@ -501,7 +501,7 @@ export const StocktakeListPage: React.FC = () => {
             {locationType === "branch" && locationId && (
               <div>
                 <Label>القسم (اختياري)</Label>
-                <Select value={departmentId} onValueChange={setDepartmentId}>
+                <Select value={departmentId || "none"} onValueChange={(v) => setDepartmentId(v === "none" ? "" : v)}>
                   <SelectTrigger><SelectValue placeholder="كل الأقسام" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">كل الأقسام</SelectItem>

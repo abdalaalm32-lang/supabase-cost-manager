@@ -212,7 +212,7 @@ export const StockItemsTab: React.FC = () => {
           .update({
             name: itemName,
             category_id: categoryId || null,
-            department_id: departmentId || null,
+            department_id: selectedDepartments[0] || null,
             standard_cost: parseFloat(standardCost) || 0,
             stock_unit: stockUnit || "كيلوجرام",
             recipe_unit: recipeUnit || null,
@@ -220,11 +220,11 @@ export const StockItemsTab: React.FC = () => {
             min_level: parseFloat(minLevel) || 0,
             reorder_level: parseFloat(reorderLevel) || 0,
             max_level: parseFloat(maxLevel) || 0,
-            menu_engineering_class: menuEngineeringClass || null,
           } as any)
           .eq("id", editId);
         if (error) throw error;
         await saveLocationLinks(editId);
+        await saveDepartmentLinks(editId);
       } else {
         const selectedCat = categories.find((c: any) => c.id === categoryId);
         const identifierCode = selectedCat?.identifier_code || null;
@@ -239,7 +239,7 @@ export const StockItemsTab: React.FC = () => {
           company_id: companyId!,
           name: itemName,
           category_id: categoryId || null,
-          department_id: departmentId || null,
+          department_id: selectedDepartments[0] || null,
           standard_cost: parseFloat(standardCost) || 0,
           stock_unit: stockUnit || "كيلوجرام",
           recipe_unit: recipeUnit || null,
@@ -247,17 +247,17 @@ export const StockItemsTab: React.FC = () => {
           min_level: parseFloat(minLevel) || 0,
           reorder_level: parseFloat(reorderLevel) || 0,
           max_level: parseFloat(maxLevel) || 0,
-          menu_engineering_class: menuEngineeringClass || null,
           code: codeData,
         } as any).select("id").single();
         if (error) throw error;
         await saveLocationLinks(inserted.id);
+        await saveDepartmentLinks(inserted.id);
       }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["stock-items"] });
       qc.invalidateQueries({ queryKey: ["stock-item-locations"] });
-      toast.success(editId ? "تم التعديل" : "تم إضافة الصنف");
+      qc.invalidateQueries({ queryKey: ["stock-item-departments"] });
       setOpen(false);
       resetForm();
     },
@@ -297,7 +297,8 @@ export const StockItemsTab: React.FC = () => {
     setEditId(item.id);
     setItemName(item.name);
     setCategoryId(item.category_id || "");
-    setDepartmentId(item.department_id || "");
+    const deptLinks = itemDepartments.filter((d: any) => d.stock_item_id === item.id);
+    setSelectedDepartments(deptLinks.map((d: any) => d.department_id));
     setStandardCost(String(item.standard_cost || ""));
     setStockUnit(item.stock_unit || "");
     setRecipeUnit(item.recipe_unit || "");
@@ -305,7 +306,6 @@ export const StockItemsTab: React.FC = () => {
     setMinLevel(String(item.min_level || ""));
     setReorderLevel(String(item.reorder_level || ""));
     setMaxLevel(String(item.max_level || ""));
-    setMenuEngineeringClass(item.menu_engineering_class || "");
     // Load linked locations
     const locs = itemLocations.filter((l: any) => l.stock_item_id === item.id);
     setSelectedBranches(locs.filter((l: any) => l.branch_id).map((l: any) => l.branch_id));
@@ -543,27 +543,57 @@ export const StockItemsTab: React.FC = () => {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>القسم التشغيلي</Label>
-                  <Select value={departmentId} onValueChange={setDepartmentId}>
-                    <SelectTrigger><SelectValue placeholder="اختر القسم" /></SelectTrigger>
-                    <SelectContent>
-                      {departments.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <Label>الأقسام التشغيلية</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-between gap-2">
+                        <span>{selectedDepartments.length > 0 ? `${selectedDepartments.length} قسم محدد` : "اختر الأقسام"}</span>
+                        <Building2 size={16} />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-3" align="start">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 pb-2 border-b">
+                          <Checkbox
+                            checked={departments.length > 0 && selectedDepartments.length === departments.length}
+                            onCheckedChange={() => {
+                              if (selectedDepartments.length === departments.length) setSelectedDepartments([]);
+                              else setSelectedDepartments(departments.map((d: any) => d.id));
+                            }}
+                          />
+                          <Label className="text-sm font-medium cursor-pointer">تحديد الكل</Label>
+                        </div>
+                        {departments.map((d: any) => (
+                          <div key={d.id} className="flex items-center gap-2">
+                            <Checkbox
+                              checked={selectedDepartments.includes(d.id)}
+                              onCheckedChange={() => {
+                                setSelectedDepartments((prev) =>
+                                  prev.includes(d.id) ? prev.filter((id) => id !== d.id) : [...prev, d.id]
+                                );
+                              }}
+                            />
+                            <Label className="text-sm cursor-pointer">{d.name}</Label>
+                          </div>
+                        ))}
+                        {departments.length === 0 && (
+                          <p className="text-xs text-muted-foreground text-center py-2">لا توجد أقسام</p>
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  {selectedDepartments.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {selectedDepartments.map((dId) => {
+                        const d = departments.find((dep: any) => dep.id === dId);
+                        return d ? <Badge key={dId} variant="secondary" className="text-xs">{d.name}</Badge> : null;
+                      })}
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>التكلفة المعيارية</Label>
                   <Input type="number" value={standardCost} onChange={(e) => setStandardCost(e.target.value)} placeholder="0.00" className="glass-input" min="0" step="0.01" />
-                </div>
-                <div className="space-y-2">
-                  <Label>تصنيف هندسة المنيو</Label>
-                  <Select value={menuEngineeringClass} onValueChange={setMenuEngineeringClass}>
-                    <SelectTrigger><SelectValue placeholder="اختر التصنيف" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="kitchen">Kitchen (مطبخ)</SelectItem>
-                      <SelectItem value="bar">Bar (بار)</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
               </div>
             </div>

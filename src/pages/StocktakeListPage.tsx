@@ -477,7 +477,7 @@ export const StocktakeListPage: React.FC = () => {
 
             <div>
               <Label>نوع الموقع</Label>
-              <Select value={locationType} onValueChange={(v: any) => { setLocationType(v); setLocationId(""); }}>
+              <Select value={locationType} onValueChange={(v: any) => { setLocationType(v); setLocationId(""); setDepartmentId(""); }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="branch">فرع</SelectItem>
@@ -488,7 +488,7 @@ export const StocktakeListPage: React.FC = () => {
 
             <div>
               <Label>{locationType === "branch" ? "الفرع" : "المخزن"}</Label>
-              <Select value={locationId} onValueChange={setLocationId}>
+              <Select value={locationId} onValueChange={(v) => { setLocationId(v); setDepartmentId(""); }}>
                 <SelectTrigger><SelectValue placeholder="اختر..." /></SelectTrigger>
                 <SelectContent>
                   {(locationType === "branch" ? branches : warehouses).map((loc: any) => (
@@ -497,6 +497,19 @@ export const StocktakeListPage: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
+
+            {locationType === "branch" && locationId && (
+              <div>
+                <Label>القسم (اختياري)</Label>
+                <Select value={departmentId} onValueChange={setDepartmentId}>
+                  <SelectTrigger><SelectValue placeholder="كل الأقسام" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">كل الأقسام</SelectItem>
+                    {departments.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div>
               <Label>نوع الجرد</Label>

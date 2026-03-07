@@ -256,9 +256,10 @@ export function useLocationStock(
       }
     }
 
-    // Stocktake adjustments (counted_qty - book_qty for this location)
+    // Stocktake adjustments (counted_qty - book_qty for this location, filtered by department)
     for (const st of stocktakes) {
       if (match(st.branch_id, st.warehouse_id)) {
+        if (departmentId && st.department_id !== departmentId) continue;
         for (const si of (st.stocktake_items || [])) {
           if (si.stock_item_id) {
             const adjustment = Number(si.counted_qty) - Number(si.book_qty || 0);

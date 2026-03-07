@@ -99,9 +99,12 @@ export const InventoryBalancesPage: React.FC = () => {
 
   // Use centralized hook for per-location stock calculation
   // This includes: purchases, production, transfers, waste, POS sales (via recipes), and stocktake adjustments
+  // When departmentFilter is active, purchases are filtered by department_id
+  const activeDeptFilter = (departmentFilter && departmentFilter !== "all") ? departmentFilter : null;
   const { stockMap: locationStockMap, getLocationStock } = useLocationStock(
     isLocationFiltered ? locationFilter : null,
-    locationType
+    locationType,
+    activeDeptFilter
   );
 
   const getCatName = (id: string | null) => {

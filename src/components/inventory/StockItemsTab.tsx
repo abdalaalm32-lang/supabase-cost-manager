@@ -49,7 +49,7 @@ export const StockItemsTab: React.FC = () => {
   // Form fields
   const [itemName, setItemName] = useState("");
   const [categoryId, setCategoryId] = useState("");
-  const [departmentId, setDepartmentId] = useState("");
+  const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
   const [standardCost, setStandardCost] = useState("");
   const [stockUnit, setStockUnit] = useState("");
   const [recipeUnit, setRecipeUnit] = useState("");
@@ -57,7 +57,7 @@ export const StockItemsTab: React.FC = () => {
   const [minLevel, setMinLevel] = useState("");
   const [reorderLevel, setReorderLevel] = useState("");
   const [maxLevel, setMaxLevel] = useState("");
-  const [menuEngineeringClass, setMenuEngineeringClass] = useState("");
+  
 
   // Location linking
   const [selectedBranches, setSelectedBranches] = useState<string[]>([]);
@@ -144,10 +144,22 @@ export const StockItemsTab: React.FC = () => {
     enabled: !!companyId,
   });
 
+  const { data: itemDepartments = [] } = useQuery({
+    queryKey: ["stock-item-departments", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("stock_item_departments" as any)
+        .select("*");
+      if (error) throw error;
+      return data as any[];
+    },
+    enabled: !!companyId,
+  });
+
   const resetForm = () => {
     setItemName("");
     setCategoryId("");
-    setDepartmentId("");
+    setSelectedDepartments([]);
     setStandardCost("");
     setStockUnit("");
     setRecipeUnit("");
@@ -155,7 +167,6 @@ export const StockItemsTab: React.FC = () => {
     setMinLevel("");
     setReorderLevel("");
     setMaxLevel("");
-    setMenuEngineeringClass("");
     setSelectedBranches([]);
     setSelectedWarehouses([]);
     setEditId(null);
@@ -176,6 +187,19 @@ export const StockItemsTab: React.FC = () => {
 
     if (rows.length > 0) {
       const { error } = await supabase.from("stock_item_locations").insert(rows);
+      if (error) throw error;
+    }
+  };
+
+  const saveDepartmentLinks = async (stockItemId: string) => {
+    await supabase.from("stock_item_departments" as any).delete().eq("stock_item_id", stockItemId);
+    if (selectedDepartments.length > 0) {
+      const rows = selectedDepartments.map((dId) => ({
+        stock_item_id: stockItemId,
+        department_id: dId,
+        company_id: companyId,
+      }));
+      const { error } = await supabase.from("stock_item_departments" as any).insert(rows);
       if (error) throw error;
     }
   };

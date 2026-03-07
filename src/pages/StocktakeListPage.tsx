@@ -351,7 +351,7 @@ export const StocktakeListPage: React.FC = () => {
     <div className="space-y-6 animate-fade-in-up">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">الجرد الدوري</h1>
-        <Button onClick={() => { setShowDialog(true); setLocationId(""); setStocktakeType(""); setDate(new Date()); }}>
+        <Button onClick={() => { setShowDialog(true); setLocationId(""); setDepartmentId(""); setStocktakeType(""); setDate(new Date()); }}>
           <Plus size={16} /> إضافة جرد جديد
         </Button>
       </div>

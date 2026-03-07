@@ -174,6 +174,12 @@ export const WasteDetailPage: React.FC = () => {
     return "";
   }, [wasteRecord, branches, warehouses]);
 
+  const departmentName = useMemo(() => {
+    if (!wasteRecord?.department_id) return "";
+    const dep = departments.find((d: any) => d.id === wasteRecord.department_id);
+    return dep?.name || "";
+  }, [wasteRecord, departments]);
+
   const existingStockItemIds = useMemo(() => new Set(wasteItems.map((i: any) => i.stock_item_id)), [wasteItems]);
 
   const availableItems = useMemo(() => {

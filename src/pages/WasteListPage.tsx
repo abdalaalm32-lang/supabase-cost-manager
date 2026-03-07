@@ -504,6 +504,19 @@ export const WasteListPage: React.FC = () => {
             </div>
 
             <div>
+              <Label>القسم (اختياري)</Label>
+              <Select value={departmentId} onValueChange={setDepartmentId}>
+                <SelectTrigger><SelectValue placeholder="اختر القسم..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">بدون قسم</SelectItem>
+                  {departments.map((dep: any) => (
+                    <SelectItem key={dep.id} value={dep.id}>{dep.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
               <Label>ملاحظة إدارية (اختياري)</Label>
               <Textarea value={adminNotes} onChange={e => setAdminNotes(e.target.value)} placeholder="أضف ملاحظة..." rows={2} />
             </div>

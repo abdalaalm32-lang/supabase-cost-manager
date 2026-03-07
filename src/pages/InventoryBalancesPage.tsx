@@ -142,7 +142,7 @@ export const InventoryBalancesPage: React.FC = () => {
     let result = [...items];
 
     // Filter by department
-    if (departmentFilter) {
+    if (departmentFilter && departmentFilter !== "all") {
       const itemIdsInDept = new Set(
         itemDepartments
           .filter((d: any) => d.department_id === departmentFilter)

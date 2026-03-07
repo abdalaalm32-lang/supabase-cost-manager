@@ -141,7 +141,7 @@ export const WasteListPage: React.FC = () => {
       insertData.warehouse_id = locationId;
     }
 
-    if (departmentId) {
+    if (departmentId && departmentId !== "none") {
       insertData.department_id = departmentId;
     }
 

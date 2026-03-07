@@ -170,6 +170,12 @@ export const RecipesPage: React.FC = () => {
     return map;
   }, [recipes]);
 
+  const posCategoryMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    posCategories.forEach((c: any) => { map[c.id] = c.name; });
+    return map;
+  }, [posCategories]);
+
   const filteredProducts = useMemo(() => {
     let items = posItems;
     if (selectedBranch !== "all") {
@@ -180,7 +186,10 @@ export const RecipesPage: React.FC = () => {
     }
     if (productSearch.trim()) {
       const q = productSearch.trim().toLowerCase();
-      items = items.filter((p: any) => p.name.toLowerCase().includes(q) || (p.code || "").toLowerCase().includes(q));
+      items = items.filter((p: any) => {
+        const catName = (p.category_id ? posCategoryMap[p.category_id] : p.category) || "";
+        return p.name.toLowerCase().includes(q) || (p.code || "").toLowerCase().includes(q) || catName.toLowerCase().includes(q);
+      });
     }
     if (productFilter === "ready") {
       items = items.filter((p: any) => !!recipeMap[p.id]);
@@ -188,7 +197,7 @@ export const RecipesPage: React.FC = () => {
       items = items.filter((p: any) => !recipeMap[p.id]);
     }
     return items;
-  }, [posItems, selectedBranch, selectedEngClass, productSearch, productFilter, recipeMap]);
+  }, [posItems, selectedBranch, selectedEngClass, productSearch, productFilter, recipeMap, posCategoryMap]);
 
   const selectedProduct = useMemo(() => {
     if (!selectedProductId) return null;

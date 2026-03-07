@@ -114,14 +114,23 @@ export const ProductionRecipesPage: React.FC = () => {
     return map;
   }, [recipes]);
 
+  const categoryMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    categories.forEach((c: any) => { map[c.id] = c.name; });
+    return map;
+  }, [categories]);
+
   const filteredProducts = useMemo(() => {
     let items = productItems;
     if (productSearch.trim()) {
       const q = productSearch.trim().toLowerCase();
-      items = items.filter((p: any) => p.name.toLowerCase().includes(q) || (p.code || "").toLowerCase().includes(q));
+      items = items.filter((p: any) => {
+        const catName = (p.category_id ? categoryMap[p.category_id] : "") || "";
+        return p.name.toLowerCase().includes(q) || (p.code || "").toLowerCase().includes(q) || catName.toLowerCase().includes(q);
+      });
     }
     return items;
-  }, [productItems, productSearch]);
+  }, [productItems, productSearch, categoryMap]);
 
   const selectedProduct = useMemo(() => {
     if (!selectedProductId) return null;

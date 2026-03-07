@@ -427,8 +427,8 @@ export const TransferDetailPage: React.FC = () => {
           source_name: sourceLoc?.name || "",
           destination_id: destinationId,
           destination_name: destLoc?.name || "",
-          source_department_id: sourceDepartmentId || null,
-          destination_department_id: destinationDepartmentId || null,
+          source_department_id: (sourceDepartmentId && sourceDepartmentId !== "none") ? sourceDepartmentId : null,
+          destination_department_id: (destinationDepartmentId && destinationDepartmentId !== "none") ? destinationDepartmentId : null,
           total_cost: totalCost,
           notes: notes || null,
         };

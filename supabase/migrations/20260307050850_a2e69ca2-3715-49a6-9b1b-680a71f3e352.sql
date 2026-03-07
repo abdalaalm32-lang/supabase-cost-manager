@@ -1,0 +1,1 @@
+ALTER TABLE public.production_records ADD COLUMN department_id uuid REFERENCES public.departments(id) ON DELETE SET NULL DEFAULT NULL;

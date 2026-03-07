@@ -37,7 +37,7 @@ export function useLocationStock(
     queryFn: async () => {
       const { data, error } = await supabase
         .from("production_records")
-        .select("product_id, produced_qty, branch_id, warehouse_id")
+        .select("product_id, produced_qty, branch_id, warehouse_id, department_id")
         .eq("company_id", companyId!)
         .eq("status", "مكتمل");
       if (error) throw error;
@@ -52,7 +52,7 @@ export function useLocationStock(
     queryFn: async () => {
       const { data, error } = await supabase
         .from("production_ingredients")
-        .select("stock_item_id, required_qty, production_records!inner(id, status, branch_id, warehouse_id, company_id)")
+        .select("stock_item_id, required_qty, production_records!inner(id, status, branch_id, warehouse_id, department_id, company_id)")
         .eq("production_records.company_id", companyId!)
         .eq("production_records.status", "مكتمل");
       if (error) throw error;
@@ -181,17 +181,19 @@ export function useLocationStock(
       }
     }
 
-    // Production produced IN
+    // Production produced IN (filter by department if departmentId is provided)
     for (const pr of productionRecords) {
       if (match(pr.branch_id, pr.warehouse_id)) {
+        if (departmentId && pr.department_id !== departmentId) continue;
         add(pr.product_id, Number(pr.produced_qty));
       }
     }
 
-    // Production ingredients OUT
+    // Production ingredients OUT (filter by department if departmentId is provided)
     for (const ing of productionIngredients) {
       const pr = ing.production_records;
       if (match(pr.branch_id, pr.warehouse_id)) {
+        if (departmentId && pr.department_id !== departmentId) continue;
         sub(ing.stock_item_id, Number(ing.required_qty));
       }
     }

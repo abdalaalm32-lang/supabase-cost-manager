@@ -122,7 +122,7 @@ export const ProductionDetailPage: React.FC = () => {
     enabled: !!companyId,
   });
 
-  const { getLocationStock } = useLocationStock(locationId || null, locationType);
+  const { getLocationStock } = useLocationStock(locationId || null, locationType, selectedDept !== "all" ? selectedDept : null);
 
   // Load existing record
   const { data: existingRecord } = useQuery({
@@ -156,6 +156,9 @@ export const ProductionDetailPage: React.FC = () => {
       } else if ((existingRecord as any).warehouse_id) {
         setLocationType("warehouse");
         setLocationId((existingRecord as any).warehouse_id);
+      }
+      if ((existingRecord as any).department_id) {
+        setSelectedDept((existingRecord as any).department_id);
       }
 
       const ings: LocalIngredient[] = (existingRecord.production_ingredients || []).map((pi: any) => {
@@ -346,6 +349,7 @@ export const ProductionDetailPage: React.FC = () => {
         } else {
           insertData.warehouse_id = locationId || null;
         }
+        insertData.department_id = selectedDept !== "all" ? selectedDept : null;
 
         const { data: newRecord, error } = await supabase
           .from("production_records")

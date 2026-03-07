@@ -504,7 +504,7 @@ export const StocktakeListPage: React.FC = () => {
                 <Select value={departmentId} onValueChange={setDepartmentId}>
                   <SelectTrigger><SelectValue placeholder="كل الأقسام" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">كل الأقسام</SelectItem>
+                    <SelectItem value="none">كل الأقسام</SelectItem>
                     {departments.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
                   </SelectContent>
                 </Select>

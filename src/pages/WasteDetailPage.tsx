@@ -485,6 +485,15 @@ export const WasteDetailPage: React.FC = () => {
           <p className="text-xs text-muted-foreground mb-1">الموقع</p>
           <p className="font-semibold text-sm">{locationName || "—"}</p>
         </div>
+        {departmentName && (
+          <div className="glass-card p-4 text-center">
+            <div className="flex items-center justify-center mb-2">
+              <Package size={18} className="text-primary" />
+            </div>
+            <p className="text-xs text-muted-foreground mb-1">القسم</p>
+            <p className="font-semibold text-sm">{departmentName}</p>
+          </div>
+        )}
         <div className="glass-card p-4 text-center">
           <div className="flex items-center justify-center mb-2">
             <User size={18} className="text-muted-foreground" />

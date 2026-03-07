@@ -353,7 +353,7 @@ export const WasteListPage: React.FC = () => {
     <div className="space-y-6 animate-fade-in-up">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">إدارة الهالك</h1>
-        <Button onClick={() => { setShowDialog(true); setLocationId(""); setAdminNotes(""); setDate(new Date()); }}>
+        <Button onClick={() => { setShowDialog(true); setLocationId(""); setDepartmentId(""); setAdminNotes(""); setDate(new Date()); }}>
           <Plus size={16} /> إضافة هالك
         </Button>
       </div>

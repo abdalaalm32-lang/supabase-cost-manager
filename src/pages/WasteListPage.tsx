@@ -38,6 +38,7 @@ export const WasteListPage: React.FC = () => {
   const [date, setDate] = useState<Date>(new Date());
   const [locationType, setLocationType] = useState<"branch" | "warehouse">("branch");
   const [locationId, setLocationId] = useState("");
+  const [departmentId, setDepartmentId] = useState("");
   const [adminNotes, setAdminNotes] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterTab>("الكل");

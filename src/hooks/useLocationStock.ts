@@ -10,7 +10,8 @@ import { useQuery } from "@tanstack/react-query";
  */
 export function useLocationStock(
   locationId: string | null | undefined,
-  locationType: "branch" | "warehouse"
+  locationType: "branch" | "warehouse",
+  departmentId?: string | null
 ) {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;
@@ -21,7 +22,7 @@ export function useLocationStock(
     queryFn: async () => {
       const { data, error } = await supabase
         .from("purchase_items")
-        .select("stock_item_id, quantity, purchase_orders!inner(id, status, branch_id, warehouse_id, company_id)")
+        .select("stock_item_id, quantity, purchase_orders!inner(id, status, branch_id, warehouse_id, company_id, department_id)")
         .eq("purchase_orders.company_id", companyId!)
         .eq("purchase_orders.status", "مكتمل");
       if (error) throw error;
@@ -171,10 +172,11 @@ export function useLocationStock(
       return warehouseId === locationId;
     };
 
-    // Purchases IN
+    // Purchases IN (filter by department if departmentId is provided)
     for (const pi of purchaseItems) {
       const po = pi.purchase_orders;
       if (match(po.branch_id, po.warehouse_id)) {
+        if (departmentId && po.department_id !== departmentId) continue;
         add(pi.stock_item_id, Number(pi.quantity));
       }
     }
@@ -256,7 +258,7 @@ export function useLocationStock(
     }
 
     return map;
-  }, [locationId, locationType, purchaseItems, productionRecords, productionIngredients, transferItems, wasteItems, posSaleItems, recipes, stocktakes, stockItemsData]);
+  }, [locationId, locationType, departmentId, purchaseItems, productionRecords, productionIngredients, transferItems, wasteItems, posSaleItems, recipes, stocktakes, stockItemsData]);
 
   const getLocationStock = (stockItemId: string): number => {
     return stockMap.get(stockItemId) || 0;

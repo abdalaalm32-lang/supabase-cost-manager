@@ -485,6 +485,52 @@ export type Database = {
           },
         ]
       }
+      inventory_category_departments: {
+        Row: {
+          category_id: string
+          company_id: string
+          created_at: string
+          department_id: string
+          id: string
+        }
+        Insert: {
+          category_id: string
+          company_id: string
+          created_at?: string
+          department_id: string
+          id?: string
+        }
+        Update: {
+          category_id?: string
+          company_id?: string
+          created_at?: string
+          department_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_category_departments_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_category_departments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_category_departments_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_roles: {
         Row: {
           active: boolean

@@ -141,6 +141,10 @@ export const WasteListPage: React.FC = () => {
       insertData.warehouse_id = locationId;
     }
 
+    if (departmentId) {
+      insertData.department_id = departmentId;
+    }
+
     const { data, error } = await supabase.from("waste_records").insert(insertData).select().single();
     if (error) {
       toast({ title: "خطأ", description: error.message, variant: "destructive" });

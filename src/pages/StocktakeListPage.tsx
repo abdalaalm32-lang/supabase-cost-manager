@@ -43,6 +43,7 @@ export const StocktakeListPage: React.FC = () => {
   const [date, setDate] = useState<Date>(new Date());
   const [locationType, setLocationType] = useState<"branch" | "warehouse">("branch");
   const [locationId, setLocationId] = useState("");
+  const [departmentId, setDepartmentId] = useState("");
   const [stocktakeType, setStocktakeType] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterTab>("مكتمل");
@@ -77,6 +78,16 @@ export const StocktakeListPage: React.FC = () => {
     queryKey: ["warehouses-active", companyId],
     queryFn: async () => {
       const { data, error } = await supabase.from("warehouses").select("*").eq("active", true).order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
+  const { data: departments = [] } = useQuery({
+    queryKey: ["departments-active", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("departments").select("*").eq("active", true).order("name");
       if (error) throw error;
       return data;
     },
@@ -130,6 +141,10 @@ export const StocktakeListPage: React.FC = () => {
       insertData.branch_id = locationId;
     } else {
       insertData.warehouse_id = locationId;
+    }
+
+    if (departmentId) {
+      insertData.department_id = departmentId;
     }
 
     const { data, error } = await supabase.from("stocktakes").insert(insertData).select().single();
@@ -336,7 +351,7 @@ export const StocktakeListPage: React.FC = () => {
     <div className="space-y-6 animate-fade-in-up">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">الجرد الدوري</h1>
-        <Button onClick={() => { setShowDialog(true); setLocationId(""); setStocktakeType(""); setDate(new Date()); }}>
+        <Button onClick={() => { setShowDialog(true); setLocationId(""); setDepartmentId(""); setStocktakeType(""); setDate(new Date()); }}>
           <Plus size={16} /> إضافة جرد جديد
         </Button>
       </div>
@@ -462,7 +477,7 @@ export const StocktakeListPage: React.FC = () => {
 
             <div>
               <Label>نوع الموقع</Label>
-              <Select value={locationType} onValueChange={(v: any) => { setLocationType(v); setLocationId(""); }}>
+              <Select value={locationType} onValueChange={(v: any) => { setLocationType(v); setLocationId(""); setDepartmentId(""); }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="branch">فرع</SelectItem>
@@ -473,7 +488,7 @@ export const StocktakeListPage: React.FC = () => {
 
             <div>
               <Label>{locationType === "branch" ? "الفرع" : "المخزن"}</Label>
-              <Select value={locationId} onValueChange={setLocationId}>
+              <Select value={locationId} onValueChange={(v) => { setLocationId(v); setDepartmentId(""); }}>
                 <SelectTrigger><SelectValue placeholder="اختر..." /></SelectTrigger>
                 <SelectContent>
                   {(locationType === "branch" ? branches : warehouses).map((loc: any) => (
@@ -482,6 +497,19 @@ export const StocktakeListPage: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
+
+            {locationType === "branch" && locationId && (
+              <div>
+                <Label>القسم (اختياري)</Label>
+                <Select value={departmentId} onValueChange={setDepartmentId}>
+                  <SelectTrigger><SelectValue placeholder="كل الأقسام" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">كل الأقسام</SelectItem>
+                    {departments.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div>
               <Label>نوع الجرد</Label>

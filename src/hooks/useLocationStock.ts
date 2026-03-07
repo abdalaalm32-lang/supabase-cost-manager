@@ -142,7 +142,7 @@ export function useLocationStock(
     queryFn: async () => {
       const { data, error } = await supabase
         .from("stocktakes")
-        .select("id, branch_id, warehouse_id, date, created_at, type, stocktake_items(stock_item_id, counted_qty, book_qty)")
+        .select("id, branch_id, warehouse_id, department_id, date, created_at, type, stocktake_items(stock_item_id, counted_qty, book_qty)")
         .eq("company_id", companyId!)
         .eq("status", "مكتمل")
         .neq("type", "فحص مخزون فوري")
@@ -256,9 +256,10 @@ export function useLocationStock(
       }
     }
 
-    // Stocktake adjustments (counted_qty - book_qty for this location)
+    // Stocktake adjustments (counted_qty - book_qty for this location, filtered by department)
     for (const st of stocktakes) {
       if (match(st.branch_id, st.warehouse_id)) {
+        if (departmentId && st.department_id !== departmentId) continue;
         for (const si of (st.stocktake_items || [])) {
           if (si.stock_item_id) {
             const adjustment = Number(si.counted_qty) - Number(si.book_qty || 0);

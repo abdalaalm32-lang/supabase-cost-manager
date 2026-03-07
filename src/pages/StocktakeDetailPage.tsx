@@ -126,7 +126,11 @@ export const StocktakeDetailPage: React.FC = () => {
     return stocktake.branch_id || stocktake.warehouse_id || null;
   }, [stocktake]);
 
-  const { getLocationStock } = useLocationStock(stocktakeLocationId, stocktakeLocationType);
+  const stocktakeDeptId = useMemo(() => {
+    return (stocktake as any)?.department_id || null;
+  }, [stocktake]);
+
+  const { getLocationStock } = useLocationStock(stocktakeLocationId, stocktakeLocationType, stocktakeDeptId);
 
   const getStockItemInfo = useCallback((siId: string | null) => {
     if (!siId) return null;

@@ -248,6 +248,8 @@ export const TransferDetailPage: React.FC = () => {
     const logoSrc = `${window.location.origin}/logo.png`;
     const sourceLoc = allLocations.find(l => l.id === sourceId);
     const destLoc = allLocations.find(l => l.id === destinationId);
+    const srcDept = departments.find((d: any) => d.id === sourceDepartmentId);
+    const dstDept = departments.find((d: any) => d.id === destinationDepartmentId);
     const creatorName = isNew ? (auth.profile?.full_name || "") : (existingRecord?.creator_name || auth.profile?.full_name || "");
 
     let itemsHTML = "";
@@ -314,6 +316,8 @@ export const TransferDetailPage: React.FC = () => {
     <div class="info-item"><strong>التاريخ:</strong> ${date || "—"}</div>
     <div class="info-item"><strong>من (المصدر):</strong> ${sourceLoc?.name || "—"}</div>
     <div class="info-item"><strong>إلى (الوجهة):</strong> ${destLoc?.name || "—"}</div>
+    ${srcDept ? `<div class="info-item"><strong>القسم المصدر:</strong> ${srcDept.name}</div>` : ""}
+    ${dstDept ? `<div class="info-item"><strong>القسم المستلم:</strong> ${dstDept.name}</div>` : ""}
     <div class="info-item"><strong>المنشئ:</strong> ${creatorName || "—"}</div>
     <div class="info-item"><strong>الحالة:</strong> ${status || "—"}</div>
     ${notes ? `<div class="info-item" style="grid-column:span 2;"><strong>ملاحظات:</strong> ${notes}</div>` : ""}

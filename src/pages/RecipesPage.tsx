@@ -760,7 +760,7 @@ ${allTablesHTML}
           <div className="relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="بحث منتج..."
+              placeholder="بحث بمنتج أو مجموعة..."
               value={productSearch}
               onChange={(e) => setProductSearch(e.target.value)}
               className="pr-9 h-9 text-sm"

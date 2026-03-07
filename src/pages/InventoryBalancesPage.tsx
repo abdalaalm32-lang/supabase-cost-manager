@@ -9,6 +9,7 @@ import { Search, Store, Warehouse } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
 import { PrintButton } from "@/components/PrintButton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLocationStock } from "@/hooks/useLocationStock";
 
 export const InventoryBalancesPage: React.FC = () => {
@@ -18,6 +19,7 @@ export const InventoryBalancesPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [locationType, setLocationType] = useState<"branch" | "warehouse">("branch");
   const [locationFilter, setLocationFilter] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState("");
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["stock-items", companyId],
@@ -67,6 +69,26 @@ export const InventoryBalancesPage: React.FC = () => {
     queryKey: ["stock-item-locations", companyId],
     queryFn: async () => {
       const { data, error } = await supabase.from("stock_item_locations").select("*");
+      if (error) throw error;
+      return data as any[];
+    },
+    enabled: !!companyId,
+  });
+
+  const { data: departments = [] } = useQuery({
+    queryKey: ["departments-active", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("departments").select("*").eq("active", true).order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
+  const { data: itemDepartments = [] } = useQuery({
+    queryKey: ["stock-item-departments", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("stock_item_departments").select("*");
       if (error) throw error;
       return data as any[];
     },

@@ -109,6 +109,15 @@ export const InventoryBalancesPage: React.FC = () => {
     return categories.find((c: any) => c.id === id)?.name || "—";
   };
 
+  const getDepNames = (itemId: string) => {
+    const deps = itemDepartments.filter((d: any) => d.stock_item_id === itemId);
+    const names = deps.map((d: any) => {
+      const dep = departments.find((dp: any) => dp.id === d.department_id);
+      return dep?.name || "";
+    }).filter(Boolean);
+    return names.length > 0 ? names.join("، ") : "—";
+  };
+
   const getLocationNames = (itemId: string) => {
     const locs = itemLocations.filter((l: any) => l.stock_item_id === itemId);
     const names: string[] = [];
@@ -132,6 +141,16 @@ export const InventoryBalancesPage: React.FC = () => {
   const filtered = useMemo(() => {
     let result = [...items];
 
+    // Filter by department
+    if (departmentFilter) {
+      const itemIdsInDept = new Set(
+        itemDepartments
+          .filter((d: any) => d.department_id === departmentFilter)
+          .map((d: any) => d.stock_item_id),
+      );
+      result = result.filter((item: any) => itemIdsInDept.has(item.id));
+    }
+
     // Filter by location - show only items linked to this location
     if (isLocationFiltered) {
       const itemIdsWithLocation = new Set(
@@ -154,12 +173,13 @@ export const InventoryBalancesPage: React.FC = () => {
           item.name.toLowerCase().includes(q) ||
           getCatName(item.category_id).toLowerCase().includes(q) ||
           item.stock_unit.toLowerCase().includes(q) ||
-          getLocationNames(item.id).toLowerCase().includes(q),
+          getLocationNames(item.id).toLowerCase().includes(q) ||
+          getDepNames(item.id).toLowerCase().includes(q),
       );
     }
 
     return result;
-  }, [items, locationFilter, locationType, searchQuery, itemLocations, categories, branches, warehouses]);
+  }, [items, departmentFilter, locationFilter, locationType, searchQuery, itemLocations, itemDepartments, categories, branches, warehouses, departments]);
 
   const totalValue = useMemo(() => {
     return filtered.reduce((sum: number, item: any) => {
@@ -188,17 +208,33 @@ export const InventoryBalancesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Search Bar */}
-      <div className="flex items-center gap-3">
+      {/* Search Bar + Department Filter */}
+      <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="بحث بالكود، الاسم، المجموعة، الموقع..."
+            placeholder="بحث بالكود، الاسم، المجموعة، القسم، الموقع..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="glass-input pr-9"
           />
         </div>
+        <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="كل الأقسام" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">كل الأقسام</SelectItem>
+            {departments.map((d: any) => (
+              <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {departmentFilter && departmentFilter !== "all" && (
+          <Button variant="ghost" size="sm" onClick={() => setDepartmentFilter("")}>
+            إلغاء فلتر القسم
+          </Button>
+        )}
       </div>
 
       <Tabs

@@ -1397,6 +1397,52 @@ export type Database = {
           },
         ]
       }
+      stock_item_departments: {
+        Row: {
+          company_id: string
+          created_at: string
+          department_id: string
+          id: string
+          stock_item_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          department_id: string
+          id?: string
+          stock_item_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          department_id?: string
+          id?: string
+          stock_item_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_item_departments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_item_departments_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_item_departments_stock_item_id_fkey"
+            columns: ["stock_item_id"]
+            isOneToOne: false
+            referencedRelation: "stock_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_item_locations: {
         Row: {
           branch_id: string | null

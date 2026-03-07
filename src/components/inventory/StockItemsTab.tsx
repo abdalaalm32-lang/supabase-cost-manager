@@ -329,9 +329,13 @@ export const StockItemsTab: React.FC = () => {
     if (!id) return "—";
     return categories.find((c: any) => c.id === id)?.name || "—";
   };
-  const getDepName = (id: string | null) => {
-    if (!id) return "—";
-    return departments.find((d: any) => d.id === id)?.name || "—";
+  const getDepNames = (itemId: string) => {
+    const deptLinks = itemDepartments.filter((d: any) => d.stock_item_id === itemId);
+    if (deptLinks.length === 0) return "—";
+    return deptLinks.map((d: any) => {
+      const dep = departments.find((dep: any) => dep.id === d.department_id);
+      return dep?.name || "";
+    }).filter(Boolean).join("، ") || "—";
   };
 
   const getLocationNames = (itemId: string) => {

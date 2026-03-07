@@ -48,6 +48,8 @@ export const TransferDetailPage: React.FC = () => {
 
   const [sourceId, setSourceId] = useState("");
   const [destinationId, setDestinationId] = useState("");
+  const [sourceDepartmentId, setSourceDepartmentId] = useState("");
+  const [destinationDepartmentId, setDestinationDepartmentId] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<LocalTransferItem[]>([]);
@@ -126,7 +128,7 @@ export const TransferDetailPage: React.FC = () => {
     return "branch";
   }, [sourceId, warehouses]);
 
-  const { getLocationStock: getSourceStock } = useLocationStock(sourceId || null, sourceLocationType);
+  const { getLocationStock: getSourceStock } = useLocationStock(sourceId || null, sourceLocationType, sourceDepartmentId || null);
 
   // Load existing record
   const { data: existingRecord } = useQuery({
@@ -150,6 +152,8 @@ export const TransferDetailPage: React.FC = () => {
       setStatus(existingRecord.status);
       setSourceId(existingRecord.source_id || "");
       setDestinationId(existingRecord.destination_id || "");
+      setSourceDepartmentId((existingRecord as any).source_department_id || "");
+      setDestinationDepartmentId((existingRecord as any).destination_department_id || "");
       setNotes(existingRecord.notes || "");
 
       const loadedItems: LocalTransferItem[] = (existingRecord.transfer_items || []).map((ti: any) => {
@@ -244,6 +248,8 @@ export const TransferDetailPage: React.FC = () => {
     const logoSrc = `${window.location.origin}/logo.png`;
     const sourceLoc = allLocations.find(l => l.id === sourceId);
     const destLoc = allLocations.find(l => l.id === destinationId);
+    const srcDept = departments.find((d: any) => d.id === sourceDepartmentId);
+    const dstDept = departments.find((d: any) => d.id === destinationDepartmentId);
     const creatorName = isNew ? (auth.profile?.full_name || "") : (existingRecord?.creator_name || auth.profile?.full_name || "");
 
     let itemsHTML = "";
@@ -310,6 +316,8 @@ export const TransferDetailPage: React.FC = () => {
     <div class="info-item"><strong>التاريخ:</strong> ${date || "—"}</div>
     <div class="info-item"><strong>من (المصدر):</strong> ${sourceLoc?.name || "—"}</div>
     <div class="info-item"><strong>إلى (الوجهة):</strong> ${destLoc?.name || "—"}</div>
+    ${srcDept ? `<div class="info-item"><strong>القسم المصدر:</strong> ${srcDept.name}</div>` : ""}
+    ${dstDept ? `<div class="info-item"><strong>القسم المستلم:</strong> ${dstDept.name}</div>` : ""}
     <div class="info-item"><strong>المنشئ:</strong> ${creatorName || "—"}</div>
     <div class="info-item"><strong>الحالة:</strong> ${status || "—"}</div>
     ${notes ? `<div class="info-item" style="grid-column:span 2;"><strong>ملاحظات:</strong> ${notes}</div>` : ""}
@@ -381,6 +389,8 @@ export const TransferDetailPage: React.FC = () => {
           source_name: sourceLoc?.name || "",
           destination_id: destinationId,
           destination_name: destLoc?.name || "",
+          source_department_id: (sourceDepartmentId && sourceDepartmentId !== "none") ? sourceDepartmentId : null,
+          destination_department_id: (destinationDepartmentId && destinationDepartmentId !== "none") ? destinationDepartmentId : null,
           total_cost: totalCost,
           status: finalStatus,
           notes: notes || null,
@@ -421,6 +431,8 @@ export const TransferDetailPage: React.FC = () => {
           source_name: sourceLoc?.name || "",
           destination_id: destinationId,
           destination_name: destLoc?.name || "",
+          source_department_id: (sourceDepartmentId && sourceDepartmentId !== "none") ? sourceDepartmentId : null,
+          destination_department_id: (destinationDepartmentId && destinationDepartmentId !== "none") ? destinationDepartmentId : null,
           total_cost: totalCost,
           notes: notes || null,
         };
@@ -505,7 +517,7 @@ export const TransferDetailPage: React.FC = () => {
 
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">الموقع المصدر</label>
-              <Select value={sourceId} onValueChange={setSourceId} disabled={isLocked}>
+              <Select value={sourceId} onValueChange={v => { setSourceId(v); setSourceDepartmentId(""); }} disabled={isLocked}>
                 <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="اختر الموقع المصدر..." /></SelectTrigger>
                 <SelectContent>
                   {allLocations.map(loc => (
@@ -516,13 +528,35 @@ export const TransferDetailPage: React.FC = () => {
             </div>
 
             <div>
+              <label className="text-xs text-muted-foreground mb-1 block">القسم المصدر (اختياري)</label>
+              <Select value={sourceDepartmentId} onValueChange={setSourceDepartmentId} disabled={isLocked}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="اختر القسم..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">بدون قسم</SelectItem>
+                  {departments.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
               <label className="text-xs text-muted-foreground mb-1 block">الموقع المستلم</label>
-              <Select value={destinationId} onValueChange={setDestinationId} disabled={isLocked}>
+              <Select value={destinationId} onValueChange={v => { setDestinationId(v); setDestinationDepartmentId(""); }} disabled={isLocked}>
                 <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="اختر الموقع المستلم..." /></SelectTrigger>
                 <SelectContent>
                   {allLocations.filter(l => l.id !== sourceId).map(loc => (
                     <SelectItem key={loc.id} value={loc.id}>{loc.name} ({loc.type})</SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">القسم المستلم (اختياري)</label>
+              <Select value={destinationDepartmentId} onValueChange={setDestinationDepartmentId} disabled={isLocked}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="اختر القسم..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">بدون قسم</SelectItem>
+                  {departments.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

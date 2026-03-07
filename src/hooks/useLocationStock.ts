@@ -67,7 +67,7 @@ export function useLocationStock(
     queryFn: async () => {
       const { data, error } = await supabase
         .from("transfer_items")
-        .select("stock_item_id, quantity, transfers!inner(id, status, source_id, destination_id, company_id)")
+        .select("stock_item_id, quantity, transfers!inner(id, status, source_id, destination_id, source_department_id, destination_department_id, company_id)")
         .eq("transfers.company_id", companyId!)
         .eq("transfers.status", "مكتمل");
       if (error) throw error;
@@ -196,11 +196,21 @@ export function useLocationStock(
       }
     }
 
-    // Transfers
+    // Transfers (with department filtering)
     for (const ti of transferItems) {
       const t = ti.transfers;
-      if (t.source_id === locationId) sub(ti.stock_item_id, Number(ti.quantity));
-      if (t.destination_id === locationId) add(ti.stock_item_id, Number(ti.quantity));
+      if (t.source_id === locationId) {
+        // Only subtract if departmentId matches source_department_id (or no department filter)
+        if (!departmentId || t.source_department_id === departmentId) {
+          sub(ti.stock_item_id, Number(ti.quantity));
+        }
+      }
+      if (t.destination_id === locationId) {
+        // Only add if departmentId matches destination_department_id (or no department filter)
+        if (!departmentId || t.destination_department_id === departmentId) {
+          add(ti.stock_item_id, Number(ti.quantity));
+        }
+      }
     }
 
     // Waste OUT

@@ -314,9 +314,9 @@ export const IndirectExpensesPage: React.FC = () => {
   const total = selectedPeriod ? totalIndirectCost(selectedPeriod) : 0;
   const monthSales = selectedPeriod ? monthlyExpectedSales(selectedPeriod) : 0;
 
-  // Calculate Avg Direct Cost %
-  const avgDirectCostPct = (() => {
-    if (!selectedPeriod || posItems.length === 0) return 0;
+  // Calculate totals for direct cost and selling price
+  const { totalSellingPrice, totalDirectCostSum, avgDirectCostPct } = (() => {
+    if (!selectedPeriod || posItems.length === 0) return { totalSellingPrice: 0, totalDirectCostSum: 0, avgDirectCostPct: 0 };
     const filteredItems = selectedBranchId !== "all" 
       ? posItems.filter(i => i.branch_id === selectedBranchId) 
       : posItems;
@@ -341,7 +341,8 @@ export const IndirectExpensesPage: React.FC = () => {
       totalPrice += item.price;
       totalDirectCost += finalDirectCost;
     }
-    return totalPrice > 0 ? (totalDirectCost / totalPrice) * 100 : 0;
+    const pct = totalPrice > 0 ? (totalDirectCost / totalPrice) * 100 : 0;
+    return { totalSellingPrice: totalPrice, totalDirectCostSum: totalDirectCost, avgDirectCostPct: pct };
   })();
 
   const indirectPctValue = selectedPeriod ? indirectCostPct(selectedPeriod) : 0;
@@ -530,33 +531,49 @@ export const IndirectExpensesPage: React.FC = () => {
           </div>
 
           {/* KPI Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <Card className="border-primary/20 bg-primary/5">
               <CardContent className="p-4 text-center">
                 <DollarSign className="mx-auto mb-1 text-primary" size={24} />
+                <p className="text-xs text-muted-foreground">إجمالي سعر البيع</p>
+                <p className="text-xl font-bold text-primary">{totalSellingPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              </CardContent>
+            </Card>
+            <Card className="border-warning/20 bg-warning/5">
+              <CardContent className="p-4 text-center">
+                <TrendingUp className="mx-auto mb-1 text-warning" size={24} />
+                <p className="text-xs text-muted-foreground">إجمالي التكلفة المباشرة</p>
+                <p className="text-xl font-bold text-warning">{totalDirectCostSum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+              </CardContent>
+            </Card>
+            <Card className="border-destructive/20 bg-destructive/5">
+              <CardContent className="p-4 text-center">
+                <DollarSign className="mx-auto mb-1 text-destructive" size={24} />
                 <p className="text-xs text-muted-foreground">إجمالي المصاريف الغير مباشرة</p>
-                <p className="text-xl font-bold text-primary">{total.toLocaleString()}</p>
+                <p className="text-xl font-bold text-destructive">{total.toLocaleString()}</p>
               </CardContent>
             </Card>
-            <Card className="border-emerald-500/20 bg-emerald-500/5">
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <Card className="border-muted">
               <CardContent className="p-4 text-center">
-                <TrendingUp className="mx-auto mb-1 text-emerald-500" size={24} />
+                <TrendingUp className="mx-auto mb-1 text-muted-foreground" size={24} />
                 <p className="text-xs text-muted-foreground">المبيعات الشهرية المتوقعة</p>
-                <p className="text-xl font-bold text-emerald-600">{monthSales.toLocaleString()}</p>
+                <p className="text-xl font-bold">{monthSales.toLocaleString()}</p>
               </CardContent>
             </Card>
-            <Card className="border-orange-500/20 bg-orange-500/5">
+            <Card className="border-muted">
               <CardContent className="p-4 text-center">
-                <Percent className="mx-auto mb-1 text-orange-500" size={24} />
+                <Percent className="mx-auto mb-1 text-muted-foreground" size={24} />
                 <p className="text-xs text-muted-foreground">نسبة المصاريف الغير مباشرة</p>
-                <p className="text-xl font-bold text-orange-600">{indirectCostPct(selectedPeriod).toFixed(2)}%</p>
+                <p className="text-xl font-bold">{indirectCostPct(selectedPeriod).toFixed(2)}%</p>
               </CardContent>
             </Card>
-            <Card className="border-red-500/20 bg-red-500/5">
+            <Card className="border-muted">
               <CardContent className="p-4 text-center">
-                <Target className="mx-auto mb-1 text-red-500" size={24} />
+                <Target className="mx-auto mb-1 text-muted-foreground" size={24} />
                 <p className="text-xs text-muted-foreground">نقطة التعادل</p>
-                <p className="text-xl font-bold text-red-600">{breakEvenPoint(selectedPeriod).toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                <p className="text-xl font-bold">{breakEvenPoint(selectedPeriod).toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
               </CardContent>
             </Card>
           </div>

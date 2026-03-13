@@ -314,9 +314,9 @@ export const IndirectExpensesPage: React.FC = () => {
   const total = selectedPeriod ? totalIndirectCost(selectedPeriod) : 0;
   const monthSales = selectedPeriod ? monthlyExpectedSales(selectedPeriod) : 0;
 
-  // Calculate Avg Direct Cost %
-  const avgDirectCostPct = (() => {
-    if (!selectedPeriod || posItems.length === 0) return 0;
+  // Calculate totals for direct cost and selling price
+  const { totalSellingPrice, totalDirectCostSum, avgDirectCostPct } = (() => {
+    if (!selectedPeriod || posItems.length === 0) return { totalSellingPrice: 0, totalDirectCostSum: 0, avgDirectCostPct: 0 };
     const filteredItems = selectedBranchId !== "all" 
       ? posItems.filter(i => i.branch_id === selectedBranchId) 
       : posItems;
@@ -341,7 +341,8 @@ export const IndirectExpensesPage: React.FC = () => {
       totalPrice += item.price;
       totalDirectCost += finalDirectCost;
     }
-    return totalPrice > 0 ? (totalDirectCost / totalPrice) * 100 : 0;
+    const pct = totalPrice > 0 ? (totalDirectCost / totalPrice) * 100 : 0;
+    return { totalSellingPrice: totalPrice, totalDirectCostSum: totalDirectCost, avgDirectCostPct: pct };
   })();
 
   const indirectPctValue = selectedPeriod ? indirectCostPct(selectedPeriod) : 0;

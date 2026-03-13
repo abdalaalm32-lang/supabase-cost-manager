@@ -532,29 +532,6 @@ export const IndirectExpensesPage: React.FC = () => {
 
           {/* KPI Cards */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <Card className="border-primary/20 bg-primary/5">
-              <CardContent className="p-4 text-center">
-                <DollarSign className="mx-auto mb-1 text-primary" size={24} />
-                <p className="text-xs text-muted-foreground">إجمالي سعر البيع</p>
-                <p className="text-xl font-bold text-primary">{totalSellingPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-              </CardContent>
-            </Card>
-            <Card className="border-warning/20 bg-warning/5">
-              <CardContent className="p-4 text-center">
-                <TrendingUp className="mx-auto mb-1 text-warning" size={24} />
-                <p className="text-xs text-muted-foreground">إجمالي التكلفة المباشرة</p>
-                <p className="text-xl font-bold text-warning">{totalDirectCostSum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-              </CardContent>
-            </Card>
-            <Card className="border-destructive/20 bg-destructive/5">
-              <CardContent className="p-4 text-center">
-                <DollarSign className="mx-auto mb-1 text-destructive" size={24} />
-                <p className="text-xs text-muted-foreground">إجمالي المصاريف الغير مباشرة</p>
-                <p className="text-xl font-bold text-destructive">{total.toLocaleString()}</p>
-              </CardContent>
-            </Card>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <Card className="border-muted">
               <CardContent className="p-4 text-center">
                 <TrendingUp className="mx-auto mb-1 text-muted-foreground" size={24} />

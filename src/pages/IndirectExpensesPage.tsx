@@ -314,19 +314,21 @@ export const IndirectExpensesPage: React.FC = () => {
   const total = selectedPeriod ? totalIndirectCost(selectedPeriod) : 0;
   const monthSales = selectedPeriod ? monthlyExpectedSales(selectedPeriod) : 0;
 
-  // Calculate totals for direct cost and selling price
+  // Calculate totals for direct cost and selling price (matching MenuAnalysisPage logic)
   const { totalSellingPrice, totalDirectCostSum, avgDirectCostPct } = (() => {
     if (!selectedPeriod || posItems.length === 0) return { totalSellingPrice: 0, totalDirectCostSum: 0, avgDirectCostPct: 0 };
-    const filteredItems = selectedBranchId !== "all" 
+    let items = selectedBranchId !== "all" 
       ? posItems.filter(i => i.branch_id === selectedBranchId) 
       : posItems;
+    // Filter to kitchen items only (matching MenuAnalysisPage kitchen tab - the primary menu)
+    items = items.filter(i => !i.menu_engineering_class || i.menu_engineering_class.toLowerCase() === "kitchen");
     
     let totalPrice = 0;
     let totalDirectCost = 0;
     const getCatPackingCost = (catName: string) => categoryPackingItems.filter((p: any) => p.category_name === catName).reduce((s: number, p: any) => s + p.cost, 0);
     const getCatSideCost = (catName: string) => categorySideCostItems.filter((p: any) => p.category_name === catName).reduce((s: number, p: any) => s + p.cost, 0);
 
-    for (const item of filteredItems) {
+    for (const item of items) {
       const catName = item.category || "بدون تصنيف";
       const mainCost = recipeCosts.get(item.id) || 0;
       const override = costOverrides.get(item.id);
@@ -342,6 +344,7 @@ export const IndirectExpensesPage: React.FC = () => {
       totalDirectCost += finalDirectCost;
     }
     const pct = totalPrice > 0 ? (totalDirectCost / totalPrice) * 100 : 0;
+    console.log('Avg Direct Cost Debug:', { totalPrice, totalDirectCost, pct, itemCount: items.length });
     return { totalSellingPrice: totalPrice, totalDirectCostSum: totalDirectCost, avgDirectCostPct: pct };
   })();
 
@@ -531,12 +534,19 @@ export const IndirectExpensesPage: React.FC = () => {
           </div>
 
           {/* KPI Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card className="border-muted">
               <CardContent className="p-4 text-center">
                 <TrendingUp className="mx-auto mb-1 text-muted-foreground" size={24} />
                 <p className="text-xs text-muted-foreground">المبيعات الشهرية المتوقعة</p>
                 <p className="text-xl font-bold">{monthSales.toLocaleString()}</p>
+              </CardContent>
+            </Card>
+            <Card className="border-destructive/20 bg-destructive/5">
+              <CardContent className="p-4 text-center">
+                <DollarSign className="mx-auto mb-1 text-destructive" size={24} />
+                <p className="text-xs text-muted-foreground">إجمالي المصاريف الغير مباشرة</p>
+                <p className="text-xl font-bold text-destructive">{total.toLocaleString()}</p>
               </CardContent>
             </Card>
             <Card className="border-muted">

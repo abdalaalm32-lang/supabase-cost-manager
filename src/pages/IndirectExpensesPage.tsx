@@ -533,11 +533,11 @@ export const IndirectExpensesPage: React.FC = () => {
 
           {/* KPI Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="border-muted">
+            <Card className="border-destructive/20 bg-destructive/5">
               <CardContent className="p-4 text-center">
-                <TrendingUp className="mx-auto mb-1 text-muted-foreground" size={24} />
+                <TrendingUp className="mx-auto mb-1 text-destructive" size={24} />
                 <p className="text-xs text-muted-foreground">المبيعات الشهرية المتوقعة</p>
-                <p className="text-xl font-bold">{monthSales.toLocaleString()}</p>
+                <p className="text-xl font-bold text-destructive">{monthSales.toLocaleString()}</p>
               </CardContent>
             </Card>
             <Card className="border-destructive/20 bg-destructive/5">
@@ -547,18 +547,18 @@ export const IndirectExpensesPage: React.FC = () => {
                 <p className="text-xl font-bold text-destructive">{total.toLocaleString()}</p>
               </CardContent>
             </Card>
-            <Card className="border-muted">
+            <Card className="border-destructive/20 bg-destructive/5">
               <CardContent className="p-4 text-center">
-                <Percent className="mx-auto mb-1 text-muted-foreground" size={24} />
+                <Percent className="mx-auto mb-1 text-destructive" size={24} />
                 <p className="text-xs text-muted-foreground">نسبة المصاريف الغير مباشرة</p>
-                <p className="text-xl font-bold">{indirectCostPct(selectedPeriod).toFixed(2)}%</p>
+                <p className="text-xl font-bold text-destructive">{indirectCostPct(selectedPeriod).toFixed(2)}%</p>
               </CardContent>
             </Card>
-            <Card className="border-muted">
+            <Card className="border-destructive/20 bg-destructive/5">
               <CardContent className="p-4 text-center">
-                <Target className="mx-auto mb-1 text-muted-foreground" size={24} />
+                <Target className="mx-auto mb-1 text-destructive" size={24} />
                 <p className="text-xs text-muted-foreground">نقطة التعادل</p>
-                <p className="text-xl font-bold">{breakEvenPoint(selectedPeriod).toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
+                <p className="text-xl font-bold text-destructive">{breakEvenPoint(selectedPeriod).toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
               </CardContent>
             </Card>
           </div>

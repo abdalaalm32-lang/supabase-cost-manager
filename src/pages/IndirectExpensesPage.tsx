@@ -317,11 +317,9 @@ export const IndirectExpensesPage: React.FC = () => {
   // Calculate totals for direct cost and selling price (matching MenuAnalysisPage logic)
   const { totalSellingPrice, totalDirectCostSum, avgDirectCostPct } = (() => {
     if (!selectedPeriod || posItems.length === 0) return { totalSellingPrice: 0, totalDirectCostSum: 0, avgDirectCostPct: 0 };
-    let items = selectedBranchId !== "all" 
+    const items = selectedBranchId !== "all" 
       ? posItems.filter(i => i.branch_id === selectedBranchId) 
       : posItems;
-    // Filter to kitchen items only (matching MenuAnalysisPage kitchen tab - the primary menu)
-    items = items.filter(i => !i.menu_engineering_class || i.menu_engineering_class.toLowerCase() === "kitchen");
     
     let totalPrice = 0;
     let totalDirectCost = 0;

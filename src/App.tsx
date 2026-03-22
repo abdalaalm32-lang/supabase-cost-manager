@@ -302,19 +302,27 @@ const LoginPageWrapper = () => {
 };
 
 const PermissionGuard: React.FC<{ permKey: string; children: React.ReactNode }> = ({ permKey, children }) => {
-  const { hasPermission } = useAuth();
+  const { auth, hasPermission } = useAuth();
+  if (!auth.isReady) return null;
+  if (!auth.session) return <Navigate to="/login" replace />;
+  if (!auth.profile && !auth.isAdmin && !auth.isOwner) return null;
   if (!hasPermission(permKey)) return <Navigate to="/" replace />;
   return <>{children}</>;
 };
 
 const AdminGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { auth } = useAuth();
+  if (!auth.isReady) return null;
+  if (!auth.session) return <Navigate to="/login" replace />;
   if (!auth.isAdmin) return <Navigate to="/" replace />;
   return <>{children}</>;
 };
 
 const OwnerOrAdminGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { auth, hasPermission } = useAuth();
+  if (!auth.isReady) return null;
+  if (!auth.session) return <Navigate to="/login" replace />;
+  if (!auth.profile && !auth.isAdmin && !auth.isOwner) return null;
   if (!auth.isAdmin && !auth.isOwner && !hasPermission("settings")) return <Navigate to="/" replace />;
   return <>{children}</>;
 };

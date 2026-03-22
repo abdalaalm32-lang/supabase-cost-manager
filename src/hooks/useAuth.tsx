@@ -58,7 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .from("profiles")
       .select("*")
       .eq("user_id", userId)
-      .single();
+      .maybeSingle();
     return data as Profile | null;
   };
 
@@ -70,18 +70,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return data?.map((r: any) => r.role) || [];
   };
 
+  const loadingRef = React.useRef(false);
+
   const loadUserData = async (session: Session) => {
-    const [profile, roles] = await Promise.all([
-      fetchProfile(session.user.id),
-      fetchRoles(session.user.id),
-    ]);
-    const isAdmin = roles.includes("admin");
-    const isOwner = roles.includes("owner");
-    setAuth({ isReady: true, session, user: session.user, profile, roles, isAdmin, isOwner });
+    if (loadingRef.current) return;
+    loadingRef.current = true;
+    try {
+      const [profile, roles] = await Promise.all([
+        fetchProfile(session.user.id),
+        fetchRoles(session.user.id),
+      ]);
+      const isAdmin = roles.includes("admin");
+      const isOwner = roles.includes("owner");
+      setAuth({ isReady: true, session, user: session.user, profile, roles, isAdmin, isOwner });
+    } finally {
+      loadingRef.current = false;
+    }
   };
 
   useEffect(() => {
+    let initialLoad = true;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (initialLoad) return; // skip, getSession handles initial
       if (session?.user) {
         setTimeout(() => loadUserData(session), 0);
       } else {
@@ -90,6 +101,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      initialLoad = false;
       if (session?.user) {
         await loadUserData(session);
       } else {
@@ -97,17 +109,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     });
 
-    // Periodic session validation - detects deleted users
+    // Periodic session validation - detects deleted users (every 60s to avoid rate limits)
     const sessionCheck = setInterval(async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         const { error } = await supabase.auth.getUser();
         if (error) {
-          // User was deleted or token is invalid
           await supabase.auth.signOut();
         }
       }
-    }, 30000); // Check every 30 seconds
+    }, 60000);
 
     return () => {
       subscription.unsubscribe();

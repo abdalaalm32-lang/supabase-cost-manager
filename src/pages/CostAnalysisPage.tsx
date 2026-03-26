@@ -677,7 +677,88 @@ export const CostAnalysisPage: React.FC = () => {
     } catch (e) { console.error(e); toast.error("حدث خطأ أثناء التصدير"); }
   };
 
-  const handlePrint = () => window.print();
+  const handlePrint = () => {
+    if (exportData.length === 0) return;
+    const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
+    const logoSrc = `${window.location.origin}/logo.png`;
+    const periodLabel = dateFrom && dateTo
+      ? `من ${format(dateFrom, "yyyy-MM-dd")} إلى ${format(dateTo, "yyyy-MM-dd")}`
+      : dateFrom ? `من ${format(dateFrom, "yyyy-MM-dd")}` : dateTo ? `حتى ${format(dateTo, "yyyy-MM-dd")}` : "";
+    const locationLabel = locationFilter !== "all"
+      ? (locationType === "branch"
+        ? branches?.find(b => b.id === locationFilter)?.name
+        : warehouses?.find(w => w.id === locationFilter)?.name) || ""
+      : "";
+    const deptLabel = departmentFilter !== "all" ? departments?.find(d => d.id === departmentFilter)?.name || "" : "";
+    const catLabel = categoryFilter !== "all" ? categories?.find(c => c.id === categoryFilter)?.name || "" : "";
+    const filterParts = [locationLabel, deptLabel, catLabel, periodLabel].filter(Boolean);
+    const filterLine = filterParts.length > 0 ? filterParts.join(" • ") : "";
+
+    // Build header row with groups
+    let theadHTML = "<tr>";
+    for (const grp of exportHeaderGroups) {
+      theadHTML += `<th colspan="${grp.colSpan}" style="border:1px solid #000;padding:6px 8px;font-size:11px;text-align:center;background:#eee;font-weight:bold;">${grp.label}</th>`;
+    }
+    theadHTML += "</tr><tr>";
+    for (const col of exportColumns) {
+      theadHTML += `<th style="border:1px solid #000;padding:4px 6px;font-size:9px;text-align:center;white-space:nowrap;">${col.label}</th>`;
+    }
+    theadHTML += "</tr>";
+
+    // Build body
+    let tbodyHTML = "";
+    exportData.forEach((row) => {
+      const rowType = row.__rowType as string | undefined;
+      const isTotal = rowType === "grand-total" || rowType === "group-total";
+      const bg = rowType === "grand-total" ? "background:#ddd;" : rowType === "group-total" ? "background:#f0f0f0;" : "";
+      tbodyHTML += "<tr>";
+      for (const col of exportColumns) {
+        const val = row[col.key] !== null && row[col.key] !== undefined ? String(row[col.key]) : "—";
+        tbodyHTML += `<td style="border:1px solid #000;padding:3px 5px;font-size:9px;text-align:center;${isTotal ? "font-weight:bold;" : ""}${bg}">${val}</td>`;
+      }
+      tbodyHTML += "</tr>";
+    });
+
+    const printHTML = `<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>تحليل التكاليف</title>
+  <style>
+    @font-face { font-family:'CairoLocal'; src:url('${window.location.origin}/fonts/Cairo-Regular.ttf') format('truetype'); }
+    @font-face { font-family:'AmiriLocal'; src:url('${window.location.origin}/fonts/Amiri-Regular.ttf') format('truetype'); }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'CairoLocal','AmiriLocal',sans-serif; direction:rtl; padding:15px; color:#000; background:#fff; }
+    @media print { @page { size:landscape; margin:8mm; } body { padding:0; } }
+    .header { text-align:center; margin-bottom:12px; border-bottom:1px solid #000; padding-bottom:8px; display:flex; align-items:center; justify-content:center; gap:10px; }
+    .logo { width:70px; height:70px; object-fit:contain; }
+    .header h1 { font-size:16px; font-weight:bold; margin-bottom:2px; }
+    .header p { font-size:10px; color:#333; }
+    .filter-info { text-align:center; font-size:10px; color:#333; margin-bottom:8px; }
+    table { width:100%; border-collapse:collapse; }
+    .footer { text-align:center; margin-top:12px; font-size:8px; color:#000; border-top:1px solid #000; padding-top:6px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="${logoSrc}" alt="Logo" class="logo" />
+    <div>
+      <h1>تحليل التكاليف</h1>
+      <p>Cost Management System • ${dateStr}</p>
+    </div>
+  </div>
+  ${filterLine ? `<div class="filter-info">${filterLine}</div>` : ""}
+  <table><thead>${theadHTML}</thead><tbody>${tbodyHTML}</tbody></table>
+  <div class="footer">Powered by Mohamed Abdel Aal</div>
+  <script>
+    (async function(){try{if(document.fonts&&document.fonts.ready)await document.fonts.ready;}catch(e){}window.print();window.onafterprint=function(){window.close();};})();
+  </script>
+</body>
+</html>`;
+
+    const w = window.open("", "_blank");
+    if (w) { w.document.write(printHTML); w.document.close(); }
+  };
   const hasFilters = dateFrom || dateTo || locationFilter !== "all" || categoryFilter !== "all" || departmentFilter !== "all";
 
   const VarianceArrow = ({ value }: { value: number }) => {

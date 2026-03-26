@@ -341,7 +341,47 @@ export const ProductionRecipesPage: React.FC = () => {
           {selectedProduct && getStatusBadge(recipeStatus === "editing" ? "editing" : recipeStatus)}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {selectedProduct && (
+          {/* Global Ingredient Search */}
+          <div className="relative">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="بحث خامة في المنتجات المصنعة..."
+              value={globalSearch}
+              onChange={(e) => {
+                setGlobalSearch(e.target.value);
+                setShowGlobalResults(true);
+              }}
+              onFocus={() => globalSearch && setShowGlobalResults(true)}
+              className="pr-9 w-64"
+            />
+            {showGlobalResults && globalSearchResults.length > 0 && (
+              <div className="absolute top-full mt-1 left-0 right-0 z-50 glass-card p-2 max-h-60 overflow-auto">
+                {globalSearchResults.map((item: any) => (
+                  <div
+                    key={item.id}
+                    className="p-2 rounded-lg hover:bg-muted/50 text-sm cursor-pointer"
+                    onClick={() => {
+                      setSelectedMaterial(item);
+                      setShowGlobalResults(false);
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">{item.name}</span>
+                      <Badge variant="secondary" className="text-xs">
+                        {item.usedInCount} تركيبة
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">{item.code} • {item.stock_unit}</p>
+                  </div>
+                ))}
+                <button
+                  onClick={() => setShowGlobalResults(false)}
+                  className="w-full text-xs text-muted-foreground pt-1 hover:underline"
+                >
+                  إغلاق
+                </button>
+              </div>
+            )}
             <>
               {recipeStatus === "draft" || isEditing ? (
                 <Button onClick={handleSave} size="sm"><Save size={14} /> حفظ التركيبة</Button>

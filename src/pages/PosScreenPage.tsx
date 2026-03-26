@@ -136,7 +136,8 @@ export const PosScreenPage: React.FC = () => {
         date: saleDate ? saleDate.toISOString() : new Date().toISOString(),
         total_amount: total, status, invoice_number: invoiceNum,
         tax_enabled: taxEnabled, tax_rate: taxEnabled ? taxRate : 0, tax_amount: taxAmount,
-      }).select().single();
+        discount_amount: discountAmount,
+      } as any).select().single();
       if (saleErr) throw saleErr;
 
       const saleItems = cart.map((c) => ({ sale_id: sale.id, pos_item_id: c.pos_item_id, quantity: c.quantity, unit_price: c.unit_price, total: c.unit_price * c.quantity }));

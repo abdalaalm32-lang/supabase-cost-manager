@@ -17,6 +17,7 @@ export interface IndirectExpenseItem {
 export interface PnlResult {
   grossSales: number;
   taxAmount: number;
+  discountAmount: number;
   netSales: number;
   cogsByCategory: CategoryCogs[];
   totalCogs: number;
@@ -291,6 +292,7 @@ export function usePnlData(
   return {
     grossSales,
     taxAmount,
+    discountAmount,
     netSales,
     cogsByCategory,
     totalCogs,

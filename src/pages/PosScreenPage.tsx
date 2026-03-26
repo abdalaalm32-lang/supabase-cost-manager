@@ -353,7 +353,6 @@ export const PosScreenPage: React.FC = () => {
                 <span className="text-2xl font-black text-gradient">{total.toFixed(2)} <span className="text-base">EGP</span></span>
               </div>
             </>
-            </>
           )}
 
           <div className="flex gap-2">

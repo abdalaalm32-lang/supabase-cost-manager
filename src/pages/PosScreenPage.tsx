@@ -39,6 +39,9 @@ export const PosScreenPage: React.FC = () => {
   const [taxEnabled, setTaxEnabled] = useState(false);
   const [taxRate, setTaxRate] = useState<number>(0);
   const [taxInputVisible, setTaxInputVisible] = useState(false);
+  const [discountEnabled, setDiscountEnabled] = useState(false);
+  const [discountType, setDiscountType] = useState<"percent" | "fixed">("percent");
+  const [discountValue, setDiscountValue] = useState<number>(0);
 
   const { data: branches } = useQuery({
     queryKey: ["branches", companyId],

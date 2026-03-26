@@ -382,6 +382,8 @@ export const ProductionRecipesPage: React.FC = () => {
                 </button>
               </div>
             )}
+          </div>
+          {selectedProduct && (
             <>
               {recipeStatus === "draft" || isEditing ? (
                 <Button onClick={handleSave} size="sm"><Save size={14} /> حفظ التركيبة</Button>
@@ -405,6 +407,9 @@ export const ProductionRecipesPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Click outside to close global results */}
+      {showGlobalResults && <div className="fixed inset-0 z-40" onClick={() => setShowGlobalResults(false)} />}
 
       {!manufacturingCategory && (
         <div className="glass-card p-6 text-center">

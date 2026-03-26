@@ -1,0 +1,1 @@
+ALTER TABLE public.pos_sales ADD COLUMN discount_amount numeric NOT NULL DEFAULT 0;

@@ -22,6 +22,7 @@ import {
   Percent,
   ShoppingBasket,
   Copy,
+  ClipboardPaste,
   CheckCircle2,
   Clock,
   Edit3,
@@ -677,6 +678,12 @@ ${allTablesHTML}
                   <Button onClick={handleDuplicate} variant="outline" size="sm">
                     <Copy size={14} /> نسخ
                   </Button>
+                </>
+              )}
+              {copiedIngredients && copiedIngredients.length > 0 && (recipeStatus === "draft" || isEditing) && (
+                <Button onClick={handlePasteRecipe} variant="outline" size="sm" className="border-primary/50 text-primary">
+                  <ClipboardPaste size={14} /> لصق الوصفة ({copiedIngredients.length})
+                </Button>
                 </>
               )}
               {ingredients.length > 0 && (

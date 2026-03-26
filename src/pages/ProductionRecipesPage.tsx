@@ -247,7 +247,33 @@ export const ProductionRecipesPage: React.FC = () => {
     return ingredients.reduce((sum, ing) => sum + getIngredientCost(ing), 0);
   }, [ingredients]);
 
-  const handleSave = async () => {
+  // Global ingredient search across all production recipes
+  const globalSearchResults = useMemo(() => {
+    if (!globalSearch.trim()) return [];
+    const q = globalSearch.trim().toLowerCase();
+    const matchedItems = allStockItems.filter(
+      (s: any) => s.name.toLowerCase().includes(q) || (s.code || "").toLowerCase().includes(q),
+    );
+    return matchedItems.map((si: any) => {
+      const usedIn = recipes.filter((r: any) =>
+        (r.production_recipe_ingredients || []).some((ri: any) => ri.stock_item_id === si.id),
+      );
+      const usageDetails = usedIn.map((r: any) => {
+        const product = productItems.find((p: any) => p.id === r.stock_item_id);
+        const ri = (r.production_recipe_ingredients || []).find((ri: any) => ri.stock_item_id === si.id);
+        return {
+          productName: product?.name || "—",
+          qty: Number(ri?.qty || 0),
+          unit: si.recipe_unit || si.stock_unit || "كجم",
+          avgCost: Number(si.avg_cost || 0),
+          conversionFactor: Number(si.conversion_factor || 1),
+        };
+      });
+      return { ...si, usedInCount: usedIn.length, usageDetails };
+    }).filter((item: any) => item.usedInCount > 0);
+  }, [globalSearch, allStockItems, recipes, productItems]);
+
+
     if (!selectedProductId || !companyId) return;
     try {
       if (recipeId) {

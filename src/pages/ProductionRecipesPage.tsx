@@ -649,6 +649,11 @@ export const ProductionRecipesPage: React.FC = () => {
                   })}
                 </TableBody>
               </Table>
+              <MaterialUsagePrintExport
+                materialName={selectedMaterial.name}
+                materialCode={selectedMaterial.code || "—"}
+                usageData={selectedMaterial.usageDetails || []}
+              />
             </div>
           )}
         </DialogContent>

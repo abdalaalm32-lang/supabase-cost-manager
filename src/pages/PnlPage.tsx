@@ -140,6 +140,7 @@ export const PnlPage: React.FC = () => {
     const rows: { label: string; amount: number; pctVal: string; type: "item" | "subtotal" | "total" | "header" | "separator"; indent?: boolean; expenseName?: string; isAutoExpense?: boolean }[] = [];
     rows.push({ label: "إجمالي المبيعات", amount: d.grossSales, pctVal: pct(d.grossSales, d.netSales), type: "item" });
     rows.push({ label: "(-) ضريبة المبيعات", amount: d.taxAmount, pctVal: pct(d.taxAmount, d.netSales), type: "item", indent: true });
+    rows.push({ label: "(-) خصم المبيعات", amount: d.discountAmount, pctVal: pct(d.discountAmount, d.netSales), type: "item", indent: true });
     rows.push({ label: "صافي المبيعات", amount: d.netSales, pctVal: "100%", type: "subtotal" });
     rows.push({ label: "تكلفة البضاعة المباعة", amount: 0, pctVal: "", type: "header" });
     d.cogsByCategory.forEach((c) => {

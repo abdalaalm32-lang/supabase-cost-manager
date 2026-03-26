@@ -17,6 +17,7 @@ export interface IndirectExpenseItem {
 export interface PnlResult {
   grossSales: number;
   taxAmount: number;
+  discountAmount: number;
   netSales: number;
   cogsByCategory: CategoryCogs[];
   totalCogs: number;
@@ -49,14 +50,14 @@ export function usePnlData(
     queryFn: async () => {
       let q = supabase
         .from("pos_sales")
-        .select("id, total_amount, tax_amount, date, branch_id")
+        .select("id, total_amount, tax_amount, discount_amount, date, branch_id")
         .eq("company_id", companyId!)
         .eq("status", "مكتمل")
         .gte("date", `${dateFrom}T00:00:00`)
         .lte("date", `${dateTo}T23:59:59`);
       if (branchId && branchId !== "all") q = q.eq("branch_id", branchId);
       const { data } = await q;
-      return data || [];
+      return (data as any[]) || [];
     },
     enabled,
   });
@@ -180,7 +181,11 @@ export function usePnlData(
     (s, r) => s + Number(r.tax_amount || 0),
     0
   );
-  const netSales = grossSales - taxAmount;
+  const discountAmount = (sales || []).reduce(
+    (s, r) => s + Number(r.discount_amount || 0),
+    0
+  );
+  const netSales = grossSales - taxAmount - discountAmount;
 
   // Build maps
   const posItemMap = new Map<string, any>();
@@ -287,6 +292,7 @@ export function usePnlData(
   return {
     grossSales,
     taxAmount,
+    discountAmount,
     netSales,
     cogsByCategory,
     totalCogs,

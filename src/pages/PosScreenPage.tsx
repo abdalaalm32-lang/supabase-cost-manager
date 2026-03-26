@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
   Plus, Minus, Trash2, ShoppingCart, CalendarIcon, Store,
-  FileText, Printer, AlertCircle, Archive, LayoutGrid
+  FileText, Printer, AlertCircle, Archive, LayoutGrid, Percent, Tag
 } from "lucide-react";
 
 interface CartItem {
@@ -39,6 +39,9 @@ export const PosScreenPage: React.FC = () => {
   const [taxEnabled, setTaxEnabled] = useState(false);
   const [taxRate, setTaxRate] = useState<number>(0);
   const [taxInputVisible, setTaxInputVisible] = useState(false);
+  const [discountEnabled, setDiscountEnabled] = useState(false);
+  const [discountType, setDiscountType] = useState<"percent" | "fixed">("percent");
+  const [discountValue, setDiscountValue] = useState<number>(0);
 
   const { data: branches } = useQuery({
     queryKey: ["branches", companyId],
@@ -110,8 +113,14 @@ export const PosScreenPage: React.FC = () => {
   };
 
   const subtotal = cart.reduce((s, c) => s + c.unit_price * c.quantity, 0);
-  const taxAmount = taxEnabled ? (subtotal * taxRate) / 100 : 0;
-  const total = subtotal + taxAmount;
+  const discountAmount = discountEnabled
+    ? discountType === "percent"
+      ? (subtotal * discountValue) / 100
+      : discountValue
+    : 0;
+  const afterDiscount = subtotal - discountAmount;
+  const taxAmount = taxEnabled ? (afterDiscount * taxRate) / 100 : 0;
+  const total = afterDiscount + taxAmount;
 
   const saveSale = useMutation({
     mutationFn: async (status: string) => {
@@ -191,19 +200,60 @@ export const PosScreenPage: React.FC = () => {
               <FileText className="h-5 w-5 text-primary" />
               <h3 className="font-bold text-foreground">تفاصيل الفاتورة</h3>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">ضريبة</span>
-              <Switch
-                dir="ltr"
-                checked={taxEnabled}
-                onCheckedChange={(v) => {
-                  setTaxEnabled(v);
-                  if (v) setTaxInputVisible(true);
-                  else { setTaxInputVisible(false); setTaxRate(0); }
-                }}
-              />
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">خصم</span>
+                <Switch
+                  dir="ltr"
+                  checked={discountEnabled}
+                  onCheckedChange={(v) => {
+                    setDiscountEnabled(v);
+                    if (!v) setDiscountValue(0);
+                  }}
+                />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">ضريبة</span>
+                <Switch
+                  dir="ltr"
+                  checked={taxEnabled}
+                  onCheckedChange={(v) => {
+                    setTaxEnabled(v);
+                    if (v) setTaxInputVisible(true);
+                    else { setTaxInputVisible(false); setTaxRate(0); }
+                  }}
+                />
+              </div>
             </div>
           </div>
+
+          {discountEnabled && (
+            <div className="mb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex rounded-lg border border-border/50 overflow-hidden shrink-0">
+                  <button
+                    className={cn("px-2.5 py-1.5 text-xs font-medium transition-colors", discountType === "percent" ? "bg-primary text-primary-foreground" : "bg-muted/50 text-muted-foreground hover:bg-muted")}
+                    onClick={() => setDiscountType("percent")}
+                  >
+                    <Percent className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    className={cn("px-2.5 py-1.5 text-xs font-medium transition-colors", discountType === "fixed" ? "bg-primary text-primary-foreground" : "bg-muted/50 text-muted-foreground hover:bg-muted")}
+                    onClick={() => setDiscountType("fixed")}
+                  >
+                    EGP
+                  </button>
+                </div>
+                <Input
+                  type="number"
+                  placeholder={discountType === "percent" ? "نسبة الخصم %" : "مبلغ الخصم"}
+                  value={discountValue || ""}
+                  onChange={(e) => setDiscountValue(Number(e.target.value))}
+                  className="glass-input h-9 text-sm"
+                />
+              </div>
+            </div>
+          )}
 
           {taxEnabled && taxInputVisible && (
             <div className="mb-3">
@@ -280,16 +330,25 @@ export const PosScreenPage: React.FC = () => {
                 <span>الإجمالي الفرعي</span>
                 <span>{subtotal.toFixed(2)} EGP</span>
               </div>
+              {discountEnabled && discountValue > 0 && (
+                <div className="flex items-center justify-between">
+                  <Badge variant="outline" className="gap-1 text-xs text-destructive border-destructive/30">
+                    <Tag className="h-3 w-3" />
+                    خصم {discountType === "percent" ? `${discountValue}%` : `${discountValue} EGP`}
+                  </Badge>
+                  <span className="text-sm font-semibold text-destructive">- {discountAmount.toFixed(2)} EGP</span>
+                </div>
+              )}
               {taxEnabled && taxRate > 0 && (
                 <div className="flex items-center justify-between">
                   <Badge variant="outline" className="gap-1 text-xs">
                     <AlertCircle className="h-3 w-3" />
-                    قيمة الضريبة المضافة = {taxRate}%
+                    ضريبة {taxRate}%
                   </Badge>
                   <span className="text-sm font-semibold text-warning">{taxAmount.toFixed(2)} EGP</span>
                 </div>
               )}
-              <div className="flex justify-between items-center">
+              <div className="border-t border-border/30 pt-2 flex justify-between items-center">
                 <span className="text-muted-foreground text-sm">الإجمالي النهائي</span>
                 <span className="text-2xl font-black text-gradient">{total.toFixed(2)} <span className="text-base">EGP</span></span>
               </div>

@@ -171,7 +171,85 @@ export const PnlPage: React.FC = () => {
 
   // Export
   const handlePrint = () => {
-    window.print();
+    const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
+    const logoSrc = `${window.location.origin}/logo.png`;
+    const periodStr = `${format(dateFrom, "yyyy/MM/dd")} — ${format(dateTo, "yyyy/MM/dd")}`;
+    const branchName = branchId !== "all" && branches ? getBranchName(branchId) : "جميع الفروع";
+
+    let tableRows = "";
+    rows.forEach((row) => {
+      if (row.type === "separator") {
+        tableRows += `<tr><td colspan="3" style="height:4px;background:#eee;"></td></tr>`;
+        return;
+      }
+      const isTotal = row.type === "total";
+      const isSubtotal = row.type === "subtotal";
+      const isHeader = row.type === "header";
+      const bg = isTotal ? "background:#f0f9ff;" : isSubtotal ? "background:#f5f5f5;" : isHeader ? "background:#fafafa;" : "";
+      const fw = isTotal || isSubtotal || isHeader ? "font-weight:bold;" : "";
+      const pl = row.indent ? "padding-right:30px;" : "";
+      const color = isTotal && row.amount < 0 ? "color:red;" : isHeader ? "color:#2563eb;" : "";
+
+      tableRows += `<tr style="${bg}">
+        <td style="border:1px solid #ddd;padding:6px 10px;text-align:right;${fw}${pl}${color}font-size:11px;">${row.label}</td>
+        <td style="border:1px solid #ddd;padding:6px 10px;text-align:left;${fw}${color}font-size:11px;font-variant-numeric:tabular-nums;">${isHeader ? "" : fmt(row.amount)}</td>
+        <td style="border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:10px;color:#666;">${row.pctVal}</td>
+      </tr>`;
+    });
+
+    const printHTML = `<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>قائمة الأرباح والخسائر</title>
+  <style>
+    @font-face { font-family:'CairoLocal'; src:url('${window.location.origin}/fonts/Cairo-Regular.ttf') format('truetype'); }
+    @font-face { font-family:'AmiriLocal'; src:url('${window.location.origin}/fonts/Amiri-Regular.ttf') format('truetype'); }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'CairoLocal','AmiriLocal',sans-serif; direction:rtl; padding:20px; color:#000; background:#fff; }
+    @media print { @page { size:auto; margin:10mm; } body { padding:0; } }
+    .header { text-align:center; margin-bottom:15px; border-bottom:1px solid #000; padding-bottom:10px; display:flex; align-items:center; justify-content:center; gap:10px; }
+    .logo { width:80px; height:80px; object-fit:contain; }
+    .header h1 { font-size:18px; font-weight:bold; margin-bottom:2px; }
+    .header p { font-size:11px; }
+    table { width:100%; border-collapse:collapse; }
+    .kpi-row { display:flex; justify-content:space-around; margin-bottom:15px; gap:10px; }
+    .kpi-box { border:1px solid #ddd; border-radius:8px; padding:10px 15px; text-align:center; flex:1; }
+    .kpi-box .title { font-size:10px; color:#666; margin-bottom:4px; }
+    .kpi-box .value { font-size:16px; font-weight:bold; }
+    .footer { text-align:center; margin-top:15px; font-size:9px; border-top:1px solid #000; padding-top:8px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="${logoSrc}" alt="Logo" class="logo" />
+    <div>
+      <h1>قائمة الأرباح والخسائر</h1>
+      <p>${periodStr} • ${branchName} • ${dateStr}</p>
+    </div>
+  </div>
+  <div class="kpi-row">
+    <div class="kpi-box"><div class="title">صافي المبيعات</div><div class="value">${fmt(pnl.netSales)}</div></div>
+    <div class="kpi-box"><div class="title">إجمالي الربح</div><div class="value">${fmt(pnl.grossProfit)} (${pnl.grossProfitPct.toFixed(1)}%)</div></div>
+    <div class="kpi-box"><div class="title">صافي الربح</div><div class="value">${fmt(pnl.netProfit)} (${pnl.netProfitPct.toFixed(1)}%)</div></div>
+    <div class="kpi-box"><div class="title">تكلفة البضاعة</div><div class="value">${fmt(pnl.totalCogs)}</div></div>
+  </div>
+  <table>
+    <thead><tr style="background:#f0f0f0;">
+      <th style="border:1px solid #ddd;padding:6px 10px;text-align:right;font-size:11px;">البند</th>
+      <th style="border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:11px;">المبلغ (ج.م)</th>
+      <th style="border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:11px;">النسبة</th>
+    </tr></thead>
+    <tbody>${tableRows}</tbody>
+  </table>
+  <div class="footer">Powered by Mohamed Abdel Aal</div>
+  <script>
+    (async function(){try{if(document.fonts&&document.fonts.ready)await document.fonts.ready;}catch(e){}window.print();window.onafterprint=function(){window.close();};})();
+  </script>
+</body>
+</html>`;
+    const w = window.open("", "_blank");
+    if (w) { w.document.write(printHTML); w.document.close(); }
   };
 
   const handleExportPDF = () => {

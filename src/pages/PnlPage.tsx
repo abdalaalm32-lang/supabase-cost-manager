@@ -101,7 +101,7 @@ export const PnlPage: React.FC = () => {
   });
 
   // P&L data
-  const pnl = usePnlData(dateFromStr, dateToStr, branchId, manualExpenses);
+  const pnl = usePnlData(dateFromStr, dateToStr, branchId, manualExpenses, deletedAutoExpenses, autoExpenseOverrides);
   const pnlCompare = usePnlData(
     dateFromStr,
     dateToStr,

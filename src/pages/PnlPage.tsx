@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { usePnlData, IndirectExpenseItem } from "@/hooks/usePnlData";
 import { Card, CardContent } from "@/components/ui/card";
+import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -136,7 +137,7 @@ export const PnlPage: React.FC = () => {
 
   // Build P&L rows
   const buildRows = (d: typeof pnl) => {
-    const rows: { label: string; amount: number; pctVal: string; type: "item" | "subtotal" | "total" | "header" | "separator"; indent?: boolean }[] = [];
+    const rows: { label: string; amount: number; pctVal: string; type: "item" | "subtotal" | "total" | "header" | "separator"; indent?: boolean; expenseName?: string; isAutoExpense?: boolean }[] = [];
     rows.push({ label: "إجمالي المبيعات", amount: d.grossSales, pctVal: pct(d.grossSales, d.netSales), type: "item" });
     rows.push({ label: "(-) ضريبة المبيعات", amount: d.taxAmount, pctVal: pct(d.taxAmount, d.netSales), type: "item", indent: true });
     rows.push({ label: "صافي المبيعات", amount: d.netSales, pctVal: "100%", type: "subtotal" });
@@ -150,7 +151,7 @@ export const PnlPage: React.FC = () => {
     rows.push({ label: "", amount: 0, pctVal: "", type: "separator" });
     rows.push({ label: "المصاريف التشغيلية", amount: 0, pctVal: "", type: "header" });
     d.indirectExpenses.forEach((e) => {
-      rows.push({ label: e.name + (e.isManual ? " ⚡" : ""), amount: e.amount, pctVal: pct(e.amount, d.netSales), type: "item", indent: true });
+      rows.push({ label: e.name + (e.isManual ? " ⚡" : ""), amount: e.amount, pctVal: pct(e.amount, d.netSales), type: "item", indent: true, expenseName: e.name, isAutoExpense: !e.isManual });
     });
     rows.push({ label: "إجمالي المصاريف التشغيلية", amount: d.totalIndirectExpenses, pctVal: pct(d.totalIndirectExpenses, d.netSales), type: "subtotal" });
     if (d.wasteCost > 0) {

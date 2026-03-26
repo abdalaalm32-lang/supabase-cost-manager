@@ -102,7 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     requestIdRef.current += 1;
     loadingRef.current = false;
     if (mountedRef.current) {
-      setAuth(EMPTY_AUTH);
+      setAuth({ ...EMPTY_AUTH, isReady: true });
     }
   }, []);
 

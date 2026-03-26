@@ -419,8 +419,22 @@ export const RecipesPage: React.FC = () => {
 
   // Duplicate recipe
   const handleDuplicate = () => {
-    // Just reset recipeId so save creates a new one (user must select a different product)
-    toast({ title: "اختر منتج آخر ثم احفظ لعمل نسخة" });
+    if (ingredients.length === 0) {
+      toast({ title: "لا توجد مكونات لنسخها", variant: "destructive" });
+      return;
+    }
+    setCopiedIngredients([...ingredients]);
+    toast({ title: "تم نسخ الوصفة — اختر منتج آخر واضغط لصق" });
+  };
+
+  const handlePasteRecipe = () => {
+    if (!copiedIngredients || copiedIngredients.length === 0) return;
+    // Filter out ingredients that already exist or the product itself
+    const newIngs = copiedIngredients.filter(
+      ci => ci.stock_item_id !== selectedProductId && !ingredients.some(i => i.stock_item_id === ci.stock_item_id)
+    );
+    setIngredients(prev => [...prev, ...newIngs.map(i => ({ ...i, id: undefined }))]);
+    toast({ title: `تم لصق ${newIngs.length} مكون` });
   };
 
   // Edit mode

@@ -58,6 +58,7 @@ import { MenuFinalReportPage } from "@/pages/MenuFinalReportPage";
 import { SystemLayout } from "@/components/SystemLayout";
 import { AdminMessagesPage } from "@/pages/AdminMessagesPage";
 import { AdminSubscriptionLogPage } from "@/pages/AdminSubscriptionLogPage";
+import { PnlPage } from "@/pages/PnlPage";
 
 const queryClient = new QueryClient();
 
@@ -405,6 +406,7 @@ const AppRoutes = () => {
                 <Route path="/cost-adjustment/add" element={<PermissionGuard permKey="cost-adjustment"><AddCostAdjustmentPage /></PermissionGuard>} />
                 <Route path="/cost-adjustment/edit/:id" element={<PermissionGuard permKey="cost-adjustment"><AddCostAdjustmentPage /></PermissionGuard>} />
                 <Route path="/cost-adjustment/view/:id" element={<PermissionGuard permKey="cost-adjustment"><AddCostAdjustmentPage /></PermissionGuard>} />
+                <Route path="/pnl" element={<PnlPage />} />
                 <Route path="/reports" element={<PermissionGuard permKey="reports"><Navigate to="/reports/inventory-movement" replace /></PermissionGuard>} />
                 <Route path="/reports/inventory-movement" element={<PermissionGuard permKey="reports"><InventoryMovementPage /></PermissionGuard>} />
                 <Route path="/reports/purchases" element={<PermissionGuard permKey="reports"><PurchaseReportsPage /></PermissionGuard>} />

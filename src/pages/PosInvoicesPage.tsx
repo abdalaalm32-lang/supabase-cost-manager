@@ -139,6 +139,114 @@ export const PosInvoicesPage: React.FC = () => {
 
   const filters: FilterStatus[] = ["الكل", "مكتمل", "مؤرشف"];
 
+  const handlePrintInvoice = () => {
+    if (!selectedSale || editItems.length === 0) return;
+    const dateStr = selectedSale ? format(new Date(selectedSale.date), "yyyy/MM/dd") : "";
+    const branchName = (selectedSale?.branches as any)?.name || "غير محدد";
+    const logoSrc = `${window.location.origin}/logo.png`;
+
+    let itemsHTML = "";
+    editItems.forEach((item, idx) => {
+      const name = (item.pos_items as any)?.name || "صنف";
+      const category = (item.pos_items as any)?.categories?.name || "";
+      itemsHTML += `
+        <tr>
+          <td style="border:1px solid #000;padding:6px 8px;text-align:center;font-size:11px;">${idx + 1}</td>
+          <td style="border:1px solid #000;padding:6px 8px;text-align:right;font-size:11px;">
+            ${name}${category ? `<br/><span style="font-size:9px;color:#666;">${category}</span>` : ""}
+          </td>
+          <td style="border:1px solid #000;padding:6px 8px;text-align:center;font-size:11px;">${item.quantity}</td>
+          <td style="border:1px solid #000;padding:6px 8px;text-align:center;font-size:11px;">${item.unit_price.toFixed(2)}</td>
+          <td style="border:1px solid #000;padding:6px 8px;text-align:center;font-size:11px;font-weight:bold;">${(item.unit_price * item.quantity).toFixed(2)}</td>
+        </tr>`;
+    });
+
+    const taxRow = selectedSale?.tax_enabled && (selectedSale?.tax_rate || 0) > 0
+      ? `<tr>
+          <td colspan="4" style="border:1px solid #000;padding:6px 8px;text-align:left;font-size:11px;">ضريبة القيمة المضافة (${selectedSale.tax_rate}%)</td>
+          <td style="border:1px solid #000;padding:6px 8px;text-align:center;font-size:12px;font-weight:bold;">${editTaxAmount.toFixed(2)} EGP</td>
+        </tr>` : "";
+
+    const printHTML = `<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>فاتورة ${selectedSale.invoice_number || ""}</title>
+  <style>
+    @font-face { font-family:'CairoLocal'; src:url('${window.location.origin}/fonts/Cairo-Regular.ttf') format('truetype'); }
+    @font-face { font-family:'AmiriLocal'; src:url('${window.location.origin}/fonts/Amiri-Regular.ttf') format('truetype'); }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'CairoLocal','AmiriLocal',sans-serif; direction:rtl; padding:25px; color:#000; background:#fff; }
+    @media print { @page { size:auto; margin:10mm; } body { padding:0; } }
+    .header { text-align:center; margin-bottom:20px; border-bottom:2px solid #000; padding-bottom:15px; }
+    .logo { width:70px; height:70px; object-fit:contain; margin:0 auto 8px; display:block; }
+    .header h1 { font-size:20px; font-weight:bold; margin-bottom:4px; }
+    .header p { font-size:11px; color:#333; }
+    .info-row { display:flex; justify-content:space-between; margin-bottom:15px; padding:10px; border:1px solid #ddd; border-radius:6px; background:#f9f9f9; }
+    .info-item { text-align:center; }
+    .info-item .label { font-size:10px; color:#666; margin-bottom:2px; }
+    .info-item .value { font-size:13px; font-weight:bold; }
+    table { width:100%; border-collapse:collapse; margin-bottom:15px; }
+    .totals { margin-top:10px; border-top:2px solid #000; padding-top:10px; }
+    .total-row { display:flex; justify-content:space-between; padding:4px 0; font-size:12px; }
+    .total-row.grand { font-size:16px; font-weight:bold; border-top:1px solid #000; padding-top:8px; margin-top:4px; }
+    .footer { text-align:center; margin-top:25px; font-size:9px; color:#666; border-top:1px solid #ccc; padding-top:8px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="${logoSrc}" alt="Logo" class="logo" />
+    <h1>فاتورة بيع</h1>
+    <p>رقم الفاتورة: <strong>${selectedSale.invoice_number || "—"}</strong></p>
+  </div>
+  <div class="info-row">
+    <div class="info-item"><div class="label">التاريخ</div><div class="value">${dateStr}</div></div>
+    <div class="info-item"><div class="label">الفرع</div><div class="value">${branchName}</div></div>
+    <div class="info-item"><div class="label">الحالة</div><div class="value">${selectedSale.status}</div></div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th style="border:1px solid #000;padding:8px;text-align:center;font-size:11px;background:#eee;">#</th>
+        <th style="border:1px solid #000;padding:8px;text-align:right;font-size:11px;background:#eee;">الصنف</th>
+        <th style="border:1px solid #000;padding:8px;text-align:center;font-size:11px;background:#eee;">الكمية</th>
+        <th style="border:1px solid #000;padding:8px;text-align:center;font-size:11px;background:#eee;">سعر الوحدة</th>
+        <th style="border:1px solid #000;padding:8px;text-align:center;font-size:11px;background:#eee;">الإجمالي</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${itemsHTML}
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="4" style="border:1px solid #000;padding:6px 8px;text-align:left;font-size:11px;">الإجمالي الفرعي</td>
+        <td style="border:1px solid #000;padding:6px 8px;text-align:center;font-size:12px;font-weight:bold;">${editSubtotal.toFixed(2)} EGP</td>
+      </tr>
+      ${taxRow}
+      <tr style="background:#f0f0f0;">
+        <td colspan="4" style="border:1px solid #000;padding:8px;text-align:left;font-size:13px;font-weight:bold;">الإجمالي النهائي</td>
+        <td style="border:1px solid #000;padding:8px;text-align:center;font-size:14px;font-weight:bold;">${editTotal.toFixed(2)} EGP</td>
+      </tr>
+    </tfoot>
+  </table>
+  <div class="footer">Powered by Mohamed Abdel Aal</div>
+  <script>
+    (async function(){
+      try { if(document.fonts && document.fonts.ready) await document.fonts.ready; } catch(e){}
+      window.print();
+      window.onafterprint = function(){ window.close(); };
+    })();
+  </script>
+</body>
+</html>`;
+
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(printHTML);
+      printWindow.document.close();
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -227,7 +335,7 @@ export const PosInvoicesPage: React.FC = () => {
                 مراجعة تفاصيل الفاتورة: {selectedSale?.invoice_number}
               </DialogTitle>
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handlePrintInvoice}>
                   <Printer className="h-4 w-4" />
                 </Button>
               </div>
@@ -325,7 +433,7 @@ export const PosInvoicesPage: React.FC = () => {
                 <Save className="h-4 w-4" />
                 حفظ التعديلات
               </Button>
-              <Button className="gap-2" variant="outline">
+              <Button className="gap-2" variant="outline" onClick={handlePrintInvoice}>
                 <Printer className="h-4 w-4" />
                 طباعة
               </Button>

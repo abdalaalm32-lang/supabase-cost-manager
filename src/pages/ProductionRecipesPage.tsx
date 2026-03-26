@@ -259,7 +259,7 @@ export const ProductionRecipesPage: React.FC = () => {
         (r.production_recipe_ingredients || []).some((ri: any) => ri.stock_item_id === si.id),
       );
       const usageDetails = usedIn.map((r: any) => {
-        const product = productItems.find((p: any) => p.id === r.stock_item_id);
+        const product = allStockItems.find((p: any) => p.id === r.stock_item_id) || productItems.find((p: any) => p.id === r.stock_item_id);
         const ri = (r.production_recipe_ingredients || []).find((ri: any) => ri.stock_item_id === si.id);
         return {
           productName: product?.name || "—",

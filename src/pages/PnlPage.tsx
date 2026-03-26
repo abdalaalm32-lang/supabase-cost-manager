@@ -72,6 +72,11 @@ export const PnlPage: React.FC = () => {
   const [newExpAmount, setNewExpAmount] = useState("");
   const [addingForCompare, setAddingForCompare] = useState(false);
 
+  // Overrides for auto expenses (from costing period): deleted names & amount edits
+  const [deletedAutoExpenses, setDeletedAutoExpenses] = useState<Set<string>>(new Set());
+  const [autoExpenseOverrides, setAutoExpenseOverrides] = useState<Record<string, number>>({});
+  const [editingExpense, setEditingExpense] = useState<{ name: string; amount: number } | null>(null);
+
   // Dates
   const [dateFrom, dateTo] = useMemo(() => {
     if (preset === "custom") return [customFrom, customTo];

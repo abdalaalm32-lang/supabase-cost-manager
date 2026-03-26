@@ -684,7 +684,6 @@ ${allTablesHTML}
                 <Button onClick={handlePasteRecipe} variant="outline" size="sm" className="border-primary/50 text-primary">
                   <ClipboardPaste size={14} /> لصق الوصفة ({copiedIngredients.length})
                 </Button>
-                </>
               )}
               {ingredients.length > 0 && (
                 <RecipePrintExport

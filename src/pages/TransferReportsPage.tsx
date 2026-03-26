@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useMemo } from "react";
 import { ExportButtons } from "@/components/ExportButtons";
+import { PrintButton } from "@/components/PrintButton";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -596,6 +597,11 @@ export const TransferReportsPage: React.FC = () => {
                 data={processedData.map((item: any) => ({ code: item.code, name: item.name, category: item.catName, qty: fmt(item.totalTransferQty), unit: item.unit, cost: fmt(item.totalCost), occurrences: item.occurrences, lastDate: item.lastTransferDate }))}
                 columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الصنف" }, { key: "category", label: "المجموعة" }, { key: "qty", label: "إجمالي الكمية" }, { key: "unit", label: "الوحدة" }, { key: "cost", label: "إجمالي التكلفة" }, { key: "occurrences", label: "مرات التحويل" }, { key: "lastDate", label: "آخر تحويل" }]}
                 filename="تقارير_التحويلات"
+                title="تقارير التحويلات"
+              />
+              <PrintButton
+                data={processedData.map((item: any) => ({ code: item.code, name: item.name, category: item.catName, qty: fmt(item.totalTransferQty), unit: item.unit, cost: fmt(item.totalCost), occurrences: item.occurrences, lastDate: item.lastTransferDate }))}
+                columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الصنف" }, { key: "category", label: "المجموعة" }, { key: "qty", label: "إجمالي الكمية" }, { key: "unit", label: "الوحدة" }, { key: "cost", label: "إجمالي التكلفة" }, { key: "occurrences", label: "مرات التحويل" }, { key: "lastDate", label: "آخر تحويل" }]}
                 title="تقارير التحويلات"
               />
             </div>

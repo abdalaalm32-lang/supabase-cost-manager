@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
   Eye, X, Printer, Save, FileText, Plus, Minus, Trash2,
-  AlertCircle, Store, CalendarDays, Search, Archive, RotateCcw
+  AlertCircle, Store, CalendarDays, Search, Archive, RotateCcw, Tag
 } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
 
@@ -94,8 +94,10 @@ export const PosInvoicesPage: React.FC = () => {
   };
 
   const editSubtotal = editItems.reduce((s, i) => s + i.unit_price * i.quantity, 0);
-  const editTaxAmount = selectedSale?.tax_enabled ? (editSubtotal * (selectedSale?.tax_rate || 0)) / 100 : 0;
-  const editTotal = editSubtotal + editTaxAmount;
+  const editDiscountAmount = selectedSale?.discount_amount || 0;
+  const editAfterDiscount = editSubtotal - editDiscountAmount;
+  const editTaxAmount = selectedSale?.tax_enabled ? (editAfterDiscount * (selectedSale?.tax_rate || 0)) / 100 : 0;
+  const editTotal = editAfterDiscount + editTaxAmount;
 
   // Save edits
   const saveEdits = useMutation({
@@ -161,6 +163,12 @@ export const PosInvoicesPage: React.FC = () => {
         </tr>`;
     });
 
+    const discountRow = editDiscountAmount > 0
+      ? `<tr>
+          <td colspan="4" style="border:1px solid #000;padding:6px 8px;text-align:left;font-size:11px;color:#c00;">(-) خصم</td>
+          <td style="border:1px solid #000;padding:6px 8px;text-align:center;font-size:12px;font-weight:bold;color:#c00;">- ${editDiscountAmount.toFixed(2)} EGP</td>
+        </tr>` : "";
+
     const taxRow = selectedSale?.tax_enabled && (selectedSale?.tax_rate || 0) > 0
       ? `<tr>
           <td colspan="4" style="border:1px solid #000;padding:6px 8px;text-align:left;font-size:11px;">ضريبة القيمة المضافة (${selectedSale.tax_rate}%)</td>
@@ -222,6 +230,7 @@ export const PosInvoicesPage: React.FC = () => {
         <td colspan="4" style="border:1px solid #000;padding:6px 8px;text-align:left;font-size:11px;">الإجمالي الفرعي</td>
         <td style="border:1px solid #000;padding:6px 8px;text-align:center;font-size:12px;font-weight:bold;">${editSubtotal.toFixed(2)} EGP</td>
       </tr>
+      ${discountRow}
       ${taxRow}
       <tr style="background:#f0f0f0;">
         <td colspan="4" style="border:1px solid #000;padding:8px;text-align:left;font-size:13px;font-weight:bold;">الإجمالي النهائي</td>
@@ -410,6 +419,15 @@ export const PosInvoicesPage: React.FC = () => {
                 <span>الإجمالي الفرعي</span>
                 <span>{editSubtotal.toFixed(2)} EGP</span>
               </div>
+              {editDiscountAmount > 0 && (
+                <div className="flex items-center justify-between">
+                  <Badge variant="outline" className="gap-1 text-xs text-destructive border-destructive/30">
+                    <Tag className="h-3 w-3" />
+                    خصم
+                  </Badge>
+                  <span className="text-sm font-semibold text-destructive">- {editDiscountAmount.toFixed(2)} EGP</span>
+                </div>
+              )}
               {selectedSale?.tax_enabled && (selectedSale?.tax_rate || 0) > 0 && (
                 <div className="flex items-center justify-between">
                   <Badge variant="outline" className="gap-1 text-xs">

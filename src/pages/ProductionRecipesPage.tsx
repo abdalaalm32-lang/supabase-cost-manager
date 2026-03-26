@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { RecipePrintExport } from "@/components/RecipePrintExport";
+import { RecipePrintExport, MaterialUsagePrintExport } from "@/components/RecipePrintExport";
 import { Badge } from "@/components/ui/badge";
 
 interface LocalIngredient {

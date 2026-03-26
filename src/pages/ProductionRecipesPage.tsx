@@ -21,6 +21,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { RecipePrintExport } from "@/components/RecipePrintExport";
+import { Badge } from "@/components/ui/badge";
 
 interface LocalIngredient {
   id?: string;
@@ -55,6 +56,11 @@ export const ProductionRecipesPage: React.FC = () => {
   const [filterDept, setFilterDept] = useState("all");
   const [filterCat, setFilterCat] = useState("all");
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+
+  // Global ingredient search
+  const [globalSearch, setGlobalSearch] = useState("");
+  const [showGlobalResults, setShowGlobalResults] = useState(false);
+  const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
 
   // Queries
   const { data: allStockItems = [] } = useQuery({
@@ -241,7 +247,33 @@ export const ProductionRecipesPage: React.FC = () => {
     return ingredients.reduce((sum, ing) => sum + getIngredientCost(ing), 0);
   }, [ingredients]);
 
-  const handleSave = async () => {
+  // Global ingredient search across all production recipes
+  const globalSearchResults = useMemo(() => {
+    if (!globalSearch.trim()) return [];
+    const q = globalSearch.trim().toLowerCase();
+    const matchedItems = allStockItems.filter(
+      (s: any) => s.name.toLowerCase().includes(q) || (s.code || "").toLowerCase().includes(q),
+    );
+    return matchedItems.map((si: any) => {
+      const usedIn = recipes.filter((r: any) =>
+        (r.production_recipe_ingredients || []).some((ri: any) => ri.stock_item_id === si.id),
+      );
+      const usageDetails = usedIn.map((r: any) => {
+        const product = productItems.find((p: any) => p.id === r.stock_item_id);
+        const ri = (r.production_recipe_ingredients || []).find((ri: any) => ri.stock_item_id === si.id);
+        return {
+          productName: product?.name || "—",
+          qty: Number(ri?.qty || 0),
+          unit: si.recipe_unit || si.stock_unit || "كجم",
+          avgCost: Number(si.avg_cost || 0),
+          conversionFactor: Number(si.conversion_factor || 1),
+        };
+      });
+      return { ...si, usedInCount: usedIn.length, usageDetails };
+    }).filter((item: any) => item.usedInCount > 0);
+  }, [globalSearch, allStockItems, recipes, productItems]);
+
+
     if (!selectedProductId || !companyId) return;
     try {
       if (recipeId) {
@@ -309,6 +341,48 @@ export const ProductionRecipesPage: React.FC = () => {
           {selectedProduct && getStatusBadge(recipeStatus === "editing" ? "editing" : recipeStatus)}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Global Ingredient Search */}
+          <div className="relative">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="بحث خامة في المنتجات المصنعة..."
+              value={globalSearch}
+              onChange={(e) => {
+                setGlobalSearch(e.target.value);
+                setShowGlobalResults(true);
+              }}
+              onFocus={() => globalSearch && setShowGlobalResults(true)}
+              className="pr-9 w-64"
+            />
+            {showGlobalResults && globalSearchResults.length > 0 && (
+              <div className="absolute top-full mt-1 left-0 right-0 z-50 glass-card p-2 max-h-60 overflow-auto">
+                {globalSearchResults.map((item: any) => (
+                  <div
+                    key={item.id}
+                    className="p-2 rounded-lg hover:bg-muted/50 text-sm cursor-pointer"
+                    onClick={() => {
+                      setSelectedMaterial(item);
+                      setShowGlobalResults(false);
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">{item.name}</span>
+                      <Badge variant="secondary" className="text-xs">
+                        {item.usedInCount} تركيبة
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">{item.code} • {item.stock_unit}</p>
+                  </div>
+                ))}
+                <button
+                  onClick={() => setShowGlobalResults(false)}
+                  className="w-full text-xs text-muted-foreground pt-1 hover:underline"
+                >
+                  إغلاق
+                </button>
+              </div>
+            )}
+          </div>
           {selectedProduct && (
             <>
               {recipeStatus === "draft" || isEditing ? (
@@ -333,6 +407,9 @@ export const ProductionRecipesPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Click outside to close global results */}
+      {showGlobalResults && <div className="fixed inset-0 z-40" onClick={() => setShowGlobalResults(false)} />}
 
       {!manufacturingCategory && (
         <div className="glass-card p-6 text-center">
@@ -531,6 +608,49 @@ export const ProductionRecipesPage: React.FC = () => {
               إضافة ({selectedItemIds.size})
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Material Usage Detail Dialog */}
+      <Dialog open={!!selectedMaterial} onOpenChange={(open) => !open && setSelectedMaterial(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>تفاصيل استخدام خامة: {selectedMaterial?.name}</DialogTitle>
+          </DialogHeader>
+          {selectedMaterial && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <span>الكود: {selectedMaterial.code || "—"}</span>
+                <span>الوحدة: {selectedMaterial.stock_unit}</span>
+                <span>م. التكلفة: {Number(selectedMaterial.avg_cost).toFixed(2)}</span>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-right">المنتج المصنع</TableHead>
+                    <TableHead className="text-right">الكمية</TableHead>
+                    <TableHead className="text-right">الوحدة</TableHead>
+                    <TableHead className="text-right">م. التكلفة</TableHead>
+                    <TableHead className="text-right">الإجمالي</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(selectedMaterial.usageDetails || []).map((u: any, idx: number) => {
+                    const cost = (u.qty / (u.conversionFactor || 1)) * u.avgCost;
+                    return (
+                      <TableRow key={idx}>
+                        <TableCell className="font-medium text-sm">{u.productName}</TableCell>
+                        <TableCell className="text-sm">{u.qty}</TableCell>
+                        <TableCell className="text-sm">{u.unit}</TableCell>
+                        <TableCell className="text-sm">{u.avgCost.toFixed(2)}</TableCell>
+                        <TableCell className="text-sm font-semibold">{cost.toFixed(2)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

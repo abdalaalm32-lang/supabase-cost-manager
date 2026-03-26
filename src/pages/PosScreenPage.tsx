@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
   Plus, Minus, Trash2, ShoppingCart, CalendarIcon, Store,
-  FileText, Printer, AlertCircle, Archive, LayoutGrid
+  FileText, Printer, AlertCircle, Archive, LayoutGrid, Percent, Tag
 } from "lucide-react";
 
 interface CartItem {
@@ -200,19 +200,60 @@ export const PosScreenPage: React.FC = () => {
               <FileText className="h-5 w-5 text-primary" />
               <h3 className="font-bold text-foreground">تفاصيل الفاتورة</h3>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">ضريبة</span>
-              <Switch
-                dir="ltr"
-                checked={taxEnabled}
-                onCheckedChange={(v) => {
-                  setTaxEnabled(v);
-                  if (v) setTaxInputVisible(true);
-                  else { setTaxInputVisible(false); setTaxRate(0); }
-                }}
-              />
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">خصم</span>
+                <Switch
+                  dir="ltr"
+                  checked={discountEnabled}
+                  onCheckedChange={(v) => {
+                    setDiscountEnabled(v);
+                    if (!v) setDiscountValue(0);
+                  }}
+                />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">ضريبة</span>
+                <Switch
+                  dir="ltr"
+                  checked={taxEnabled}
+                  onCheckedChange={(v) => {
+                    setTaxEnabled(v);
+                    if (v) setTaxInputVisible(true);
+                    else { setTaxInputVisible(false); setTaxRate(0); }
+                  }}
+                />
+              </div>
             </div>
           </div>
+
+          {discountEnabled && (
+            <div className="mb-3">
+              <div className="flex items-center gap-2">
+                <div className="flex rounded-lg border border-border/50 overflow-hidden shrink-0">
+                  <button
+                    className={cn("px-2.5 py-1.5 text-xs font-medium transition-colors", discountType === "percent" ? "bg-primary text-primary-foreground" : "bg-muted/50 text-muted-foreground hover:bg-muted")}
+                    onClick={() => setDiscountType("percent")}
+                  >
+                    <Percent className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    className={cn("px-2.5 py-1.5 text-xs font-medium transition-colors", discountType === "fixed" ? "bg-primary text-primary-foreground" : "bg-muted/50 text-muted-foreground hover:bg-muted")}
+                    onClick={() => setDiscountType("fixed")}
+                  >
+                    EGP
+                  </button>
+                </div>
+                <Input
+                  type="number"
+                  placeholder={discountType === "percent" ? "نسبة الخصم %" : "مبلغ الخصم"}
+                  value={discountValue || ""}
+                  onChange={(e) => setDiscountValue(Number(e.target.value))}
+                  className="glass-input h-9 text-sm"
+                />
+              </div>
+            </div>
+          )}
 
           {taxEnabled && taxInputVisible && (
             <div className="mb-3">

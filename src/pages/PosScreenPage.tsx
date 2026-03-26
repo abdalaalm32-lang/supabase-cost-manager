@@ -113,8 +113,14 @@ export const PosScreenPage: React.FC = () => {
   };
 
   const subtotal = cart.reduce((s, c) => s + c.unit_price * c.quantity, 0);
-  const taxAmount = taxEnabled ? (subtotal * taxRate) / 100 : 0;
-  const total = subtotal + taxAmount;
+  const discountAmount = discountEnabled
+    ? discountType === "percent"
+      ? (subtotal * discountValue) / 100
+      : discountValue
+    : 0;
+  const afterDiscount = subtotal - discountAmount;
+  const taxAmount = taxEnabled ? (afterDiscount * taxRate) / 100 : 0;
+  const total = afterDiscount + taxAmount;
 
   const saveSale = useMutation({
     mutationFn: async (status: string) => {

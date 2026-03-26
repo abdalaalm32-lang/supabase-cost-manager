@@ -699,6 +699,45 @@ export const PnlPage: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Edit expense dialog */}
+      <Dialog open={!!editingExpense} onOpenChange={(open) => !open && setEditingExpense(null)}>
+        <DialogContent className="sm:max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>تعديل مبلغ المصروف: {editingExpense?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-1">
+              <label className="text-sm font-medium">المبلغ (ج.م)</label>
+              <Input
+                type="number"
+                defaultValue={editingExpense?.amount || 0}
+                id="edit-expense-amount"
+                placeholder="0.00"
+              />
+            </div>
+            <Button
+              className="w-full"
+              onClick={() => {
+                const input = document.getElementById("edit-expense-amount") as HTMLInputElement;
+                const newVal = Number(input?.value || 0);
+                if (editingExpense && newVal >= 0) {
+                  // Check if it's a manual expense
+                  const manualIdx = manualExpenses.findIndex(e => e.name === editingExpense.name);
+                  if (manualIdx >= 0) {
+                    setManualExpenses(prev => prev.map((e, i) => i === manualIdx ? { ...e, amount: newVal } : e));
+                  } else {
+                    setAutoExpenseOverrides(prev => ({ ...prev, [editingExpense.name]: newVal }));
+                  }
+                }
+                setEditingExpense(null);
+              }}
+            >
+              حفظ
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

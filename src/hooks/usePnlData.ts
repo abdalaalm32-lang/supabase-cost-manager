@@ -35,7 +35,9 @@ export function usePnlData(
   dateFrom: string,
   dateTo: string,
   branchId?: string,
-  manualExpenses: IndirectExpenseItem[] = []
+  manualExpenses: IndirectExpenseItem[] = [],
+  deletedAutoExpenses: Set<string> = new Set(),
+  autoExpenseOverrides: Record<string, number> = {}
 ): PnlResult {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;
@@ -247,16 +249,22 @@ export function usePnlData(
       ["other_expenses", "مصاريف أخرى"],
     ];
     fields.forEach(([key, name]) => {
-      const val = Number((relevantPeriod as any)[key] || 0);
+      if (deletedAutoExpenses.has(name)) return;
+      const rawVal = Number((relevantPeriod as any)[key] || 0);
+      const val = name in autoExpenseOverrides ? autoExpenseOverrides[name] : rawVal;
       if (val > 0) autoExpenses.push({ name, amount: val });
     });
     const custom = relevantPeriod.custom_expenses as any;
     if (Array.isArray(custom)) {
       custom.forEach((ce: any) => {
-        if (Number(ce.amount || ce.value || 0) > 0)
+        const ceName = ce.name;
+        if (deletedAutoExpenses.has(ceName)) return;
+        const rawAmount = Number(ce.amount || ce.value || 0);
+        const val = ceName in autoExpenseOverrides ? autoExpenseOverrides[ceName] : rawAmount;
+        if (val > 0)
           autoExpenses.push({
-            name: ce.name,
-            amount: Number(ce.amount || ce.value || 0),
+            name: ceName,
+            amount: val,
           });
       });
     }

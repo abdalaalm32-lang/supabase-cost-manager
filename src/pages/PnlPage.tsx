@@ -543,7 +543,34 @@ export const PnlPage: React.FC = () => {
                       }`}
                     >
                       <td className={`p-3 text-right ${row.indent ? "pr-8" : ""}`}>
-                        {row.label}
+                        <span className="inline-flex items-center gap-1">
+                          {row.label}
+                          {row.expenseName && (
+                            <span className="print:hidden inline-flex gap-0.5">
+                              <button
+                                onClick={() => setEditingExpense({ name: row.expenseName!, amount: row.amount })}
+                                className="text-muted-foreground hover:text-primary p-0.5"
+                                title="تعديل المبلغ"
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (row.isAutoExpense) {
+                                    setDeletedAutoExpenses(prev => new Set([...prev, row.expenseName!]));
+                                  } else {
+                                    const idx = manualExpenses.findIndex(e => e.name === row.expenseName);
+                                    if (idx >= 0) removeManualExpense(idx);
+                                  }
+                                }}
+                                className="text-muted-foreground hover:text-destructive p-0.5"
+                                title="حذف"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </span>
+                          )}
+                        </span>
                       </td>
                       <td className={`p-3 text-left tabular-nums ${isTotal && row.amount < 0 ? "text-destructive" : ""}`}>
                         {isHeader ? "" : fmt(row.amount)}

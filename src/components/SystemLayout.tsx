@@ -84,6 +84,7 @@ const mainNavItems: NavItem[] = [
     ],
   },
   { id: "cost-adjustment", path: "/cost-adjustment", label: "تعديل التكاليف", icon: Calculator },
+  { id: "pnl", path: "/pnl", label: "قائمة P&L", icon: FileText },
   {
     id: "reports", path: "/reports", label: "التقارير", icon: FileText,
     children: [

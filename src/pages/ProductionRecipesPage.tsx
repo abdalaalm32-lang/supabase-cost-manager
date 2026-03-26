@@ -273,7 +273,7 @@ export const ProductionRecipesPage: React.FC = () => {
     }).filter((item: any) => item.usedInCount > 0);
   }, [globalSearch, allStockItems, recipes, productItems]);
 
-
+  const handleSave = async () => {
     if (!selectedProductId || !companyId) return;
     try {
       if (recipeId) {

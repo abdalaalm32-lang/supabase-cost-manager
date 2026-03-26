@@ -81,6 +81,9 @@ export const RecipesPage: React.FC = () => {
   const [filterCat, setFilterCat] = useState("all");
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
 
+  // Clipboard for copy/paste recipe
+  const [copiedIngredients, setCopiedIngredients] = useState<LocalIngredient[] | null>(null);
+
   // Global raw material search
   const [globalSearch, setGlobalSearch] = useState("");
   const [showGlobalResults, setShowGlobalResults] = useState(false);

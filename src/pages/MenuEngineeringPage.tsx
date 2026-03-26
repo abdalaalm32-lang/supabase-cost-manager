@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useMemo } from "react";
 import { ExportButtons } from "@/components/ExportButtons";
-import { PrintButton } from "@/components/PrintButton";
+
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -23,6 +23,7 @@ import {
 import {
   ChefHat, Wine, Star, HelpCircle, Tractor, Dog,
   TrendingUp, DollarSign, BarChart3, PieChart as PieChartIcon, CalendarIcon,
+  Printer, Loader2,
 } from "lucide-react";
 
 // Thresholds
@@ -387,26 +388,11 @@ export const MenuEngineeringPage: React.FC = () => {
             filename="هندسة_المنيو"
             title={`هندسة المنيو - ${activeTab === "kitchen" ? "المطبخ" : "البار"}`}
           />
-          <PrintButton
-            data={engineeringData.map((r, idx) => ({
-              "#": idx + 1,
-              الصنف: r.name,
-              "كمية المبيعات": r.qty,
-              "سعر البيع": r.price.toFixed(2),
-              "التكلفة المباشرة": r.directCost.toFixed(2),
-              "إجمالي المبيعات": r.totalSales.toFixed(2),
-              "إجمالي تكلفة المبيعات": r.totalCostSales.toFixed(2),
-              "النسبة للتكلفة %": r.costRatio.toFixed(1),
-              "صافي ربح الصنف": r.netProfit.toFixed(2),
-              "إجمالي الربح": r.totalProfit.toFixed(2),
-              "نسبة الربح %": r.profitRatio.toFixed(1),
-              "% مبيعات الصنف": r.salesSharePct.toFixed(1),
-              الربحية: r.profitLevel,
-              الشعبية: r.popularityLevel,
-              التصنيف: r.strategic,
-              القرار: r.decision,
-            }))}
-            columns={[
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => {
+            const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
+            const logoSrc = `${window.location.origin}/logo.png`;
+            const titleText = `هندسة المنيو - ${activeTab === "kitchen" ? "المطبخ" : "البار"}`;
+            const cols = [
               { key: "#", label: "#" },
               { key: "الصنف", label: "الصنف" },
               { key: "كمية المبيعات", label: "كمية المبيعات" },
@@ -423,9 +409,109 @@ export const MenuEngineeringPage: React.FC = () => {
               { key: "الشعبية", label: "الشعبية" },
               { key: "التصنيف", label: "التصنيف" },
               { key: "القرار", label: "القرار" },
-            ]}
-            title={`هندسة المنيو - ${activeTab === "kitchen" ? "المطبخ" : "البار"}`}
-          />
+            ];
+            const rows = engineeringData.map((r, idx) => ({
+              "#": idx + 1,
+              "الصنف": r.name,
+              "كمية المبيعات": r.qty,
+              "سعر البيع": r.price.toFixed(2),
+              "التكلفة المباشرة": r.directCost.toFixed(2),
+              "إجمالي المبيعات": r.totalSales.toFixed(2),
+              "إجمالي تكلفة المبيعات": r.totalCostSales.toFixed(2),
+              "النسبة للتكلفة %": r.costRatio.toFixed(1),
+              "صافي ربح الصنف": r.netProfit.toFixed(2),
+              "إجمالي الربح": r.totalProfit.toFixed(2),
+              "نسبة الربح %": r.profitRatio.toFixed(1),
+              "% مبيعات الصنف": r.salesSharePct.toFixed(1),
+              "الربحية": r.profitLevel,
+              "الشعبية": r.popularityLevel,
+              "التصنيف": r.strategic,
+              "القرار": r.decision,
+            }));
+            // Add totals row
+            rows.push({
+              "#": "" as any,
+              "الصنف": "الإجمالي",
+              "كمية المبيعات": totals.qty,
+              "سعر البيع": "",
+              "التكلفة المباشرة": "",
+              "إجمالي المبيعات": totals.totalSales.toFixed(2),
+              "إجمالي تكلفة المبيعات": totals.totalCostSales.toFixed(2),
+              "النسبة للتكلفة %": totals.totalSales > 0 ? ((totals.totalCostSales / totals.totalSales) * 100).toFixed(1) : "0",
+              "صافي ربح الصنف": "",
+              "إجمالي الربح": totals.totalProfit.toFixed(2),
+              "نسبة الربح %": totals.totalSales > 0 ? ((totals.totalProfit / totals.totalSales) * 100).toFixed(1) : "0",
+              "% مبيعات الصنف": "100.0",
+              "الربحية": "",
+              "الشعبية": "",
+              "التصنيف": "",
+              "القرار": "",
+            } as any);
+
+            let theadHTML = "<tr>";
+            for (const col of cols) {
+              theadHTML += `<th style="border:1px solid #000;padding:3px 4px;font-size:7px;text-align:center;white-space:nowrap;">${col.label}</th>`;
+            }
+            theadHTML += "</tr>";
+
+            let tbodyHTML = "";
+            rows.forEach((row, i) => {
+              const isTotal = i === rows.length - 1;
+              tbodyHTML += "<tr>";
+              for (const col of cols) {
+                const val = (row as any)[col.key] !== null && (row as any)[col.key] !== undefined ? String((row as any)[col.key]) : "—";
+                tbodyHTML += `<td style="border:1px solid #000;padding:2px 3px;font-size:7px;text-align:center;${isTotal ? "font-weight:bold;background:#f0f0f0;" : ""}">${val}</td>`;
+              }
+              tbodyHTML += "</tr>";
+            });
+
+            const printHTML = `<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>${titleText}</title>
+  <style>
+    @font-face { font-family: 'CairoLocal'; src: url('${window.location.origin}/fonts/Cairo-Regular.ttf') format('truetype'); font-display: swap; }
+    @font-face { font-family: 'AmiriLocal'; src: url('${window.location.origin}/fonts/Amiri-Regular.ttf') format('truetype'); font-display: swap; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'CairoLocal', 'AmiriLocal', sans-serif; direction: rtl; padding: 10px; color: #000; background: #fff; }
+    @media print { @page { size: landscape; margin: 5mm; } body { padding: 0; } }
+    .header { text-align: center; margin-bottom: 8px; border-bottom: 1px solid #000; padding-bottom: 6px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .logo { width: 50px; height: 50px; object-fit: contain; }
+    .header h1 { font-size: 14px; font-weight: bold; margin-bottom: 1px; }
+    .header p { font-size: 9px; color: #000; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .footer { text-align: center; margin-top: 8px; font-size: 7px; color: #000; border-top: 1px solid #000; padding-top: 4px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="${logoSrc}" alt="Logo" class="logo" />
+    <div>
+      <h1>${titleText}</h1>
+      <p>Cost Management System • ${dateStr}</p>
+    </div>
+  </div>
+  <table>
+    <thead>${theadHTML}</thead>
+    <tbody>${tbodyHTML}</tbody>
+  </table>
+  <div class="footer">Powered by Mohamed Abdel Aal</div>
+  <script>
+    (async function () {
+      try { if (document.fonts && document.fonts.ready) await document.fonts.ready; } catch (e) {}
+      window.print();
+      window.onafterprint = function() { window.close(); };
+    })();
+  </script>
+</body>
+</html>`;
+            const w = window.open("", "_blank");
+            if (w) { w.document.write(printHTML); w.document.close(); }
+          }}>
+            <Printer size={14} />
+            طباعة
+          </Button>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           <Select value={selectedBranch} onValueChange={setSelectedBranch}>

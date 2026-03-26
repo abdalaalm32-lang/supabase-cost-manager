@@ -38,6 +38,7 @@ const ALL_PERMISSIONS = [
   { key: "menu-costing", label: "تكلفة المنيو" },
   { key: "menu-engineering", label: "هندسة المنيو" },
   { key: "cost-adjustment", label: "تعديل التكاليف" },
+  { key: "pnl", label: "قائمة P&L" },
   { key: "reports", label: "التقارير" },
   { key: "settings", label: "الإعدادات" },
 ];

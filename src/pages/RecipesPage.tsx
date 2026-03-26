@@ -22,6 +22,7 @@ import {
   Percent,
   ShoppingBasket,
   Copy,
+  ClipboardPaste,
   CheckCircle2,
   Clock,
   Edit3,
@@ -80,6 +81,9 @@ export const RecipesPage: React.FC = () => {
   const [filterDept, setFilterDept] = useState("all");
   const [filterCat, setFilterCat] = useState("all");
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+
+  // Clipboard for copy/paste recipe
+  const [copiedIngredients, setCopiedIngredients] = useState<LocalIngredient[] | null>(null);
 
   // Global raw material search
   const [globalSearch, setGlobalSearch] = useState("");
@@ -416,8 +420,22 @@ export const RecipesPage: React.FC = () => {
 
   // Duplicate recipe
   const handleDuplicate = () => {
-    // Just reset recipeId so save creates a new one (user must select a different product)
-    toast({ title: "اختر منتج آخر ثم احفظ لعمل نسخة" });
+    if (ingredients.length === 0) {
+      toast({ title: "لا توجد مكونات لنسخها", variant: "destructive" });
+      return;
+    }
+    setCopiedIngredients([...ingredients]);
+    toast({ title: "تم نسخ الوصفة — اختر منتج آخر واضغط لصق" });
+  };
+
+  const handlePasteRecipe = () => {
+    if (!copiedIngredients || copiedIngredients.length === 0) return;
+    // Filter out ingredients that already exist or the product itself
+    const newIngs = copiedIngredients.filter(
+      ci => ci.stock_item_id !== selectedProductId && !ingredients.some(i => i.stock_item_id === ci.stock_item_id)
+    );
+    setIngredients(prev => [...prev, ...newIngs.map(i => ({ ...i, id: undefined }))]);
+    toast({ title: `تم لصق ${newIngs.length} مكون` });
   };
 
   // Edit mode
@@ -661,6 +679,11 @@ ${allTablesHTML}
                     <Copy size={14} /> نسخ
                   </Button>
                 </>
+              )}
+              {copiedIngredients && copiedIngredients.length > 0 && (recipeStatus === "draft" || isEditing) && (
+                <Button onClick={handlePasteRecipe} variant="outline" size="sm" className="border-primary/50 text-primary">
+                  <ClipboardPaste size={14} /> لصق الوصفة ({copiedIngredients.length})
+                </Button>
               )}
               {ingredients.length > 0 && (
                 <RecipePrintExport

@@ -23,6 +23,7 @@ import {
 import {
   ChefHat, Wine, Star, HelpCircle, Tractor, Dog,
   TrendingUp, DollarSign, BarChart3, PieChart as PieChartIcon, CalendarIcon,
+  Printer, Loader2,
 } from "lucide-react";
 
 // Thresholds

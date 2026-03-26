@@ -330,19 +330,29 @@ export const PosScreenPage: React.FC = () => {
                 <span>الإجمالي الفرعي</span>
                 <span>{subtotal.toFixed(2)} EGP</span>
               </div>
+              {discountEnabled && discountValue > 0 && (
+                <div className="flex items-center justify-between">
+                  <Badge variant="outline" className="gap-1 text-xs text-destructive border-destructive/30">
+                    <Tag className="h-3 w-3" />
+                    خصم {discountType === "percent" ? `${discountValue}%` : `${discountValue} EGP`}
+                  </Badge>
+                  <span className="text-sm font-semibold text-destructive">- {discountAmount.toFixed(2)} EGP</span>
+                </div>
+              )}
               {taxEnabled && taxRate > 0 && (
                 <div className="flex items-center justify-between">
                   <Badge variant="outline" className="gap-1 text-xs">
                     <AlertCircle className="h-3 w-3" />
-                    قيمة الضريبة المضافة = {taxRate}%
+                    ضريبة {taxRate}%
                   </Badge>
                   <span className="text-sm font-semibold text-warning">{taxAmount.toFixed(2)} EGP</span>
                 </div>
               )}
-              <div className="flex justify-between items-center">
+              <div className="border-t border-border/30 pt-2 flex justify-between items-center">
                 <span className="text-muted-foreground text-sm">الإجمالي النهائي</span>
                 <span className="text-2xl font-black text-gradient">{total.toFixed(2)} <span className="text-base">EGP</span></span>
               </div>
+            </>
             </>
           )}
 

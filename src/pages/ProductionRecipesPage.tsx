@@ -21,6 +21,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { RecipePrintExport } from "@/components/RecipePrintExport";
+import { Badge } from "@/components/ui/badge";
 
 interface LocalIngredient {
   id?: string;
@@ -55,6 +56,11 @@ export const ProductionRecipesPage: React.FC = () => {
   const [filterDept, setFilterDept] = useState("all");
   const [filterCat, setFilterCat] = useState("all");
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+
+  // Global ingredient search
+  const [globalSearch, setGlobalSearch] = useState("");
+  const [showGlobalResults, setShowGlobalResults] = useState(false);
+  const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
 
   // Queries
   const { data: allStockItems = [] } = useQuery({

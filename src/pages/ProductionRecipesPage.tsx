@@ -610,6 +610,49 @@ export const ProductionRecipesPage: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Material Usage Detail Dialog */}
+      <Dialog open={!!selectedMaterial} onOpenChange={(open) => !open && setSelectedMaterial(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>تفاصيل استخدام خامة: {selectedMaterial?.name}</DialogTitle>
+          </DialogHeader>
+          {selectedMaterial && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <span>الكود: {selectedMaterial.code || "—"}</span>
+                <span>الوحدة: {selectedMaterial.stock_unit}</span>
+                <span>م. التكلفة: {Number(selectedMaterial.avg_cost).toFixed(2)}</span>
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-right">المنتج المصنع</TableHead>
+                    <TableHead className="text-right">الكمية</TableHead>
+                    <TableHead className="text-right">الوحدة</TableHead>
+                    <TableHead className="text-right">م. التكلفة</TableHead>
+                    <TableHead className="text-right">الإجمالي</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(selectedMaterial.usageDetails || []).map((u: any, idx: number) => {
+                    const cost = (u.qty / (u.conversionFactor || 1)) * u.avgCost;
+                    return (
+                      <TableRow key={idx}>
+                        <TableCell className="font-medium text-sm">{u.productName}</TableCell>
+                        <TableCell className="text-sm">{u.qty}</TableCell>
+                        <TableCell className="text-sm">{u.unit}</TableCell>
+                        <TableCell className="text-sm">{u.avgCost.toFixed(2)}</TableCell>
+                        <TableCell className="text-sm font-semibold">{cost.toFixed(2)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

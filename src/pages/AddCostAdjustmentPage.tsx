@@ -279,6 +279,8 @@ export const AddCostAdjustmentPage: React.FC = () => {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["cost-adjustments"] });
+      qc.invalidateQueries({ queryKey: ["cost-adjustment", editId] });
+      qc.invalidateQueries({ queryKey: ["cost-adjustment-items", editId] });
       qc.invalidateQueries({ queryKey: ["stock-items"] });
       toast.success(isEdit ? "تم تحديث السجل بنجاح" : "تم حفظ السجل بنجاح");
       navigate("/cost-adjustment");
@@ -296,7 +298,9 @@ export const AddCostAdjustmentPage: React.FC = () => {
     saveMutation.mutate(status);
   };
 
-  if (!loaded) {
+  const isHydratingEdit = isEdit && hydratedEditId !== editId;
+
+  if (isHydratingEdit) {
     return <div className="flex items-center justify-center py-20 text-muted-foreground">جاري التحميل...</div>;
   }
 

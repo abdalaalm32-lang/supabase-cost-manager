@@ -204,23 +204,43 @@ export const StockItemsTab: React.FC = () => {
     }
   };
 
+  const [originalCategoryId, setOriginalCategoryId] = useState<string>("");
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (editId) {
+        const categoryChanged = categoryId !== originalCategoryId;
+        let newCode: string | undefined;
+
+        // If category changed, regenerate code based on new category
+        if (categoryChanged) {
+          const selectedCat = categories.find((c: any) => c.id === categoryId);
+          const identifierCode = selectedCat?.identifier_code || null;
+          const { data: codeData, error: codeError } = await supabase.rpc(
+            "generate_stock_item_code",
+            { p_company_id: companyId!, p_identifier_code: identifierCode }
+          );
+          if (codeError) throw codeError;
+          newCode = codeData;
+        }
+
+        const updateData: any = {
+          name: itemName,
+          category_id: categoryId || null,
+          department_id: selectedDepartments[0] || null,
+          standard_cost: parseFloat(standardCost) || 0,
+          stock_unit: stockUnit || "كيلوجرام",
+          recipe_unit: recipeUnit || null,
+          conversion_factor: parseFloat(conversionFactor) || 1,
+          min_level: parseFloat(minLevel) || 0,
+          reorder_level: parseFloat(reorderLevel) || 0,
+          max_level: parseFloat(maxLevel) || 0,
+        };
+        if (newCode) updateData.code = newCode;
+
         const { error } = await supabase
           .from("stock_items")
-          .update({
-            name: itemName,
-            category_id: categoryId || null,
-            department_id: selectedDepartments[0] || null,
-            standard_cost: parseFloat(standardCost) || 0,
-            stock_unit: stockUnit || "كيلوجرام",
-            recipe_unit: recipeUnit || null,
-            conversion_factor: parseFloat(conversionFactor) || 1,
-            min_level: parseFloat(minLevel) || 0,
-            reorder_level: parseFloat(reorderLevel) || 0,
-            max_level: parseFloat(maxLevel) || 0,
-          } as any)
+          .update(updateData)
           .eq("id", editId);
         if (error) throw error;
         await saveLocationLinks(editId);
@@ -298,6 +318,7 @@ export const StockItemsTab: React.FC = () => {
     setEditId(item.id);
     setItemName(item.name);
     setCategoryId(item.category_id || "");
+    setOriginalCategoryId(item.category_id || "");
     const deptLinks = itemDepartments.filter((d: any) => d.stock_item_id === item.id);
     setSelectedDepartments(deptLinks.map((d: any) => d.department_id));
     setStandardCost(String(item.standard_cost || ""));

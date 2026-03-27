@@ -128,16 +128,23 @@ export const AddCostAdjustmentPage: React.FC = () => {
 
     setDate(existingRecord.date);
     setNotes(existingRecord.notes || "");
-    if (existingRecord.branch_id) {
+
+    const matchedBranch = existingRecord.branch_id
+      ? branches.find((branch: any) => branch.id === existingRecord.branch_id)
+      : branches.find((branch: any) => branch.name === existingRecord.branch_name);
+    const matchedWarehouse = warehouses.find((warehouse: any) => warehouse.name === existingRecord.branch_name);
+
+    if (matchedBranch) {
       setDestinationType("branch");
-      setDestinationId(existingRecord.branch_id);
+      setDestinationId(matchedBranch.id);
+    } else if (matchedWarehouse) {
+      setDestinationType("warehouse");
+      setDestinationId(matchedWarehouse.id);
     } else {
-      setDestinationType("branch");
+      setDestinationType("");
       setDestinationId("");
     }
-    if (existingRecord.branch_name) {
-      setDestinationType("branch");
-    }
+
     setItems(existingItems.map((i: any) => {
       const si = stockItems.find((s: any) => s.id === i.stock_item_id);
       return {

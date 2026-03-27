@@ -194,7 +194,7 @@ export const AddCostAdjustmentPage: React.FC = () => {
 
       if (isEdit) {
         const { error } = await supabase.from("cost_adjustments").update({
-          branch_id: destinationType === "branch" ? destinationId : null,
+          branch_id: destinationType === "branch" && destinationId ? destinationId : null,
           branch_name: locationName || null,
           date, notes: notes || null, status, is_edited: true,
         }).eq("id", editId!);
@@ -207,7 +207,7 @@ export const AddCostAdjustmentPage: React.FC = () => {
             stock_item_id: i.stock_item_id || null,
             name: i.name, unit: i.unit || null,
             old_cost: Number(i.old_cost), new_cost: Number(i.new_cost),
-          }));
+          })).filter((i) => i.stock_item_id !== null || i.name);
           const { error: ie } = await supabase.from("cost_adjustment_items").insert(insertItems);
           if (ie) throw ie;
         }
@@ -225,7 +225,7 @@ export const AddCostAdjustmentPage: React.FC = () => {
 
         const { data: record, error: recErr } = await supabase.from("cost_adjustments").insert({
           company_id: companyId!,
-          branch_id: destinationType === "branch" ? destinationId : null,
+          branch_id: destinationType === "branch" && destinationId ? destinationId : null,
           branch_name: locationName || null,
           date, notes: notes || null, status,
           record_number: recNum,
@@ -238,7 +238,7 @@ export const AddCostAdjustmentPage: React.FC = () => {
             stock_item_id: i.stock_item_id || null,
             name: i.name, unit: i.unit || null,
             old_cost: i.old_cost, new_cost: i.new_cost,
-          }));
+          })).filter((i) => i.stock_item_id !== null || i.name);
           const { error: ie } = await supabase.from("cost_adjustment_items").insert(insertItems);
           if (ie) throw ie;
         }

@@ -318,6 +318,7 @@ export const StockItemsTab: React.FC = () => {
     setEditId(item.id);
     setItemName(item.name);
     setCategoryId(item.category_id || "");
+    setOriginalCategoryId(item.category_id || "");
     const deptLinks = itemDepartments.filter((d: any) => d.stock_item_id === item.id);
     setSelectedDepartments(deptLinks.map((d: any) => d.department_id));
     setStandardCost(String(item.standard_cost || ""));

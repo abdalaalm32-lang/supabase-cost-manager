@@ -50,10 +50,13 @@ export const AddCostAdjustmentPage: React.FC = () => {
   const [itemSearch, setItemSearch] = useState("");
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [submitted, setSubmitted] = useState(false);
-  const [loaded, setLoaded] = useState(!isEdit);
+  const [hydratedEditId, setHydratedEditId] = useState<string | null>(isEdit ? null : "new");
 
   // Load existing record for edit
-  const { data: existingRecord } = useQuery({
+  const {
+    data: existingRecord,
+    isFetching: isExistingRecordFetching,
+  } = useQuery({
     queryKey: ["cost-adjustment", editId],
     queryFn: async () => {
       const { data, error } = await supabase.from("cost_adjustments").select("*").eq("id", editId!).single();
@@ -63,7 +66,10 @@ export const AddCostAdjustmentPage: React.FC = () => {
     enabled: isEdit,
   });
 
-  const { data: existingItems = [] } = useQuery({
+  const {
+    data: existingItems = [],
+    isFetching: isExistingItemsFetching,
+  } = useQuery({
     queryKey: ["cost-adjustment-items", editId],
     queryFn: async () => {
       const { data, error } = await supabase.from("cost_adjustment_items").select("*").eq("cost_adjustment_id", editId!);
@@ -93,7 +99,10 @@ export const AddCostAdjustmentPage: React.FC = () => {
     enabled: !!companyId,
   });
 
-  const { data: stockItems = [] } = useQuery({
+  const {
+    data: stockItems = [],
+    isFetching: isStockItemsFetching,
+  } = useQuery({
     queryKey: ["stock-items-all", companyId],
     queryFn: async () => {
       const { data, error } = await supabase.from("stock_items").select("*, inventory_categories(name)").eq("active", true).order("name");
@@ -104,28 +113,44 @@ export const AddCostAdjustmentPage: React.FC = () => {
   });
 
   useEffect(() => {
-    if (isEdit && existingRecord && existingItems && stockItems.length > 0 && !loaded) {
-      setDate(existingRecord.date);
-      setNotes(existingRecord.notes || "");
-      if (existingRecord.branch_id) { setDestinationType("branch"); setDestinationId(existingRecord.branch_id); }
-      else { setDestinationType("branch"); setDestinationId(""); }
-      if (existingRecord.branch_name) {
-        setDestinationType("branch");
-      }
-      setItems(existingItems.map((i: any) => {
-        const si = stockItems.find((s: any) => s.id === i.stock_item_id);
-        return {
-          stock_item_id: i.stock_item_id || "",
-          name: i.name,
-          code: si?.code || "",
-          unit: i.unit || "",
-          old_cost: Number(i.old_cost),
-          new_cost: Number(i.new_cost),
-        };
-      }));
-      setLoaded(true);
+    if (!isEdit) {
+      setHydratedEditId("new");
+      return;
     }
-  }, [isEdit, existingRecord, existingItems, stockItems, loaded]);
+
+    setHydratedEditId(null);
+  }, [editId, isEdit]);
+
+  useEffect(() => {
+    if (!isEdit || !editId || !existingRecord) return;
+    if (isExistingRecordFetching || isExistingItemsFetching || isStockItemsFetching) return;
+    if (hydratedEditId === editId) return;
+
+    setDate(existingRecord.date);
+    setNotes(existingRecord.notes || "");
+    if (existingRecord.branch_id) {
+      setDestinationType("branch");
+      setDestinationId(existingRecord.branch_id);
+    } else {
+      setDestinationType("branch");
+      setDestinationId("");
+    }
+    if (existingRecord.branch_name) {
+      setDestinationType("branch");
+    }
+    setItems(existingItems.map((i: any) => {
+      const si = stockItems.find((s: any) => s.id === i.stock_item_id);
+      return {
+        stock_item_id: i.stock_item_id || "",
+        name: i.name,
+        code: si?.code || "",
+        unit: i.unit || "",
+        old_cost: Number(i.old_cost),
+        new_cost: Number(i.new_cost),
+      };
+    }));
+    setHydratedEditId(editId);
+  }, [isEdit, editId, existingRecord, existingItems, stockItems, isExistingRecordFetching, isExistingItemsFetching, isStockItemsFetching, hydratedEditId]);
 
   const filteredStockItems = useMemo(() => {
     if (!itemSearch.trim()) return stockItems;
@@ -254,6 +279,8 @@ export const AddCostAdjustmentPage: React.FC = () => {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["cost-adjustments"] });
+      qc.invalidateQueries({ queryKey: ["cost-adjustment", editId] });
+      qc.invalidateQueries({ queryKey: ["cost-adjustment-items", editId] });
       qc.invalidateQueries({ queryKey: ["stock-items"] });
       toast.success(isEdit ? "تم تحديث السجل بنجاح" : "تم حفظ السجل بنجاح");
       navigate("/cost-adjustment");
@@ -271,7 +298,9 @@ export const AddCostAdjustmentPage: React.FC = () => {
     saveMutation.mutate(status);
   };
 
-  if (!loaded) {
+  const isHydratingEdit = isEdit && hydratedEditId !== editId;
+
+  if (isHydratingEdit) {
     return <div className="flex items-center justify-center py-20 text-muted-foreground">جاري التحميل...</div>;
   }
 

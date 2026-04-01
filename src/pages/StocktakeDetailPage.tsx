@@ -217,6 +217,31 @@ export const StocktakeDetailPage: React.FC = () => {
   // Check if this is an edit of an archived stocktake
   const isEditMode = stocktake?.status === "مؤرشف" && new URLSearchParams(window.location.search).get("edit") === "true";
 
+  // Save as draft - persist counted quantities without changing status
+  const handleSaveAsDraft = async () => {
+    for (const item of stocktakeItems) {
+      const qty = Number(localQty[item.id] ?? item.counted_qty);
+      if (qty !== Number(item.counted_qty)) {
+        await supabase.from("stocktake_items").update({ counted_qty: qty }).eq("id", item.id);
+      }
+    }
+
+    const totalActual = stocktakeItems.reduce((sum: number, item: any) => {
+      const qty = Number(localQty[item.id] ?? item.counted_qty);
+      return sum + qty * Number(item.avg_cost);
+    }, 0);
+
+    await supabase.from("stocktakes").update({
+      notes,
+      total_actual_value: totalActual,
+    }).eq("id", id!);
+
+    queryClient.invalidateQueries({ queryKey: ["stocktake", id] });
+    queryClient.invalidateQueries({ queryKey: ["stocktake-items", id] });
+    setLocalQty({});
+    toast({ title: "تم حفظ المسودة بنجاح" });
+  };
+
   const handleSave = async () => {
     // Save items
     for (const item of stocktakeItems) {

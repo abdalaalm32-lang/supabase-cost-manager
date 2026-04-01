@@ -55,6 +55,7 @@ export const StocktakeDetailPage: React.FC = () => {
     }
   }, [stocktake, notesLoaded]);
 
+
   const { data: stocktakeItems = [], isLoading: itemsLoading } = useQuery({
     queryKey: ["stocktake-items", id],
     queryFn: async () => {
@@ -74,6 +75,28 @@ export const StocktakeDetailPage: React.FC = () => {
     },
     enabled: !!companyId,
   });
+
+  // Sync avg_cost from stock_items when reopening a draft stocktake
+  const [costSynced, setCostSynced] = React.useState(false);
+  React.useEffect(() => {
+    if (costSynced || !stocktake || stocktake.status !== "مسودة") return;
+    if (stocktakeItems.length === 0 || allStockItems.length === 0) return;
+    
+    const doUpdates = async () => {
+      for (const item of stocktakeItems) {
+        if (!item.stock_item_id) continue;
+        const si = allStockItems.find((s: any) => s.id === item.stock_item_id);
+        if (!si) continue;
+        const latestCost = Number(si.avg_cost) || 0;
+        if (latestCost !== Number(item.avg_cost)) {
+          await supabase.from("stocktake_items").update({ avg_cost: latestCost }).eq("id", item.id);
+        }
+      }
+      queryClient.invalidateQueries({ queryKey: ["stocktake-items", id] });
+    };
+    doUpdates();
+    setCostSynced(true);
+  }, [stocktake, stocktakeItems, allStockItems, costSynced, id, queryClient]);
 
   const { data: departments = [] } = useQuery({
     queryKey: ["departments-active", companyId],
@@ -216,6 +239,31 @@ export const StocktakeDetailPage: React.FC = () => {
 
   // Check if this is an edit of an archived stocktake
   const isEditMode = stocktake?.status === "مؤرشف" && new URLSearchParams(window.location.search).get("edit") === "true";
+
+  // Save as draft - persist counted quantities without changing status
+  const handleSaveAsDraft = async () => {
+    for (const item of stocktakeItems) {
+      const qty = Number(localQty[item.id] ?? item.counted_qty);
+      if (qty !== Number(item.counted_qty)) {
+        await supabase.from("stocktake_items").update({ counted_qty: qty }).eq("id", item.id);
+      }
+    }
+
+    const totalActual = stocktakeItems.reduce((sum: number, item: any) => {
+      const qty = Number(localQty[item.id] ?? item.counted_qty);
+      return sum + qty * Number(item.avg_cost);
+    }, 0);
+
+    await supabase.from("stocktakes").update({
+      notes,
+      total_actual_value: totalActual,
+    }).eq("id", id!);
+
+    queryClient.invalidateQueries({ queryKey: ["stocktake", id] });
+    queryClient.invalidateQueries({ queryKey: ["stocktake-items", id] });
+    setLocalQty({});
+    toast({ title: "تم حفظ المسودة بنجاح" });
+  };
 
   const handleSave = async () => {
     // Save items
@@ -522,6 +570,11 @@ export const StocktakeDetailPage: React.FC = () => {
       {/* Action buttons */}
       {isEditable && (
         <div className="flex gap-3">
+          {stocktake?.status === "مسودة" && (
+            <Button variant="outline" onClick={handleSaveAsDraft}>
+              <Save size={16} /> حفظ كمسودة
+            </Button>
+          )}
           <Button onClick={handleSave}>
             <Save size={16} /> {isEditMode ? "حفظ التعديلات" : "حفظ الجرد"}
           </Button>

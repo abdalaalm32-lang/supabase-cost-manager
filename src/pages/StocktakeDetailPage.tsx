@@ -55,31 +55,6 @@ export const StocktakeDetailPage: React.FC = () => {
     }
   }, [stocktake, notesLoaded]);
 
-  // Sync avg_cost from stock_items when reopening a draft stocktake
-  const [costSynced, setCostSynced] = React.useState(false);
-  React.useEffect(() => {
-    if (costSynced || !stocktake || stocktake.status !== "مسودة") return;
-    if (stocktakeItems.length === 0 || allStockItems.length === 0) return;
-    
-    const updates: Promise<any>[] = [];
-    for (const item of stocktakeItems) {
-      if (!item.stock_item_id) continue;
-      const si = allStockItems.find((s: any) => s.id === item.stock_item_id);
-      if (!si) continue;
-      const latestCost = Number(si.avg_cost) || 0;
-      if (latestCost !== Number(item.avg_cost)) {
-        updates.push(
-          supabase.from("stocktake_items").update({ avg_cost: latestCost }).eq("id", item.id)
-        );
-      }
-    }
-    if (updates.length > 0) {
-      Promise.all(updates).then(() => {
-        queryClient.invalidateQueries({ queryKey: ["stocktake-items", id] });
-      });
-    }
-    setCostSynced(true);
-  }, [stocktake, stocktakeItems, allStockItems, costSynced, id, queryClient]);
 
   const { data: stocktakeItems = [], isLoading: itemsLoading } = useQuery({
     queryKey: ["stocktake-items", id],

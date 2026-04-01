@@ -228,6 +228,8 @@ export const AddCostAdjustmentPage: React.FC = () => {
     setItemPickerOpen(false);
     setSelectedItemIds(new Set());
     setItemSearch("");
+    setPickerFilterDept("all");
+    setPickerFilterCat("all");
   };
 
   const updateNewCost = (idx: number, value: number) => {

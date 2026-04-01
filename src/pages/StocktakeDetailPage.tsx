@@ -102,7 +102,7 @@ export const StocktakeDetailPage: React.FC = () => {
     setCostSynced(true);
   }, [stocktake, stocktakeItems, allStockItems, costSynced, id, queryClient]);
 
-
+  const { data: departments = [] } = useQuery({
     queryKey: ["departments-active", companyId],
     queryFn: async () => {
       const { data, error } = await supabase.from("departments").select("*").eq("active", true).order("name");

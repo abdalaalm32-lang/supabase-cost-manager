@@ -50,6 +50,8 @@ export const AddCostAdjustmentPage: React.FC = () => {
   const [itemSearch, setItemSearch] = useState("");
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [submitted, setSubmitted] = useState(false);
+  const [pickerFilterDept, setPickerFilterDept] = useState("all");
+  const [pickerFilterCat, setPickerFilterCat] = useState("all");
   const [hydratedEditId, setHydratedEditId] = useState<string | null>(isEdit ? null : "new");
 
   // Load existing record for edit

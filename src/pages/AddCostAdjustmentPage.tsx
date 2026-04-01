@@ -182,14 +182,23 @@ export const AddCostAdjustmentPage: React.FC = () => {
   }, [isEdit, editId, existingRecord, existingItems, stockItems, isExistingRecordFetching, isExistingItemsFetching, isStockItemsFetching, hydratedEditId]);
 
   const filteredStockItems = useMemo(() => {
-    if (!itemSearch.trim()) return stockItems;
-    const q = itemSearch.trim().toLowerCase();
-    return stockItems.filter((s: any) =>
-      s.name.toLowerCase().includes(q) ||
-      (s.code || "").toLowerCase().includes(q) ||
-      (s.inventory_categories?.name || "").toLowerCase().includes(q)
-    );
-  }, [stockItems, itemSearch]);
+    let result = stockItems;
+    if (pickerFilterDept !== "all") {
+      result = result.filter((s: any) => s.department_id === pickerFilterDept);
+    }
+    if (pickerFilterCat !== "all") {
+      result = result.filter((s: any) => s.category_id === pickerFilterCat);
+    }
+    if (itemSearch.trim()) {
+      const q = itemSearch.trim().toLowerCase();
+      result = result.filter((s: any) =>
+        s.name.toLowerCase().includes(q) ||
+        (s.code || "").toLowerCase().includes(q) ||
+        (s.inventory_categories?.name || "").toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [stockItems, itemSearch, pickerFilterDept, pickerFilterCat]);
 
   const toggleItemSelection = (sid: string) => {
     setSelectedItemIds((prev) => {

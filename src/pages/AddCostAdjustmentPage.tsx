@@ -521,7 +521,7 @@ export const AddCostAdjustmentPage: React.FC = () => {
               <Button className="flex-1" disabled={selectedItemIds.size === 0} onClick={confirmItemSelection}>
                 حفظ وإضافة {selectedItemIds.size > 0 ? `(${selectedItemIds.size})` : ""}
               </Button>
-              <Button variant="outline" onClick={() => { setItemPickerOpen(false); setSelectedItemIds(new Set()); setItemSearch(""); }}>إلغاء</Button>
+              <Button variant="outline" onClick={() => { setItemPickerOpen(false); setSelectedItemIds(new Set()); setItemSearch(""); setPickerFilterDept("all"); setPickerFilterCat("all"); }}>إلغاء</Button>
             </div>
           </div>
         </DialogContent>

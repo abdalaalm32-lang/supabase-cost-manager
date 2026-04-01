@@ -95,11 +95,6 @@ export const StocktakeDetailPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ["stocktake-items", id] });
     };
     doUpdates();
-    if (updates.length > 0) {
-      Promise.all(updates).then(() => {
-        queryClient.invalidateQueries({ queryKey: ["stocktake-items", id] });
-      });
-    }
     setCostSynced(true);
   }, [stocktake, stocktakeItems, allStockItems, costSynced, id, queryClient]);
 

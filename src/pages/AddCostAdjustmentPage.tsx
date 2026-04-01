@@ -476,7 +476,23 @@ export const AddCostAdjustmentPage: React.FC = () => {
       <Dialog open={itemPickerOpen} onOpenChange={setItemPickerOpen}>
         <DialogContent className="sm:max-w-2xl max-h-[80vh]">
           <DialogHeader><DialogTitle>اختيار أصناف من المخزون</DialogTitle></DialogHeader>
-          <div className="space-y-4">
+           <div className="space-y-4">
+            <div className="flex gap-3 flex-wrap">
+              <Select value={pickerFilterDept} onValueChange={setPickerFilterDept}>
+                <SelectTrigger className="w-44"><SelectValue placeholder="القسم" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">كل الأقسام</SelectItem>
+                  {departments.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={pickerFilterCat} onValueChange={setPickerFilterCat}>
+                <SelectTrigger className="w-44"><SelectValue placeholder="المجموعة" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">كل المجموعات</SelectItem>
+                  {invCategories.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="relative">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input placeholder="بحث بالصنف أو الكود أو المجموعة..." value={itemSearch} onChange={(e) => setItemSearch(e.target.value)} className="glass-input pr-9" />

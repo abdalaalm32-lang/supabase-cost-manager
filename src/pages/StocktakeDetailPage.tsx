@@ -547,6 +547,11 @@ export const StocktakeDetailPage: React.FC = () => {
       {/* Action buttons */}
       {isEditable && (
         <div className="flex gap-3">
+          {stocktake?.status === "مسودة" && (
+            <Button variant="outline" onClick={handleSaveAsDraft}>
+              <Save size={16} /> حفظ كمسودة
+            </Button>
+          )}
           <Button onClick={handleSave}>
             <Save size={16} /> {isEditMode ? "حفظ التعديلات" : "حفظ الجرد"}
           </Button>

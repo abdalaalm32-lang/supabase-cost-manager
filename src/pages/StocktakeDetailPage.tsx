@@ -82,18 +82,19 @@ export const StocktakeDetailPage: React.FC = () => {
     if (costSynced || !stocktake || stocktake.status !== "مسودة") return;
     if (stocktakeItems.length === 0 || allStockItems.length === 0) return;
     
-    const updates: Promise<any>[] = [];
-    for (const item of stocktakeItems) {
-      if (!item.stock_item_id) continue;
-      const si = allStockItems.find((s: any) => s.id === item.stock_item_id);
-      if (!si) continue;
-      const latestCost = Number(si.avg_cost) || 0;
-      if (latestCost !== Number(item.avg_cost)) {
-        updates.push(
-          supabase.from("stocktake_items").update({ avg_cost: latestCost }).eq("id", item.id).then(r => r)
-        );
+    const doUpdates = async () => {
+      for (const item of stocktakeItems) {
+        if (!item.stock_item_id) continue;
+        const si = allStockItems.find((s: any) => s.id === item.stock_item_id);
+        if (!si) continue;
+        const latestCost = Number(si.avg_cost) || 0;
+        if (latestCost !== Number(item.avg_cost)) {
+          await supabase.from("stocktake_items").update({ avg_cost: latestCost }).eq("id", item.id);
+        }
       }
-    }
+      queryClient.invalidateQueries({ queryKey: ["stocktake-items", id] });
+    };
+    doUpdates();
     if (updates.length > 0) {
       Promise.all(updates).then(() => {
         queryClient.invalidateQueries({ queryKey: ["stocktake-items", id] });

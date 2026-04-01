@@ -90,7 +90,7 @@ export const StocktakeDetailPage: React.FC = () => {
       const latestCost = Number(si.avg_cost) || 0;
       if (latestCost !== Number(item.avg_cost)) {
         updates.push(
-          supabase.from("stocktake_items").update({ avg_cost: latestCost }).eq("id", item.id).then()
+          supabase.from("stocktake_items").update({ avg_cost: latestCost }).eq("id", item.id).then(r => r)
         );
       }
     }

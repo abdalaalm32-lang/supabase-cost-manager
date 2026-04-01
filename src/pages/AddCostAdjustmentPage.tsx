@@ -101,6 +101,26 @@ export const AddCostAdjustmentPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  const { data: departments = [] } = useQuery({
+    queryKey: ["departments-active", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("departments").select("*").eq("active", true).order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
+  const { data: invCategories = [] } = useQuery({
+    queryKey: ["inv-categories-active", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("inventory_categories").select("*").eq("active", true).order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
   const {
     data: stockItems = [],
     isFetching: isStockItemsFetching,

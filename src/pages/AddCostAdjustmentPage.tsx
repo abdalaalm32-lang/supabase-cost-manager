@@ -50,6 +50,8 @@ export const AddCostAdjustmentPage: React.FC = () => {
   const [itemSearch, setItemSearch] = useState("");
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [submitted, setSubmitted] = useState(false);
+  const [pickerFilterDept, setPickerFilterDept] = useState("all");
+  const [pickerFilterCat, setPickerFilterCat] = useState("all");
   const [hydratedEditId, setHydratedEditId] = useState<string | null>(isEdit ? null : "new");
 
   // Load existing record for edit
@@ -93,6 +95,26 @@ export const AddCostAdjustmentPage: React.FC = () => {
     queryKey: ["warehouses-active", companyId],
     queryFn: async () => {
       const { data, error } = await supabase.from("warehouses").select("*").eq("active", true).order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
+  const { data: departments = [] } = useQuery({
+    queryKey: ["departments-active", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("departments").select("*").eq("active", true).order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
+  const { data: invCategories = [] } = useQuery({
+    queryKey: ["inv-categories-active", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("inventory_categories").select("*").eq("active", true).order("name");
       if (error) throw error;
       return data;
     },
@@ -160,14 +182,23 @@ export const AddCostAdjustmentPage: React.FC = () => {
   }, [isEdit, editId, existingRecord, existingItems, stockItems, isExistingRecordFetching, isExistingItemsFetching, isStockItemsFetching, hydratedEditId]);
 
   const filteredStockItems = useMemo(() => {
-    if (!itemSearch.trim()) return stockItems;
-    const q = itemSearch.trim().toLowerCase();
-    return stockItems.filter((s: any) =>
-      s.name.toLowerCase().includes(q) ||
-      (s.code || "").toLowerCase().includes(q) ||
-      (s.inventory_categories?.name || "").toLowerCase().includes(q)
-    );
-  }, [stockItems, itemSearch]);
+    let result = stockItems;
+    if (pickerFilterDept !== "all") {
+      result = result.filter((s: any) => s.department_id === pickerFilterDept);
+    }
+    if (pickerFilterCat !== "all") {
+      result = result.filter((s: any) => s.category_id === pickerFilterCat);
+    }
+    if (itemSearch.trim()) {
+      const q = itemSearch.trim().toLowerCase();
+      result = result.filter((s: any) =>
+        s.name.toLowerCase().includes(q) ||
+        (s.code || "").toLowerCase().includes(q) ||
+        (s.inventory_categories?.name || "").toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [stockItems, itemSearch, pickerFilterDept, pickerFilterCat]);
 
   const toggleItemSelection = (sid: string) => {
     setSelectedItemIds((prev) => {
@@ -197,6 +228,8 @@ export const AddCostAdjustmentPage: React.FC = () => {
     setItemPickerOpen(false);
     setSelectedItemIds(new Set());
     setItemSearch("");
+    setPickerFilterDept("all");
+    setPickerFilterCat("all");
   };
 
   const updateNewCost = (idx: number, value: number) => {
@@ -445,7 +478,23 @@ export const AddCostAdjustmentPage: React.FC = () => {
       <Dialog open={itemPickerOpen} onOpenChange={setItemPickerOpen}>
         <DialogContent className="sm:max-w-2xl max-h-[80vh]">
           <DialogHeader><DialogTitle>اختيار أصناف من المخزون</DialogTitle></DialogHeader>
-          <div className="space-y-4">
+           <div className="space-y-4">
+            <div className="flex gap-3 flex-wrap">
+              <Select value={pickerFilterDept} onValueChange={setPickerFilterDept}>
+                <SelectTrigger className="w-44"><SelectValue placeholder="القسم" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">كل الأقسام</SelectItem>
+                  {departments.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={pickerFilterCat} onValueChange={setPickerFilterCat}>
+                <SelectTrigger className="w-44"><SelectValue placeholder="المجموعة" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">كل المجموعات</SelectItem>
+                  {invCategories.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="relative">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input placeholder="بحث بالصنف أو الكود أو المجموعة..." value={itemSearch} onChange={(e) => setItemSearch(e.target.value)} className="glass-input pr-9" />
@@ -474,7 +523,7 @@ export const AddCostAdjustmentPage: React.FC = () => {
               <Button className="flex-1" disabled={selectedItemIds.size === 0} onClick={confirmItemSelection}>
                 حفظ وإضافة {selectedItemIds.size > 0 ? `(${selectedItemIds.size})` : ""}
               </Button>
-              <Button variant="outline" onClick={() => { setItemPickerOpen(false); setSelectedItemIds(new Set()); setItemSearch(""); }}>إلغاء</Button>
+              <Button variant="outline" onClick={() => { setItemPickerOpen(false); setSelectedItemIds(new Set()); setItemSearch(""); setPickerFilterDept("all"); setPickerFilterCat("all"); }}>إلغاء</Button>
             </div>
           </div>
         </DialogContent>

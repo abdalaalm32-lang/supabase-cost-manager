@@ -180,8 +180,15 @@ export const StocktakeDetailPage: React.FC = () => {
     let items = allStockItems.filter((s: any) => !existingStockItemIds.has(s.id));
     if (filterDept !== "all") items = items.filter((s: any) => s.department_id === filterDept);
     if (filterCat !== "all") items = items.filter((s: any) => s.category_id === filterCat);
+    if (pickerSearch.trim()) {
+      const q = pickerSearch.trim().toLowerCase();
+      items = items.filter((s: any) => {
+        const catName = categories.find((c: any) => c.id === s.category_id)?.name || "";
+        return (s.name || "").toLowerCase().includes(q) || (s.code || "").toLowerCase().includes(q) || catName.toLowerCase().includes(q);
+      });
+    }
     return items;
-  }, [allStockItems, existingStockItemIds, filterDept, filterCat]);
+  }, [allStockItems, existingStockItemIds, filterDept, filterCat, pickerSearch, categories]);
 
   const toggleItem = (itemId: string) => {
     setSelectedItemIds(prev => {

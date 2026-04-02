@@ -611,6 +611,13 @@ export const StocktakeDetailPage: React.FC = () => {
             </Select>
           </div>
 
+          <Input
+            placeholder="بحث بالكود أو اسم الصنف أو المجموعة..."
+            value={pickerSearch}
+            onChange={e => setPickerSearch(e.target.value)}
+            className="w-full"
+          />
+
           <div className="flex items-center gap-2 py-2">
             <Checkbox
               checked={availableItems.length > 0 && selectedItemIds.size === availableItems.length}

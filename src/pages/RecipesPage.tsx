@@ -82,6 +82,13 @@ export const RecipesPage: React.FC = () => {
   const [filterCat, setFilterCat] = useState("all");
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
 
+  // Replace ingredient state
+  const [showReplaceDialog, setShowReplaceDialog] = useState(false);
+  const [replaceIdx, setReplaceIdx] = useState<number | null>(null);
+  const [replaceSearch, setReplaceSearch] = useState("");
+  const [replaceFilterDept, setReplaceFilterDept] = useState("all");
+  const [replaceFilterCat, setReplaceFilterCat] = useState("all");
+
   // Clipboard for copy/paste recipe
   const [copiedIngredients, setCopiedIngredients] = useState<LocalIngredient[] | null>(null);
 

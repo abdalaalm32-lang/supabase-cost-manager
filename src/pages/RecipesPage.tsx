@@ -342,6 +342,49 @@ export const RecipesPage: React.FC = () => {
     setIngredients((prev) => prev.map((ing, i) => (i === idx ? { ...ing, qty: Number(val) || 0 } : ing)));
   };
 
+  // Replace ingredient
+  const availableReplacements = useMemo(() => {
+    let items = allStockItems.filter((s: any) => !existingStockIds.has(s.id));
+    if (replaceFilterDept !== "all") items = items.filter((s: any) => s.department_id === replaceFilterDept);
+    if (replaceFilterCat !== "all") items = items.filter((s: any) => s.category_id === replaceFilterCat);
+    if (replaceSearch.trim()) {
+      const q = replaceSearch.trim().toLowerCase();
+      items = items.filter((s: any) => s.name.toLowerCase().includes(q) || (s.code || "").toLowerCase().includes(q));
+    }
+    return items;
+  }, [allStockItems, existingStockIds, replaceFilterDept, replaceFilterCat, replaceSearch]);
+
+  const handleOpenReplace = (idx: number) => {
+    setReplaceIdx(idx);
+    setReplaceSearch("");
+    setReplaceFilterDept("all");
+    setReplaceFilterCat("all");
+    setShowReplaceDialog(true);
+  };
+
+  const handleReplaceIngredient = (newStockItem: any) => {
+    if (replaceIdx === null) return;
+    setIngredients((prev) =>
+      prev.map((ing, i) =>
+        i === replaceIdx
+          ? {
+              ...ing,
+              stock_item_id: newStockItem.id,
+              name: newStockItem.name,
+              code: newStockItem.code || "—",
+              recipe_unit: newStockItem.recipe_unit || newStockItem.stock_unit || "كجم",
+              stock_unit: newStockItem.stock_unit || "كجم",
+              conversion_factor: Number(newStockItem.conversion_factor) || 1,
+              avg_cost: Number(newStockItem.avg_cost) || 0,
+            }
+          : ing
+      )
+    );
+    setShowReplaceDialog(false);
+    setReplaceIdx(null);
+    toast({ title: "تم استبدال الخامة بنجاح" });
+  };
+
   // Cost calculations - convert qty from recipe_unit to stock_unit before calculating cost
   const totalIngredientsCost = useMemo(() => {
     return ingredients.reduce((sum, ing) => {

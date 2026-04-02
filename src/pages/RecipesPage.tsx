@@ -1182,6 +1182,79 @@ ${allTablesHTML}
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Replace Ingredient Dialog */}
+      <Dialog open={showReplaceDialog} onOpenChange={(open) => { if (!open) { setShowReplaceDialog(false); setReplaceIdx(null); } }}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>استبدال الخامة: {replaceIdx !== null && ingredients[replaceIdx] ? ingredients[replaceIdx].name : ""}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <Select value={replaceFilterDept} onValueChange={setReplaceFilterDept}>
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder="كل الأقسام" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">كل الأقسام</SelectItem>
+                  {departments.map((d: any) => (
+                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={replaceFilterCat} onValueChange={setReplaceFilterCat}>
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder="كل المجموعات" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">كل المجموعات</SelectItem>
+                  {categories.map((c: any) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="relative">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="بحث بالاسم أو الكود..."
+                value={replaceSearch}
+                onChange={(e) => setReplaceSearch(e.target.value)}
+                className="pr-9 h-9 text-sm"
+              />
+            </div>
+            <div className="border rounded-xl max-h-72 overflow-auto">
+              {availableReplacements.length === 0 ? (
+                <p className="text-center text-muted-foreground text-sm py-4">لا توجد خامات متاحة</p>
+              ) : (
+                availableReplacements.map((si: any) => {
+                  const dept = departments.find((d: any) => d.id === si.department_id);
+                  return (
+                    <button
+                      key={si.id}
+                      className="flex items-center gap-3 p-3 hover:bg-muted/30 cursor-pointer border-b last:border-b-0 w-full text-right"
+                      onClick={() => handleReplaceIngredient(si)}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{si.name}</p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>{si.code || "—"}</span>
+                          <span>•</span>
+                          <span>{dept?.name || "—"}</span>
+                          <span>•</span>
+                          <span>{si.stock_unit}</span>
+                          <span>•</span>
+                          <span>م.ت: {Number(si.avg_cost).toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

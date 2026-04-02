@@ -480,7 +480,7 @@ export const StocktakeDetailPage: React.FC = () => {
 
       {/* Add Items Button */}
       {isEditable && (
-        <Button onClick={() => { setShowAddItems(true); setSelectedItemIds(new Set()); setFilterDept("all"); setFilterCat("all"); }}>
+        <Button onClick={() => { setShowAddItems(true); setSelectedItemIds(new Set()); setFilterDept("all"); setFilterCat("all"); setPickerSearch(""); }}>
           <Plus size={16} /> إضافة أصناف للجرد
         </Button>
       )}

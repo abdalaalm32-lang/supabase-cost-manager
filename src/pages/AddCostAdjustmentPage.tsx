@@ -499,6 +499,29 @@ export const AddCostAdjustmentPage: React.FC = () => {
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input placeholder="بحث بالصنف أو الكود أو المجموعة..." value={itemSearch} onChange={(e) => setItemSearch(e.target.value)} className="glass-input pr-9" />
             </div>
+            {filteredStockItems.length > 0 && (() => {
+              const selectableItems = filteredStockItems.filter((si: any) => !items.some((i) => i.stock_item_id === si.id));
+              const allSelected = selectableItems.length > 0 && selectableItems.every((si: any) => selectedItemIds.has(si.id));
+              return selectableItems.length > 0 ? (
+                <div
+                  className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors hover:bg-muted/50 border-b mb-1"
+                  onClick={() => {
+                    setSelectedItemIds((prev) => {
+                      const next = new Set(prev);
+                      if (allSelected) {
+                        selectableItems.forEach((si: any) => next.delete(si.id));
+                      } else {
+                        selectableItems.forEach((si: any) => next.add(si.id));
+                      }
+                      return next;
+                    });
+                  }}
+                >
+                  <Checkbox checked={allSelected} />
+                  <span className="font-semibold text-sm">تحديد الكل ({selectableItems.length})</span>
+                </div>
+              ) : null;
+            })()}
             <div className="max-h-[50vh] overflow-y-auto space-y-1">
               {filteredStockItems.length === 0 ? (
                 <p className="text-center py-8 text-muted-foreground text-sm">لا توجد أصناف</p>

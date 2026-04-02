@@ -985,14 +985,25 @@ ${allTablesHTML}
                             <TableCell className="text-sm font-semibold">{total.toFixed(2)}</TableCell>
                             {!isLocked && (
                               <TableCell>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 text-destructive"
-                                  onClick={() => handleDeleteIngredient(idx)}
-                                >
-                                  <Trash2 size={14} />
-                                </Button>
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-primary"
+                                    title="استبدال الخامة"
+                                    onClick={() => handleOpenReplace(idx)}
+                                  >
+                                    <Pencil size={14} />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-destructive"
+                                    onClick={() => handleDeleteIngredient(idx)}
+                                  >
+                                    <Trash2 size={14} />
+                                  </Button>
+                                </div>
                               </TableCell>
                             )}
                           </TableRow>

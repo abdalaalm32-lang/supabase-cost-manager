@@ -37,6 +37,7 @@ export const StocktakeDetailPage: React.FC = () => {
   const [notes, setNotes] = useState("");
   const [notesLoaded, setNotesLoaded] = useState(false);
   const [localQty, setLocalQty] = useState<Record<string, string>>({});
+  const [pickerSearch, setPickerSearch] = useState("");
 
   const { data: stocktake, isLoading: stLoading } = useQuery({
     queryKey: ["stocktake", id],
@@ -179,8 +180,15 @@ export const StocktakeDetailPage: React.FC = () => {
     let items = allStockItems.filter((s: any) => !existingStockItemIds.has(s.id));
     if (filterDept !== "all") items = items.filter((s: any) => s.department_id === filterDept);
     if (filterCat !== "all") items = items.filter((s: any) => s.category_id === filterCat);
+    if (pickerSearch.trim()) {
+      const q = pickerSearch.trim().toLowerCase();
+      items = items.filter((s: any) => {
+        const catName = categories.find((c: any) => c.id === s.category_id)?.name || "";
+        return (s.name || "").toLowerCase().includes(q) || (s.code || "").toLowerCase().includes(q) || catName.toLowerCase().includes(q);
+      });
+    }
     return items;
-  }, [allStockItems, existingStockItemIds, filterDept, filterCat]);
+  }, [allStockItems, existingStockItemIds, filterDept, filterCat, pickerSearch, categories]);
 
   const toggleItem = (itemId: string) => {
     setSelectedItemIds(prev => {
@@ -472,7 +480,7 @@ export const StocktakeDetailPage: React.FC = () => {
 
       {/* Add Items Button */}
       {isEditable && (
-        <Button onClick={() => { setShowAddItems(true); setSelectedItemIds(new Set()); setFilterDept("all"); setFilterCat("all"); }}>
+        <Button onClick={() => { setShowAddItems(true); setSelectedItemIds(new Set()); setFilterDept("all"); setFilterCat("all"); setPickerSearch(""); }}>
           <Plus size={16} /> إضافة أصناف للجرد
         </Button>
       )}
@@ -602,6 +610,13 @@ export const StocktakeDetailPage: React.FC = () => {
               </SelectContent>
             </Select>
           </div>
+
+          <Input
+            placeholder="بحث بالكود أو اسم الصنف أو المجموعة..."
+            value={pickerSearch}
+            onChange={e => setPickerSearch(e.target.value)}
+            className="w-full"
+          />
 
           <div className="flex items-center gap-2 py-2">
             <Checkbox

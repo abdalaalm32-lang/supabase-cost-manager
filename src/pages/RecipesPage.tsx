@@ -944,7 +944,7 @@ ${allTablesHTML}
                       <TableHead className="text-right">الكمية</TableHead>
                       <TableHead className="text-right">م. التكلفة</TableHead>
                       <TableHead className="text-right">الإجمالي</TableHead>
-                      {!isLocked && <TableHead className="text-right w-12">حذف</TableHead>}
+                      {!isLocked && <TableHead className="text-right w-20">إجراءات</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>

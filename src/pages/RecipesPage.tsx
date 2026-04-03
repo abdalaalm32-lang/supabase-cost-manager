@@ -655,7 +655,9 @@ ${allTablesHTML}
         { key: "avgCost", label: "م. التكلفة" }, { key: "total", label: "الإجمالي" },
       ];
       const branchName = selectedBranch === "all" ? "كل الفروع" : branches.find((b: any) => b.id === selectedBranch)?.name || "";
-      await exportToPDF({ title: `جميع الوصفات — ${branchName}`, filename: `وصفات_${branchName}`, columns: cols, data: rows });
+      const catName = selectedPrintCategory !== "all" ? (posCategories.find((c: any) => c.id === selectedPrintCategory)?.name || selectedPrintCategory) : "";
+      const titleSuffix = `${branchName}${catName ? ` — ${catName}` : ""}`;
+      await exportToPDF({ title: `جميع الوصفات — ${titleSuffix}`, filename: `وصفات_${titleSuffix}`, columns: cols, data: rows });
     } catch { /* ignore */ }
     finally { setLoadingAllPdf(false); }
   };

@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-import { AlertTriangle, Package } from "lucide-react";
+import { AlertTriangle, Package, Printer } from "lucide-react";
 import { CategoryPackingTable } from "@/components/menu-analysis/CategoryPackingTable";
 import { CategorySummaryTable } from "@/components/menu-analysis/CategorySummaryTable";
 import { CategorySideCostTable } from "@/components/menu-analysis/CategorySideCostTable";

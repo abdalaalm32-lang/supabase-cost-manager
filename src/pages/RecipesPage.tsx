@@ -599,7 +599,7 @@ table { width:100%; border-collapse:collapse; margin-bottom:5px; }
 th { border:1px solid #000; padding:4px 5px; font-size:9px; text-align:center; font-family:'AmiriBold','CairoLocal',sans-serif; background:#f0f0f0; }
 .footer { text-align:center; margin-top:20px; font-size:9px; border-top:1px solid #000; padding-top:8px; }
 </style></head><body>
-<div class="header"><img src="${logoSrc}" alt="Logo" class="logo" /><div><h1>جميع الوصفات${branchName ? ` — ${branchName}` : ""}</h1><p>Cost Management System • ${dateStr}</p></div></div>
+<div class="header"><img src="${logoSrc}" alt="Logo" class="logo" /><div><h1>جميع الوصفات${branchName ? ` — ${branchName}` : ""}${categoryName ? ` — ${categoryName}` : ""}</h1><p>Cost Management System • ${dateStr}</p></div></div>
 ${allTablesHTML}
 <div class="footer">Powered by Mohamed Abdel Aal</div>
 <script>(async function(){ try { if(document.fonts && document.fonts.ready) await document.fonts.ready; } catch(e){} window.print(); window.onafterprint = function(){ window.close(); }; })();</script>

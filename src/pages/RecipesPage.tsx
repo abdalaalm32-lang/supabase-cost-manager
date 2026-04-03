@@ -555,6 +555,9 @@ export const RecipesPage: React.FC = () => {
     const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
     const logoSrc = `${window.location.origin}/logo.png`;
     const branchName = selectedBranch === "all" ? "كل الفروع" : branches.find((b: any) => b.id === selectedBranch)?.name || "";
+    const categoryName = selectedPrintCategory !== "all"
+      ? (posCategories.find((c: any) => c.id === selectedPrintCategory)?.name || selectedPrintCategory)
+      : "";
 
     let allTablesHTML = "";
     let grandTotal = 0;

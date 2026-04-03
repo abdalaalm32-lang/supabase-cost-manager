@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Edit2, Trash2, TrendingUp, DollarSign, Percent, Target, Building2, Zap, Users, Megaphone, Wrench, MoreHorizontal, Calendar as CalendarIcon, X } from "lucide-react";
+import { Plus, Edit2, Trash2, TrendingUp, DollarSign, Percent, Target, Building2, Zap, Users, Megaphone, Wrench, MoreHorizontal, Calendar as CalendarIcon, X, Printer } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
@@ -349,11 +349,83 @@ export const IndirectExpensesPage: React.FC = () => {
   const indirectPctValue = selectedPeriod ? indirectCostPct(selectedPeriod) : 0;
   const netProfitPct = 100 - indirectPctValue - avgDirectCostPct;
 
+  const handlePrint = () => {
+    if (!selectedPeriod) return;
+    const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
+    const logoSrc = `${window.location.origin}/logo.png`;
+    const expItems = getExpenseItems(selectedPeriod);
+
+    let expenseRowsHTML = "";
+    for (const item of expItems) {
+      const pct = monthSales > 0 ? (item.value / monthSales * 100) : 0;
+      expenseRowsHTML += `<tr><td>${item.label}</td><td style="font-weight:bold">${item.value.toLocaleString()}</td><td>${pct.toFixed(2)}%</td></tr>`;
+    }
+    expenseRowsHTML += `<tr style="font-weight:bold;background:#eee;"><td>الإجمالي</td><td>${total.toLocaleString()}</td><td>${monthSales > 0 ? (total / monthSales * 100).toFixed(2) : 0}%</td></tr>`;
+
+    const printHTML = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تحليل المصاريف الغير مباشرة</title>
+    <style>
+      @font-face { font-family:'CairoLocal'; src:url('${window.location.origin}/fonts/Cairo-Regular.ttf') format('truetype'); }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      body { font-family:'CairoLocal',sans-serif; direction:rtl; padding:20px; color:#000; background:#fff; }
+      @media print { @page { size:auto; margin:10mm; } body { padding:0; } }
+      .header { text-align:center; margin-bottom:12px; border-bottom:1px solid #000; padding-bottom:8px; display:flex; align-items:center; justify-content:center; gap:10px; }
+      .logo { width:70px; height:70px; object-fit:contain; }
+      .header h1 { font-size:16px; font-weight:bold; }
+      .header p { font-size:10px; }
+      table { width:100%; border-collapse:collapse; margin-bottom:15px; }
+      th, td { border:1px solid #000; padding:6px 10px; text-align:center; font-size:11px; }
+      th { background:#eee; font-weight:bold; }
+      h3 { font-size:13px; font-weight:bold; margin:15px 0 5px; border-bottom:1px solid #ccc; padding-bottom:3px; }
+      .footer { text-align:center; margin-top:12px; font-size:8px; border-top:1px solid #000; padding-top:5px; }
+    </style></head><body>
+    <div class="header"><img src="${logoSrc}" alt="Logo" class="logo"/><div><h1>تحليل المصاريف الغير مباشرة</h1><p>الفترة: ${selectedPeriod.name} • ${dateStr}</p></div></div>
+
+    <h3>المؤشرات الرئيسية</h3>
+    <table><tbody>
+      <tr><td>المبيعات الشهرية المتوقعة</td><td style="font-weight:bold">${monthSales.toLocaleString()}</td></tr>
+      <tr><td>إجمالي المصاريف الغير مباشرة</td><td style="font-weight:bold">${total.toLocaleString()}</td></tr>
+      <tr><td>نسبة المصاريف الغير مباشرة</td><td style="font-weight:bold">${indirectCostPct(selectedPeriod).toFixed(2)}%</td></tr>
+      <tr><td>نقطة التعادل اليومية</td><td style="font-weight:bold">${breakEvenPoint(selectedPeriod).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td></tr>
+    </tbody></table>
+
+    <h3>جدول الربحية</h3>
+    <table><tbody>
+      <tr><td>Indirect Cost Per.</td><td style="font-weight:bold">${indirectPctValue.toFixed(2)}%</td></tr>
+      <tr><td>Avg Direct Cost Per.</td><td style="font-weight:bold">${avgDirectCostPct.toFixed(2)}%</td></tr>
+      <tr><td>Net Profit Per.</td><td style="font-weight:bold;${netProfitPct < 0 ? 'color:red' : 'color:green'}">${netProfitPct.toFixed(2)}%</td></tr>
+      <tr><td>Break-Even Point (Daily)</td><td style="font-weight:bold">${breakEvenPoint(selectedPeriod).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td></tr>
+    </tbody></table>
+
+    <h3>توزيع المصاريف</h3>
+    <table><thead><tr><th>البند</th><th>القيمة</th><th>النسبة</th></tr></thead><tbody>${expenseRowsHTML}</tbody></table>
+
+    <h3>بيانات التشغيل</h3>
+    <table><tbody>
+      <tr><td>السعة (عدد الكراسي)</td><td style="font-weight:bold">${selectedPeriod.capacity}</td></tr>
+      <tr><td>معدل الدوران</td><td style="font-weight:bold">${selectedPeriod.turn_over}</td></tr>
+      <tr><td>متوسط الفاتورة</td><td style="font-weight:bold">${selectedPeriod.avg_check.toLocaleString()}</td></tr>
+      <tr><td>المبيعات اليومية المتوقعة</td><td style="font-weight:bold">${expectedDailySales(selectedPeriod).toLocaleString()}</td></tr>
+      <tr><td>المبيعات الشهرية المتوقعة</td><td style="font-weight:bold">${monthSales.toLocaleString()}</td></tr>
+    </tbody></table>
+
+    <div class="footer">Powered by Mohamed Abdel Aal</div>
+    <script>(async()=>{try{if(document.fonts&&document.fonts.ready)await document.fonts.ready}catch(e){}window.print();window.onafterprint=()=>window.close();})()</script>
+    </body></html>`;
+
+    const w = window.open("", "_blank");
+    if (w) { w.document.write(printHTML); w.document.close(); }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in-up" dir="rtl">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <h1 className="text-2xl font-bold">تحليل المصاريف الغير مباشرة</h1>
         <div className="flex items-center gap-3 flex-wrap">
+          {selectedPeriod && (
+            <Button variant="outline" size="sm" className="gap-2" onClick={handlePrint}>
+              <Printer size={14} /> طباعة
+            </Button>
+          )}
           <span className="text-sm text-muted-foreground">الفرع:</span>
           <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
             <SelectTrigger className="w-[160px]">

@@ -389,6 +389,69 @@ export const MenuFinalReportPage: React.FC = () => {
     </div>
   );
 
+  const handlePrint = () => {
+    if (!selectedPeriod || categoryReports.length === 0) return;
+    const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
+    const logoSrc = `${window.location.origin}/logo.png`;
+    const tabLabel = activeTab === "kitchen" ? "المطبخ" : "البار";
+    const costPctBg = (pct: number) => pct >= 20 && pct <= 40 ? '#22c55e' : pct < 20 ? '#ef4444' : '#eab308';
+
+    let catTableHTML = `<table><thead><tr>
+      <th>التصنيف</th><th>إجمالي السعر</th><th>إجمالي التكلفة</th><th>إجمالي الربح</th><th>نسبة التكلفة</th><th>نسبة الربح</th>
+    </tr></thead><tbody>`;
+    for (const cat of categoryReports) {
+      catTableHTML += `<tr>
+        <td style="font-weight:bold">${cat.name}</td><td>${fmt(cat.totalPrice)}</td><td>${fmt(cat.totalCost)}</td><td>${fmt(cat.totalProfit)}</td>
+        <td><span style="background:${costPctBg(cat.costPer)};color:#fff;padding:1px 6px;border-radius:3px;font-size:9px">${fmtPct(cat.costPer)}</span></td>
+        <td style="${cat.profitPer < 0 ? 'color:red' : 'color:green'};font-weight:bold">${fmtPct(cat.profitPer)}</td>
+      </tr>`;
+    }
+    catTableHTML += `</tbody></table>`;
+
+    const periodTaxRate = selectedPeriod?.tax_rate || 0;
+    const summaryHTML = `<h3 style="margin:15px 0 5px;font-size:13px;font-weight:bold;">ملخص إجمالي ${tabLabel}</h3>
+    <table><tbody>
+      <tr><td style="font-weight:bold">إجمالي سعر بيع ${tabLabel}</td><td style="font-weight:bold">${fmt(grandTotals.totalPrice)}</td><td></td></tr>
+      <tr><td style="font-weight:bold">إجمالي تكلفة مباشرة ${tabLabel}</td><td style="font-weight:bold">${fmt(grandTotals.totalCost)}</td><td>${fmtPct(grandTotals.totalPrice > 0 ? grandTotals.totalCost / grandTotals.totalPrice * 100 : 0)}</td></tr>
+      <tr style="background:#d4e8ff"><td style="font-weight:bold">إجمالي تكلفة غير مباشرة ${tabLabel}</td><td style="font-weight:bold">${fmt(grandTotals.totalIndirect)}</td><td>${fmtPct(indirectCostPct * 100)}</td></tr>
+      <tr><td style="font-weight:bold">صافي ربح Net Take Away</td><td style="font-weight:bold">${fmt(grandTotals.netTakeAway)}</td><td>${grandTotals.totalPrice > 0 ? fmtPct(grandTotals.netTakeAway / grandTotals.totalPrice * 100) : "0%"}</td></tr>
+      <tr><td style="font-weight:bold">صافي ربح Net Table (بعد ضريبة ${periodTaxRate}%)</td><td style="font-weight:bold">${fmt(grandTotals.netTable)}</td><td>${grandTotals.totalPrice > 0 ? fmtPct(grandTotals.netTable / grandTotals.totalPrice * 100) : "0%"}</td></tr>
+      <tr><td style="font-weight:bold">عدد الأصناف</td><td style="font-weight:bold">${grandTotals.itemCount}</td><td></td></tr>
+    </tbody></table>
+    <h3 style="margin:15px 0 5px;font-size:13px;font-weight:bold;">ملخص التشغيل</h3>
+    <table><tbody>
+      <tr><td>مصاريف غير مباشرة يومية</td><td style="font-weight:bold">${fmt(dailyIndirect)}</td></tr>
+      <tr><td>متوسط سعر الأوردر</td><td style="font-weight:bold">${fmt(avgOrderPrice)}</td></tr>
+      <tr><td>متوسط تكلفة مباشرة</td><td style="font-weight:bold">${fmt(avgDirectCost)}</td></tr>
+      <tr><td>متوسط ربحية مباشرة</td><td style="font-weight:bold">${fmt(avgDirectProfit)}</td></tr>
+      <tr><td>أوردرات نقطة التعادل</td><td style="font-weight:bold">${Math.ceil(breakEvenOrders)} أوردر</td></tr>
+    </tbody></table>`;
+
+    const printHTML = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>التقرير النهائي - ${tabLabel}</title>
+    <style>
+      @font-face { font-family:'CairoLocal'; src:url('${window.location.origin}/fonts/Cairo-Regular.ttf') format('truetype'); }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      body { font-family:'CairoLocal',sans-serif; direction:rtl; padding:20px; color:#000; background:#fff; }
+      @media print { @page { size:auto; margin:10mm; } body { padding:0; } }
+      .header { text-align:center; margin-bottom:12px; border-bottom:1px solid #000; padding-bottom:8px; display:flex; align-items:center; justify-content:center; gap:10px; }
+      .logo { width:70px; height:70px; object-fit:contain; }
+      .header h1 { font-size:16px; font-weight:bold; }
+      .header p { font-size:10px; }
+      table { width:100%; border-collapse:collapse; margin-bottom:10px; }
+      th, td { border:1px solid #000; padding:5px 8px; text-align:center; font-size:10px; }
+      th { background:#eee; font-weight:bold; }
+      .footer { text-align:center; margin-top:12px; font-size:8px; border-top:1px solid #000; padding-top:5px; }
+    </style></head><body>
+    <div class="header"><img src="${logoSrc}" alt="Logo" class="logo"/><div><h1>التقرير النهائي - ${tabLabel}</h1><p>الفترة: ${selectedPeriod.name} • ${dateStr}</p></div></div>
+    ${catTableHTML}${summaryHTML}
+    <div class="footer">Powered by Mohamed Abdel Aal</div>
+    <script>(async()=>{try{if(document.fonts&&document.fonts.ready)await document.fonts.ready}catch(e){}window.print();window.onafterprint=()=>window.close();})()</script>
+    </body></html>`;
+
+    const w = window.open("", "_blank");
+    if (w) { w.document.write(printHTML); w.document.close(); }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in-up" dir="rtl">
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -412,9 +475,11 @@ export const MenuFinalReportPage: React.FC = () => {
               {filteredPeriods.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm" onClick={() => window.print()}>
-            <Printer size={16} className="ml-1" /> طباعة
-          </Button>
+          {selectedPeriod && categoryReports.length > 0 && (
+            <Button variant="outline" size="sm" className="gap-2" onClick={handlePrint}>
+              <Printer size={14} /> طباعة
+            </Button>
+          )}
         </div>
       </div>
 

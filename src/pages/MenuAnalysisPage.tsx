@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-import { AlertTriangle, Package } from "lucide-react";
+import { AlertTriangle, Package, Printer } from "lucide-react";
 import { CategoryPackingTable } from "@/components/menu-analysis/CategoryPackingTable";
 import { CategorySummaryTable } from "@/components/menu-analysis/CategorySummaryTable";
 import { CategorySideCostTable } from "@/components/menu-analysis/CategorySideCostTable";
@@ -512,6 +512,91 @@ export const MenuAnalysisPage: React.FC = () => {
     </>
   );
 
+  const handlePrint = () => {
+    if (!selectedPeriod || categorizedData.length === 0) return;
+    const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
+    const logoSrc = `${window.location.origin}/logo.png`;
+    const tabLabel = activeTab === "kitchen" ? "المطبخ" : "البار";
+
+    let categoriesHTML = "";
+    for (const cat of categorizedData) {
+      const catTotalPrice = cat.items.reduce((s, i) => s + i.price, 0);
+      const catTotalDirect = cat.items.reduce((s, i) => s + i.finalDirectCost, 0);
+      const catTotalProfit = cat.items.reduce((s, i) => s + i.netProfit, 0);
+      const catDirectPct = catTotalPrice > 0 ? (catTotalDirect / catTotalPrice * 100) : 0;
+      const catProfitPct = catTotalPrice > 0 ? (catTotalProfit / catTotalPrice * 100) : 0;
+
+      categoriesHTML += `<h3 style="margin:15px 0 5px;font-size:13px;font-weight:bold;border-bottom:1px solid #000;padding-bottom:4px;">${cat.name} (${cat.items.length} صنف)</h3>`;
+      categoriesHTML += `<table><thead><tr>
+        <th>#</th><th>اسم الصنف</th><th>السعر</th><th>التكلفة الرئيسية</th><th>تكلفة إضافية</th>
+        <th>مستهلكات</th><th>تغليف</th><th>إجمالي مباشر</th><th>نسبة مباشرة</th><th>صافي مباشر</th>
+        <th>غير مباشرة</th><th>إجمالي التكلفة</th><th>صافي الربح</th><th>نسبة التكلفة</th><th>نسبة الربح</th>
+      </tr></thead><tbody>`;
+
+      cat.items.forEach((item, idx) => {
+        categoriesHTML += `<tr>
+          <td>${idx + 1}</td><td>${item.name}</td><td>${formatNum(item.price)}</td>
+          <td>${formatNum(item.mainCost)}</td><td>${formatNum(item.sideCost)}</td>
+          <td>${formatNum(item.consumables)}</td><td>${formatNum(item.packingCost)}</td>
+          <td style="font-weight:bold">${formatNum(item.finalDirectCost)}</td><td>${formatPct(item.directCostPct)}</td>
+          <td style="${item.netTakeAway < 0 ? 'color:red' : ''}">${formatNum(item.netTakeAway)}</td>
+          <td>${formatNum(item.indirectExpenses)}</td><td style="font-weight:bold">${formatNum(item.totalCost)}</td>
+          <td style="${item.netProfit < 0 ? 'color:red' : 'color:green'}">${formatNum(item.netProfit)}</td>
+          <td>${formatPct(item.finalCostPct)}</td>
+          <td style="${item.finalNetPct < 0 ? 'color:red' : 'color:green'}">${formatPct(item.finalNetPct)}</td>
+        </tr>`;
+      });
+
+      categoriesHTML += `<tr style="font-weight:bold;background:#eee;">
+        <td colspan="2">إجمالي ${cat.name}</td><td>${formatNum(catTotalPrice)}</td>
+        <td>${formatNum(cat.items.reduce((s, i) => s + i.mainCost, 0))}</td>
+        <td>${formatNum(cat.items.reduce((s, i) => s + i.sideCost, 0))}</td>
+        <td>${formatNum(cat.items.reduce((s, i) => s + i.consumables, 0))}</td>
+        <td>${formatNum(cat.items.reduce((s, i) => s + i.packingCost, 0))}</td>
+        <td>${formatNum(catTotalDirect)}</td><td>${formatPct(catDirectPct)}</td>
+        <td>${formatNum(cat.items.reduce((s, i) => s + i.netTakeAway, 0))}</td>
+        <td>${formatNum(cat.items.reduce((s, i) => s + i.indirectExpenses, 0))}</td>
+        <td>${formatNum(cat.items.reduce((s, i) => s + i.totalCost, 0))}</td>
+        <td style="${catTotalProfit < 0 ? 'color:red' : 'color:green'}">${formatNum(catTotalProfit)}</td>
+        <td>${catTotalPrice > 0 ? formatPct(cat.items.reduce((s, i) => s + i.totalCost, 0) / catTotalPrice * 100) : "0%"}</td>
+        <td style="${catTotalProfit < 0 ? 'color:red' : 'color:green'}">${formatPct(catProfitPct)}</td>
+      </tr></tbody></table>`;
+    }
+
+    const summaryHTML = `<h3 style="margin:20px 0 5px;font-size:13px;font-weight:bold;">الملخص الإجمالي</h3>
+    <table><tbody>
+      <tr><td style="font-weight:bold">إجمالي أسعار البيع</td><td style="font-weight:bold">${formatNum(grandTotals.totalPrice)}</td></tr>
+      <tr><td style="font-weight:bold">إجمالي التكلفة المباشرة</td><td>${formatNum(grandTotals.totalDirectCost)} (${grandTotals.totalPrice > 0 ? formatPct(grandTotals.totalDirectCost / grandTotals.totalPrice * 100) : "0%"})</td></tr>
+      <tr><td style="font-weight:bold">إجمالي المصاريف الغير مباشرة</td><td>${formatNum(grandTotals.totalIndirect)} (${formatPct(indirectCostPct * 100)})</td></tr>
+      <tr><td style="font-weight:bold">صافي الربح</td><td style="${grandTotals.totalProfit < 0 ? 'color:red' : 'color:green'};font-weight:bold">${formatNum(grandTotals.totalProfit)} (${grandTotals.totalPrice > 0 ? formatPct(grandTotals.totalProfit / grandTotals.totalPrice * 100) : "0%"})</td></tr>
+      <tr><td style="font-weight:bold">عدد الأصناف</td><td style="font-weight:bold">${grandTotals.itemCount}</td></tr>
+    </tbody></table>`;
+
+    const printHTML = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تحليل المنيو - ${tabLabel}</title>
+    <style>
+      @font-face { font-family:'CairoLocal'; src:url('${window.location.origin}/fonts/Cairo-Regular.ttf') format('truetype'); }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      body { font-family:'CairoLocal',sans-serif; direction:rtl; padding:15px; color:#000; background:#fff; font-size:9px; }
+      @media print { @page { size:landscape; margin:8mm; } body { padding:0; } }
+      .header { text-align:center; margin-bottom:10px; border-bottom:1px solid #000; padding-bottom:8px; display:flex; align-items:center; justify-content:center; gap:10px; }
+      .logo { width:60px; height:60px; object-fit:contain; }
+      .header h1 { font-size:16px; font-weight:bold; }
+      .header p { font-size:10px; }
+      table { width:100%; border-collapse:collapse; margin-bottom:10px; }
+      th, td { border:1px solid #000; padding:3px 4px; text-align:center; font-size:8px; }
+      th { background:#eee; font-weight:bold; font-size:8px; }
+      .footer { text-align:center; margin-top:10px; font-size:8px; border-top:1px solid #000; padding-top:5px; }
+    </style></head><body>
+    <div class="header"><img src="${logoSrc}" alt="Logo" class="logo"/><div><h1>تحليل المنيو - ${tabLabel}</h1><p>الفترة: ${selectedPeriod.name} • ${dateStr}</p></div></div>
+    ${categoriesHTML}${summaryHTML}
+    <div class="footer">Powered by Mohamed Abdel Aal</div>
+    <script>(async()=>{try{if(document.fonts&&document.fonts.ready)await document.fonts.ready}catch(e){}window.print();window.onafterprint=()=>window.close();})()</script>
+    </body></html>`;
+
+    const w = window.open("", "_blank");
+    if (w) { w.document.write(printHTML); w.document.close(); }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in-up" dir="rtl">
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -540,6 +625,11 @@ export const MenuAnalysisPage: React.FC = () => {
               ))}
             </SelectContent>
           </Select>
+          {selectedPeriod && categorizedData.length > 0 && (
+            <Button variant="outline" size="sm" className="gap-2" onClick={handlePrint}>
+              <Printer size={14} /> طباعة
+            </Button>
+          )}
         </div>
       </div>
 

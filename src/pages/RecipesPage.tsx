@@ -555,6 +555,9 @@ export const RecipesPage: React.FC = () => {
     const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
     const logoSrc = `${window.location.origin}/logo.png`;
     const branchName = selectedBranch === "all" ? "كل الفروع" : branches.find((b: any) => b.id === selectedBranch)?.name || "";
+    const categoryName = selectedPrintCategory !== "all"
+      ? (posCategories.find((c: any) => c.id === selectedPrintCategory)?.name || selectedPrintCategory)
+      : "";
 
     let allTablesHTML = "";
     let grandTotal = 0;
@@ -596,7 +599,7 @@ table { width:100%; border-collapse:collapse; margin-bottom:5px; }
 th { border:1px solid #000; padding:4px 5px; font-size:9px; text-align:center; font-family:'AmiriBold','CairoLocal',sans-serif; background:#f0f0f0; }
 .footer { text-align:center; margin-top:20px; font-size:9px; border-top:1px solid #000; padding-top:8px; }
 </style></head><body>
-<div class="header"><img src="${logoSrc}" alt="Logo" class="logo" /><div><h1>جميع الوصفات${branchName ? ` — ${branchName}` : ""}</h1><p>Cost Management System • ${dateStr}</p></div></div>
+<div class="header"><img src="${logoSrc}" alt="Logo" class="logo" /><div><h1>جميع الوصفات${branchName ? ` — ${branchName}` : ""}${categoryName ? ` — ${categoryName}` : ""}</h1><p>Cost Management System • ${dateStr}</p></div></div>
 ${allTablesHTML}
 <div class="footer">Powered by Mohamed Abdel Aal</div>
 <script>(async function(){ try { if(document.fonts && document.fonts.ready) await document.fonts.ready; } catch(e){} window.print(); window.onafterprint = function(){ window.close(); }; })();</script>
@@ -625,7 +628,9 @@ ${allTablesHTML}
         { key: "avgCost", label: "م. التكلفة" }, { key: "total", label: "الإجمالي" },
       ];
       const branchName = selectedBranch === "all" ? "كل الفروع" : branches.find((b: any) => b.id === selectedBranch)?.name || "";
-      await exportToExcel({ title: `جميع الوصفات — ${branchName}`, filename: `وصفات_${branchName}`, columns: cols, data: rows });
+      const catName = selectedPrintCategory !== "all" ? (posCategories.find((c: any) => c.id === selectedPrintCategory)?.name || selectedPrintCategory) : "";
+      const titleSuffix = `${branchName}${catName ? ` — ${catName}` : ""}`;
+      await exportToExcel({ title: `جميع الوصفات — ${titleSuffix}`, filename: `وصفات_${titleSuffix}`, columns: cols, data: rows });
     } catch { /* ignore */ }
     finally { setLoadingAllExcel(false); }
   };
@@ -650,7 +655,9 @@ ${allTablesHTML}
         { key: "avgCost", label: "م. التكلفة" }, { key: "total", label: "الإجمالي" },
       ];
       const branchName = selectedBranch === "all" ? "كل الفروع" : branches.find((b: any) => b.id === selectedBranch)?.name || "";
-      await exportToPDF({ title: `جميع الوصفات — ${branchName}`, filename: `وصفات_${branchName}`, columns: cols, data: rows });
+      const catName = selectedPrintCategory !== "all" ? (posCategories.find((c: any) => c.id === selectedPrintCategory)?.name || selectedPrintCategory) : "";
+      const titleSuffix = `${branchName}${catName ? ` — ${catName}` : ""}`;
+      await exportToPDF({ title: `جميع الوصفات — ${titleSuffix}`, filename: `وصفات_${titleSuffix}`, columns: cols, data: rows });
     } catch { /* ignore */ }
     finally { setLoadingAllPdf(false); }
   };

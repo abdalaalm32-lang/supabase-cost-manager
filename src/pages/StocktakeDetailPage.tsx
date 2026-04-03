@@ -70,7 +70,7 @@ export const StocktakeDetailPage: React.FC = () => {
   const { data: allStockItems = [] } = useQuery({
     queryKey: ["stock-items-all", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("stock_items").select("*").eq("active", true).order("name");
+      const { data, error } = await supabase.from("stock_items").select("*").eq("active", true).order("code");
       if (error) throw error;
       return data;
     },
@@ -187,7 +187,7 @@ export const StocktakeDetailPage: React.FC = () => {
         return (s.name || "").toLowerCase().includes(q) || (s.code || "").toLowerCase().includes(q) || catName.toLowerCase().includes(q);
       });
     }
-    return items;
+    return items.sort((a: any, b: any) => (a.code || "").localeCompare(b.code || ""));
   }, [allStockItems, existingStockItemIds, filterDept, filterCat, pickerSearch, categories]);
 
   const toggleItem = (itemId: string) => {
@@ -509,7 +509,11 @@ export const StocktakeDetailPage: React.FC = () => {
               <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">لا توجد أصناف - أضف أصناف للجرد</TableCell></TableRow>
             ) : (
               <>
-                {stocktakeItems.map((item: any) => {
+                {[...stocktakeItems].sort((a: any, b: any) => {
+                  const codeA = getStockItemInfo(a.stock_item_id)?.code || "";
+                  const codeB = getStockItemInfo(b.stock_item_id)?.code || "";
+                  return codeA.localeCompare(codeB);
+                }).map((item: any) => {
                   const si = getStockItemInfo(item.stock_item_id);
                   const countedQty = Number(getCountedQty(item));
                   const bookQty = Number(item.book_qty);

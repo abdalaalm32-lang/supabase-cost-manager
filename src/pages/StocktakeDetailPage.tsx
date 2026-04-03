@@ -70,7 +70,7 @@ export const StocktakeDetailPage: React.FC = () => {
   const { data: allStockItems = [] } = useQuery({
     queryKey: ["stock-items-all", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("stock_items").select("*").eq("active", true).order("name");
+      const { data, error } = await supabase.from("stock_items").select("*").eq("active", true).order("code");
       if (error) throw error;
       return data;
     },

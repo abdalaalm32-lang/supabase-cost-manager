@@ -187,7 +187,7 @@ export const StocktakeDetailPage: React.FC = () => {
         return (s.name || "").toLowerCase().includes(q) || (s.code || "").toLowerCase().includes(q) || catName.toLowerCase().includes(q);
       });
     }
-    return items;
+    return items.sort((a: any, b: any) => (a.code || "").localeCompare(b.code || ""));
   }, [allStockItems, existingStockItemIds, filterDept, filterCat, pickerSearch, categories]);
 
   const toggleItem = (itemId: string) => {

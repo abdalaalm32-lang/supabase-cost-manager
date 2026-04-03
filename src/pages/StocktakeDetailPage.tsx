@@ -509,7 +509,11 @@ export const StocktakeDetailPage: React.FC = () => {
               <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">لا توجد أصناف - أضف أصناف للجرد</TableCell></TableRow>
             ) : (
               <>
-                {stocktakeItems.map((item: any) => {
+                {[...stocktakeItems].sort((a: any, b: any) => {
+                  const codeA = getStockItemInfo(a.stock_item_id)?.code || "";
+                  const codeB = getStockItemInfo(b.stock_item_id)?.code || "";
+                  return codeA.localeCompare(codeB);
+                }).map((item: any) => {
                   const si = getStockItemInfo(item.stock_item_id);
                   const countedQty = Number(getCountedQty(item));
                   const bookQty = Number(item.book_qty);

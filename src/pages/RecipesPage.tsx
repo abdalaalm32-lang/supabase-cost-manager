@@ -535,6 +535,8 @@ export const RecipesPage: React.FC = () => {
         return catName === selectedPrintCategory || p.category_id === selectedPrintCategory;
       });
     }
+    // Sort products by code
+    products.sort((a: any, b: any) => (a.code || "").localeCompare(b.code || "", "ar"));
     return products.map((p: any) => {
       const recipe = recipeMap[p.id];
       const ings = (recipe.recipe_ingredients || []).map((ri: any) => {

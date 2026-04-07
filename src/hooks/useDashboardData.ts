@@ -23,8 +23,23 @@ export function useDashboardData(filters?: { branchId?: string; warehouseId?: st
   });
 
   const { data: stockItems } = useQuery({
-    queryKey: ["dashboard-stock", companyId],
+    queryKey: ["dashboard-stock", companyId, branchId, warehouseId],
     queryFn: async () => {
+      if (branchId || warehouseId) {
+        // Filter via stock_item_locations
+        let locQ = supabase.from("stock_item_locations").select("stock_item_id").eq("company_id", companyId!);
+        if (branchId) locQ = locQ.eq("branch_id", branchId);
+        if (warehouseId) locQ = locQ.eq("warehouse_id", warehouseId);
+        const { data: locs } = await locQ;
+        const ids = (locs || []).map((l: any) => l.stock_item_id);
+        if (ids.length === 0) return [];
+        const { data } = await supabase
+          .from("stock_items")
+          .select("id, name, current_stock, avg_cost, min_level, max_level, category_id, active")
+          .eq("company_id", companyId!)
+          .in("id", ids);
+        return data || [];
+      }
       const { data } = await supabase
         .from("stock_items")
         .select("id, name, current_stock, avg_cost, min_level, max_level, category_id, active")

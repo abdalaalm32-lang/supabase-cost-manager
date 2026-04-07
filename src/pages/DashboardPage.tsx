@@ -81,8 +81,36 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export const DashboardPage: React.FC = () => {
   const { auth } = useAuth();
-  const navigate = useNavigate();
-  const d = useDashboardData();
+  const [locationType, setLocationType] = useState<"branch" | "warehouse">("branch");
+  const [selectedBranch, setSelectedBranch] = useState<string>("all");
+  const [selectedWarehouse, setSelectedWarehouse] = useState<string>("all");
+
+  const companyId = auth.profile?.company_id;
+
+  const { data: branches = [] } = useQuery({
+    queryKey: ["dashboard-branches-list", companyId],
+    queryFn: async () => {
+      const { data } = await supabase.from("branches").select("id, name, active").eq("company_id", companyId!);
+      return data || [];
+    },
+    enabled: !!companyId,
+  });
+
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ["dashboard-warehouses-list", companyId],
+    queryFn: async () => {
+      const { data } = await supabase.from("warehouses").select("id, name, active").eq("company_id", companyId!);
+      return data || [];
+    },
+    enabled: !!companyId,
+  });
+
+  const filters = {
+    branchId: locationType === "branch" && selectedBranch !== "all" ? selectedBranch : undefined,
+    warehouseId: locationType === "warehouse" && selectedWarehouse !== "all" ? selectedWarehouse : undefined,
+  };
+
+  const d = useDashboardData(filters);
 
   const quickActions = [
     { label: "فاتورة شراء", icon: ShoppingCart, color: "text-primary", path: "/purchases/add-invoice" },

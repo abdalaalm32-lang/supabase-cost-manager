@@ -2,9 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
-export function useDashboardData() {
+export function useDashboardData(filters?: { branchId?: string; warehouseId?: string }) {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;
+  const branchId = filters?.branchId;
+  const warehouseId = filters?.warehouseId;
 
   const { data: salesData } = useQuery({
     queryKey: ["dashboard-sales", companyId],

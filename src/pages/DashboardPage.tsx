@@ -81,6 +81,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export const DashboardPage: React.FC = () => {
   const { auth } = useAuth();
+  const navigate = useNavigate();
   const [locationType, setLocationType] = useState<"branch" | "warehouse">("branch");
   const [selectedBranch, setSelectedBranch] = useState<string>("all");
   const [selectedWarehouse, setSelectedWarehouse] = useState<string>("all");

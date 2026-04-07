@@ -310,7 +310,20 @@ export const PosScreenPage: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-1">
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateQty(item.id, -1)}><Minus className="h-3 w-3" /></Button>
-                    <span className="w-8 text-center font-bold text-foreground text-sm">{item.quantity}</span>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={item.quantity}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value);
+                        if (!isNaN(val) && val > 0) {
+                          setCart((prev) => prev.map((c) => c.id === item.id ? { ...c, quantity: val } : c));
+                        } else if (e.target.value === "") {
+                          setCart((prev) => prev.map((c) => c.id === item.id ? { ...c, quantity: 1 } : c));
+                        }
+                      }}
+                      className="w-12 h-7 text-center font-bold text-foreground text-sm p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateQty(item.id, 1)}><Plus className="h-3 w-3" /></Button>
                   </div>
                   <div className="flex items-center gap-2">

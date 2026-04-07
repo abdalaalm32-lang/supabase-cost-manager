@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
   Search, Store, Warehouse, FileSpreadsheet, FileText,
-  ArrowRightLeft, Package, Activity, TrendingUp, Layers, CalendarIcon, ArrowRight
+  ArrowRightLeft, Package, Activity, TrendingUp, Layers, CalendarIcon, ArrowRight, ArrowLeft
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -686,7 +686,7 @@ export const TransferReportsPage: React.FC = () => {
                               {outRoutes.length > 0 && outRoutes.map(([dest], i) => (
                                 <div key={`out-${i}`} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-destructive/30 bg-destructive/5 text-xs font-medium">
                                   <span className="text-foreground">{selectedLocationName}</span>
-                                  <ArrowRight size={14} className="text-destructive shrink-0" />
+                                  <ArrowLeft size={14} className="text-destructive shrink-0" />
                                   <span className="text-foreground">{dest}</span>
                                 </div>
                               ))}

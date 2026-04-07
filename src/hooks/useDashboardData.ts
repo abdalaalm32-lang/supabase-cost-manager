@@ -50,12 +50,15 @@ export function useDashboardData(filters?: { branchId?: string; warehouseId?: st
   });
 
   const { data: purchases } = useQuery({
-    queryKey: ["dashboard-purchases", companyId],
+    queryKey: ["dashboard-purchases", companyId, branchId, warehouseId],
     queryFn: async () => {
-      const { data } = await supabase
+      let q = supabase
         .from("purchase_orders")
         .select("total_amount, date, status, supplier_name, created_at")
         .eq("company_id", companyId!);
+      if (branchId) q = q.eq("branch_id", branchId);
+      if (warehouseId) q = q.eq("warehouse_id", warehouseId);
+      const { data } = await q;
       return data || [];
     },
     enabled: !!companyId,

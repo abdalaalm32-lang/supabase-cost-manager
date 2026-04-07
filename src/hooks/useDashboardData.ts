@@ -95,12 +95,17 @@ export function useDashboardData(filters?: { branchId?: string; warehouseId?: st
   });
 
   const { data: transfers } = useQuery({
-    queryKey: ["dashboard-transfers", companyId],
+    queryKey: ["dashboard-transfers", companyId, branchId, warehouseId],
     queryFn: async () => {
-      const { data } = await supabase
+      let q = supabase
         .from("transfers")
-        .select("total_cost, date, status, source_name, destination_name")
+        .select("total_cost, date, status, source_name, destination_name, source_id, destination_id")
         .eq("company_id", companyId!);
+      if (branchId || warehouseId) {
+        const locId = branchId || warehouseId;
+        q = q.or(`source_id.eq.${locId},destination_id.eq.${locId}`);
+      }
+      const { data } = await q;
       return data || [];
     },
     enabled: !!companyId,

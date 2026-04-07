@@ -123,8 +123,8 @@ export const TransferReportsPage: React.FC = () => {
       if (dateFrom && rec.date < format(dateFrom, "yyyy-MM-dd")) return false;
       if (dateTo && rec.date > format(dateTo, "yyyy-MM-dd")) return false;
       if (locationFilter !== "all") {
-        if (locationType === "branch" && rec.source_id !== locationFilter && rec.destination_id !== locationFilter) return false;
-        if (locationType === "warehouse") return false; // transfers are branch-based
+        // Filter: the selected location must be either source or destination
+        if (rec.source_id !== locationFilter && rec.destination_id !== locationFilter) return false;
       }
       return true;
     });
@@ -142,6 +142,10 @@ export const TransferReportsPage: React.FC = () => {
       unit: string;
       lastTransferDate: string;
       routes: Map<string, number>;
+      outgoingQty: number;
+      incomingQty: number;
+      outgoingRoutes: Map<string, number>;
+      incomingRoutes: Map<string, number>;
     }>();
 
     for (const ti of filteredItems) {
@@ -153,17 +157,33 @@ export const TransferReportsPage: React.FC = () => {
       const cost = Number(ti.total_cost || 0);
       const routeKey = `${rec?.source_name || "—"}→${rec?.destination_name || "—"}`;
 
+      // Determine direction relative to selected location
+      const isOutgoing = locationFilter !== "all" && rec?.source_id === locationFilter;
+      const isIncoming = locationFilter !== "all" && rec?.destination_id === locationFilter;
+
       const existing = itemMap.get(sid);
       if (existing) {
         existing.totalTransferQty += qty;
         existing.totalCost += cost;
         existing.occurrences += 1;
         existing.routes.set(routeKey, (existing.routes.get(routeKey) || 0) + 1);
+        if (isOutgoing) {
+          existing.outgoingQty += qty;
+          existing.outgoingRoutes.set(rec?.destination_name || "—", (existing.outgoingRoutes.get(rec?.destination_name || "—") || 0) + 1);
+        }
+        if (isIncoming) {
+          existing.incomingQty += qty;
+          existing.incomingRoutes.set(rec?.source_name || "—", (existing.incomingRoutes.get(rec?.source_name || "—") || 0) + 1);
+        }
         if (rec?.date > existing.lastTransferDate) existing.lastTransferDate = rec.date;
       } else {
         const catName = si ? ((si as any).inventory_categories?.name || "بدون مجموعة") : "غير معروف";
         const routes = new Map<string, number>();
         routes.set(routeKey, 1);
+        const outgoingRoutes = new Map<string, number>();
+        const incomingRoutes = new Map<string, number>();
+        if (isOutgoing) outgoingRoutes.set(rec?.destination_name || "—", 1);
+        if (isIncoming) incomingRoutes.set(rec?.source_name || "—", 1);
         itemMap.set(sid, {
           stockItemId: sid,
           name: ti.name || si?.name || "—",
@@ -176,6 +196,10 @@ export const TransferReportsPage: React.FC = () => {
           unit: ti.unit || si?.stock_unit || "",
           lastTransferDate: rec?.date || "",
           routes,
+          outgoingQty: isOutgoing ? qty : 0,
+          incomingQty: isIncoming ? qty : 0,
+          outgoingRoutes,
+          incomingRoutes,
         });
       }
     }

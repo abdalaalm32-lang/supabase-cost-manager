@@ -244,7 +244,7 @@ export const TransferReportsPage: React.FC = () => {
     let filtered = [...transfers];
     if (dateFrom) filtered = filtered.filter(r => r.date >= format(dateFrom, "yyyy-MM-dd"));
     if (dateTo) filtered = filtered.filter(r => r.date <= format(dateTo, "yyyy-MM-dd"));
-    if (locationFilter !== "all" && locationType === "branch") {
+    if (locationFilter !== "all") {
       filtered = filtered.filter(r => r.source_id === locationFilter || r.destination_id === locationFilter);
     }
 

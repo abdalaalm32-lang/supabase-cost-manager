@@ -9,12 +9,14 @@ export function useDashboardData(filters?: { branchId?: string; warehouseId?: st
   const warehouseId = filters?.warehouseId;
 
   const { data: salesData } = useQuery({
-    queryKey: ["dashboard-sales", companyId],
+    queryKey: ["dashboard-sales", companyId, branchId],
     queryFn: async () => {
-      const { data } = await supabase
+      let q = supabase
         .from("pos_sales")
         .select("total_amount, date, status")
         .eq("company_id", companyId!);
+      if (branchId) q = q.eq("branch_id", branchId);
+      const { data } = await q;
       return data || [];
     },
     enabled: !!companyId,

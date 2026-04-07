@@ -665,6 +665,10 @@ export const TransferReportsPage: React.FC = () => {
                 ) : (
                   processedData.map((item, idx) => {
                     const route = getTopRoute(item.routes);
+                    // When a location is selected, show outgoing/incoming relative to it
+                    const hasLocationFilter = locationFilter !== "all";
+                    const outRoutes = Array.from(item.outgoingRoutes.entries()).sort((a, b) => b[1] - a[1]);
+                    const inRoutes = Array.from(item.incomingRoutes.entries()).sort((a, b) => b[1] - a[1]);
                     return (
                       <TableRow key={item.stockItemId} className={cn(item.occurrences >= 5 && "bg-primary/5")}>
                         <TableCell className="text-muted-foreground text-xs">{idx + 1}</TableCell>
@@ -677,11 +681,30 @@ export const TransferReportsPage: React.FC = () => {
                         </TableCell>
                         <TableCell className="text-sm">{item.catName}</TableCell>
                         <TableCell className="text-center">
-                          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/60 bg-muted/30 text-xs font-medium">
-                            <span className="text-foreground">{route.source}</span>
-                            <ArrowRight size={14} className="text-primary shrink-0" />
-                            <span className="text-foreground">{route.destination}</span>
-                          </div>
+                          {hasLocationFilter ? (
+                            <div className="flex flex-col gap-1 items-center">
+                              {outRoutes.length > 0 && outRoutes.map(([dest], i) => (
+                                <div key={`out-${i}`} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-destructive/30 bg-destructive/5 text-xs font-medium">
+                                  <span className="text-foreground">{selectedLocationName}</span>
+                                  <ArrowRight size={14} className="text-destructive shrink-0" />
+                                  <span className="text-foreground">{dest}</span>
+                                </div>
+                              ))}
+                              {inRoutes.length > 0 && inRoutes.map(([src], i) => (
+                                <div key={`in-${i}`} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/5 text-xs font-medium">
+                                  <span className="text-foreground">{src}</span>
+                                  <ArrowRight size={14} className="text-emerald-600 shrink-0" />
+                                  <span className="text-foreground">{selectedLocationName}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/60 bg-muted/30 text-xs font-medium">
+                              <span className="text-foreground">{route.source}</span>
+                              <ArrowRight size={14} className="text-primary shrink-0" />
+                              <span className="text-foreground">{route.destination}</span>
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell className="text-center font-semibold">{fmt(item.totalTransferQty)}</TableCell>
                         <TableCell className="text-center text-xs text-muted-foreground">{item.unit}</TableCell>

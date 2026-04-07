@@ -304,6 +304,17 @@ export const TransferReportsPage: React.FC = () => {
     return { source: parts[0] || "—", destination: parts[1] || "—" };
   };
 
+  // Get selected location name for display
+  const selectedLocationName = useMemo(() => {
+    if (locationFilter === "all") return "";
+    if (locationType === "branch") {
+      const b = branches.find((b: any) => b.id === locationFilter);
+      return b?.name || "";
+    }
+    const w = warehouses.find((w: any) => w.id === locationFilter);
+    return w?.name || "";
+  }, [locationFilter, locationType, branches, warehouses]);
+
   const exportCSV = () => {
     const headers = ["#", "الكود", "اسم الصنف", "المجموعة", "من", "إلى", "إجمالي الكمية", "الوحدة", "إجمالي التكلفة", "مرات التحويل", "آخر تحويل"];
     const rows = processedData.map((i, idx) => {

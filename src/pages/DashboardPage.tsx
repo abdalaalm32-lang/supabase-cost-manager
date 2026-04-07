@@ -5,10 +5,11 @@ import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
   TrendingUp, TrendingDown, Package, DollarSign, ShoppingCart,
   Factory, Trash2, ArrowRightLeft, BarChart3, Warehouse, GitBranch,
   Users, ClipboardCheck, AlertTriangle, ArrowUp, ArrowDown,
-  Activity, Zap, Target, PieChart,
+  Activity, Zap, Target, PieChart, MapPin, Building,
 } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart as RePieChart, Pie, Cell,

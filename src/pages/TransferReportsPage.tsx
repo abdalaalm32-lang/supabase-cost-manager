@@ -123,8 +123,8 @@ export const TransferReportsPage: React.FC = () => {
       if (dateFrom && rec.date < format(dateFrom, "yyyy-MM-dd")) return false;
       if (dateTo && rec.date > format(dateTo, "yyyy-MM-dd")) return false;
       if (locationFilter !== "all") {
-        if (locationType === "branch" && rec.source_id !== locationFilter && rec.destination_id !== locationFilter) return false;
-        if (locationType === "warehouse") return false; // transfers are branch-based
+        // Filter: the selected location must be either source or destination
+        if (rec.source_id !== locationFilter && rec.destination_id !== locationFilter) return false;
       }
       return true;
     });
@@ -142,6 +142,10 @@ export const TransferReportsPage: React.FC = () => {
       unit: string;
       lastTransferDate: string;
       routes: Map<string, number>;
+      outgoingQty: number;
+      incomingQty: number;
+      outgoingRoutes: Map<string, number>;
+      incomingRoutes: Map<string, number>;
     }>();
 
     for (const ti of filteredItems) {
@@ -153,17 +157,33 @@ export const TransferReportsPage: React.FC = () => {
       const cost = Number(ti.total_cost || 0);
       const routeKey = `${rec?.source_name || "—"}→${rec?.destination_name || "—"}`;
 
+      // Determine direction relative to selected location
+      const isOutgoing = locationFilter !== "all" && rec?.source_id === locationFilter;
+      const isIncoming = locationFilter !== "all" && rec?.destination_id === locationFilter;
+
       const existing = itemMap.get(sid);
       if (existing) {
         existing.totalTransferQty += qty;
         existing.totalCost += cost;
         existing.occurrences += 1;
         existing.routes.set(routeKey, (existing.routes.get(routeKey) || 0) + 1);
+        if (isOutgoing) {
+          existing.outgoingQty += qty;
+          existing.outgoingRoutes.set(rec?.destination_name || "—", (existing.outgoingRoutes.get(rec?.destination_name || "—") || 0) + 1);
+        }
+        if (isIncoming) {
+          existing.incomingQty += qty;
+          existing.incomingRoutes.set(rec?.source_name || "—", (existing.incomingRoutes.get(rec?.source_name || "—") || 0) + 1);
+        }
         if (rec?.date > existing.lastTransferDate) existing.lastTransferDate = rec.date;
       } else {
         const catName = si ? ((si as any).inventory_categories?.name || "بدون مجموعة") : "غير معروف";
         const routes = new Map<string, number>();
         routes.set(routeKey, 1);
+        const outgoingRoutes = new Map<string, number>();
+        const incomingRoutes = new Map<string, number>();
+        if (isOutgoing) outgoingRoutes.set(rec?.destination_name || "—", 1);
+        if (isIncoming) incomingRoutes.set(rec?.source_name || "—", 1);
         itemMap.set(sid, {
           stockItemId: sid,
           name: ti.name || si?.name || "—",
@@ -176,6 +196,10 @@ export const TransferReportsPage: React.FC = () => {
           unit: ti.unit || si?.stock_unit || "",
           lastTransferDate: rec?.date || "",
           routes,
+          outgoingQty: isOutgoing ? qty : 0,
+          incomingQty: isIncoming ? qty : 0,
+          outgoingRoutes,
+          incomingRoutes,
         });
       }
     }
@@ -202,7 +226,7 @@ export const TransferReportsPage: React.FC = () => {
     let filtered = [...transfers];
     if (dateFrom) filtered = filtered.filter(r => r.date >= format(dateFrom, "yyyy-MM-dd"));
     if (dateTo) filtered = filtered.filter(r => r.date <= format(dateTo, "yyyy-MM-dd"));
-    if (locationFilter !== "all" && locationType === "branch") {
+    if (locationFilter !== "all") {
       filtered = filtered.filter(r => r.source_id === locationFilter || r.destination_id === locationFilter);
     }
 
@@ -220,7 +244,7 @@ export const TransferReportsPage: React.FC = () => {
     let filtered = [...transfers];
     if (dateFrom) filtered = filtered.filter(r => r.date >= format(dateFrom, "yyyy-MM-dd"));
     if (dateTo) filtered = filtered.filter(r => r.date <= format(dateTo, "yyyy-MM-dd"));
-    if (locationFilter !== "all" && locationType === "branch") {
+    if (locationFilter !== "all") {
       filtered = filtered.filter(r => r.source_id === locationFilter || r.destination_id === locationFilter);
     }
 
@@ -279,6 +303,17 @@ export const TransferReportsPage: React.FC = () => {
     const parts = maxRoute.split("→");
     return { source: parts[0] || "—", destination: parts[1] || "—" };
   };
+
+  // Get selected location name for display
+  const selectedLocationName = useMemo(() => {
+    if (locationFilter === "all") return "";
+    if (locationType === "branch") {
+      const b = branches.find((b: any) => b.id === locationFilter);
+      return b?.name || "";
+    }
+    const w = warehouses.find((w: any) => w.id === locationFilter);
+    return w?.name || "";
+  }, [locationFilter, locationType, branches, warehouses]);
 
   const exportCSV = () => {
     const headers = ["#", "الكود", "اسم الصنف", "المجموعة", "من", "إلى", "إجمالي الكمية", "الوحدة", "إجمالي التكلفة", "مرات التحويل", "آخر تحويل"];
@@ -630,6 +665,10 @@ export const TransferReportsPage: React.FC = () => {
                 ) : (
                   processedData.map((item, idx) => {
                     const route = getTopRoute(item.routes);
+                    // When a location is selected, show outgoing/incoming relative to it
+                    const hasLocationFilter = locationFilter !== "all";
+                    const outRoutes = Array.from(item.outgoingRoutes.entries()).sort((a, b) => b[1] - a[1]);
+                    const inRoutes = Array.from(item.incomingRoutes.entries()).sort((a, b) => b[1] - a[1]);
                     return (
                       <TableRow key={item.stockItemId} className={cn(item.occurrences >= 5 && "bg-primary/5")}>
                         <TableCell className="text-muted-foreground text-xs">{idx + 1}</TableCell>
@@ -642,11 +681,30 @@ export const TransferReportsPage: React.FC = () => {
                         </TableCell>
                         <TableCell className="text-sm">{item.catName}</TableCell>
                         <TableCell className="text-center">
-                          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/60 bg-muted/30 text-xs font-medium">
-                            <span className="text-foreground">{route.source}</span>
-                            <ArrowRight size={14} className="text-primary shrink-0" />
-                            <span className="text-foreground">{route.destination}</span>
-                          </div>
+                          {hasLocationFilter ? (
+                            <div className="flex flex-col gap-1 items-center">
+                              {outRoutes.length > 0 && outRoutes.map(([dest], i) => (
+                                <div key={`out-${i}`} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-destructive/30 bg-destructive/5 text-xs font-medium">
+                                  <span className="text-foreground">{selectedLocationName}</span>
+                                  <ArrowRight size={14} className="text-destructive shrink-0" />
+                                  <span className="text-foreground">{dest}</span>
+                                </div>
+                              ))}
+                              {inRoutes.length > 0 && inRoutes.map(([src], i) => (
+                                <div key={`in-${i}`} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/5 text-xs font-medium">
+                                  <span className="text-foreground">{src}</span>
+                                  <ArrowRight size={14} className="text-emerald-600 shrink-0" />
+                                  <span className="text-foreground">{selectedLocationName}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/60 bg-muted/30 text-xs font-medium">
+                              <span className="text-foreground">{route.source}</span>
+                              <ArrowRight size={14} className="text-primary shrink-0" />
+                              <span className="text-foreground">{route.destination}</span>
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell className="text-center font-semibold">{fmt(item.totalTransferQty)}</TableCell>
                         <TableCell className="text-center text-xs text-muted-foreground">{item.unit}</TableCell>

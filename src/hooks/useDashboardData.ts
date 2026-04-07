@@ -2,25 +2,44 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
-export function useDashboardData() {
+export function useDashboardData(filters?: { branchId?: string; warehouseId?: string }) {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;
+  const branchId = filters?.branchId;
+  const warehouseId = filters?.warehouseId;
 
   const { data: salesData } = useQuery({
-    queryKey: ["dashboard-sales", companyId],
+    queryKey: ["dashboard-sales", companyId, branchId],
     queryFn: async () => {
-      const { data } = await supabase
+      let q = supabase
         .from("pos_sales")
         .select("total_amount, date, status")
         .eq("company_id", companyId!);
+      if (branchId) q = q.eq("branch_id", branchId);
+      const { data } = await q;
       return data || [];
     },
     enabled: !!companyId,
   });
 
   const { data: stockItems } = useQuery({
-    queryKey: ["dashboard-stock", companyId],
+    queryKey: ["dashboard-stock", companyId, branchId, warehouseId],
     queryFn: async () => {
+      if (branchId || warehouseId) {
+        // Filter via stock_item_locations
+        let locQ = supabase.from("stock_item_locations").select("stock_item_id").eq("company_id", companyId!);
+        if (branchId) locQ = locQ.eq("branch_id", branchId);
+        if (warehouseId) locQ = locQ.eq("warehouse_id", warehouseId);
+        const { data: locs } = await locQ;
+        const ids = (locs || []).map((l: any) => l.stock_item_id);
+        if (ids.length === 0) return [];
+        const { data } = await supabase
+          .from("stock_items")
+          .select("id, name, current_stock, avg_cost, min_level, max_level, category_id, active")
+          .eq("company_id", companyId!)
+          .in("id", ids);
+        return data || [];
+      }
       const { data } = await supabase
         .from("stock_items")
         .select("id, name, current_stock, avg_cost, min_level, max_level, category_id, active")
@@ -31,36 +50,45 @@ export function useDashboardData() {
   });
 
   const { data: purchases } = useQuery({
-    queryKey: ["dashboard-purchases", companyId],
+    queryKey: ["dashboard-purchases", companyId, branchId, warehouseId],
     queryFn: async () => {
-      const { data } = await supabase
+      let q = supabase
         .from("purchase_orders")
         .select("total_amount, date, status, supplier_name, created_at")
         .eq("company_id", companyId!);
+      if (branchId) q = q.eq("branch_id", branchId);
+      if (warehouseId) q = q.eq("warehouse_id", warehouseId);
+      const { data } = await q;
       return data || [];
     },
     enabled: !!companyId,
   });
 
   const { data: wasteRecords } = useQuery({
-    queryKey: ["dashboard-waste", companyId],
+    queryKey: ["dashboard-waste", companyId, branchId, warehouseId],
     queryFn: async () => {
-      const { data } = await supabase
+      let q = supabase
         .from("waste_records" as any)
         .select("total_cost, date, status")
         .eq("company_id", companyId!);
+      if (branchId) q = q.eq("branch_id", branchId);
+      if (warehouseId) q = q.eq("warehouse_id", warehouseId);
+      const { data } = await q;
       return (data as any[]) || [];
     },
     enabled: !!companyId,
   });
 
   const { data: productions } = useQuery({
-    queryKey: ["dashboard-production", companyId],
+    queryKey: ["dashboard-production", companyId, branchId, warehouseId],
     queryFn: async () => {
-      const { data } = await supabase
+      let q = supabase
         .from("production_records")
         .select("total_production_cost, date, status, product_name, produced_qty")
         .eq("company_id", companyId!);
+      if (branchId) q = q.eq("branch_id", branchId);
+      if (warehouseId) q = q.eq("warehouse_id", warehouseId);
+      const { data } = await q;
       return data || [];
     },
     enabled: !!companyId,
@@ -79,12 +107,15 @@ export function useDashboardData() {
   });
 
   const { data: stocktakes } = useQuery({
-    queryKey: ["dashboard-stocktakes", companyId],
+    queryKey: ["dashboard-stocktakes", companyId, branchId, warehouseId],
     queryFn: async () => {
-      const { data } = await supabase
+      let q = supabase
         .from("stocktakes")
         .select("total_actual_value, date, status, type")
         .eq("company_id", companyId!);
+      if (branchId) q = q.eq("branch_id", branchId);
+      if (warehouseId) q = q.eq("warehouse_id", warehouseId);
+      const { data } = await q;
       return data || [];
     },
     enabled: !!companyId,

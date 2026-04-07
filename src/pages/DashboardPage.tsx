@@ -1,12 +1,15 @@
-import React from "react";
+import React, { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   TrendingUp, TrendingDown, Package, DollarSign, ShoppingCart,
   Factory, Trash2, ArrowRightLeft, BarChart3, Warehouse, GitBranch,
   Users, ClipboardCheck, AlertTriangle, ArrowUp, ArrowDown,
-  Activity, Zap, Target, PieChart,
+  Activity, Zap, Target, PieChart, MapPin, Building,
 } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart as RePieChart, Pie, Cell,
@@ -79,7 +82,36 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export const DashboardPage: React.FC = () => {
   const { auth } = useAuth();
   const navigate = useNavigate();
-  const d = useDashboardData();
+  const [locationType, setLocationType] = useState<"branch" | "warehouse">("branch");
+  const [selectedBranch, setSelectedBranch] = useState<string>("all");
+  const [selectedWarehouse, setSelectedWarehouse] = useState<string>("all");
+
+  const companyId = auth.profile?.company_id;
+
+  const { data: branches = [] } = useQuery({
+    queryKey: ["dashboard-branches-list", companyId],
+    queryFn: async () => {
+      const { data } = await supabase.from("branches").select("id, name, active").eq("company_id", companyId!);
+      return data || [];
+    },
+    enabled: !!companyId,
+  });
+
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ["dashboard-warehouses-list", companyId],
+    queryFn: async () => {
+      const { data } = await supabase.from("warehouses").select("id, name, active").eq("company_id", companyId!);
+      return data || [];
+    },
+    enabled: !!companyId,
+  });
+
+  const filters = {
+    branchId: locationType === "branch" && selectedBranch !== "all" ? selectedBranch : undefined,
+    warehouseId: locationType === "warehouse" && selectedWarehouse !== "all" ? selectedWarehouse : undefined,
+  };
+
+  const d = useDashboardData(filters);
 
   const quickActions = [
     { label: "فاتورة شراء", icon: ShoppingCart, color: "text-primary", path: "/purchases/add-invoice" },
@@ -104,7 +136,63 @@ export const DashboardPage: React.FC = () => {
         </div>
       </div>
 
-      {/* KPI Row 1 - Financial */}
+      {/* Location Filter */}
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/30 bg-card/50 backdrop-blur-sm px-4 py-3">
+        <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+          <MapPin size={14} className="text-primary" />
+          <span>فلترة حسب الموقع</span>
+        </div>
+        <div className="flex items-center rounded-lg border border-border/30 overflow-hidden">
+          <button
+            onClick={() => { setLocationType("branch"); setSelectedWarehouse("all"); }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${locationType === "branch" ? "bg-primary text-primary-foreground" : "bg-muted/30 text-muted-foreground hover:bg-muted/50"}`}
+          >
+            <Building size={12} />
+            الفروع
+          </button>
+          <button
+            onClick={() => { setLocationType("warehouse"); setSelectedBranch("all"); }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${locationType === "warehouse" ? "bg-primary text-primary-foreground" : "bg-muted/30 text-muted-foreground hover:bg-muted/50"}`}
+          >
+            <Warehouse size={12} />
+            المخازن
+          </button>
+        </div>
+        {locationType === "branch" ? (
+          <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+            <SelectTrigger className="w-[180px] h-8 text-xs">
+              <SelectValue placeholder="جميع الفروع" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">جميع الفروع</SelectItem>
+              {branches.filter((b: any) => b.active).map((b: any) => (
+                <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <Select value={selectedWarehouse} onValueChange={setSelectedWarehouse}>
+            <SelectTrigger className="w-[180px] h-8 text-xs">
+              <SelectValue placeholder="جميع المخازن" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">جميع المخازن</SelectItem>
+              {warehouses.filter((w: any) => w.active).map((w: any) => (
+                <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {(selectedBranch !== "all" || selectedWarehouse !== "all") && (
+          <button
+            onClick={() => { setSelectedBranch("all"); setSelectedWarehouse("all"); }}
+            className="text-[10px] text-destructive hover:underline"
+          >
+            إزالة الفلتر ✕
+          </button>
+        )}
+      </div>
+
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <KPICard title="إجمالي المبيعات" value={fmtCurrency(d.totalSales)} icon={DollarSign} gradient="bg-primary text-primary" subtitle={`${d.salesCount} فاتورة`} />
         <KPICard title="إجمالي المشتريات" value={fmtCurrency(d.totalPurchases)} icon={ShoppingCart} gradient="bg-warning text-warning" subtitle={`${d.purchasesCount} فاتورة`} />

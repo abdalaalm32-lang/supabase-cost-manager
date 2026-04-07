@@ -824,6 +824,58 @@ ${allTablesHTML}
                   </Button>
                 </div>
               )}
+              {/* Print draft items (no recipe) */}
+              {(() => {
+                let draftProducts = filteredProducts.filter((p: any) => !recipeMap[p.id]);
+                if (selectedPrintCategory !== "all") {
+                  draftProducts = draftProducts.filter((p: any) => {
+                    const catName = p.category || posCategories.find((c: any) => c.id === p.category_id)?.name || "";
+                    return catName === selectedPrintCategory || p.category_id === selectedPrintCategory;
+                  });
+                }
+                draftProducts.sort((a: any, b: any) => (a.code || "").localeCompare(b.code || "", "ar"));
+                if (draftProducts.length === 0) return null;
+                const handlePrintDraft = () => {
+                  const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
+                  const logoSrc = `${window.location.origin}/logo.png`;
+                  const branchName = branches.find((b: any) => b.id === selectedBranch)?.name || "";
+                  const categoryName = selectedPrintCategory !== "all"
+                    ? (posCategories.find((c: any) => c.id === selectedPrintCategory)?.name || selectedPrintCategory) : "";
+                  let tbodyHTML = "";
+                  draftProducts.forEach((p: any, idx: number) => {
+                    const catName = p.category || posCategories.find((c: any) => c.id === p.category_id)?.name || "—";
+                    const td = (v: string) => `<td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${v}</td>`;
+                    tbodyHTML += `<tr>${td(String(idx + 1))}${td(p.code || "—")}${td(p.name)}${td(catName)}${td(Number(p.price).toFixed(2))}</tr>`;
+                  });
+                  const html = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>أصناف بدون وصفة</title>
+<style>
+@font-face { font-family:'CairoLocal'; src:url('${window.location.origin}/fonts/Cairo-Regular.ttf') format('truetype'); }
+@font-face { font-family:'AmiriBold'; src:url('${window.location.origin}/fonts/Amiri-Bold.ttf') format('truetype'); }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'CairoLocal',sans-serif; direction:rtl; padding:20px; color:#000; background:#fff; }
+@media print { @page { size:auto; margin:10mm; } body { padding:0; } }
+.header { text-align:center; margin-bottom:15px; border-bottom:2px solid #000; padding-bottom:10px; display:flex; align-items:center; justify-content:center; gap:10px; }
+.logo { width:80px; height:80px; object-fit:contain; }
+.header h1 { font-size:18px; font-weight:bold; font-family:'AmiriBold','CairoLocal',sans-serif; }
+.header p { font-size:11px; }
+table { width:100%; border-collapse:collapse; }
+th { border:1px solid #000; padding:5px 6px; font-size:10px; text-align:center; font-family:'AmiriBold','CairoLocal',sans-serif; background:#f0f0f0; }
+.footer { text-align:center; margin-top:20px; font-size:9px; border-top:1px solid #000; padding-top:8px; }
+</style></head><body>
+<div class="header"><img src="${logoSrc}" alt="Logo" class="logo" /><div><h1>أصناف بدون وصفة${branchName ? ` — ${branchName}` : ""}${categoryName ? ` — ${categoryName}` : ""}</h1><p>Cost Management System • ${dateStr}</p></div></div>
+<table><thead><tr><th>م</th><th>الكود</th><th>الصنف</th><th>التصنيف</th><th>سعر البيع</th></tr></thead><tbody>${tbodyHTML}</tbody></table>
+<div class="footer">Powered by Mohamed Abdel Aal</div>
+<script>(async function(){ try { if(document.fonts && document.fonts.ready) await document.fonts.ready; } catch(e){} window.print(); window.onafterprint = function(){ window.close(); }; })();</script>
+</body></html>`;
+                  const w = window.open("", "_blank");
+                  if (w) { w.document.write(html); w.document.close(); }
+                };
+                return (
+                  <Button variant="outline" size="sm" className="gap-1 h-7 text-xs w-full" onClick={handlePrintDraft}>
+                    <Printer size={12} /> طباعة Draft ({draftProducts.length})
+                  </Button>
+                );
+              })()}
             </>
           )}
 

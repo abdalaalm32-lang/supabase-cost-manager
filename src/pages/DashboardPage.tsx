@@ -1,8 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useNavigate } from "react-router-dom";
-import {
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
   TrendingUp, TrendingDown, Package, DollarSign, ShoppingCart,
   Factory, Trash2, ArrowRightLeft, BarChart3, Warehouse, GitBranch,
   Users, ClipboardCheck, AlertTriangle, ArrowUp, ArrowDown,

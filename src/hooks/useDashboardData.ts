@@ -65,37 +65,51 @@ export function useDashboardData(filters?: { branchId?: string; warehouseId?: st
   });
 
   const { data: wasteRecords } = useQuery({
-    queryKey: ["dashboard-waste", companyId],
+    queryKey: ["dashboard-waste", companyId, branchId, warehouseId],
     queryFn: async () => {
-      const { data } = await supabase
+      let q = supabase
         .from("waste_records" as any)
         .select("total_cost, date, status")
         .eq("company_id", companyId!);
+      if (branchId) q = q.eq("branch_id", branchId);
+      if (warehouseId) q = q.eq("warehouse_id", warehouseId);
+      const { data } = await q;
       return (data as any[]) || [];
     },
     enabled: !!companyId,
   });
 
   const { data: productions } = useQuery({
-    queryKey: ["dashboard-production", companyId],
+    queryKey: ["dashboard-production", companyId, branchId, warehouseId],
     queryFn: async () => {
-      const { data } = await supabase
+      let q = supabase
         .from("production_records")
         .select("total_production_cost, date, status, product_name, produced_qty")
         .eq("company_id", companyId!);
+      if (branchId) q = q.eq("branch_id", branchId);
+      if (warehouseId) q = q.eq("warehouse_id", warehouseId);
+      const { data } = await q;
       return data || [];
     },
     enabled: !!companyId,
   });
 
   const { data: transfers } = useQuery({
-    queryKey: ["dashboard-transfers", companyId],
+    queryKey: ["dashboard-transfers", companyId, branchId, warehouseId],
     queryFn: async () => {
+      // For transfers, filter by source or destination branch/warehouse
       const { data } = await supabase
         .from("transfers")
-        .select("total_cost, date, status, source_name, destination_name")
+        .select("total_cost, date, status, source_name, destination_name, source_branch_id, destination_branch_id, source_warehouse_id, destination_warehouse_id")
         .eq("company_id", companyId!);
-      return data || [];
+      let filtered = data || [];
+      if (branchId) {
+        filtered = filtered.filter((t: any) => t.source_branch_id === branchId || t.destination_branch_id === branchId);
+      }
+      if (warehouseId) {
+        filtered = filtered.filter((t: any) => t.source_warehouse_id === warehouseId || t.destination_warehouse_id === warehouseId);
+      }
+      return filtered;
     },
     enabled: !!companyId,
   });

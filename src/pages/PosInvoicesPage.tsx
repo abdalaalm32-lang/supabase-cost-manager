@@ -134,9 +134,16 @@ export const PosInvoicesPage: React.FC = () => {
       return newStatus;
     },
     onSuccess: (newStatus) => {
-      toast.success(newStatus === "مؤرشف" ? "تم أرشفة الفاتورة" : "تم تفعيل الفاتورة");
-      setSelectedSale((prev: any) => prev ? { ...prev, status: newStatus } : null);
-      queryClient.invalidateQueries({ queryKey: ["pos-sales"] });
+      if (newStatus === "مؤرشف") {
+        toast.success("تم أرشفة الفاتورة - جاري فتحها في شاشة البيع");
+        queryClient.invalidateQueries({ queryKey: ["pos-sales"] });
+        navigate("/pos/screen", { state: { editSaleId: selectedSale?.id } });
+        setSelectedSale(null);
+      } else {
+        toast.success("تم تفعيل الفاتورة");
+        setSelectedSale((prev: any) => prev ? { ...prev, status: newStatus } : null);
+        queryClient.invalidateQueries({ queryKey: ["pos-sales"] });
+      }
     },
     onError: () => toast.error("حدث خطأ"),
   });

@@ -269,11 +269,11 @@ export const DashboardPage: React.FC = () => {
           <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1"><TrendingUp size={10} />هامش الربح</p>
         </div>
         <div className="rounded-xl border border-border/20 bg-card/30 p-3 text-center">
-          <p className="text-lg font-black text-warning">{d.lowStockItems.length}</p>
+          <p className="text-lg font-black text-warning">{locationLowStockItems.length}</p>
           <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1"><AlertTriangle size={10} />نقص مخزون</p>
         </div>
         <div className="rounded-xl border border-border/20 bg-card/30 p-3 text-center">
-          <p className="text-lg font-black text-accent">{d.overStockItems.length}</p>
+          <p className="text-lg font-black text-accent">{locationOverStockItems.length}</p>
           <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1"><TrendingDown size={10} />فائض مخزون</p>
         </div>
       </div>

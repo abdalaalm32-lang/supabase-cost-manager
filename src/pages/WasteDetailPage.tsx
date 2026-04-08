@@ -760,6 +760,20 @@ export const WasteDetailPage: React.FC = () => {
               )}
             </div>
 
+            <div>
+              <Label>عدد المنتج</Label>
+              <Input
+                type="number"
+                min={1}
+                step={1}
+                value={productCount}
+                onChange={(e) => setProductCount(Math.max(1, Number(e.target.value) || 1))}
+                className="w-32"
+                placeholder="1"
+              />
+              <p className="text-xs text-muted-foreground mt-1">سيتم ضرب كميات الريسيبي في هذا العدد</p>
+            </div>
+
             {selectedProductId && selectedProductRecipe.length > 0 && (
               <div>
                 <Label className="text-sm mb-2 block">خامات الريسيبي</Label>

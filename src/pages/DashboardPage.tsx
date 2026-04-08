@@ -498,7 +498,7 @@ export const DashboardPage: React.FC = () => {
             <h3 className="text-sm font-bold text-foreground">تنبيهات نقص المخزون</h3>
           </div>
           <div className="space-y-2 max-h-[200px] overflow-y-auto">
-            {d.lowStockItems.length > 0 ? d.lowStockItems.slice(0, 6).map((item) => (
+            {locationLowStockItems.length > 0 ? locationLowStockItems.slice(0, 6).map((item) => (
               <div key={item.id} className="flex items-center justify-between p-2.5 rounded-lg bg-warning/5 border border-warning/10">
                 <span className="text-xs font-medium text-foreground truncate flex-1">{item.name}</span>
                 <div className="text-[10px] text-warning font-bold mr-2">

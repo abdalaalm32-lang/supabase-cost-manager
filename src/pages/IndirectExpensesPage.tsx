@@ -388,7 +388,7 @@ export const IndirectExpensesPage: React.FC = () => {
       .footer { text-align:center; margin-top:12px; font-size:8px; border-top:1px solid #000; padding-top:5px; }
     </style></head><body>
     <div class="header">
-      <div class="header-top"><img src="${logoSrc}" alt="Logo" class="logo"/><div><div class="company-name">${auth.company?.name || ""}</div><h1>تحليل المصاريف الغير مباشرة</h1></div></div>
+      <div class="header-top"><img src="${logoSrc}" alt="Logo" class="logo"/><div><div class="company-name">${companyName}</div><h1>تحليل المصاريف الغير مباشرة</h1></div></div>
       <div class="sub-info"><span>الفرع: ${periodBranchName || branchName || "كل الفروع"}</span><span>الفترة: ${selectedPeriod.name}</span><span>${dateStr}</span></div>
     </div>
 

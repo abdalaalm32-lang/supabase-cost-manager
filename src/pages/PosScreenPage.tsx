@@ -273,7 +273,9 @@ export const PosScreenPage: React.FC = () => {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-primary" />
-              <h3 className="font-bold text-foreground">تفاصيل الفاتورة</h3>
+              <h3 className="font-bold text-foreground">
+                {editingSaleId ? "تعديل فاتورة مؤرشفة" : "تفاصيل الفاتورة"}
+              </h3>
             </div>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5">

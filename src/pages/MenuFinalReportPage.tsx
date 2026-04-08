@@ -67,6 +67,7 @@ export const MenuFinalReportPage: React.FC = () => {
   const [selectedBranchId, setSelectedBranchId] = useState("all");
   const [activeTab, setActiveTab] = useState("kitchen");
   const [loading, setLoading] = useState(true);
+  const [companyName, setCompanyName] = useState("");
 
   const companyId = auth.profile?.company_id;
 

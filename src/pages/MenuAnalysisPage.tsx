@@ -110,6 +110,7 @@ export const MenuAnalysisPage: React.FC = () => {
   const [selectedBranchId, setSelectedBranchId] = useState<string>("all");
   const [activeTab, setActiveTab] = useState<string>("kitchen");
   const [loading, setLoading] = useState(true);
+  const [companyName, setCompanyName] = useState("");
 
   const companyId = auth.profile?.company_id;
 

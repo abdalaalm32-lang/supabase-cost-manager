@@ -502,7 +502,7 @@ export const DashboardPage: React.FC = () => {
               <div key={item.id} className="flex items-center justify-between p-2.5 rounded-lg bg-warning/5 border border-warning/10">
                 <span className="text-xs font-medium text-foreground truncate flex-1">{item.name}</span>
                 <div className="text-[10px] text-warning font-bold mr-2">
-                  {Number(item.current_stock).toLocaleString("en-US")} / {Number(item.min_level).toLocaleString("en-US")}
+                  {(selectedLocationId ? (stockMap.get(item.id) || 0) : Number(item.current_stock)).toLocaleString("en-US")} / {Number(item.min_level).toLocaleString("en-US")}
                 </div>
               </div>
             )) : (

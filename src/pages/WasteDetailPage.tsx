@@ -43,6 +43,7 @@ export const WasteDetailPage: React.FC = () => {
   const [filterDept, setFilterDept] = useState("all");
   const [filterCat, setFilterCat] = useState("all");
   const [selectedProductId, setSelectedProductId] = useState("");
+  const [productCount, setProductCount] = useState<number>(1);
 
   // Local editable state per waste item
   const [localQty, setLocalQty] = useState<Record<string, string>>({});
@@ -243,9 +244,9 @@ export const WasteDetailPage: React.FC = () => {
       .filter((ing: any) => !existingStockItemIds.has(ing.stock_item_id))
       .map((ing: any) => {
         const si = allStockItems.find((s: any) => s.id === ing.stock_item_id);
-        // Convert recipe qty using conversion factor
+        // Convert recipe qty using conversion factor, multiplied by product count
         const conversionFactor = si?.conversion_factor || 1;
-        const qtyInStockUnit = Number(ing.qty) / conversionFactor;
+        const qtyInStockUnit = (Number(ing.qty) / conversionFactor) * productCount;
         return {
           waste_record_id: id!,
           stock_item_id: ing.stock_item_id,
@@ -270,6 +271,7 @@ export const WasteDetailPage: React.FC = () => {
     }
     setShowAddProduct(false);
     setSelectedProductId("");
+    setProductCount(1);
     queryClient.invalidateQueries({ queryKey: ["waste-items", id] });
     toast({ title: "تم إضافة خامات المنتج بنجاح" });
   };
@@ -288,16 +290,17 @@ export const WasteDetailPage: React.FC = () => {
     return recipe.recipe_ingredients.map((ing: any) => {
       const si = allStockItems.find((s: any) => s.id === ing.stock_item_id);
       const conversionFactor = si?.conversion_factor || 1;
+      const baseQty = Number(ing.qty) / conversionFactor;
       return {
         name: si?.name || "—",
         code: si?.code || "—",
-        qty: Number(ing.qty) / conversionFactor,
+        qty: baseQty * productCount,
         unit: si?.stock_unit || "—",
         avgCost: Number(si?.avg_cost) || 0,
         alreadyAdded: existingStockItemIds.has(ing.stock_item_id),
       };
     });
-  }, [selectedProductId, recipes, allStockItems, existingStockItemIds]);
+  }, [selectedProductId, recipes, allStockItems, existingStockItemIds, productCount]);
 
   const handleDeleteItem = async (itemId: string) => {
     await supabase.from("waste_items").delete().eq("id", itemId);
@@ -530,7 +533,7 @@ export const WasteDetailPage: React.FC = () => {
           <Button onClick={() => { setShowAddItems(true); setSelectedItemIds(new Set()); setFilterDept("all"); setFilterCat("all"); }}>
             <Plus size={16} /> إضافة خامات
           </Button>
-          <Button variant="outline" onClick={() => { setShowAddProduct(true); setSelectedProductId(""); }}>
+          <Button variant="outline" onClick={() => { setShowAddProduct(true); setSelectedProductId(""); setProductCount(1); }}>
             <ShoppingBag size={16} /> إضافة منتج
           </Button>
         </div>
@@ -755,6 +758,20 @@ export const WasteDetailPage: React.FC = () => {
               {posItemsWithRecipes.length === 0 && (
                 <p className="text-xs text-muted-foreground mt-1">لا توجد منتجات بريسيبي مسجل</p>
               )}
+            </div>
+
+            <div>
+              <Label>عدد المنتج</Label>
+              <Input
+                type="number"
+                min={1}
+                step={1}
+                value={productCount}
+                onChange={(e) => setProductCount(Math.max(1, Number(e.target.value) || 1))}
+                className="w-32"
+                placeholder="1"
+              />
+              <p className="text-xs text-muted-foreground mt-1">سيتم ضرب كميات الريسيبي في هذا العدد</p>
             </div>
 
             {selectedProductId && selectedProductRecipe.length > 0 && (

@@ -32,6 +32,8 @@ export const PosScreenPage: React.FC = () => {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;
   const queryClient = useQueryClient();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -43,6 +45,50 @@ export const PosScreenPage: React.FC = () => {
   const [discountEnabled, setDiscountEnabled] = useState(false);
   const [discountType, setDiscountType] = useState<"percent" | "fixed">("percent");
   const [discountValue, setDiscountValue] = useState<number>(0);
+  const [editingSaleId, setEditingSaleId] = useState<string | null>(null);
+
+  // Load archived sale from navigation state
+  useEffect(() => {
+    const state = location.state as { editSaleId?: string } | null;
+    if (!state?.editSaleId) return;
+    const saleId = state.editSaleId;
+    // Clear navigation state
+    navigate(location.pathname, { replace: true, state: {} });
+
+    (async () => {
+      const { data: sale } = await supabase.from("pos_sales").select("*, branches:branch_id(name)").eq("id", saleId).single();
+      if (!sale) return;
+
+      const { data: saleItems } = await supabase
+        .from("pos_sale_items")
+        .select("*, pos_items:pos_item_id(name, categories:category_id(name))")
+        .eq("sale_id", saleId);
+      if (!saleItems) return;
+
+      setEditingSaleId(saleId);
+      setBranchId(sale.branch_id || "");
+      setSaleDate(new Date(sale.date));
+      setTaxEnabled(sale.tax_enabled);
+      setTaxRate(sale.tax_rate || 0);
+      setTaxInputVisible(sale.tax_enabled);
+      if (sale.discount_amount > 0) {
+        setDiscountEnabled(true);
+        setDiscountType("fixed");
+        setDiscountValue(sale.discount_amount);
+      }
+
+      setCart(saleItems.map((item: any) => ({
+        id: crypto.randomUUID(),
+        pos_item_id: item.pos_item_id,
+        name: item.pos_items?.name || "صنف",
+        category_name: item.pos_items?.categories?.name || "",
+        unit_price: item.unit_price,
+        quantity: item.quantity,
+      })));
+
+      toast.info("تم تحميل الفاتورة المؤرشفة - يمكنك التعديل عليها");
+    })();
+  }, [location.state]);
 
   const { data: branches } = useQuery({
     queryKey: ["branches", companyId],

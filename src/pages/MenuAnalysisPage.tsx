@@ -261,7 +261,9 @@ export const MenuAnalysisPage: React.FC = () => {
       const defaultPct = isBar ? (selectedPeriod.default_consumables_pct_bar ?? selectedPeriod.default_consumables_pct) : selectedPeriod.default_consumables_pct;
       const consumablesPct = override?.consumables_pct ?? defaultPct;
       const consumables = (item.price * consumablesPct) / 100;
-      const packingCost = getCategoryPackingCost(catName);
+      const categoryPacking = getCategoryPackingCost(catName);
+      const itemPacking = override?.packing_cost || 0;
+      const packingCost = categoryPacking + itemPacking;
 
       const finalDirectCost = mainCost + sideCost + categorySideCost + consumables + packingCost;
       const directCostPct = item.price > 0 ? (finalDirectCost / item.price) * 100 : 0;

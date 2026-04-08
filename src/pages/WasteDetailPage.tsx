@@ -43,6 +43,7 @@ export const WasteDetailPage: React.FC = () => {
   const [filterDept, setFilterDept] = useState("all");
   const [filterCat, setFilterCat] = useState("all");
   const [selectedProductId, setSelectedProductId] = useState("");
+  const [productCount, setProductCount] = useState<number>(1);
 
   // Local editable state per waste item
   const [localQty, setLocalQty] = useState<Record<string, string>>({});

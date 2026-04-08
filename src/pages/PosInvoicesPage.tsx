@@ -456,10 +456,12 @@ export const PosInvoicesPage: React.FC = () => {
           {/* Dialog footer */}
           <div className="flex flex-col gap-2 pt-4 border-t border-border/50">
             <div className="flex gap-2">
-              <Button className="flex-1 gap-2" onClick={() => saveEdits.mutate()} disabled={saveEdits.isPending}>
-                <Save className="h-4 w-4" />
-                حفظ التعديلات
-              </Button>
+              {selectedSale?.status === "مؤرشف" && (
+                <Button className="flex-1 gap-2" onClick={() => saveEdits.mutate()} disabled={saveEdits.isPending}>
+                  <Save className="h-4 w-4" />
+                  حفظ التعديلات
+                </Button>
+              )}
               <Button className="gap-2" variant="outline" onClick={handlePrintInvoice}>
                 <Printer className="h-4 w-4" />
                 طباعة

@@ -152,14 +152,18 @@ export const IndirectExpensesPage: React.FC = () => {
   };
 
   useEffect(() => {
+    if (!companyId) return;
+    const loadAll = async () => {
+      const [branchesRes, companyRes] = await Promise.all([
+        supabase.from("branches").select("id, name").eq("company_id", companyId).eq("active", true),
+        supabase.from("companies").select("name").eq("id", companyId!).single(),
+      ]);
+      if (branchesRes.data) setBranches(branchesRes.data);
+      if (companyRes.data) setCompanyName(companyRes.data.name);
+      await fetchCostData();
+    };
     fetchPeriods();
-    if (companyId) {
-      supabase.from("branches").select("id, name").eq("company_id", companyId).eq("active", true)
-        .then(({ data }) => { if (data) setBranches(data); });
-      supabase.from("companies").select("name").eq("id", companyId).single()
-        .then(({ data }) => { if (data) setCompanyName(data.name); });
-      fetchCostData();
-    }
+    loadAll();
   }, [companyId]);
 
   useEffect(() => {

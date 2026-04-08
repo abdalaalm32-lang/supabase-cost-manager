@@ -533,7 +533,7 @@ export const WasteDetailPage: React.FC = () => {
           <Button onClick={() => { setShowAddItems(true); setSelectedItemIds(new Set()); setFilterDept("all"); setFilterCat("all"); }}>
             <Plus size={16} /> إضافة خامات
           </Button>
-          <Button variant="outline" onClick={() => { setShowAddProduct(true); setSelectedProductId(""); }}>
+          <Button variant="outline" onClick={() => { setShowAddProduct(true); setSelectedProductId(""); setProductCount(1); }}>
             <ShoppingBag size={16} /> إضافة منتج
           </Button>
         </div>

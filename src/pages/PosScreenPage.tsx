@@ -237,6 +237,7 @@ export const PosScreenPage: React.FC = () => {
       setTaxRate(0);
       setTaxInputVisible(false);
       setSaleDate(undefined);
+      sessionStorage.removeItem("pos_draft");
       queryClient.invalidateQueries({ queryKey: ["pos-sales"] });
     },
     onError: (e: any) => toast.error(e.message || "حدث خطأ"),

@@ -92,6 +92,7 @@ export const IndirectExpensesPage: React.FC = () => {
   const [costOverrides, setCostOverrides] = useState<Map<string, CostOverride>>(new Map());
   const [categoryPackingItems, setCategoryPackingItems] = useState<any[]>([]);
   const [categorySideCostItems, setCategorySideCostItems] = useState<any[]>([]);
+  const [companyName, setCompanyName] = useState("");
 
   const companyId = auth.profile?.company_id;
 
@@ -155,6 +156,8 @@ export const IndirectExpensesPage: React.FC = () => {
     if (companyId) {
       supabase.from("branches").select("id, name").eq("company_id", companyId).eq("active", true)
         .then(({ data }) => { if (data) setBranches(data); });
+      supabase.from("companies").select("name").eq("id", companyId).single()
+        .then(({ data }) => { if (data) setCompanyName(data.name); });
       fetchCostData();
     }
   }, [companyId]);
@@ -354,6 +357,9 @@ export const IndirectExpensesPage: React.FC = () => {
     const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
     const logoSrc = `${window.location.origin}/logo.png`;
     const expItems = getExpenseItems(selectedPeriod);
+    const companyName = auth.profile?.full_name ? "" : "";
+    const branchName = selectedBranchId !== "all" ? branches.find(b => b.id === selectedBranchId)?.name : "كل الفروع";
+    const periodBranchName = selectedPeriod.branch_id ? branches.find(b => b.id === selectedPeriod.branch_id)?.name : null;
 
     let expenseRowsHTML = "";
     for (const item of expItems) {
@@ -368,17 +374,23 @@ export const IndirectExpensesPage: React.FC = () => {
       * { margin:0; padding:0; box-sizing:border-box; }
       body { font-family:'CairoLocal',sans-serif; direction:rtl; padding:20px; color:#000; background:#fff; }
       @media print { @page { size:auto; margin:10mm; } body { padding:0; } }
-      .header { text-align:center; margin-bottom:12px; border-bottom:1px solid #000; padding-bottom:8px; display:flex; align-items:center; justify-content:center; gap:10px; }
+      .header { text-align:center; margin-bottom:12px; border-bottom:2px solid #000; padding-bottom:10px; }
+      .header-top { display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:6px; }
       .logo { width:70px; height:70px; object-fit:contain; }
-      .header h1 { font-size:16px; font-weight:bold; }
-      .header p { font-size:10px; }
+      .header h1 { font-size:16px; font-weight:bold; margin:0; }
+      .header .company-name { font-size:18px; font-weight:bold; margin-bottom:2px; }
+      .header .sub-info { font-size:10px; color:#555; }
+      .header .sub-info span { margin:0 8px; }
       table { width:100%; border-collapse:collapse; margin-bottom:15px; }
       th, td { border:1px solid #000; padding:6px 10px; text-align:center; font-size:11px; }
       th { background:#eee; font-weight:bold; }
       h3 { font-size:13px; font-weight:bold; margin:15px 0 5px; border-bottom:1px solid #ccc; padding-bottom:3px; }
       .footer { text-align:center; margin-top:12px; font-size:8px; border-top:1px solid #000; padding-top:5px; }
     </style></head><body>
-    <div class="header"><img src="${logoSrc}" alt="Logo" class="logo"/><div><h1>تحليل المصاريف الغير مباشرة</h1><p>الفترة: ${selectedPeriod.name} • ${dateStr}</p></div></div>
+    <div class="header">
+      <div class="header-top"><img src="${logoSrc}" alt="Logo" class="logo"/><div><div class="company-name">${companyName}</div><h1>تحليل المصاريف الغير مباشرة</h1></div></div>
+      <div class="sub-info"><span>الفرع: ${periodBranchName || branchName || "كل الفروع"}</span><span>الفترة: ${selectedPeriod.name}</span><span>${dateStr}</span></div>
+    </div>
 
     <h3>المؤشرات الرئيسية</h3>
     <table><tbody>

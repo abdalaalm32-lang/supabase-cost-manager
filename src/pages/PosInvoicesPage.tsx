@@ -33,6 +33,7 @@ export const PosInvoicesPage: React.FC = () => {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [filter, setFilter] = useState<FilterStatus>("الكل");
   const [selectedSale, setSelectedSale] = useState<any>(null);
   const [editItems, setEditItems] = useState<SaleItem[]>([]);

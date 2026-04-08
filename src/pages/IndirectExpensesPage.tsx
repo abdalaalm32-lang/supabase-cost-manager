@@ -357,7 +357,7 @@ export const IndirectExpensesPage: React.FC = () => {
     const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
     const logoSrc = `${window.location.origin}/logo.png`;
     const expItems = getExpenseItems(selectedPeriod);
-    const companyName = auth.profile?.full_name ? "" : "";
+    
     const branchName = selectedBranchId !== "all" ? branches.find(b => b.id === selectedBranchId)?.name : "كل الفروع";
     const periodBranchName = selectedPeriod.branch_id ? branches.find(b => b.id === selectedPeriod.branch_id)?.name : null;
 

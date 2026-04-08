@@ -244,9 +244,9 @@ export const WasteDetailPage: React.FC = () => {
       .filter((ing: any) => !existingStockItemIds.has(ing.stock_item_id))
       .map((ing: any) => {
         const si = allStockItems.find((s: any) => s.id === ing.stock_item_id);
-        // Convert recipe qty using conversion factor
+        // Convert recipe qty using conversion factor, multiplied by product count
         const conversionFactor = si?.conversion_factor || 1;
-        const qtyInStockUnit = Number(ing.qty) / conversionFactor;
+        const qtyInStockUnit = (Number(ing.qty) / conversionFactor) * productCount;
         return {
           waste_record_id: id!,
           stock_item_id: ing.stock_item_id,

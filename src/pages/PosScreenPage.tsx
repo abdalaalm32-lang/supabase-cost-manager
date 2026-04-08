@@ -35,17 +35,32 @@ export const PosScreenPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Restore state from sessionStorage
+  const saved = useMemo(() => {
+    try {
+      const raw = sessionStorage.getItem("pos_draft");
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return null;
+  }, []);
+
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [branchId, setBranchId] = useState<string>("");
-  const [saleDate, setSaleDate] = useState<Date | undefined>(undefined);
-  const [taxEnabled, setTaxEnabled] = useState(false);
-  const [taxRate, setTaxRate] = useState<number>(0);
-  const [taxInputVisible, setTaxInputVisible] = useState(false);
-  const [discountEnabled, setDiscountEnabled] = useState(false);
-  const [discountType, setDiscountType] = useState<"percent" | "fixed">("percent");
-  const [discountValue, setDiscountValue] = useState<number>(0);
-  const [editingSaleId, setEditingSaleId] = useState<string | null>(null);
+  const [cart, setCart] = useState<CartItem[]>(saved?.cart || []);
+  const [branchId, setBranchId] = useState<string>(saved?.branchId || "");
+  const [saleDate, setSaleDate] = useState<Date | undefined>(saved?.saleDate ? new Date(saved.saleDate) : undefined);
+  const [taxEnabled, setTaxEnabled] = useState(saved?.taxEnabled || false);
+  const [taxRate, setTaxRate] = useState<number>(saved?.taxRate || 0);
+  const [taxInputVisible, setTaxInputVisible] = useState(saved?.taxInputVisible || false);
+  const [discountEnabled, setDiscountEnabled] = useState(saved?.discountEnabled || false);
+  const [discountType, setDiscountType] = useState<"percent" | "fixed">(saved?.discountType || "percent");
+  const [discountValue, setDiscountValue] = useState<number>(saved?.discountValue || 0);
+  const [editingSaleId, setEditingSaleId] = useState<string | null>(saved?.editingSaleId || null);
+
+  // Persist draft to sessionStorage
+  useEffect(() => {
+    const draft = { cart, branchId, saleDate: saleDate?.toISOString(), taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId };
+    sessionStorage.setItem("pos_draft", JSON.stringify(draft));
+  }, [cart, branchId, saleDate, taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId]);
 
   // Load archived sale from navigation state
   useEffect(() => {
@@ -222,6 +237,7 @@ export const PosScreenPage: React.FC = () => {
       setTaxRate(0);
       setTaxInputVisible(false);
       setSaleDate(undefined);
+      sessionStorage.removeItem("pos_draft");
       queryClient.invalidateQueries({ queryKey: ["pos-sales"] });
     },
     onError: (e: any) => toast.error(e.message || "حدث خطأ"),

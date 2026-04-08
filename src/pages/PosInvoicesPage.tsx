@@ -353,8 +353,8 @@ export const PosInvoicesPage: React.FC = () => {
 
           <div className="space-y-4 overflow-auto flex-1">
             {/* Info boxes */}
-            <div className="flex gap-3">
-              <div className="flex-1 rounded-xl bg-muted/50 p-3 flex items-center gap-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-muted/50 p-3 flex items-center gap-2">
                 <CalendarDays className="h-4 w-4 text-muted-foreground" />
                 <div>
                   <p className="text-xs text-muted-foreground">تاريخ العملية</p>
@@ -363,13 +363,32 @@ export const PosInvoicesPage: React.FC = () => {
                   </p>
                 </div>
               </div>
-              <div className="flex-1 rounded-xl bg-muted/50 p-3 flex items-center gap-2">
+              <div className="rounded-xl bg-muted/50 p-3 flex items-center gap-2">
                 <Store className="h-4 w-4 text-muted-foreground" />
                 <div>
                   <p className="text-xs text-muted-foreground">الفرع</p>
                   <p className="font-bold text-foreground text-sm">
                     {(selectedSale?.branches as any)?.name || "غير محدد"}
                   </p>
+                </div>
+              </div>
+              <div className="rounded-xl bg-muted/50 p-3 flex items-center gap-2">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-xs text-muted-foreground">رقم الفاتورة</p>
+                  <p className="font-bold text-foreground text-sm">{selectedSale?.invoice_number || "—"}</p>
+                </div>
+              </div>
+              <div className="rounded-xl bg-muted/50 p-3 flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-xs text-muted-foreground">الحالة</p>
+                  <Badge variant={selectedSale?.status === "مكتمل" ? "default" : "secondary"} className={cn(
+                    "mt-0.5",
+                    selectedSale?.status === "مكتمل" ? "bg-success/20 text-success border-success/30" : "bg-warning/20 text-warning border-warning/30"
+                  )}>
+                    {selectedSale?.status}
+                  </Badge>
                 </div>
               </div>
             </div>

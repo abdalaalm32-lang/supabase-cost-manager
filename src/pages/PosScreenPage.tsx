@@ -175,6 +175,26 @@ export const PosScreenPage: React.FC = () => {
       if (cart.length === 0) throw new Error("السلة فارغة");
       if (!branchId) throw new Error("يجب اختيار الفرع");
 
+      if (editingSaleId) {
+        // Update existing archived sale
+        const { error: delErr } = await supabase.from("pos_sale_items").delete().eq("sale_id", editingSaleId);
+        if (delErr) throw delErr;
+
+        const { error: saleErr } = await supabase.from("pos_sales").update({
+          branch_id: branchId || null,
+          date: saleDate ? saleDate.toISOString() : new Date().toISOString(),
+          total_amount: total, status,
+          tax_enabled: taxEnabled, tax_rate: taxEnabled ? taxRate : 0, tax_amount: taxAmount,
+          discount_amount: discountAmount,
+        }).eq("id", editingSaleId);
+        if (saleErr) throw saleErr;
+
+        const saleItems = cart.map((c) => ({ sale_id: editingSaleId, pos_item_id: c.pos_item_id, quantity: c.quantity, unit_price: c.unit_price, total: c.unit_price * c.quantity }));
+        const { error: itemsErr } = await supabase.from("pos_sale_items").insert(saleItems);
+        if (itemsErr) throw itemsErr;
+        return { id: editingSaleId };
+      }
+
       const { data: invoiceNum, error: numErr } = await supabase.rpc("generate_invoice_number", { p_company_id: companyId });
       if (numErr) throw numErr;
 
@@ -195,6 +215,13 @@ export const PosScreenPage: React.FC = () => {
     onSuccess: (_, status) => {
       toast.success(status === "مكتمل" ? "تم تنفيذ الفاتورة بنجاح" : "تم أرشفة الفاتورة");
       setCart([]);
+      setEditingSaleId(null);
+      setDiscountEnabled(false);
+      setDiscountValue(0);
+      setTaxEnabled(false);
+      setTaxRate(0);
+      setTaxInputVisible(false);
+      setSaleDate(undefined);
       queryClient.invalidateQueries({ queryKey: ["pos-sales"] });
     },
     onError: (e: any) => toast.error(e.message || "حدث خطأ"),

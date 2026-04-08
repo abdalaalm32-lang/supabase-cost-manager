@@ -391,22 +391,31 @@ export const PosInvoicesPage: React.FC = () => {
                         {(item.pos_items as any)?.categories?.name || ""}
                       </p>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateEditQty(item.id, -1)}>
-                        <Minus className="h-3 w-3" />
-                      </Button>
-                      <span className="w-8 text-center font-bold text-foreground text-sm">{item.quantity}</span>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateEditQty(item.id, 1)}>
-                        <Plus className="h-3 w-3" />
-                      </Button>
+                    <div className="text-xs text-muted-foreground whitespace-nowrap">
+                      {item.unit_price.toFixed(2)} EGP
                     </div>
+                    {selectedSale?.status === "مؤرشف" ? (
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateEditQty(item.id, -1)}>
+                          <Minus className="h-3 w-3" />
+                        </Button>
+                        <span className="w-8 text-center font-bold text-foreground text-sm">{item.quantity}</span>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateEditQty(item.id, 1)}>
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <span className="w-8 text-center font-bold text-foreground text-sm">×{item.quantity}</span>
+                    )}
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-primary text-sm whitespace-nowrap">
-                        {(item.unit_price * item.quantity).toFixed(2)}
+                        {(item.unit_price * item.quantity).toFixed(2)} EGP
                       </span>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeEditItem(item.id)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      {selectedSale?.status === "مؤرشف" && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeEditItem(item.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}

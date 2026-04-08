@@ -156,6 +156,8 @@ export const IndirectExpensesPage: React.FC = () => {
     if (companyId) {
       supabase.from("branches").select("id, name").eq("company_id", companyId).eq("active", true)
         .then(({ data }) => { if (data) setBranches(data); });
+      supabase.from("companies").select("name").eq("id", companyId).single()
+        .then(({ data }) => { if (data) setCompanyName(data.name); });
       fetchCostData();
     }
   }, [companyId]);

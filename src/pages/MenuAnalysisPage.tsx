@@ -442,12 +442,17 @@ export const MenuAnalysisPage: React.FC = () => {
                           <TableCell className="text-center text-sm">{formatNum(item.sideCost)}</TableCell>
                           <TableCell className="text-center text-sm">{formatNum(item.consumables)}</TableCell>
                           <TableCell className="text-center text-sm p-1">
-                            <Input
-                              type="number"
-                              className="h-7 w-20 text-center text-sm mx-auto"
-                              defaultValue={costOverrides.get(item.id)?.packing_cost || 0}
-                              onBlur={(e) => handleItemPackingChange(item.id, parseFloat(e.target.value) || 0)}
-                            />
+                            <div className="flex flex-col items-center gap-1">
+                              <Input
+                                type="number"
+                                className="h-7 w-20 text-center text-sm mx-auto"
+                                defaultValue={costOverrides.get(item.id)?.packing_cost || 0}
+                                onBlur={(e) => handleItemPackingChange(item.id, parseFloat(e.target.value) || 0)}
+                              />
+                              {item.packingCost > 0 && (
+                                <span className="text-xs text-muted-foreground font-semibold">{formatNum(item.packingCost)}</span>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell className="text-center text-sm font-semibold">{formatNum(item.finalDirectCost)}</TableCell>
                           <TableCell className="text-center text-sm">{formatPct(item.directCostPct)}</TableCell>

@@ -166,8 +166,10 @@ export function useDashboardData(filters?: { branchId?: string; warehouseId?: st
   });
 
   const { data: costAdjustments } = useQuery({
-    queryKey: ["dashboard-cost-adj", companyId, branchId],
+    queryKey: ["dashboard-cost-adj", companyId, branchId, warehouseId],
     queryFn: async () => {
+      // Cost adjustments only support branch filter
+      if (warehouseId) return [];
       let q = supabase
         .from("cost_adjustments")
         .select("date, status")

@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useDashboardData } from "@/hooks/useDashboardData";
+import { useLocationStock } from "@/hooks/useLocationStock";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -113,6 +114,45 @@ export const DashboardPage: React.FC = () => {
 
   const d = useDashboardData(filters);
 
+  // Use location-specific stock when a specific location is selected
+  const selectedLocationId = filters.branchId || filters.warehouseId || null;
+  const { stockMap } = useLocationStock(selectedLocationId, locationType);
+
+  // Override stock-related KPIs with location-specific data
+  const locationStockValue = useMemo(() => {
+    if (!selectedLocationId || !d.stockItems) return d.stockValue;
+    let total = 0;
+    for (const item of d.stockItems) {
+      if (!item.active) continue;
+      const locQty = stockMap.get(item.id) || 0;
+      total += Math.max(locQty, 0) * Number(item.avg_cost || 0);
+    }
+    return total;
+  }, [selectedLocationId, d.stockItems, d.stockValue, stockMap]);
+
+  const locationActiveItems = useMemo(() => {
+    if (!selectedLocationId || !d.stockItems) return d.activeItems;
+    return d.stockItems.filter(i => i.active && (stockMap.get(i.id) || 0) > 0).length;
+  }, [selectedLocationId, d.stockItems, d.activeItems, stockMap]);
+
+  const locationLowStockItems = useMemo(() => {
+    if (!selectedLocationId || !d.stockItems) return d.lowStockItems;
+    return d.stockItems.filter(i => {
+      if (!i.active) return false;
+      const locQty = stockMap.get(i.id) || 0;
+      return locQty <= Number(i.min_level) && Number(i.min_level) > 0;
+    });
+  }, [selectedLocationId, d.stockItems, d.lowStockItems, stockMap]);
+
+  const locationOverStockItems = useMemo(() => {
+    if (!selectedLocationId || !d.stockItems) return d.overStockItems;
+    return d.stockItems.filter(i => {
+      if (!i.active) return false;
+      const locQty = stockMap.get(i.id) || 0;
+      return Number(i.max_level) > 0 && locQty > Number(i.max_level);
+    });
+  }, [selectedLocationId, d.stockItems, d.overStockItems, stockMap]);
+
   const quickActions = [
     { label: "فاتورة شراء", icon: ShoppingCart, color: "text-primary", path: "/purchases/add-invoice" },
     { label: "عملية إنتاج", icon: Factory, color: "text-success", path: "/production/add" },
@@ -199,7 +239,7 @@ export const DashboardPage: React.FC = () => {
         <KPICard title="تكاليف الإنتاج" value={fmtCurrency(d.totalProduction)} icon={Factory} gradient="bg-success text-success" subtitle={`${d.productionCount} عملية`} />
         <KPICard title="الهالك" value={fmtCurrency(d.totalWaste)} icon={Trash2} gradient="bg-destructive text-destructive" subtitle={`${d.wasteCount} سجل`} />
         <KPICard title="التحويلات" value={fmtCurrency(d.totalTransfers)} icon={ArrowRightLeft} gradient="bg-accent text-accent" subtitle={`${d.transfersCount} تحويل`} />
-        <KPICard title="قيمة المخزون" value={fmtCurrency(d.stockValue)} icon={Package} gradient="bg-secondary text-secondary" subtitle={`${d.activeItems} صنف نشط`} />
+        <KPICard title="قيمة المخزون" value={fmtCurrency(locationStockValue)} icon={Package} gradient="bg-secondary text-secondary" subtitle={`${locationActiveItems} صنف نشط`} />
       </div>
 
       {/* KPI Row 2 - Operational */}
@@ -229,11 +269,11 @@ export const DashboardPage: React.FC = () => {
           <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1"><TrendingUp size={10} />هامش الربح</p>
         </div>
         <div className="rounded-xl border border-border/20 bg-card/30 p-3 text-center">
-          <p className="text-lg font-black text-warning">{d.lowStockItems.length}</p>
+          <p className="text-lg font-black text-warning">{locationLowStockItems.length}</p>
           <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1"><AlertTriangle size={10} />نقص مخزون</p>
         </div>
         <div className="rounded-xl border border-border/20 bg-card/30 p-3 text-center">
-          <p className="text-lg font-black text-accent">{d.overStockItems.length}</p>
+          <p className="text-lg font-black text-accent">{locationOverStockItems.length}</p>
           <p className="text-[10px] text-muted-foreground flex items-center justify-center gap-1"><TrendingDown size={10} />فائض مخزون</p>
         </div>
       </div>
@@ -458,11 +498,11 @@ export const DashboardPage: React.FC = () => {
             <h3 className="text-sm font-bold text-foreground">تنبيهات نقص المخزون</h3>
           </div>
           <div className="space-y-2 max-h-[200px] overflow-y-auto">
-            {d.lowStockItems.length > 0 ? d.lowStockItems.slice(0, 6).map((item) => (
+            {locationLowStockItems.length > 0 ? locationLowStockItems.slice(0, 6).map((item) => (
               <div key={item.id} className="flex items-center justify-between p-2.5 rounded-lg bg-warning/5 border border-warning/10">
                 <span className="text-xs font-medium text-foreground truncate flex-1">{item.name}</span>
                 <div className="text-[10px] text-warning font-bold mr-2">
-                  {Number(item.current_stock).toLocaleString("en-US")} / {Number(item.min_level).toLocaleString("en-US")}
+                  {(selectedLocationId ? (stockMap.get(item.id) || 0) : Number(item.current_stock)).toLocaleString("en-US")} / {Number(item.min_level).toLocaleString("en-US")}
                 </div>
               </div>
             )) : (

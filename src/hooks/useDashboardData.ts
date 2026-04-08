@@ -270,7 +270,7 @@ export function useDashboardData(filters?: { branchId?: string; warehouseId?: st
 
   return {
     totalSales, totalPurchases, totalWaste, totalProduction, totalTransfers, stockValue,
-    activeItems, lowStockItems, overStockItems,
+    activeItems, lowStockItems, overStockItems, stockItems: stockItems || [],
     salesCount: (salesData || []).length,
     purchasesCount: (purchases || []).length,
     productionCount: (productions || []).length,

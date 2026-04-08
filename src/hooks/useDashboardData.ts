@@ -262,7 +262,9 @@ export function useDashboardData(filters?: { branchId?: string; warehouseId?: st
     const items: { type: string; label: string; date: string; amount?: number }[] = [];
     (purchases || []).slice(-5).forEach(r => items.push({ type: "purchase", label: `شراء - ${r.supplier_name}`, date: r.date, amount: Number(r.total_amount) }));
     (productions || []).slice(-5).forEach(r => items.push({ type: "production", label: `إنتاج - ${r.product_name}`, date: r.date, amount: Number(r.total_production_cost) }));
-    (transfers || []).slice(-3).forEach(r => items.push({ type: "transfer", label: `تحويل - ${r.source_name || ""} → ${r.destination_name || ""}`, date: r.date }));
+    (transfers || []).slice(-3).forEach(r => items.push({ type: "transfer", label: `تحويل - ${r.source_name || ""} → ${r.destination_name || ""}`, date: r.date, amount: Number(r.total_cost || 0) }));
+    (wasteRecords || []).slice(-3).forEach(r => items.push({ type: "waste", label: `هالك`, date: r.date, amount: Number(r.total_cost || 0) }));
+    (stocktakes || []).slice(-3).forEach(r => items.push({ type: "stocktake", label: `جرد - ${r.type || ""}`, date: r.date, amount: Number(r.total_actual_value || 0) }));
     return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 8);
   };
 

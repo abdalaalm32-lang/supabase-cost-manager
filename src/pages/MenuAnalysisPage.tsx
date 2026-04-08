@@ -245,6 +245,22 @@ export const MenuAnalysisPage: React.FC = () => {
       .reduce((s, p) => s + p.cost, 0);
   };
 
+  const handleItemPackingChange = useCallback(async (posItemId: string, value: number) => {
+    if (!companyId) return;
+    const existing = costOverrides.get(posItemId);
+    if (existing) {
+      await supabase.from("pos_item_cost_settings").update({ packing_cost: value }).eq("pos_item_id", posItemId).eq("company_id", companyId);
+    } else {
+      await supabase.from("pos_item_cost_settings").insert({ company_id: companyId, pos_item_id: posItemId, packing_cost: value, side_cost: 0 });
+    }
+    setCostOverrides(prev => {
+      const next = new Map(prev);
+      const cur = next.get(posItemId) || { pos_item_id: posItemId, side_cost: 0, consumables_pct: null, packing_cost: 0 };
+      next.set(posItemId, { ...cur, packing_cost: value });
+      return next;
+    });
+  }, [companyId, costOverrides]);
+
   const categorizedData = useMemo(() => {
     if (!selectedPeriod) return [];
 

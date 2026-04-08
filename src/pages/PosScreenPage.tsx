@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -31,6 +32,8 @@ export const PosScreenPage: React.FC = () => {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;
   const queryClient = useQueryClient();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -42,6 +45,50 @@ export const PosScreenPage: React.FC = () => {
   const [discountEnabled, setDiscountEnabled] = useState(false);
   const [discountType, setDiscountType] = useState<"percent" | "fixed">("percent");
   const [discountValue, setDiscountValue] = useState<number>(0);
+  const [editingSaleId, setEditingSaleId] = useState<string | null>(null);
+
+  // Load archived sale from navigation state
+  useEffect(() => {
+    const state = location.state as { editSaleId?: string } | null;
+    if (!state?.editSaleId) return;
+    const saleId = state.editSaleId;
+    // Clear navigation state
+    navigate(location.pathname, { replace: true, state: {} });
+
+    (async () => {
+      const { data: sale } = await supabase.from("pos_sales").select("*, branches:branch_id(name)").eq("id", saleId).single();
+      if (!sale) return;
+
+      const { data: saleItems } = await supabase
+        .from("pos_sale_items")
+        .select("*, pos_items:pos_item_id(name, categories:category_id(name))")
+        .eq("sale_id", saleId);
+      if (!saleItems) return;
+
+      setEditingSaleId(saleId);
+      setBranchId(sale.branch_id || "");
+      setSaleDate(new Date(sale.date));
+      setTaxEnabled(sale.tax_enabled);
+      setTaxRate(sale.tax_rate || 0);
+      setTaxInputVisible(sale.tax_enabled);
+      if (sale.discount_amount > 0) {
+        setDiscountEnabled(true);
+        setDiscountType("fixed");
+        setDiscountValue(sale.discount_amount);
+      }
+
+      setCart(saleItems.map((item: any) => ({
+        id: crypto.randomUUID(),
+        pos_item_id: item.pos_item_id,
+        name: item.pos_items?.name || "صنف",
+        category_name: item.pos_items?.categories?.name || "",
+        unit_price: item.unit_price,
+        quantity: item.quantity,
+      })));
+
+      toast.info("تم تحميل الفاتورة المؤرشفة - يمكنك التعديل عليها");
+    })();
+  }, [location.state]);
 
   const { data: branches } = useQuery({
     queryKey: ["branches", companyId],
@@ -128,6 +175,26 @@ export const PosScreenPage: React.FC = () => {
       if (cart.length === 0) throw new Error("السلة فارغة");
       if (!branchId) throw new Error("يجب اختيار الفرع");
 
+      if (editingSaleId) {
+        // Update existing archived sale
+        const { error: delErr } = await supabase.from("pos_sale_items").delete().eq("sale_id", editingSaleId);
+        if (delErr) throw delErr;
+
+        const { error: saleErr } = await supabase.from("pos_sales").update({
+          branch_id: branchId || null,
+          date: saleDate ? saleDate.toISOString() : new Date().toISOString(),
+          total_amount: total, status,
+          tax_enabled: taxEnabled, tax_rate: taxEnabled ? taxRate : 0, tax_amount: taxAmount,
+          discount_amount: discountAmount,
+        }).eq("id", editingSaleId);
+        if (saleErr) throw saleErr;
+
+        const saleItems = cart.map((c) => ({ sale_id: editingSaleId, pos_item_id: c.pos_item_id, quantity: c.quantity, unit_price: c.unit_price, total: c.unit_price * c.quantity }));
+        const { error: itemsErr } = await supabase.from("pos_sale_items").insert(saleItems);
+        if (itemsErr) throw itemsErr;
+        return { id: editingSaleId };
+      }
+
       const { data: invoiceNum, error: numErr } = await supabase.rpc("generate_invoice_number", { p_company_id: companyId });
       if (numErr) throw numErr;
 
@@ -148,6 +215,13 @@ export const PosScreenPage: React.FC = () => {
     onSuccess: (_, status) => {
       toast.success(status === "مكتمل" ? "تم تنفيذ الفاتورة بنجاح" : "تم أرشفة الفاتورة");
       setCart([]);
+      setEditingSaleId(null);
+      setDiscountEnabled(false);
+      setDiscountValue(0);
+      setTaxEnabled(false);
+      setTaxRate(0);
+      setTaxInputVisible(false);
+      setSaleDate(undefined);
       queryClient.invalidateQueries({ queryKey: ["pos-sales"] });
     },
     onError: (e: any) => toast.error(e.message || "حدث خطأ"),
@@ -199,7 +273,9 @@ export const PosScreenPage: React.FC = () => {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-primary" />
-              <h3 className="font-bold text-foreground">تفاصيل الفاتورة</h3>
+              <h3 className="font-bold text-foreground">
+                {editingSaleId ? "تعديل فاتورة مؤرشفة" : "تفاصيل الفاتورة"}
+              </h3>
             </div>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5">

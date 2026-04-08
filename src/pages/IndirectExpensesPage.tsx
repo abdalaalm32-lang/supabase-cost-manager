@@ -109,7 +109,13 @@ export const IndirectExpensesPage: React.FC = () => {
         custom_expenses: Array.isArray(d.custom_expenses) ? d.custom_expenses : [],
       })) as CostingPeriod[];
       setPeriods(mapped);
-      if (!selectedPeriod && mapped.length > 0) setSelectedPeriod(mapped[0]);
+      if (selectedPeriod) {
+        const updated = mapped.find(m => m.id === selectedPeriod.id);
+        if (updated) setSelectedPeriod(updated);
+        else if (mapped.length > 0) setSelectedPeriod(mapped[0]);
+      } else if (mapped.length > 0) {
+        setSelectedPeriod(mapped[0]);
+      }
     }
     setLoading(false);
   };

@@ -114,6 +114,45 @@ export const DashboardPage: React.FC = () => {
 
   const d = useDashboardData(filters);
 
+  // Use location-specific stock when a specific location is selected
+  const selectedLocationId = filters.branchId || filters.warehouseId || null;
+  const { stockMap } = useLocationStock(selectedLocationId, locationType);
+
+  // Override stock-related KPIs with location-specific data
+  const locationStockValue = useMemo(() => {
+    if (!selectedLocationId || !d.stockItems) return d.stockValue;
+    let total = 0;
+    for (const item of d.stockItems) {
+      if (!item.active) continue;
+      const locQty = stockMap.get(item.id) || 0;
+      total += Math.max(locQty, 0) * Number(item.avg_cost || 0);
+    }
+    return total;
+  }, [selectedLocationId, d.stockItems, d.stockValue, stockMap]);
+
+  const locationActiveItems = useMemo(() => {
+    if (!selectedLocationId || !d.stockItems) return d.activeItems;
+    return d.stockItems.filter(i => i.active && (stockMap.get(i.id) || 0) > 0).length;
+  }, [selectedLocationId, d.stockItems, d.activeItems, stockMap]);
+
+  const locationLowStockItems = useMemo(() => {
+    if (!selectedLocationId || !d.stockItems) return d.lowStockItems;
+    return d.stockItems.filter(i => {
+      if (!i.active) return false;
+      const locQty = stockMap.get(i.id) || 0;
+      return locQty <= Number(i.min_level) && Number(i.min_level) > 0;
+    });
+  }, [selectedLocationId, d.stockItems, d.lowStockItems, stockMap]);
+
+  const locationOverStockItems = useMemo(() => {
+    if (!selectedLocationId || !d.stockItems) return d.overStockItems;
+    return d.stockItems.filter(i => {
+      if (!i.active) return false;
+      const locQty = stockMap.get(i.id) || 0;
+      return Number(i.max_level) > 0 && locQty > Number(i.max_level);
+    });
+  }, [selectedLocationId, d.stockItems, d.overStockItems, stockMap]);
+
   const quickActions = [
     { label: "فاتورة شراء", icon: ShoppingCart, color: "text-primary", path: "/purchases/add-invoice" },
     { label: "عملية إنتاج", icon: Factory, color: "text-success", path: "/production/add" },

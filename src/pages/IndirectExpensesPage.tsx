@@ -290,7 +290,7 @@ export const IndirectExpensesPage: React.FC = () => {
       maintenance: p.maintenance,
       rent: p.rent,
       default_consumables_pct: p.default_consumables_pct,
-      default_consumables_pct_bar: (p as any).default_consumables_pct_bar || 1,
+      default_consumables_pct_bar: (p as any).default_consumables_pct_bar ?? 1,
       default_packing_cost: p.default_packing_cost,
       tax_rate: (p as any).tax_rate || 0,
       custom_expenses: p.custom_expenses || [],

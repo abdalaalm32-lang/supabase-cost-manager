@@ -353,8 +353,8 @@ export const PosInvoicesPage: React.FC = () => {
 
           <div className="space-y-4 overflow-auto flex-1">
             {/* Info boxes */}
-            <div className="flex gap-3">
-              <div className="flex-1 rounded-xl bg-muted/50 p-3 flex items-center gap-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-muted/50 p-3 flex items-center gap-2">
                 <CalendarDays className="h-4 w-4 text-muted-foreground" />
                 <div>
                   <p className="text-xs text-muted-foreground">تاريخ العملية</p>
@@ -363,13 +363,32 @@ export const PosInvoicesPage: React.FC = () => {
                   </p>
                 </div>
               </div>
-              <div className="flex-1 rounded-xl bg-muted/50 p-3 flex items-center gap-2">
+              <div className="rounded-xl bg-muted/50 p-3 flex items-center gap-2">
                 <Store className="h-4 w-4 text-muted-foreground" />
                 <div>
                   <p className="text-xs text-muted-foreground">الفرع</p>
                   <p className="font-bold text-foreground text-sm">
                     {(selectedSale?.branches as any)?.name || "غير محدد"}
                   </p>
+                </div>
+              </div>
+              <div className="rounded-xl bg-muted/50 p-3 flex items-center gap-2">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-xs text-muted-foreground">رقم الفاتورة</p>
+                  <p className="font-bold text-foreground text-sm">{selectedSale?.invoice_number || "—"}</p>
+                </div>
+              </div>
+              <div className="rounded-xl bg-muted/50 p-3 flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-xs text-muted-foreground">الحالة</p>
+                  <Badge variant={selectedSale?.status === "مكتمل" ? "default" : "secondary"} className={cn(
+                    "mt-0.5",
+                    selectedSale?.status === "مكتمل" ? "bg-success/20 text-success border-success/30" : "bg-warning/20 text-warning border-warning/30"
+                  )}>
+                    {selectedSale?.status}
+                  </Badge>
                 </div>
               </div>
             </div>
@@ -391,22 +410,31 @@ export const PosInvoicesPage: React.FC = () => {
                         {(item.pos_items as any)?.categories?.name || ""}
                       </p>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateEditQty(item.id, -1)}>
-                        <Minus className="h-3 w-3" />
-                      </Button>
-                      <span className="w-8 text-center font-bold text-foreground text-sm">{item.quantity}</span>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateEditQty(item.id, 1)}>
-                        <Plus className="h-3 w-3" />
-                      </Button>
+                    <div className="text-xs text-muted-foreground whitespace-nowrap">
+                      {item.unit_price.toFixed(2)} EGP
                     </div>
+                    {selectedSale?.status === "مؤرشف" ? (
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateEditQty(item.id, -1)}>
+                          <Minus className="h-3 w-3" />
+                        </Button>
+                        <span className="w-8 text-center font-bold text-foreground text-sm">{item.quantity}</span>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateEditQty(item.id, 1)}>
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <span className="w-8 text-center font-bold text-foreground text-sm">×{item.quantity}</span>
+                    )}
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-primary text-sm whitespace-nowrap">
-                        {(item.unit_price * item.quantity).toFixed(2)}
+                        {(item.unit_price * item.quantity).toFixed(2)} EGP
                       </span>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeEditItem(item.id)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      {selectedSale?.status === "مؤرشف" && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeEditItem(item.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -447,10 +475,12 @@ export const PosInvoicesPage: React.FC = () => {
           {/* Dialog footer */}
           <div className="flex flex-col gap-2 pt-4 border-t border-border/50">
             <div className="flex gap-2">
-              <Button className="flex-1 gap-2" onClick={() => saveEdits.mutate()} disabled={saveEdits.isPending}>
-                <Save className="h-4 w-4" />
-                حفظ التعديلات
-              </Button>
+              {selectedSale?.status === "مؤرشف" && (
+                <Button className="flex-1 gap-2" onClick={() => saveEdits.mutate()} disabled={saveEdits.isPending}>
+                  <Save className="h-4 w-4" />
+                  حفظ التعديلات
+                </Button>
+              )}
               <Button className="gap-2" variant="outline" onClick={handlePrintInvoice}>
                 <Printer className="h-4 w-4" />
                 طباعة

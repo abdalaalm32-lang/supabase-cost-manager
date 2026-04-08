@@ -290,16 +290,17 @@ export const WasteDetailPage: React.FC = () => {
     return recipe.recipe_ingredients.map((ing: any) => {
       const si = allStockItems.find((s: any) => s.id === ing.stock_item_id);
       const conversionFactor = si?.conversion_factor || 1;
+      const baseQty = Number(ing.qty) / conversionFactor;
       return {
         name: si?.name || "—",
         code: si?.code || "—",
-        qty: Number(ing.qty) / conversionFactor,
+        qty: baseQty * productCount,
         unit: si?.stock_unit || "—",
         avgCost: Number(si?.avg_cost) || 0,
         alreadyAdded: existingStockItemIds.has(ing.stock_item_id),
       };
     });
-  }, [selectedProductId, recipes, allStockItems, existingStockItemIds]);
+  }, [selectedProductId, recipes, allStockItems, existingStockItemIds, productCount]);
 
   const handleDeleteItem = async (itemId: string) => {
     await supabase.from("waste_items").delete().eq("id", itemId);

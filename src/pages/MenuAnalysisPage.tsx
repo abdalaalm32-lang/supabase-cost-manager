@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -244,6 +245,22 @@ export const MenuAnalysisPage: React.FC = () => {
       .reduce((s, p) => s + p.cost, 0);
   };
 
+  const handleItemPackingChange = useCallback(async (posItemId: string, value: number) => {
+    if (!companyId) return;
+    const existing = costOverrides.get(posItemId);
+    if (existing) {
+      await supabase.from("pos_item_cost_settings").update({ packing_cost: value }).eq("pos_item_id", posItemId).eq("company_id", companyId);
+    } else {
+      await supabase.from("pos_item_cost_settings").insert({ company_id: companyId, pos_item_id: posItemId, packing_cost: value, side_cost: 0 });
+    }
+    setCostOverrides(prev => {
+      const next = new Map(prev);
+      const cur = next.get(posItemId) || { pos_item_id: posItemId, side_cost: 0, consumables_pct: null, packing_cost: 0 };
+      next.set(posItemId, { ...cur, packing_cost: value });
+      return next;
+    });
+  }, [companyId, costOverrides]);
+
   const categorizedData = useMemo(() => {
     if (!selectedPeriod) return [];
 
@@ -261,7 +278,9 @@ export const MenuAnalysisPage: React.FC = () => {
       const defaultPct = isBar ? (selectedPeriod.default_consumables_pct_bar ?? selectedPeriod.default_consumables_pct) : selectedPeriod.default_consumables_pct;
       const consumablesPct = override?.consumables_pct ?? defaultPct;
       const consumables = (item.price * consumablesPct) / 100;
-      const packingCost = getCategoryPackingCost(catName);
+      const categoryPacking = getCategoryPackingCost(catName);
+      const itemPacking = override?.packing_cost || 0;
+      const packingCost = categoryPacking + itemPacking;
 
       const finalDirectCost = mainCost + sideCost + categorySideCost + consumables + packingCost;
       const directCostPct = item.price > 0 ? (finalDirectCost / item.price) * 100 : 0;
@@ -422,7 +441,14 @@ export const MenuAnalysisPage: React.FC = () => {
                           <TableCell className="text-center text-sm">{formatNum(item.mainCost)}</TableCell>
                           <TableCell className="text-center text-sm">{formatNum(item.sideCost)}</TableCell>
                           <TableCell className="text-center text-sm">{formatNum(item.consumables)}</TableCell>
-                          <TableCell className="text-center text-sm">{formatNum(item.packingCost)}</TableCell>
+                          <TableCell className="text-center text-sm p-1">
+                            <Input
+                              type="number"
+                              className="h-7 w-20 text-center text-sm mx-auto"
+                              defaultValue={costOverrides.get(item.id)?.packing_cost || 0}
+                              onBlur={(e) => handleItemPackingChange(item.id, parseFloat(e.target.value) || 0)}
+                            />
+                          </TableCell>
                           <TableCell className="text-center text-sm font-semibold">{formatNum(item.finalDirectCost)}</TableCell>
                           <TableCell className="text-center text-sm">{formatPct(item.directCostPct)}</TableCell>
                           <TableCell className={`text-center text-sm ${item.netTakeAway < 0 ? "text-red-500" : ""}`}>{formatNum(item.netTakeAway)}</TableCell>

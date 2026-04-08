@@ -271,6 +271,7 @@ export const WasteDetailPage: React.FC = () => {
     }
     setShowAddProduct(false);
     setSelectedProductId("");
+    setProductCount(1);
     queryClient.invalidateQueries({ queryKey: ["waste-items", id] });
     toast({ title: "تم إضافة خامات المنتج بنجاح" });
   };

@@ -764,10 +764,13 @@ export const WasteDetailPage: React.FC = () => {
               <Label>عدد المنتج</Label>
               <Input
                 type="number"
-                min={1}
-                step={1}
+                min={0.01}
+                step="any"
                 value={productCount}
-                onChange={(e) => setProductCount(Math.max(1, Number(e.target.value) || 1))}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value);
+                  setProductCount(val > 0 ? val : 1);
+                }}
                 className="w-32"
                 placeholder="1"
               />

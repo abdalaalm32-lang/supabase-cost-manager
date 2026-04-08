@@ -239,7 +239,7 @@ export const DashboardPage: React.FC = () => {
         <KPICard title="تكاليف الإنتاج" value={fmtCurrency(d.totalProduction)} icon={Factory} gradient="bg-success text-success" subtitle={`${d.productionCount} عملية`} />
         <KPICard title="الهالك" value={fmtCurrency(d.totalWaste)} icon={Trash2} gradient="bg-destructive text-destructive" subtitle={`${d.wasteCount} سجل`} />
         <KPICard title="التحويلات" value={fmtCurrency(d.totalTransfers)} icon={ArrowRightLeft} gradient="bg-accent text-accent" subtitle={`${d.transfersCount} تحويل`} />
-        <KPICard title="قيمة المخزون" value={fmtCurrency(d.stockValue)} icon={Package} gradient="bg-secondary text-secondary" subtitle={`${d.activeItems} صنف نشط`} />
+        <KPICard title="قيمة المخزون" value={fmtCurrency(locationStockValue)} icon={Package} gradient="bg-secondary text-secondary" subtitle={`${locationActiveItems} صنف نشط`} />
       </div>
 
       {/* KPI Row 2 - Operational */}

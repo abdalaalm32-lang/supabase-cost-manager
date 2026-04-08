@@ -441,7 +441,14 @@ export const MenuAnalysisPage: React.FC = () => {
                           <TableCell className="text-center text-sm">{formatNum(item.mainCost)}</TableCell>
                           <TableCell className="text-center text-sm">{formatNum(item.sideCost)}</TableCell>
                           <TableCell className="text-center text-sm">{formatNum(item.consumables)}</TableCell>
-                          <TableCell className="text-center text-sm">{formatNum(item.packingCost)}</TableCell>
+                          <TableCell className="text-center text-sm p-1">
+                            <Input
+                              type="number"
+                              className="h-7 w-20 text-center text-sm mx-auto"
+                              defaultValue={costOverrides.get(item.id)?.packing_cost || 0}
+                              onBlur={(e) => handleItemPackingChange(item.id, parseFloat(e.target.value) || 0)}
+                            />
+                          </TableCell>
                           <TableCell className="text-center text-sm font-semibold">{formatNum(item.finalDirectCost)}</TableCell>
                           <TableCell className="text-center text-sm">{formatPct(item.directCostPct)}</TableCell>
                           <TableCell className={`text-center text-sm ${item.netTakeAway < 0 ? "text-red-500" : ""}`}>{formatNum(item.netTakeAway)}</TableCell>

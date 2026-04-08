@@ -8,9 +8,12 @@ export function useDashboardData(filters?: { branchId?: string; warehouseId?: st
   const branchId = filters?.branchId;
   const warehouseId = filters?.warehouseId;
 
+  // Sales only support branch filter (pos_sales has branch_id, not warehouse_id)
   const { data: salesData } = useQuery({
-    queryKey: ["dashboard-sales", companyId, branchId],
+    queryKey: ["dashboard-sales", companyId, branchId, warehouseId],
     queryFn: async () => {
+      // If warehouse filter is active, sales can't be filtered by warehouse - return empty
+      if (warehouseId) return [];
       let q = supabase
         .from("pos_sales")
         .select("total_amount, date, status")

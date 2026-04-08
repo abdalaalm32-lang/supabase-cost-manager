@@ -520,6 +520,7 @@ export const MenuAnalysisPage: React.FC = () => {
     const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
     const logoSrc = `${window.location.origin}/logo.png`;
     const tabLabel = activeTab === "kitchen" ? "المطبخ" : "البار";
+    const branchName = selectedBranchId !== "all" ? branches.find(b => b.id === selectedBranchId)?.name : "كل الفروع";
 
     let categoriesHTML = "";
     for (const cat of categorizedData) {
@@ -581,16 +582,22 @@ export const MenuAnalysisPage: React.FC = () => {
       * { margin:0; padding:0; box-sizing:border-box; }
       body { font-family:'CairoLocal',sans-serif; direction:rtl; padding:15px; color:#000; background:#fff; font-size:9px; }
       @media print { @page { size:landscape; margin:8mm; } body { padding:0; } }
-      .header { text-align:center; margin-bottom:10px; border-bottom:1px solid #000; padding-bottom:8px; display:flex; align-items:center; justify-content:center; gap:10px; }
+      .header { text-align:center; margin-bottom:10px; border-bottom:2px solid #000; padding-bottom:10px; }
+      .header-top { display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:6px; }
       .logo { width:60px; height:60px; object-fit:contain; }
-      .header h1 { font-size:16px; font-weight:bold; }
-      .header p { font-size:10px; }
+      .header h1 { font-size:16px; font-weight:bold; margin:0; }
+      .header .company-name { font-size:18px; font-weight:bold; margin-bottom:2px; }
+      .header .sub-info { font-size:10px; color:#555; }
+      .header .sub-info span { margin:0 8px; }
       table { width:100%; border-collapse:collapse; margin-bottom:10px; }
       th, td { border:1px solid #000; padding:3px 4px; text-align:center; font-size:8px; }
       th { background:#eee; font-weight:bold; font-size:8px; }
       .footer { text-align:center; margin-top:10px; font-size:8px; border-top:1px solid #000; padding-top:5px; }
     </style></head><body>
-    <div class="header"><img src="${logoSrc}" alt="Logo" class="logo"/><div><h1>تحليل المنيو - ${tabLabel}</h1><p>الفترة: ${selectedPeriod.name} • ${dateStr}</p></div></div>
+    <div class="header">
+      <div class="header-top"><img src="${logoSrc}" alt="Logo" class="logo"/><div><div class="company-name">${companyName}</div><h1>تحليل المنيو - ${tabLabel}</h1></div></div>
+      <div class="sub-info"><span>الفرع: ${branchName || "كل الفروع"}</span><span>الفترة: ${selectedPeriod.name}</span><span>${dateStr}</span></div>
+    </div>
     ${categoriesHTML}${summaryHTML}
     <div class="footer">Powered by Mohamed Abdel Aal</div>
     <script>(async()=>{try{if(document.fonts&&document.fonts.ready)await document.fonts.ready}catch(e){}window.print();window.onafterprint=()=>window.close();})()</script>

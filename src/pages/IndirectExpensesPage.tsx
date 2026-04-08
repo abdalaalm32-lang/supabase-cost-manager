@@ -92,6 +92,7 @@ export const IndirectExpensesPage: React.FC = () => {
   const [costOverrides, setCostOverrides] = useState<Map<string, CostOverride>>(new Map());
   const [categoryPackingItems, setCategoryPackingItems] = useState<any[]>([]);
   const [categorySideCostItems, setCategorySideCostItems] = useState<any[]>([]);
+  const [companyName, setCompanyName] = useState("");
 
   const companyId = auth.profile?.company_id;
 

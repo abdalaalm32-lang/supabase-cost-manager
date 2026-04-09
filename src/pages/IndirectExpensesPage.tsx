@@ -88,10 +88,20 @@ export const IndirectExpensesPage: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
-  const [selectedPeriod, setSelectedPeriod] = useState<CostingPeriod | null>(null);
+  const [selectedPeriod, setSelectedPeriodRaw] = useState<CostingPeriod | null>(null);
   const [newCustomName, setNewCustomName] = useState("");
   const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
-  const [selectedBranchId, setSelectedBranchId] = useState<string>("all");
+  const [selectedBranchId, setSelectedBranchIdRaw] = useState<string>(() => sessionStorage.getItem("menu_branch") || "all");
+
+  const setSelectedPeriod = (p: CostingPeriod | null) => {
+    setSelectedPeriodRaw(p);
+    if (p) sessionStorage.setItem("menu_period", p.id);
+    else sessionStorage.removeItem("menu_period");
+  };
+  const setSelectedBranchId = (v: string) => {
+    setSelectedBranchIdRaw(v);
+    sessionStorage.setItem("menu_branch", v);
+  };
   const [posItems, setPosItems] = useState<any[]>([]);
   const [recipeCosts, setRecipeCosts] = useState<Map<string, number>>(new Map());
   const [costOverrides, setCostOverrides] = useState<Map<string, CostOverride>>(new Map());

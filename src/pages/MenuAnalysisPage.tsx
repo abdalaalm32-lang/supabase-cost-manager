@@ -53,6 +53,8 @@ interface CostingPeriod {
   default_packing_cost: number;
   custom_expenses: { name: string; value: number }[];
   tax_rate: number;
+  consumables_kitchen_categories?: string[];
+  consumables_bar_categories?: string[];
 }
 
 interface CostOverride {
@@ -278,8 +280,16 @@ export const MenuAnalysisPage: React.FC = () => {
       const override = costOverrides.get(item.id);
       const sideCost = override?.side_cost || 0;
       const categorySideCost = getCategorySideCost(catName);
-      const isBar = item.menu_engineering_class?.toLowerCase() === "bar";
-      const defaultPct = isBar ? (selectedPeriod.default_consumables_pct_bar ?? selectedPeriod.default_consumables_pct) : selectedPeriod.default_consumables_pct;
+      const kitchenCats = Array.isArray(selectedPeriod.consumables_kitchen_categories) ? selectedPeriod.consumables_kitchen_categories : [];
+      const barCats = Array.isArray(selectedPeriod.consumables_bar_categories) ? selectedPeriod.consumables_bar_categories : [];
+      const isInKitchen = kitchenCats.length === 0 || kitchenCats.includes(catName);
+      const isInBar = barCats.includes(catName);
+      let defaultPct = 0;
+      if (isInBar) {
+        defaultPct = selectedPeriod.default_consumables_pct_bar ?? selectedPeriod.default_consumables_pct;
+      } else if (isInKitchen) {
+        defaultPct = selectedPeriod.default_consumables_pct;
+      }
       const consumablesPct = override?.consumables_pct ?? defaultPct;
       const consumables = (item.price * consumablesPct) / 100;
       const categoryPacking = getCategoryPackingCost(catName);

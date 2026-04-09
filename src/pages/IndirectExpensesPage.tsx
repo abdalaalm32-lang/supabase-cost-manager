@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
 import { Plus, Edit2, Trash2, TrendingUp, DollarSign, Percent, Target, Building2, Zap, Users, Megaphone, Wrench, MoreHorizontal, Calendar as CalendarIcon, X, Printer } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -42,6 +43,8 @@ interface CostingPeriod {
   created_at: string;
   custom_expenses: CustomExpense[];
   branch_id: string | null;
+  consumables_kitchen_categories: string[];
+  consumables_bar_categories: string[];
 }
 
 const emptyForm = {
@@ -64,6 +67,8 @@ const emptyForm = {
   tax_rate: 0,
   custom_expenses: [] as CustomExpense[],
   branch_id: "" as string,
+  consumables_kitchen_categories: [] as string[],
+  consumables_bar_categories: [] as string[],
 };
 
 const getDaysInPeriod = (start: string, end: string) => {
@@ -107,6 +112,8 @@ export const IndirectExpensesPage: React.FC = () => {
       const mapped = data.map((d: any) => ({
         ...d,
         custom_expenses: Array.isArray(d.custom_expenses) ? d.custom_expenses : [],
+        consumables_kitchen_categories: Array.isArray(d.consumables_kitchen_categories) ? d.consumables_kitchen_categories : [],
+        consumables_bar_categories: Array.isArray(d.consumables_bar_categories) ? d.consumables_bar_categories : [],
       })) as CostingPeriod[];
       setPeriods(mapped);
       if (selectedPeriod) {
@@ -253,6 +260,8 @@ export const IndirectExpensesPage: React.FC = () => {
       tax_rate: form.tax_rate,
       custom_expenses: form.custom_expenses as any,
       branch_id: form.branch_id || null,
+      consumables_kitchen_categories: form.consumables_kitchen_categories as any,
+      consumables_bar_categories: form.consumables_bar_categories as any,
     };
 
     let error;
@@ -295,6 +304,8 @@ export const IndirectExpensesPage: React.FC = () => {
       tax_rate: (p as any).tax_rate || 0,
       custom_expenses: p.custom_expenses || [],
       branch_id: p.branch_id || "",
+      consumables_kitchen_categories: Array.isArray((p as any).consumables_kitchen_categories) ? (p as any).consumables_kitchen_categories : [],
+      consumables_bar_categories: Array.isArray((p as any).consumables_bar_categories) ? (p as any).consumables_bar_categories : [],
     });
     setDialogOpen(true);
   };
@@ -344,8 +355,16 @@ export const IndirectExpensesPage: React.FC = () => {
       const mainCost = recipeCosts.get(item.id) || 0;
       const override = costOverrides.get(item.id);
       const sideCost = (override?.side_cost || 0) + getCatSideCost(catName);
-      const isBar = item.menu_engineering_class?.toLowerCase() === "bar";
-      const defaultPct = isBar ? (selectedPeriod.default_consumables_pct_bar ?? selectedPeriod.default_consumables_pct) : selectedPeriod.default_consumables_pct;
+      const kitchenCats = Array.isArray((selectedPeriod as any).consumables_kitchen_categories) ? (selectedPeriod as any).consumables_kitchen_categories : [];
+      const barCats = Array.isArray((selectedPeriod as any).consumables_bar_categories) ? (selectedPeriod as any).consumables_bar_categories : [];
+      const isInKitchen = kitchenCats.length === 0 || kitchenCats.includes(catName);
+      const isInBar = barCats.includes(catName);
+      let defaultPct = 0;
+      if (isInBar) {
+        defaultPct = selectedPeriod.default_consumables_pct_bar ?? selectedPeriod.default_consumables_pct;
+      } else if (isInKitchen) {
+        defaultPct = selectedPeriod.default_consumables_pct;
+      }
       const consumablesPct = override?.consumables_pct ?? defaultPct;
       const consumables = (item.price * consumablesPct) / 100;
       const packingCost = getCatPackingCost(catName);
@@ -584,6 +603,62 @@ export const IndirectExpensesPage: React.FC = () => {
                   <div><Label>نسبة مستهلكات البار (%)</Label><Input type="number" step="0.1" value={form.default_consumables_pct_bar} onChange={(e) => setForm({ ...form, default_consumables_pct_bar: parseFloat(e.target.value) || 0 })} /></div>
                   <div><Label>نسبة الضريبة (%)</Label><Input type="number" step="0.1" value={form.tax_rate} onChange={(e) => setForm({ ...form, tax_rate: parseFloat(e.target.value) || 0 })} /></div>
                 </div>
+
+                {/* Kitchen categories selection */}
+                {(() => {
+                  const uniqueCats = [...new Set(posItems.map(i => i.category).filter(Boolean))].sort();
+                  if (uniqueCats.length === 0) return null;
+                  return (
+                    <div className="grid grid-cols-2 gap-4 mt-4">
+                      <div>
+                        <Label className="mb-2 block font-semibold">كاتجوري مستهلكات المطبخ</Label>
+                        <div className="border rounded-md p-3 max-h-40 overflow-y-auto space-y-2">
+                          {uniqueCats.map(cat => (
+                            <div key={`kitchen-${cat}`} className="flex items-center gap-2">
+                              <Checkbox
+                                id={`kitchen-${cat}`}
+                                checked={form.consumables_kitchen_categories.includes(cat)}
+                                onCheckedChange={(checked) => {
+                                  setForm(prev => ({
+                                    ...prev,
+                                    consumables_kitchen_categories: checked
+                                      ? [...prev.consumables_kitchen_categories, cat]
+                                      : prev.consumables_kitchen_categories.filter(c => c !== cat),
+                                  }));
+                                }}
+                              />
+                              <label htmlFor={`kitchen-${cat}`} className="text-sm cursor-pointer">{cat}</label>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">إذا لم يتم تحديد أي كاتجوري، ستُطبق النسبة على الكل</p>
+                      </div>
+                      <div>
+                        <Label className="mb-2 block font-semibold">كاتجوري مستهلكات البار</Label>
+                        <div className="border rounded-md p-3 max-h-40 overflow-y-auto space-y-2">
+                          {uniqueCats.map(cat => (
+                            <div key={`bar-${cat}`} className="flex items-center gap-2">
+                              <Checkbox
+                                id={`bar-${cat}`}
+                                checked={form.consumables_bar_categories.includes(cat)}
+                                onCheckedChange={(checked) => {
+                                  setForm(prev => ({
+                                    ...prev,
+                                    consumables_bar_categories: checked
+                                      ? [...prev.consumables_bar_categories, cat]
+                                      : prev.consumables_bar_categories.filter(c => c !== cat),
+                                  }));
+                                }}
+                              />
+                              <label htmlFor={`bar-${cat}`} className="text-sm cursor-pointer">{cat}</label>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">حدد الكاتجوري التي تنتمي للبار</p>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               <Button onClick={handleSave} className="w-full mt-2">{editingId ? "تحديث" : "حفظ"}</Button>

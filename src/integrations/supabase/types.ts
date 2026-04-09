@@ -573,6 +573,8 @@ export type Database = {
           branch_id: string | null
           capacity: number
           company_id: string
+          consumables_bar_categories: Json
+          consumables_kitchen_categories: Json
           created_at: string
           custom_expenses: Json
           default_consumables_pct: number
@@ -598,6 +600,8 @@ export type Database = {
           branch_id?: string | null
           capacity?: number
           company_id: string
+          consumables_bar_categories?: Json
+          consumables_kitchen_categories?: Json
           created_at?: string
           custom_expenses?: Json
           default_consumables_pct?: number
@@ -623,6 +627,8 @@ export type Database = {
           branch_id?: string | null
           capacity?: number
           company_id?: string
+          consumables_bar_categories?: Json
+          consumables_kitchen_categories?: Json
           created_at?: string
           custom_expenses?: Json
           default_consumables_pct?: number

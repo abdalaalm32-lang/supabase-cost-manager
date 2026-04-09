@@ -22,13 +22,13 @@ import { toast } from "sonner";
 type FilterStatus = "نشط" | "مؤرشف" | "الكل";
 
 const CLASS_OPTIONS = [
-  { value: "kitchen", label: "مطبخ" },
-  { value: "bar", label: "بار" },
+  { value: "kitchen", label: "Kitchen" },
+  { value: "bar", label: "Bar" },
 ];
 
 const classLabel = (v: string | null) => {
-  if (v === "kitchen") return "مطبخ";
-  if (v === "bar") return "بار";
+  if (v === "kitchen") return "Kitchen";
+  if (v === "bar") return "Bar";
   return "—";
 };
 

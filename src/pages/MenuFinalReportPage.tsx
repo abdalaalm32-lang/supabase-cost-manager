@@ -309,10 +309,10 @@ export const MenuFinalReportPage: React.FC = () => {
                     <TableCell className="text-center text-sm">{fmt(cat.totalPrice)}</TableCell>
                     <TableCell className="text-center text-sm">{fmt(cat.totalCost + cat.totalIndirect)}</TableCell>
                     <TableCell className="text-center text-sm">{fmt(cat.totalProfit)}</TableCell>
+                    <TableCell className="text-center text-sm font-semibold">{fmtPct(cat.costPer)}</TableCell>
                     <TableCell className="text-center text-sm">
-                      <span className={`px-2 py-0.5 rounded text-xs text-white ${costPctColor(cat.costPer)}`}>{fmtPct(cat.costPer)}</span>
+                      <span className={`px-2 py-0.5 rounded text-xs text-white ${costPctColor(cat.profitPer)}`}>{fmtPct(cat.profitPer)}</span>
                     </TableCell>
-                    <TableCell className={`text-center text-sm ${cat.profitPer >= 0 ? "text-emerald-600" : "text-red-500"} font-semibold`}>{fmtPct(cat.profitPer)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

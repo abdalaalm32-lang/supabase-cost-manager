@@ -268,11 +268,11 @@ export const MenuAnalysisPage: React.FC = () => {
   const categorizedData = useMemo(() => {
     if (!selectedPeriod) return [];
 
-    const categoryMap = new Map<string, CategoryData>();
+    const categoryMap = new Map<string, CategoryData & { code: string }>();
 
     for (const item of filteredPosItems) {
       const catName = item.category || "بدون تصنيف";
-      if (!categoryMap.has(catName)) categoryMap.set(catName, { name: catName, items: [] });
+      if (!categoryMap.has(catName)) categoryMap.set(catName, { name: catName, code: item.category_code || "", items: [] });
 
       const mainCost = recipes.get(item.id) || 0;
       const override = costOverrides.get(item.id);
@@ -301,7 +301,8 @@ export const MenuAnalysisPage: React.FC = () => {
       });
     }
 
-    return Array.from(categoryMap.values());
+    // Sort categories by their code
+    return Array.from(categoryMap.values()).sort((a, b) => (a.code || "").localeCompare(b.code || "", undefined, { numeric: true }));
   }, [filteredPosItems, selectedPeriod, recipes, costOverrides, indirectCostPct, categoryPackingItems, categorySideCostItems]);
 
   const grandTotals = useMemo(() => {

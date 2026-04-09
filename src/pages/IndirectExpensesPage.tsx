@@ -675,8 +675,15 @@ export const IndirectExpensesPage: React.FC = () => {
                     </div>
                   );
                 })()}
+              </div>
 
-      {/* Periods list */}
+              <Button onClick={handleSave} className="w-full mt-2">{editingId ? "تحديث" : "حفظ"}</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+
       {periods.length > 0 && (
         <div className="flex gap-2 flex-wrap">
           {periods.map((p) => {

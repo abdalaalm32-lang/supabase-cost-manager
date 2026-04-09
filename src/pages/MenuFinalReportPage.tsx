@@ -59,7 +59,7 @@ const CHART_COLORS = ["hsl(142, 71%, 45%)", "hsl(25, 95%, 53%)", "hsl(217, 91%, 
 export const MenuFinalReportPage: React.FC = () => {
   const { auth } = useAuth();
   const [periods, setPeriods] = useState<CostingPeriod[]>([]);
-  const [selectedPeriodId, setSelectedPeriodId] = useState("");
+  const [selectedPeriodId, setSelectedPeriodId] = useState(() => sessionStorage.getItem("menu_period") || "");
   const [posItems, setPosItems] = useState<PosItem[]>([]);
   const [recipes, setRecipes] = useState<Map<string, number>>(new Map());
   const [costOverrides, setCostOverrides] = useState<Map<string, CostOverride>>(new Map());

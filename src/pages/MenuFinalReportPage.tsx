@@ -502,7 +502,7 @@ export const MenuFinalReportPage: React.FC = () => {
         </h1>
         <div className="flex items-center gap-3 flex-wrap">
           <span className="text-sm text-muted-foreground">الفرع:</span>
-          <Select value={selectedBranchId} onValueChange={(val) => { setSelectedBranchId(val); setSelectedPeriodId(""); }}>
+          <Select value={selectedBranchId} onValueChange={handleBranchChange}>
             <SelectTrigger className="w-[160px]"><SelectValue placeholder="كل الفروع" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">كل الفروع</SelectItem>

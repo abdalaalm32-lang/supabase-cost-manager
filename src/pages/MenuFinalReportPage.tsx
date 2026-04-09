@@ -197,7 +197,9 @@ export const MenuFinalReportPage: React.FC = () => {
       }
       const consumablesPct = override?.consumables_pct ?? defaultPct;
       const consumables = (item.price * consumablesPct) / 100;
-      const packingCost = getCatPackingCost(catName);
+      const categoryPacking = getCatPackingCost(catName);
+      const itemPacking = override?.packing_cost || 0;
+      const packingCost = categoryPacking + itemPacking;
       const finalDirectCost = mainCost + sideCost + consumables + packingCost;
       const indirectExpenses = item.price * indirectCostPct;
 

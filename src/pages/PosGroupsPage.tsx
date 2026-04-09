@@ -31,6 +31,7 @@ export const PosGroupsPage: React.FC = () => {
   const [name, setName] = useState("");
   const [filter, setFilter] = useState<FilterStatus>("نشط");
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterBranchId, setFilterBranchId] = useState("all");
 
   // Edit state
   const [editOpen, setEditOpen] = useState(false);

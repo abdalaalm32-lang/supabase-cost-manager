@@ -130,11 +130,19 @@ export const IndirectExpensesPage: React.FC = () => {
 
   const fetchCostData = async () => {
     if (!companyId) return;
-    const [itemsRes, recipesRes, overridesRes] = await Promise.all([
-      supabase.from("pos_items").select("*, categories:category_id(name)").eq("company_id", companyId).eq("active", true),
+    const [itemsRes, recipesRes, overridesRes, catsRes] = await Promise.all([
+      supabase.from("pos_items").select("*, categories:category_id(name, menu_engineering_class)").eq("company_id", companyId).eq("active", true),
       supabase.from("recipes").select("id, menu_item_id, recipe_ingredients(stock_item_id, qty, stock_items:stock_item_id(avg_cost, conversion_factor))").eq("company_id", companyId),
       supabase.from("pos_item_cost_settings").select("*").eq("company_id", companyId),
+      supabase.from("categories").select("name, menu_engineering_class").eq("company_id", companyId).eq("active", true),
     ]);
+    if (catsRes.data) {
+      const map = new Map<string, string | null>();
+      for (const c of catsRes.data as any[]) {
+        map.set(c.name, c.menu_engineering_class || null);
+      }
+      setCategoryClassMap(map);
+    }
     if (itemsRes.data) {
       setPosItems((itemsRes.data as any[]).map(item => ({ ...item, category: item.categories?.name || item.category || null })));
     }

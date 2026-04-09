@@ -772,7 +772,19 @@ export const IndirectExpensesPage: React.FC = () => {
                   </tr>
                   <tr>
                     <td className="px-6 py-3 bg-muted text-right font-semibold border-b border-border">
-                      Avg Direct Cost Per.
+                      <div className="flex items-center gap-3 justify-end">
+                        <Select value={costScope} onValueChange={(v: "all" | "kitchen" | "bar") => setCostScope(v)}>
+                          <SelectTrigger className="w-[120px] h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">الكل</SelectItem>
+                            <SelectItem value="kitchen">Kitchen</SelectItem>
+                            <SelectItem value="bar">Bar</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <span>Avg Direct Cost Per.</span>
+                      </div>
                     </td>
                     <td className="px-6 py-3 bg-card text-center font-bold border-b border-border text-warning">
                       {avgDirectCostPct.toFixed(2)}%

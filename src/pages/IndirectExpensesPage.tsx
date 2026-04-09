@@ -43,6 +43,8 @@ interface CostingPeriod {
   created_at: string;
   custom_expenses: CustomExpense[];
   branch_id: string | null;
+  consumables_kitchen_categories: string[];
+  consumables_bar_categories: string[];
 }
 
 const emptyForm = {

@@ -98,6 +98,7 @@ export const IndirectExpensesPage: React.FC = () => {
   const [categoryPackingItems, setCategoryPackingItems] = useState<any[]>([]);
   const [categorySideCostItems, setCategorySideCostItems] = useState<any[]>([]);
   const [companyName, setCompanyName] = useState("");
+  const [categoryClassMap, setCategoryClassMap] = useState<Map<string, string | null>>(new Map());
 
   const companyId = auth.profile?.company_id;
 

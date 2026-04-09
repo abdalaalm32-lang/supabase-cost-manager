@@ -613,16 +613,21 @@ export const IndirectExpensesPage: React.FC = () => {
                   <div><Label>نسبة الضريبة (%)</Label><Input type="number" step="0.1" value={form.tax_rate} onChange={(e) => setForm({ ...form, tax_rate: parseFloat(e.target.value) || 0 })} /></div>
                 </div>
 
-                {/* Kitchen categories selection */}
                 {(() => {
                   const uniqueCats = [...new Set(posItems.map(i => i.category).filter(Boolean))].sort();
-                  if (uniqueCats.length === 0) return null;
+                  const kitchenCats = uniqueCats.filter(cat => categoryClassMap.get(cat) === "kitchen");
+                  const barCats = uniqueCats.filter(cat => categoryClassMap.get(cat) === "bar");
+                  if (kitchenCats.length === 0 && barCats.length === 0) return (
+                    <p className="text-xs text-muted-foreground mt-2">لا توجد مجموعات مصنفة كـ Kitchen أو Bar. يرجى تحديد التصنيف في صفحة المجموعات أولاً.</p>
+                  );
                   return (
                     <div className="grid grid-cols-2 gap-4 mt-4">
                       <div>
-                        <Label className="mb-2 block font-semibold">كاتجوري مستهلكات المطبخ</Label>
+                        <Label className="mb-2 block font-semibold">كاتجوري مستهلكات المطبخ (Kitchen)</Label>
                         <div className="border rounded-md p-3 max-h-40 overflow-y-auto space-y-2">
-                          {uniqueCats.map(cat => (
+                          {kitchenCats.length === 0 ? (
+                            <p className="text-xs text-muted-foreground">لا توجد مجموعات مصنفة كـ Kitchen</p>
+                          ) : kitchenCats.map(cat => (
                             <div key={`kitchen-${cat}`} className="flex items-center gap-2">
                               <Checkbox
                                 id={`kitchen-${cat}`}
@@ -643,9 +648,11 @@ export const IndirectExpensesPage: React.FC = () => {
                         <p className="text-xs text-muted-foreground mt-1">إذا لم يتم تحديد أي كاتجوري، ستُطبق النسبة على الكل</p>
                       </div>
                       <div>
-                        <Label className="mb-2 block font-semibold">كاتجوري مستهلكات البار</Label>
+                        <Label className="mb-2 block font-semibold">كاتجوري مستهلكات البار (Bar)</Label>
                         <div className="border rounded-md p-3 max-h-40 overflow-y-auto space-y-2">
-                          {uniqueCats.map(cat => (
+                          {barCats.length === 0 ? (
+                            <p className="text-xs text-muted-foreground">لا توجد مجموعات مصنفة كـ Bar</p>
+                          ) : barCats.map(cat => (
                             <div key={`bar-${cat}`} className="flex items-center gap-2">
                               <Checkbox
                                 id={`bar-${cat}`}
@@ -668,13 +675,6 @@ export const IndirectExpensesPage: React.FC = () => {
                     </div>
                   );
                 })()}
-              </div>
-
-              <Button onClick={handleSave} className="w-full mt-2">{editingId ? "تحديث" : "حفظ"}</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
 
       {/* Periods list */}
       {periods.length > 0 && (

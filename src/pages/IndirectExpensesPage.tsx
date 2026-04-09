@@ -128,10 +128,14 @@ export const IndirectExpensesPage: React.FC = () => {
         consumables_bar_categories: Array.isArray(d.consumables_bar_categories) ? d.consumables_bar_categories : [],
       })) as CostingPeriod[];
       setPeriods(mapped);
+      const savedId = sessionStorage.getItem("menu_period");
       if (selectedPeriod) {
         const updated = mapped.find(m => m.id === selectedPeriod.id);
         if (updated) setSelectedPeriod(updated);
         else if (mapped.length > 0) setSelectedPeriod(mapped[0]);
+      } else if (savedId) {
+        const saved = mapped.find(m => m.id === savedId);
+        setSelectedPeriod(saved || mapped[0]);
       } else if (mapped.length > 0) {
         setSelectedPeriod(mapped[0]);
       }

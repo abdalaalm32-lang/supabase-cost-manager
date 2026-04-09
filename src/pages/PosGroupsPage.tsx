@@ -21,6 +21,17 @@ import { toast } from "sonner";
 
 type FilterStatus = "نشط" | "مؤرشف" | "الكل";
 
+const CLASS_OPTIONS = [
+  { value: "kitchen", label: "مطبخ" },
+  { value: "bar", label: "بار" },
+];
+
+const classLabel = (v: string | null) => {
+  if (v === "kitchen") return "مطبخ";
+  if (v === "bar") return "بار";
+  return "—";
+};
+
 export const PosGroupsPage: React.FC = () => {
   const { auth } = useAuth();
   const qc = useQueryClient();
@@ -29,6 +40,7 @@ export const PosGroupsPage: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [branchId, setBranchId] = useState("");
   const [name, setName] = useState("");
+  const [menuClass, setMenuClass] = useState("");
   const [filter, setFilter] = useState<FilterStatus>("نشط");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterBranchId, setFilterBranchId] = useState("all");
@@ -38,6 +50,7 @@ export const PosGroupsPage: React.FC = () => {
   const [editId, setEditId] = useState("");
   const [editName, setEditName] = useState("");
   const [editBranchId, setEditBranchId] = useState("");
+  const [editMenuClass, setEditMenuClass] = useState("");
 
   const { data: branches = [] } = useQuery({
     queryKey: ["branches", companyId],
@@ -63,20 +76,31 @@ export const PosGroupsPage: React.FC = () => {
     mutationFn: async () => {
       const { data: codeData, error: codeError } = await supabase.rpc("generate_category_code", { p_company_id: companyId! });
       if (codeError) throw codeError;
-      const { error } = await supabase.from("categories").insert({ company_id: companyId!, name, branch_id: branchId || null, code: codeData, active: true });
+      const { error } = await supabase.from("categories").insert({
+        company_id: companyId!,
+        name,
+        branch_id: branchId || null,
+        code: codeData,
+        active: true,
+        menu_engineering_class: menuClass || null,
+      });
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pos-categories"] });
       toast.success("تم إضافة المجموعة بنجاح");
-      setOpen(false); setName(""); setBranchId("");
+      setOpen(false); setName(""); setBranchId(""); setMenuClass("");
     },
     onError: (e: any) => toast.error(e.message),
   });
 
   const editMutation = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("categories").update({ name: editName, branch_id: editBranchId || null }).eq("id", editId);
+      const { error } = await supabase.from("categories").update({
+        name: editName,
+        branch_id: editBranchId || null,
+        menu_engineering_class: editMenuClass || null,
+      }).eq("id", editId);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -100,6 +124,7 @@ export const PosGroupsPage: React.FC = () => {
     setEditId(cat.id);
     setEditName(cat.name);
     setEditBranchId(cat.branch_id || "");
+    setEditMenuClass(cat.menu_engineering_class || "");
     setEditOpen(true);
   };
 
@@ -141,6 +166,17 @@ export const PosGroupsPage: React.FC = () => {
                 </Select>
               </div>
               <div className="space-y-2">
+                <Label>تصنيف هندسة المنيو</Label>
+                <Select value={menuClass} onValueChange={setMenuClass}>
+                  <SelectTrigger><SelectValue placeholder="اختر التصنيف" /></SelectTrigger>
+                  <SelectContent>
+                    {CLASS_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
                 <Label>اسم المجموعة</Label>
                 <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="مثال: مشروبات ساخنة" className="glass-input" />
               </div>
@@ -162,6 +198,17 @@ export const PosGroupsPage: React.FC = () => {
               <Select value={editBranchId} onValueChange={setEditBranchId}>
                 <SelectTrigger><SelectValue placeholder="اختر الفرع" /></SelectTrigger>
                 <SelectContent>{branches.map((b: any) => (<SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>))}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>تصنيف هندسة المنيو</Label>
+              <Select value={editMenuClass} onValueChange={setEditMenuClass}>
+                <SelectTrigger><SelectValue placeholder="اختر التصنيف" /></SelectTrigger>
+                <SelectContent>
+                  {CLASS_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
@@ -198,8 +245,8 @@ export const PosGroupsPage: React.FC = () => {
           ))}
         </div>
         <ExportButtons
-          data={filtered.map((cat: any) => ({ code: cat.code || "—", name: cat.name, branch: cat.branches?.name || "—", status: cat.active ? "نشط" : "مؤرشف" }))}
-          columns={[{ key: "code", label: "الكود" }, { key: "name", label: "المجموعة" }, { key: "branch", label: "الفرع" }, { key: "status", label: "الحالة" }]}
+          data={filtered.map((cat: any) => ({ code: cat.code || "—", name: cat.name, classification: classLabel(cat.menu_engineering_class), branch: cat.branches?.name || "—", status: cat.active ? "نشط" : "مؤرشف" }))}
+          columns={[{ key: "code", label: "الكود" }, { key: "name", label: "المجموعة" }, { key: "classification", label: "التصنيف" }, { key: "branch", label: "الفرع" }, { key: "status", label: "الحالة" }]}
           filename="مجموعات_نقطة_البيع"
           title="مجموعات نقطة البيع"
         />
@@ -212,6 +259,7 @@ export const PosGroupsPage: React.FC = () => {
             <TableRow>
               <TableHead className="text-right">الكود</TableHead>
               <TableHead className="text-right">المجموعة</TableHead>
+              <TableHead className="text-right">التصنيف</TableHead>
               <TableHead className="text-right">الفرع</TableHead>
               <TableHead className="text-right">الحالة</TableHead>
               <TableHead className="text-right">الإجراءات</TableHead>
@@ -219,14 +267,21 @@ export const PosGroupsPage: React.FC = () => {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">جاري التحميل...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">جاري التحميل...</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">لا توجد مجموعات</TableCell></TableRow>
+              <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">لا توجد مجموعات</TableCell></TableRow>
             ) : (
               filtered.map((cat: any) => (
                 <TableRow key={cat.id}>
                   <TableCell className="font-mono text-xs text-right">{cat.code || "—"}</TableCell>
                   <TableCell className="font-medium text-right">{cat.name}</TableCell>
+                  <TableCell className="text-right">
+                    {cat.menu_engineering_class ? (
+                      <Badge variant="outline" className={cat.menu_engineering_class === "kitchen" ? "border-orange-500 text-orange-600" : "border-blue-500 text-blue-600"}>
+                        {classLabel(cat.menu_engineering_class)}
+                      </Badge>
+                    ) : "—"}
+                  </TableCell>
                   <TableCell className="text-right">{cat.branches?.name || "—"}</TableCell>
                   <TableCell className="text-right">
                     <Badge variant={cat.active ? "default" : "secondary"} className={cat.active ? "bg-[hsl(var(--success))] text-[hsl(var(--success-foreground))]" : "bg-[hsl(var(--warning))] text-[hsl(var(--warning-foreground))]"}>

@@ -601,6 +601,62 @@ export const IndirectExpensesPage: React.FC = () => {
                   <div><Label>نسبة مستهلكات البار (%)</Label><Input type="number" step="0.1" value={form.default_consumables_pct_bar} onChange={(e) => setForm({ ...form, default_consumables_pct_bar: parseFloat(e.target.value) || 0 })} /></div>
                   <div><Label>نسبة الضريبة (%)</Label><Input type="number" step="0.1" value={form.tax_rate} onChange={(e) => setForm({ ...form, tax_rate: parseFloat(e.target.value) || 0 })} /></div>
                 </div>
+
+                {/* Kitchen categories selection */}
+                {(() => {
+                  const uniqueCats = [...new Set(posItems.map(i => i.category).filter(Boolean))].sort();
+                  if (uniqueCats.length === 0) return null;
+                  return (
+                    <div className="grid grid-cols-2 gap-4 mt-4">
+                      <div>
+                        <Label className="mb-2 block font-semibold">كاتجوري مستهلكات المطبخ</Label>
+                        <div className="border rounded-md p-3 max-h-40 overflow-y-auto space-y-2">
+                          {uniqueCats.map(cat => (
+                            <div key={`kitchen-${cat}`} className="flex items-center gap-2">
+                              <Checkbox
+                                id={`kitchen-${cat}`}
+                                checked={form.consumables_kitchen_categories.includes(cat)}
+                                onCheckedChange={(checked) => {
+                                  setForm(prev => ({
+                                    ...prev,
+                                    consumables_kitchen_categories: checked
+                                      ? [...prev.consumables_kitchen_categories, cat]
+                                      : prev.consumables_kitchen_categories.filter(c => c !== cat),
+                                  }));
+                                }}
+                              />
+                              <label htmlFor={`kitchen-${cat}`} className="text-sm cursor-pointer">{cat}</label>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">إذا لم يتم تحديد أي كاتجوري، ستُطبق النسبة على الكل</p>
+                      </div>
+                      <div>
+                        <Label className="mb-2 block font-semibold">كاتجوري مستهلكات البار</Label>
+                        <div className="border rounded-md p-3 max-h-40 overflow-y-auto space-y-2">
+                          {uniqueCats.map(cat => (
+                            <div key={`bar-${cat}`} className="flex items-center gap-2">
+                              <Checkbox
+                                id={`bar-${cat}`}
+                                checked={form.consumables_bar_categories.includes(cat)}
+                                onCheckedChange={(checked) => {
+                                  setForm(prev => ({
+                                    ...prev,
+                                    consumables_bar_categories: checked
+                                      ? [...prev.consumables_bar_categories, cat]
+                                      : prev.consumables_bar_categories.filter(c => c !== cat),
+                                  }));
+                                }}
+                              />
+                              <label htmlFor={`bar-${cat}`} className="text-sm cursor-pointer">{cat}</label>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">حدد الكاتجوري التي تنتمي للبار</p>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               <Button onClick={handleSave} className="w-full mt-2">{editingId ? "تحديث" : "حفظ"}</Button>

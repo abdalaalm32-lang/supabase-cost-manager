@@ -231,6 +231,8 @@ export const MenuFinalReportPage: React.FC = () => {
     }
 
     for (const cat of map.values()) {
+      // totalCost = direct + indirect
+      cat.totalCost = cat.totalCost + cat.totalIndirect;
       cat.totalProfit = cat.totalPrice - cat.totalCost;
       cat.costPer = cat.totalPrice > 0 ? (cat.totalCost / cat.totalPrice) * 100 : 0;
       cat.profitPer = cat.totalPrice > 0 ? (cat.totalProfit / cat.totalPrice) * 100 : 0;

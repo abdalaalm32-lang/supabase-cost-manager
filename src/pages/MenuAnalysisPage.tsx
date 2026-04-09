@@ -215,6 +215,8 @@ export const MenuAnalysisPage: React.FC = () => {
     } else {
       items = items.filter(i => i.menu_engineering_class?.toLowerCase() === "bar");
     }
+    // Sort by item code
+    items = [...items].sort((a, b) => (a.code || "").localeCompare(b.code || "", undefined, { numeric: true }));
     return items;
   }, [posItems, selectedBranchId, activeTab]);
 

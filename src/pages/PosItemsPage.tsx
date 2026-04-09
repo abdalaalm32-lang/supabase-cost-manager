@@ -33,6 +33,7 @@ export const PosItemsPage: React.FC = () => {
   const [price, setPrice] = useState("");
   const [filter, setFilter] = useState<FilterStatus>("نشط");
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterBranchId, setFilterBranchId] = useState("all");
 
   // Edit state
   const [editOpen, setEditOpen] = useState(false);

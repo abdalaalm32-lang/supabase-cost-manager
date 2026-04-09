@@ -99,6 +99,7 @@ export const IndirectExpensesPage: React.FC = () => {
   const [categorySideCostItems, setCategorySideCostItems] = useState<any[]>([]);
   const [companyName, setCompanyName] = useState("");
   const [categoryClassMap, setCategoryClassMap] = useState<Map<string, string | null>>(new Map());
+  const [costScope, setCostScope] = useState<"all" | "kitchen" | "bar">("all");
 
   const companyId = auth.profile?.company_id;
 
@@ -350,9 +351,18 @@ export const IndirectExpensesPage: React.FC = () => {
   // Calculate totals for direct cost and selling price (matching MenuAnalysisPage logic)
   const { totalSellingPrice, totalDirectCostSum, avgDirectCostPct } = (() => {
     if (!selectedPeriod || posItems.length === 0) return { totalSellingPrice: 0, totalDirectCostSum: 0, avgDirectCostPct: 0 };
-    const items = selectedBranchId !== "all" 
+    let items = selectedBranchId !== "all" 
       ? posItems.filter(i => i.branch_id === selectedBranchId) 
       : posItems;
+    
+    // Filter by cost scope (kitchen/bar/all)
+    if (costScope !== "all") {
+      items = items.filter(i => {
+        const catName = i.category || "";
+        const catClass = categoryClassMap.get(catName);
+        return catClass === costScope;
+      });
+    }
     
     let totalPrice = 0;
     let totalDirectCost = 0;
@@ -383,7 +393,6 @@ export const IndirectExpensesPage: React.FC = () => {
       totalDirectCost += finalDirectCost;
     }
     const pct = totalPrice > 0 ? (totalDirectCost / totalPrice) * 100 : 0;
-    console.log('Avg Direct Cost Debug:', { totalPrice, totalDirectCost, pct, itemCount: items.length });
     return { totalSellingPrice: totalPrice, totalDirectCostSum: totalDirectCost, avgDirectCostPct: pct };
   })();
 
@@ -763,7 +772,19 @@ export const IndirectExpensesPage: React.FC = () => {
                   </tr>
                   <tr>
                     <td className="px-6 py-3 bg-muted text-right font-semibold border-b border-border">
-                      Avg Direct Cost Per.
+                      <div className="flex items-center gap-3 justify-end">
+                        <Select value={costScope} onValueChange={(v: "all" | "kitchen" | "bar") => setCostScope(v)}>
+                          <SelectTrigger className="w-[120px] h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">الكل</SelectItem>
+                            <SelectItem value="kitchen">Kitchen</SelectItem>
+                            <SelectItem value="bar">Bar</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <span>Avg Direct Cost Per.</span>
+                      </div>
                     </td>
                     <td className="px-6 py-3 bg-card text-center font-bold border-b border-border text-warning">
                       {avgDirectCostPct.toFixed(2)}%

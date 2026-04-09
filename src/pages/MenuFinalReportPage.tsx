@@ -510,7 +510,7 @@ export const MenuFinalReportPage: React.FC = () => {
             </SelectContent>
           </Select>
           <span className="text-sm text-muted-foreground">الفترة:</span>
-          <Select value={selectedPeriodId} onValueChange={setSelectedPeriodId}>
+          <Select value={selectedPeriodId} onValueChange={handlePeriodChange}>
             <SelectTrigger className="w-[200px]"><SelectValue placeholder="اختر الفترة" /></SelectTrigger>
             <SelectContent>
               {filteredPeriods.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}

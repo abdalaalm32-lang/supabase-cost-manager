@@ -258,6 +258,8 @@ export const IndirectExpensesPage: React.FC = () => {
       tax_rate: form.tax_rate,
       custom_expenses: form.custom_expenses as any,
       branch_id: form.branch_id || null,
+      consumables_kitchen_categories: form.consumables_kitchen_categories as any,
+      consumables_bar_categories: form.consumables_bar_categories as any,
     };
 
     let error;

@@ -236,11 +236,11 @@ export const MenuFinalReportPage: React.FC = () => {
       cat.totalProfit = cat.totalPrice - cat.totalCost;
       cat.costPer = cat.totalPrice > 0 ? (cat.totalCost / cat.totalPrice) * 100 : 0;
       cat.profitPer = cat.totalPrice > 0 ? (cat.totalProfit / cat.totalPrice) * 100 : 0;
-      // Net Take Away = Total Price - Total Cost - Indirect
-      cat.netTakeAway = cat.totalPrice - cat.totalCost - cat.totalIndirect;
-      // Net Table = (Total Price * (1 - taxRate/100)) - Total Cost - Indirect
+      // Net Take Away = Total Price - Total Cost (totalCost already includes indirect)
+      cat.netTakeAway = cat.totalPrice - cat.totalCost;
+      // Net Table = (Total Price * (1 - taxRate/100)) - Total Cost
       const periodTaxRate = selectedPeriod?.tax_rate || 0;
-      cat.netTable = (cat.totalPrice * (1 - periodTaxRate / 100)) - cat.totalCost - cat.totalIndirect;
+      cat.netTable = (cat.totalPrice * (1 - periodTaxRate / 100)) - cat.totalCost;
     }
     return Array.from(map.values());
   }, [filteredPosItems, selectedPeriod, recipes, costOverrides, indirectCostPct, categoryPackingItems, categorySideCostItems]);

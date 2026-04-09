@@ -22,6 +22,7 @@ interface PosItem {
   price: number;
   category: string | null;
   category_id: string | null;
+  category_code: string | null;
   code: string | null;
   menu_engineering_class: string | null;
   branch_id: string | null;
@@ -151,7 +152,7 @@ export const MenuAnalysisPage: React.FC = () => {
     setLoading(true);
     const [periodsRes, itemsRes, recipesRes, overridesRes, branchesRes, companyRes] = await Promise.all([
       supabase.from("menu_costing_periods").select("*").eq("company_id", companyId!).order("created_at", { ascending: false }),
-      supabase.from("pos_items").select("*, categories:category_id(name)").eq("company_id", companyId!).eq("active", true),
+      supabase.from("pos_items").select("*, categories:category_id(name, code)").eq("company_id", companyId!).eq("active", true),
       supabase.from("recipes").select("id, menu_item_id, recipe_ingredients(stock_item_id, qty, stock_items:stock_item_id(avg_cost, conversion_factor, recipe_unit, stock_unit))").eq("company_id", companyId!),
       supabase.from("pos_item_cost_settings").select("*").eq("company_id", companyId!),
       supabase.from("branches").select("id, name").eq("company_id", companyId!).eq("active", true),
@@ -167,6 +168,7 @@ export const MenuAnalysisPage: React.FC = () => {
       const mapped = (itemsRes.data as any[]).map(item => ({
         ...item,
         category: item.categories?.name || item.category || null,
+        category_code: item.categories?.code || null,
       }));
       setPosItems(mapped as PosItem[]);
     }
@@ -213,6 +215,8 @@ export const MenuAnalysisPage: React.FC = () => {
     } else {
       items = items.filter(i => i.menu_engineering_class?.toLowerCase() === "bar");
     }
+    // Sort by item code
+    items = [...items].sort((a, b) => (a.code || "").localeCompare(b.code || "", undefined, { numeric: true }));
     return items;
   }, [posItems, selectedBranchId, activeTab]);
 
@@ -264,11 +268,11 @@ export const MenuAnalysisPage: React.FC = () => {
   const categorizedData = useMemo(() => {
     if (!selectedPeriod) return [];
 
-    const categoryMap = new Map<string, CategoryData>();
+    const categoryMap = new Map<string, CategoryData & { code: string }>();
 
     for (const item of filteredPosItems) {
       const catName = item.category || "بدون تصنيف";
-      if (!categoryMap.has(catName)) categoryMap.set(catName, { name: catName, items: [] });
+      if (!categoryMap.has(catName)) categoryMap.set(catName, { name: catName, code: item.category_code || "", items: [] });
 
       const mainCost = recipes.get(item.id) || 0;
       const override = costOverrides.get(item.id);
@@ -297,7 +301,8 @@ export const MenuAnalysisPage: React.FC = () => {
       });
     }
 
-    return Array.from(categoryMap.values());
+    // Sort categories by their code
+    return Array.from(categoryMap.values()).sort((a, b) => (a.code || "").localeCompare(b.code || "", undefined, { numeric: true }));
   }, [filteredPosItems, selectedPeriod, recipes, costOverrides, indirectCostPct, categoryPackingItems, categorySideCostItems]);
 
   const grandTotals = useMemo(() => {

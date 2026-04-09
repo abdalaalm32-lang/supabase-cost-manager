@@ -104,14 +104,24 @@ interface CategoryData {
 export const MenuAnalysisPage: React.FC = () => {
   const { auth } = useAuth();
   const [periods, setPeriods] = useState<CostingPeriod[]>([]);
-  const [selectedPeriodId, setSelectedPeriodId] = useState<string>("");
+  const [selectedPeriodId, setSelectedPeriodIdRaw] = useState<string>(() => sessionStorage.getItem("menu_period") || "");
   const [posItems, setPosItems] = useState<PosItem[]>([]);
   const [recipes, setRecipes] = useState<Map<string, number>>(new Map());
   const [costOverrides, setCostOverrides] = useState<Map<string, CostOverride>>(new Map());
   const [categoryPackingItems, setCategoryPackingItems] = useState<PackingItem[]>([]);
   const [categorySideCostItems, setCategorySideCostItems] = useState<SideCostItem[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
-  const [selectedBranchId, setSelectedBranchId] = useState<string>("all");
+  const [selectedBranchId, setSelectedBranchIdRaw] = useState<string>(() => sessionStorage.getItem("menu_branch") || "all");
+
+  const setSelectedPeriodId = (v: string) => {
+    setSelectedPeriodIdRaw(v);
+    if (v) sessionStorage.setItem("menu_period", v);
+    else sessionStorage.removeItem("menu_period");
+  };
+  const setSelectedBranchId = (v: string) => {
+    setSelectedBranchIdRaw(v);
+    sessionStorage.setItem("menu_branch", v);
+  };
   const [activeTab, setActiveTab] = useState<string>("kitchen");
   const [loading, setLoading] = useState(true);
   const [companyName, setCompanyName] = useState("");

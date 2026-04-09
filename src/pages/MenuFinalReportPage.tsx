@@ -28,6 +28,8 @@ interface CostingPeriod {
   maintenance: number; rent: number; default_consumables_pct: number; default_consumables_pct_bar: number;
   default_packing_cost: number; custom_expenses: { name: string; value: number }[];
   tax_rate: number; branch_id: string | null;
+  consumables_kitchen_categories?: string[];
+  consumables_bar_categories?: string[];
 }
 
 interface CostOverride {

@@ -145,9 +145,23 @@ export const MenuFinalReportPage: React.FC = () => {
   // Auto-select first filtered period when branch changes
   useEffect(() => {
     if (filteredPeriods.length > 0 && !filteredPeriods.find(p => p.id === selectedPeriodId)) {
-      setSelectedPeriodId(filteredPeriods[0].id);
+      const newId = filteredPeriods[0].id;
+      setSelectedPeriodId(newId);
+      sessionStorage.setItem("menu_period", newId);
     }
   }, [filteredPeriods, selectedPeriodId]);
+
+  const handleBranchChange = (val: string) => {
+    setSelectedBranchId(val);
+    sessionStorage.setItem("menu_branch", val);
+    setSelectedPeriodId("");
+    sessionStorage.removeItem("menu_period");
+  };
+
+  const handlePeriodChange = (val: string) => {
+    setSelectedPeriodId(val);
+    sessionStorage.setItem("menu_period", val);
+  };
 
   const filteredPosItems = useMemo(() => {
     let items = posItems;

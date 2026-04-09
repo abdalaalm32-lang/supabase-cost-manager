@@ -22,6 +22,7 @@ interface PosItem {
   price: number;
   category: string | null;
   category_id: string | null;
+  category_code: string | null;
   code: string | null;
   menu_engineering_class: string | null;
   branch_id: string | null;

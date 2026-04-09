@@ -351,9 +351,18 @@ export const IndirectExpensesPage: React.FC = () => {
   // Calculate totals for direct cost and selling price (matching MenuAnalysisPage logic)
   const { totalSellingPrice, totalDirectCostSum, avgDirectCostPct } = (() => {
     if (!selectedPeriod || posItems.length === 0) return { totalSellingPrice: 0, totalDirectCostSum: 0, avgDirectCostPct: 0 };
-    const items = selectedBranchId !== "all" 
+    let items = selectedBranchId !== "all" 
       ? posItems.filter(i => i.branch_id === selectedBranchId) 
       : posItems;
+    
+    // Filter by cost scope (kitchen/bar/all)
+    if (costScope !== "all") {
+      items = items.filter(i => {
+        const catName = i.category || "";
+        const catClass = categoryClassMap.get(catName);
+        return catClass === costScope;
+      });
+    }
     
     let totalPrice = 0;
     let totalDirectCost = 0;
@@ -384,7 +393,6 @@ export const IndirectExpensesPage: React.FC = () => {
       totalDirectCost += finalDirectCost;
     }
     const pct = totalPrice > 0 ? (totalDirectCost / totalPrice) * 100 : 0;
-    console.log('Avg Direct Cost Debug:', { totalPrice, totalDirectCost, pct, itemCount: items.length });
     return { totalSellingPrice: totalPrice, totalDirectCostSum: totalDirectCost, avgDirectCostPct: pct };
   })();
 

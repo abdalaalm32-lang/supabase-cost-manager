@@ -59,14 +59,14 @@ const CHART_COLORS = ["hsl(142, 71%, 45%)", "hsl(25, 95%, 53%)", "hsl(217, 91%, 
 export const MenuFinalReportPage: React.FC = () => {
   const { auth } = useAuth();
   const [periods, setPeriods] = useState<CostingPeriod[]>([]);
-  const [selectedPeriodId, setSelectedPeriodId] = useState("");
+  const [selectedPeriodId, setSelectedPeriodId] = useState(() => sessionStorage.getItem("menu_period") || "");
   const [posItems, setPosItems] = useState<PosItem[]>([]);
   const [recipes, setRecipes] = useState<Map<string, number>>(new Map());
   const [costOverrides, setCostOverrides] = useState<Map<string, CostOverride>>(new Map());
   const [categoryPackingItems, setCategoryPackingItems] = useState<PackingItem[]>([]);
   const [categorySideCostItems, setCategorySideCostItems] = useState<SideCostItem[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
-  const [selectedBranchId, setSelectedBranchId] = useState("all");
+  const [selectedBranchId, setSelectedBranchId] = useState(() => sessionStorage.getItem("menu_branch") || "all");
   const [activeTab, setActiveTab] = useState("kitchen");
   const [loading, setLoading] = useState(true);
   const [companyName, setCompanyName] = useState("");
@@ -102,7 +102,12 @@ export const MenuFinalReportPage: React.FC = () => {
     if (companyRes.data) setCompanyName(companyRes.data.name);
     if (periodsRes.data) {
       setPeriods(periodsRes.data as unknown as CostingPeriod[]);
-      if (periodsRes.data.length > 0 && !selectedPeriodId) setSelectedPeriodId(periodsRes.data[0].id);
+      const savedPeriod = sessionStorage.getItem("menu_period");
+      if (periodsRes.data.length > 0 && !selectedPeriodId) {
+        const initId = savedPeriod && periodsRes.data.some((p: any) => p.id === savedPeriod) ? savedPeriod : periodsRes.data[0].id;
+        setSelectedPeriodId(initId);
+        sessionStorage.setItem("menu_period", initId);
+      }
     }
     if (itemsRes.data) {
       const mapped = (itemsRes.data as any[]).map(item => ({
@@ -140,9 +145,23 @@ export const MenuFinalReportPage: React.FC = () => {
   // Auto-select first filtered period when branch changes
   useEffect(() => {
     if (filteredPeriods.length > 0 && !filteredPeriods.find(p => p.id === selectedPeriodId)) {
-      setSelectedPeriodId(filteredPeriods[0].id);
+      const newId = filteredPeriods[0].id;
+      setSelectedPeriodId(newId);
+      sessionStorage.setItem("menu_period", newId);
     }
   }, [filteredPeriods, selectedPeriodId]);
+
+  const handleBranchChange = (val: string) => {
+    setSelectedBranchId(val);
+    sessionStorage.setItem("menu_branch", val);
+    setSelectedPeriodId("");
+    sessionStorage.removeItem("menu_period");
+  };
+
+  const handlePeriodChange = (val: string) => {
+    setSelectedPeriodId(val);
+    sessionStorage.setItem("menu_period", val);
+  };
 
   const filteredPosItems = useMemo(() => {
     let items = posItems;
@@ -483,7 +502,7 @@ export const MenuFinalReportPage: React.FC = () => {
         </h1>
         <div className="flex items-center gap-3 flex-wrap">
           <span className="text-sm text-muted-foreground">الفرع:</span>
-          <Select value={selectedBranchId} onValueChange={(val) => { setSelectedBranchId(val); setSelectedPeriodId(""); }}>
+          <Select value={selectedBranchId} onValueChange={handleBranchChange}>
             <SelectTrigger className="w-[160px]"><SelectValue placeholder="كل الفروع" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">كل الفروع</SelectItem>
@@ -491,7 +510,7 @@ export const MenuFinalReportPage: React.FC = () => {
             </SelectContent>
           </Select>
           <span className="text-sm text-muted-foreground">الفترة:</span>
-          <Select value={selectedPeriodId} onValueChange={setSelectedPeriodId}>
+          <Select value={selectedPeriodId} onValueChange={handlePeriodChange}>
             <SelectTrigger className="w-[200px]"><SelectValue placeholder="اختر الفترة" /></SelectTrigger>
             <SelectContent>
               {filteredPeriods.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}

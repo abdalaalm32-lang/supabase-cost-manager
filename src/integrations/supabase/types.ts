@@ -64,6 +64,7 @@ export type Database = {
           created_at: string
           id: string
           identifier_code: string | null
+          menu_engineering_class: string | null
           name: string
           storage_type: string | null
         }
@@ -75,6 +76,7 @@ export type Database = {
           created_at?: string
           id?: string
           identifier_code?: string | null
+          menu_engineering_class?: string | null
           name: string
           storage_type?: string | null
         }
@@ -86,6 +88,7 @@ export type Database = {
           created_at?: string
           id?: string
           identifier_code?: string | null
+          menu_engineering_class?: string | null
           name?: string
           storage_type?: string | null
         }

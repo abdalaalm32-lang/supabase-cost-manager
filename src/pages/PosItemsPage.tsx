@@ -33,6 +33,7 @@ export const PosItemsPage: React.FC = () => {
   const [price, setPrice] = useState("");
   const [filter, setFilter] = useState<FilterStatus>("نشط");
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterBranchId, setFilterBranchId] = useState("all");
 
   // Edit state
   const [editOpen, setEditOpen] = useState(false);
@@ -163,6 +164,9 @@ export const PosItemsPage: React.FC = () => {
       if (filter === "مؤرشف") return !item.active;
       return true;
     });
+    if (filterBranchId && filterBranchId !== "all") {
+      result = result.filter((item: any) => item.branch_id === filterBranchId);
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       result = result.filter((item: any) =>
@@ -173,7 +177,7 @@ export const PosItemsPage: React.FC = () => {
       );
     }
     return result;
-  }, [items, filter, searchQuery]);
+  }, [items, filter, searchQuery, filterBranchId]);
 
   return (
     <div className="space-y-6 animate-fade-in-up">
@@ -271,11 +275,22 @@ export const PosItemsPage: React.FC = () => {
       </Dialog>
 
       {/* Search + Filter */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="بحث بالكود أو الاسم أو المجموعة أو السعر..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="glass-input pr-9" />
         </div>
+        <Select value={filterBranchId} onValueChange={setFilterBranchId}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="كل الفروع" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">كل الفروع</SelectItem>
+            {branches.map((b: any) => (
+              <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <div className="flex gap-2">
           {(["نشط", "مؤرشف", "الكل"] as FilterStatus[]).map((s) => (
             <Button key={s} variant={filter === s ? "default" : "outline"} size="sm" onClick={() => setFilter(s)}>{s}</Button>

@@ -109,6 +109,9 @@ export const PosGroupsPage: React.FC = () => {
       if (filter === "مؤرشف") return !c.active;
       return true;
     });
+    if (filterBranchId && filterBranchId !== "all") {
+      result = result.filter((c: any) => c.branch_id === filterBranchId);
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       result = result.filter((c: any) =>
@@ -117,7 +120,7 @@ export const PosGroupsPage: React.FC = () => {
       );
     }
     return result;
-  }, [categories, filter, searchQuery]);
+  }, [categories, filter, searchQuery, filterBranchId]);
 
   return (
     <div className="space-y-6 animate-fade-in-up">

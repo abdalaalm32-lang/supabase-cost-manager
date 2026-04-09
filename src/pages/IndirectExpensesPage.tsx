@@ -302,6 +302,8 @@ export const IndirectExpensesPage: React.FC = () => {
       tax_rate: (p as any).tax_rate || 0,
       custom_expenses: p.custom_expenses || [],
       branch_id: p.branch_id || "",
+      consumables_kitchen_categories: Array.isArray((p as any).consumables_kitchen_categories) ? (p as any).consumables_kitchen_categories : [],
+      consumables_bar_categories: Array.isArray((p as any).consumables_bar_categories) ? (p as any).consumables_bar_categories : [],
     });
     setDialogOpen(true);
   };

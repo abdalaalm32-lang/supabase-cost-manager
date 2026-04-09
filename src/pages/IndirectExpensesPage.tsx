@@ -67,6 +67,8 @@ const emptyForm = {
   tax_rate: 0,
   custom_expenses: [] as CustomExpense[],
   branch_id: "" as string,
+  consumables_kitchen_categories: [] as string[],
+  consumables_bar_categories: [] as string[],
 };
 
 const getDaysInPeriod = (start: string, end: string) => {

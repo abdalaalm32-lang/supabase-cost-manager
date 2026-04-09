@@ -152,7 +152,7 @@ export const MenuAnalysisPage: React.FC = () => {
     setLoading(true);
     const [periodsRes, itemsRes, recipesRes, overridesRes, branchesRes, companyRes] = await Promise.all([
       supabase.from("menu_costing_periods").select("*").eq("company_id", companyId!).order("created_at", { ascending: false }),
-      supabase.from("pos_items").select("*, categories:category_id(name)").eq("company_id", companyId!).eq("active", true),
+      supabase.from("pos_items").select("*, categories:category_id(name, code)").eq("company_id", companyId!).eq("active", true),
       supabase.from("recipes").select("id, menu_item_id, recipe_ingredients(stock_item_id, qty, stock_items:stock_item_id(avg_cost, conversion_factor, recipe_unit, stock_unit))").eq("company_id", companyId!),
       supabase.from("pos_item_cost_settings").select("*").eq("company_id", companyId!),
       supabase.from("branches").select("id, name").eq("company_id", companyId!).eq("active", true),

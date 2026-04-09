@@ -164,6 +164,9 @@ export const PosItemsPage: React.FC = () => {
       if (filter === "مؤرشف") return !item.active;
       return true;
     });
+    if (filterBranchId && filterBranchId !== "all") {
+      result = result.filter((item: any) => item.branch_id === filterBranchId);
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       result = result.filter((item: any) =>
@@ -174,7 +177,7 @@ export const PosItemsPage: React.FC = () => {
       );
     }
     return result;
-  }, [items, filter, searchQuery]);
+  }, [items, filter, searchQuery, filterBranchId]);
 
   return (
     <div className="space-y-6 animate-fade-in-up">

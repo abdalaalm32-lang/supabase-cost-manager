@@ -102,7 +102,12 @@ export const MenuFinalReportPage: React.FC = () => {
     if (companyRes.data) setCompanyName(companyRes.data.name);
     if (periodsRes.data) {
       setPeriods(periodsRes.data as unknown as CostingPeriod[]);
-      if (periodsRes.data.length > 0 && !selectedPeriodId) setSelectedPeriodId(periodsRes.data[0].id);
+      const savedPeriod = sessionStorage.getItem("menu_period");
+      if (periodsRes.data.length > 0 && !selectedPeriodId) {
+        const initId = savedPeriod && periodsRes.data.some((p: any) => p.id === savedPeriod) ? savedPeriod : periodsRes.data[0].id;
+        setSelectedPeriodId(initId);
+        sessionStorage.setItem("menu_period", initId);
+      }
     }
     if (itemsRes.data) {
       const mapped = (itemsRes.data as any[]).map(item => ({

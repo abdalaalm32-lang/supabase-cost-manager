@@ -66,7 +66,7 @@ export const MenuFinalReportPage: React.FC = () => {
   const [categoryPackingItems, setCategoryPackingItems] = useState<PackingItem[]>([]);
   const [categorySideCostItems, setCategorySideCostItems] = useState<SideCostItem[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
-  const [selectedBranchId, setSelectedBranchId] = useState("all");
+  const [selectedBranchId, setSelectedBranchId] = useState(() => sessionStorage.getItem("menu_branch") || "all");
   const [activeTab, setActiveTab] = useState("kitchen");
   const [loading, setLoading] = useState(true);
   const [companyName, setCompanyName] = useState("");

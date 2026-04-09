@@ -168,6 +168,7 @@ export const MenuAnalysisPage: React.FC = () => {
       const mapped = (itemsRes.data as any[]).map(item => ({
         ...item,
         category: item.categories?.name || item.category || null,
+        category_code: item.categories?.code || null,
       }));
       setPosItems(mapped as PosItem[]);
     }

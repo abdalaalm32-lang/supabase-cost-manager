@@ -112,6 +112,8 @@ export const IndirectExpensesPage: React.FC = () => {
       const mapped = data.map((d: any) => ({
         ...d,
         custom_expenses: Array.isArray(d.custom_expenses) ? d.custom_expenses : [],
+        consumables_kitchen_categories: Array.isArray(d.consumables_kitchen_categories) ? d.consumables_kitchen_categories : [],
+        consumables_bar_categories: Array.isArray(d.consumables_bar_categories) ? d.consumables_bar_categories : [],
       })) as CostingPeriod[];
       setPeriods(mapped);
       if (selectedPeriod) {

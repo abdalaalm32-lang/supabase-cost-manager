@@ -99,6 +99,7 @@ export const IndirectExpensesPage: React.FC = () => {
   const [categorySideCostItems, setCategorySideCostItems] = useState<any[]>([]);
   const [companyName, setCompanyName] = useState("");
   const [categoryClassMap, setCategoryClassMap] = useState<Map<string, string | null>>(new Map());
+  const [costScope, setCostScope] = useState<"all" | "kitchen" | "bar">("all");
 
   const companyId = auth.profile?.company_id;
 

@@ -53,6 +53,8 @@ interface CostingPeriod {
   default_packing_cost: number;
   custom_expenses: { name: string; value: number }[];
   tax_rate: number;
+  consumables_kitchen_categories?: string[];
+  consumables_bar_categories?: string[];
 }
 
 interface CostOverride {

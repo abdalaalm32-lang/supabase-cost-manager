@@ -231,12 +231,15 @@ export const MenuFinalReportPage: React.FC = () => {
     }
 
     for (const cat of map.values()) {
-      cat.totalProfit = cat.totalPrice - cat.totalCost;
-      cat.costPer = cat.totalPrice > 0 ? (cat.totalCost / cat.totalPrice) * 100 : 0;
+      // totalCost stays as direct cost only (for summary table)
+      // For the category breakdown table, we show totalCost + totalIndirect as "إجمالي التكلفة"
+      const fullCost = cat.totalCost + cat.totalIndirect;
+      cat.totalProfit = cat.totalPrice - fullCost;
+      cat.costPer = cat.totalPrice > 0 ? (fullCost / cat.totalPrice) * 100 : 0;
       cat.profitPer = cat.totalPrice > 0 ? (cat.totalProfit / cat.totalPrice) * 100 : 0;
-      // Net Take Away = Total Price - Total Cost - Indirect
+      // Net Take Away = Total Price - Direct Cost - Indirect
       cat.netTakeAway = cat.totalPrice - cat.totalCost - cat.totalIndirect;
-      // Net Table = (Total Price * (1 - taxRate/100)) - Total Cost - Indirect
+      // Net Table = (Total Price * (1 - taxRate/100)) - Direct Cost - Indirect
       const periodTaxRate = selectedPeriod?.tax_rate || 0;
       cat.netTable = (cat.totalPrice * (1 - periodTaxRate / 100)) - cat.totalCost - cat.totalIndirect;
     }
@@ -304,7 +307,7 @@ export const MenuFinalReportPage: React.FC = () => {
                   <TableRow key={idx}>
                     <TableCell className="text-center text-sm font-semibold">{cat.name}</TableCell>
                     <TableCell className="text-center text-sm">{fmt(cat.totalPrice)}</TableCell>
-                    <TableCell className="text-center text-sm">{fmt(cat.totalCost)}</TableCell>
+                    <TableCell className="text-center text-sm">{fmt(cat.totalCost + cat.totalIndirect)}</TableCell>
                     <TableCell className="text-center text-sm">{fmt(cat.totalProfit)}</TableCell>
                     <TableCell className="text-center text-sm">
                       <span className={`px-2 py-0.5 rounded text-xs text-white ${costPctColor(cat.costPer)}`}>{fmtPct(cat.costPer)}</span>

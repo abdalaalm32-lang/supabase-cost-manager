@@ -574,7 +574,110 @@ export const MenuAnalysisPage: React.FC = () => {
     </>
   );
 
-  const handlePrint = () => {
+  const handleExcelExport = async () => {
+    if (!selectedPeriod || categorizedData.length === 0) return;
+    setExcelLoading(true);
+    try {
+      const tabLabel = activeTab === "kitchen" ? "المطبخ" : "البار";
+      const branchName = selectedBranchId !== "all" ? branches.find(b => b.id === selectedBranchId)?.name : "كل الفروع";
+      const columns = [
+        { key: "catName", label: "التصنيف" },
+        { key: "idx", label: "#" },
+        { key: "name", label: "اسم الصنف" },
+        { key: "price", label: "السعر" },
+        { key: "mainCost", label: "التكلفة الرئيسية" },
+        { key: "sideCost", label: "تكلفة إضافية" },
+        { key: "consumables", label: "مستهلكات" },
+        { key: "packingCost", label: "تغليف" },
+        { key: "finalDirectCost", label: "إجمالي مباشر" },
+        { key: "directCostPct", label: "نسبة مباشرة" },
+        { key: "netTakeAway", label: "صافي مباشر" },
+        { key: "indirectExpenses", label: "غير مباشرة" },
+        { key: "totalCost", label: "إجمالي التكلفة" },
+        { key: "netProfit", label: "صافي الربح" },
+        { key: "finalCostPct", label: "نسبة التكلفة" },
+        { key: "finalNetPct", label: "نسبة الربح" },
+      ];
+      const rows: Record<string, any>[] = [];
+      for (const cat of categorizedData) {
+        cat.items.forEach((item, idx) => {
+          rows.push({
+            catName: cat.name,
+            idx: idx + 1,
+            name: item.name,
+            price: formatNum(item.price),
+            mainCost: formatNum(item.mainCost),
+            sideCost: formatNum(item.sideCost),
+            consumables: formatNum(item.consumables),
+            packingCost: formatNum(item.packingCost),
+            finalDirectCost: formatNum(item.finalDirectCost),
+            directCostPct: formatPct(item.directCostPct),
+            netTakeAway: formatNum(item.netTakeAway),
+            indirectExpenses: formatNum(item.indirectExpenses),
+            totalCost: formatNum(item.totalCost),
+            netProfit: formatNum(item.netProfit),
+            finalCostPct: formatPct(item.finalCostPct),
+            finalNetPct: formatPct(item.finalNetPct),
+          });
+        });
+        const catTotalPrice = cat.items.reduce((s, i) => s + i.price, 0);
+        const catTotalDirect = cat.items.reduce((s, i) => s + i.finalDirectCost, 0);
+        const catTotalProfit = cat.items.reduce((s, i) => s + i.netProfit, 0);
+        rows.push({
+          __rowType: "group-total",
+          catName: `إجمالي ${cat.name}`,
+          idx: "",
+          name: "",
+          price: formatNum(catTotalPrice),
+          mainCost: formatNum(cat.items.reduce((s, i) => s + i.mainCost, 0)),
+          sideCost: formatNum(cat.items.reduce((s, i) => s + i.sideCost, 0)),
+          consumables: formatNum(cat.items.reduce((s, i) => s + i.consumables, 0)),
+          packingCost: formatNum(cat.items.reduce((s, i) => s + i.packingCost, 0)),
+          finalDirectCost: formatNum(catTotalDirect),
+          directCostPct: catTotalPrice > 0 ? formatPct(catTotalDirect / catTotalPrice * 100) : "0%",
+          netTakeAway: formatNum(cat.items.reduce((s, i) => s + i.netTakeAway, 0)),
+          indirectExpenses: formatNum(cat.items.reduce((s, i) => s + i.indirectExpenses, 0)),
+          totalCost: formatNum(cat.items.reduce((s, i) => s + i.totalCost, 0)),
+          netProfit: formatNum(catTotalProfit),
+          finalCostPct: catTotalPrice > 0 ? formatPct(cat.items.reduce((s, i) => s + i.totalCost, 0) / catTotalPrice * 100) : "0%",
+          finalNetPct: catTotalPrice > 0 ? formatPct(catTotalProfit / catTotalPrice * 100) : "0%",
+        });
+      }
+      rows.push({
+        __rowType: "grand-total",
+        catName: "الإجمالي الكلي",
+        idx: "",
+        name: `${grandTotals.itemCount} صنف`,
+        price: formatNum(grandTotals.totalPrice),
+        mainCost: "",
+        sideCost: "",
+        consumables: "",
+        packingCost: "",
+        finalDirectCost: formatNum(grandTotals.totalDirectCost),
+        directCostPct: grandTotals.totalPrice > 0 ? formatPct(grandTotals.totalDirectCost / grandTotals.totalPrice * 100) : "0%",
+        netTakeAway: "",
+        indirectExpenses: formatNum(grandTotals.totalIndirect),
+        totalCost: "",
+        netProfit: formatNum(grandTotals.totalProfit),
+        finalCostPct: "",
+        finalNetPct: grandTotals.totalPrice > 0 ? formatPct(grandTotals.totalProfit / grandTotals.totalPrice * 100) : "0%",
+      });
+      await exportToExcel({
+        title: `تحليل المنيو - ${tabLabel} - ${branchName} - ${selectedPeriod.name}`,
+        filename: `menu-analysis-${tabLabel}-${selectedPeriod.name}`,
+        columns,
+        data: rows,
+      });
+      sonnerToast.success("تم تصدير Excel بنجاح");
+    } catch (err) {
+      console.error(err);
+      sonnerToast.error("حدث خطأ أثناء التصدير");
+    } finally {
+      setExcelLoading(false);
+    }
+  };
+
+
     if (!selectedPeriod || categorizedData.length === 0) return;
     const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
     const logoSrc = `${window.location.origin}/logo.png`;

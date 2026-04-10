@@ -677,7 +677,7 @@ export const MenuAnalysisPage: React.FC = () => {
     }
   };
 
-
+  const handlePrint = () => {
     if (!selectedPeriod || categorizedData.length === 0) return;
     const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
     const logoSrc = `${window.location.origin}/logo.png`;

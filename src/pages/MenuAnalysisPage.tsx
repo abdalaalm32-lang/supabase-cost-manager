@@ -127,6 +127,7 @@ export const MenuAnalysisPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>("kitchen");
   const [loading, setLoading] = useState(true);
   const [companyName, setCompanyName] = useState("");
+  const [excelLoading, setExcelLoading] = useState(false);
 
   const companyId = auth.profile?.company_id;
 

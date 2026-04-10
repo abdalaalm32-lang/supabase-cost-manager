@@ -550,9 +550,15 @@ export const IndirectExpensesPage: React.FC = () => {
         <h1 className="text-2xl font-bold">تحليل المصاريف الغير مباشرة</h1>
         <div className="flex items-center gap-3 flex-wrap">
           {selectedPeriod && (
-            <Button variant="outline" size="sm" className="gap-2" onClick={handlePrint}>
-              <Printer size={14} /> طباعة
-            </Button>
+            <>
+              <Button variant="outline" size="sm" className="gap-2" onClick={handleExcelExport} disabled={excelLoading}>
+                {excelLoading ? <Loader2 size={14} className="animate-spin" /> : <FileSpreadsheet size={14} className="text-green-600" />}
+                Excel
+              </Button>
+              <Button variant="outline" size="sm" className="gap-2" onClick={handlePrint}>
+                <Printer size={14} /> طباعة
+              </Button>
+            </>
           )}
           <span className="text-sm text-muted-foreground">الفرع:</span>
           <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>

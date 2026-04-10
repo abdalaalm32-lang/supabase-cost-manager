@@ -331,17 +331,19 @@ export const AddPurchaseInvoicePage: React.FC = () => {
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label>القسم المستلم</Label>
-            <Select value={departmentId} onValueChange={setDepartmentId}>
-              <SelectTrigger><SelectValue placeholder="اختر القسم" /></SelectTrigger>
-              <SelectContent>
-                {departments.map((d: any) => (
-                  <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {destinationType !== "warehouse" && (
+            <div className="space-y-2">
+              <Label>القسم المستلم</Label>
+              <Select value={departmentId} onValueChange={setDepartmentId}>
+                <SelectTrigger><SelectValue placeholder="اختر القسم" /></SelectTrigger>
+                <SelectContent>
+                  {departments.map((d: any) => (
+                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -365,6 +367,7 @@ export const AddPurchaseInvoicePage: React.FC = () => {
               <TableRow>
                 <TableHead className="text-right">الكود</TableHead>
                 <TableHead className="text-right">الصنف</TableHead>
+                <TableHead className="text-right">الوحدة</TableHead>
                 <TableHead className="text-right">الكمية</TableHead>
                 <TableHead className="text-right">سعر الوحدة</TableHead>
                 <TableHead className="text-right">الإجمالي</TableHead>
@@ -376,6 +379,7 @@ export const AddPurchaseInvoicePage: React.FC = () => {
                 <TableRow key={item.stock_item_id}>
                   <TableCell className="font-mono text-xs">{item.code}</TableCell>
                   <TableCell className="font-medium">{item.name}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{item.unit || "—"}</TableCell>
                   <TableCell>
                     <Input type="number" min={1} value={item.quantity} onChange={(e) => updateItemField(idx, "quantity", parseFloat(e.target.value) || 0)} className="glass-input w-20" />
                   </TableCell>

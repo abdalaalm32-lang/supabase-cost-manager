@@ -10,7 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Edit2, Trash2, TrendingUp, DollarSign, Percent, Target, Building2, Zap, Users, Megaphone, Wrench, MoreHorizontal, Calendar as CalendarIcon, X, Printer } from "lucide-react";
+import { Plus, Edit2, Trash2, TrendingUp, DollarSign, Percent, Target, Building2, Zap, Users, Megaphone, Wrench, MoreHorizontal, Calendar as CalendarIcon, X, Printer, FileSpreadsheet, Loader2 } from "lucide-react";
+import { exportToExcel } from "@/lib/exportUtils";
+import { toast as sonnerToast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
@@ -110,6 +112,7 @@ export const IndirectExpensesPage: React.FC = () => {
   const [companyName, setCompanyName] = useState("");
   const [categoryClassMap, setCategoryClassMap] = useState<Map<string, string | null>>(new Map());
   const [costScope, setCostScope] = useState<"all" | "kitchen" | "bar">("all");
+  const [excelLoading, setExcelLoading] = useState(false);
 
   const companyId = auth.profile?.company_id;
 
@@ -415,6 +418,56 @@ export const IndirectExpensesPage: React.FC = () => {
   const indirectPctValue = selectedPeriod ? indirectCostPct(selectedPeriod) : 0;
   const netProfitPct = 100 - indirectPctValue - avgDirectCostPct;
 
+  const handleExcelExport = async () => {
+    if (!selectedPeriod) return;
+    setExcelLoading(true);
+    try {
+      const branchName = selectedBranchId !== "all" ? branches.find(b => b.id === selectedBranchId)?.name : "كل الفروع";
+      const periodBranchName = selectedPeriod.branch_id ? branches.find(b => b.id === selectedPeriod.branch_id)?.name : null;
+      const expItems = getExpenseItems(selectedPeriod);
+      const columns = [
+        { key: "label", label: "البند" },
+        { key: "value", label: "القيمة" },
+        { key: "pct", label: "النسبة من المبيعات" },
+      ];
+      const rows: Record<string, any>[] = [];
+      // KPIs
+      rows.push({ label: "المبيعات الشهرية المتوقعة", value: monthSales.toLocaleString(), pct: "" });
+      rows.push({ label: "إجمالي المصاريف الغير مباشرة", value: total.toLocaleString(), pct: monthSales > 0 ? `${(total / monthSales * 100).toFixed(2)}%` : "0%" });
+      rows.push({ label: "نقطة التعادل اليومية", value: breakEvenPoint(selectedPeriod).toLocaleString(undefined, { maximumFractionDigits: 2 }), pct: "" });
+      rows.push({ __rowType: "group-total", label: "جدول الربحية", value: "", pct: "" });
+      rows.push({ label: "Indirect Cost Per.", value: `${indirectPctValue.toFixed(2)}%`, pct: "" });
+      rows.push({ label: "Avg Direct Cost Per.", value: `${avgDirectCostPct.toFixed(2)}%`, pct: "" });
+      rows.push({ label: "Net Profit Per.", value: `${netProfitPct.toFixed(2)}%`, pct: "" });
+      rows.push({ label: "Break-Even Point (Daily)", value: breakEvenPoint(selectedPeriod).toLocaleString(undefined, { maximumFractionDigits: 2 }), pct: "" });
+      rows.push({ __rowType: "group-total", label: "توزيع المصاريف", value: "", pct: "" });
+      for (const item of expItems) {
+        const pct = monthSales > 0 ? (item.value / monthSales * 100) : 0;
+        rows.push({ label: item.label, value: item.value.toLocaleString(), pct: `${pct.toFixed(2)}%` });
+      }
+      rows.push({ __rowType: "grand-total", label: "الإجمالي", value: total.toLocaleString(), pct: monthSales > 0 ? `${(total / monthSales * 100).toFixed(2)}%` : "0%" });
+      rows.push({ __rowType: "group-total", label: "بيانات التشغيل", value: "", pct: "" });
+      rows.push({ label: "السعة (عدد الكراسي)", value: String(selectedPeriod.capacity), pct: "" });
+      rows.push({ label: "معدل الدوران", value: String(selectedPeriod.turn_over), pct: "" });
+      rows.push({ label: "متوسط الفاتورة", value: selectedPeriod.avg_check.toLocaleString(), pct: "" });
+      rows.push({ label: "المبيعات اليومية المتوقعة", value: expectedDailySales(selectedPeriod).toLocaleString(), pct: "" });
+      rows.push({ label: "المبيعات الشهرية المتوقعة", value: monthSales.toLocaleString(), pct: "" });
+
+      await exportToExcel({
+        title: `تحليل المصاريف الغير مباشرة - ${periodBranchName || branchName} - ${selectedPeriod.name}`,
+        filename: `indirect-expenses-${selectedPeriod.name}`,
+        columns,
+        data: rows,
+      });
+      sonnerToast.success("تم تصدير Excel بنجاح");
+    } catch (err) {
+      console.error(err);
+      sonnerToast.error("حدث خطأ أثناء التصدير");
+    } finally {
+      setExcelLoading(false);
+    }
+  };
+
   const handlePrint = () => {
     if (!selectedPeriod) return;
     const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
@@ -497,9 +550,15 @@ export const IndirectExpensesPage: React.FC = () => {
         <h1 className="text-2xl font-bold">تحليل المصاريف الغير مباشرة</h1>
         <div className="flex items-center gap-3 flex-wrap">
           {selectedPeriod && (
-            <Button variant="outline" size="sm" className="gap-2" onClick={handlePrint}>
-              <Printer size={14} /> طباعة
-            </Button>
+            <>
+              <Button variant="outline" size="sm" className="gap-2" onClick={handleExcelExport} disabled={excelLoading}>
+                {excelLoading ? <Loader2 size={14} className="animate-spin" /> : <FileSpreadsheet size={14} className="text-green-600" />}
+                Excel
+              </Button>
+              <Button variant="outline" size="sm" className="gap-2" onClick={handlePrint}>
+                <Printer size={14} /> طباعة
+              </Button>
+            </>
           )}
           <span className="text-sm text-muted-foreground">الفرع:</span>
           <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>

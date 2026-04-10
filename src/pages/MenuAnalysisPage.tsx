@@ -798,9 +798,15 @@ export const MenuAnalysisPage: React.FC = () => {
             </SelectContent>
           </Select>
           {selectedPeriod && categorizedData.length > 0 && (
-            <Button variant="outline" size="sm" className="gap-2" onClick={handlePrint}>
-              <Printer size={14} /> طباعة
-            </Button>
+            <>
+              <Button variant="outline" size="sm" className="gap-2" onClick={handleExcelExport} disabled={excelLoading}>
+                {excelLoading ? <Loader2 size={14} className="animate-spin" /> : <FileSpreadsheet size={14} className="text-green-600" />}
+                Excel
+              </Button>
+              <Button variant="outline" size="sm" className="gap-2" onClick={handlePrint}>
+                <Printer size={14} /> طباعة
+              </Button>
+            </>
           )}
         </div>
       </div>

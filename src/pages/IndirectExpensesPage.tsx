@@ -112,6 +112,7 @@ export const IndirectExpensesPage: React.FC = () => {
   const [companyName, setCompanyName] = useState("");
   const [categoryClassMap, setCategoryClassMap] = useState<Map<string, string | null>>(new Map());
   const [costScope, setCostScope] = useState<"all" | "kitchen" | "bar">("all");
+  const [excelLoading, setExcelLoading] = useState(false);
 
   const companyId = auth.profile?.company_id;
 

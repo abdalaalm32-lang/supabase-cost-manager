@@ -306,7 +306,7 @@ export const AddPurchaseInvoicePage: React.FC = () => {
 
           <div className="space-y-2">
             <Label>الوجهة</Label>
-            <Select value={destinationType} onValueChange={(v) => { setDestinationType(v as any); setDestinationId(""); }}>
+            <Select value={destinationType} onValueChange={(v) => { setDestinationType(v as any); setDestinationId(""); if (v === "warehouse") setDepartmentId(""); }}>
               <SelectTrigger><SelectValue placeholder="فرع أو مخزن" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="branch">فرع</SelectItem>

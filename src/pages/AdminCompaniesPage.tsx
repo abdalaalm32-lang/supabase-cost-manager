@@ -384,11 +384,19 @@ export const AdminCompaniesPage: React.FC = () => {
   const updateUserFromAdmin = useMutation({
     mutationFn: async () => {
       if (!editingUser) return;
-      const { error } = await supabase.from("profiles").update({
-        status: editFormStatus ? "نشط" : "موقف",
-        permissions: editFormPermissions,
-      }).eq("id", editingUser.id);
-      if (error) throw error;
+      const res = await supabase.functions.invoke("manage-user", {
+        body: {
+          action: "update_user_profile",
+          target_user_id: editingUser.user_id,
+          updates: {
+            status: editFormStatus ? "نشط" : "موقف",
+            permissions: editFormPermissions,
+          },
+        },
+      });
+
+      if (res.error) throw new Error(res.error.message || "حدث خطأ");
+      if (res.data?.error) throw new Error(res.data.error);
     },
     onSuccess: () => {
       toast.success("تم تحديث المستخدم");

@@ -41,6 +41,8 @@ export const PosGroupsPage: React.FC = () => {
   const [branchId, setBranchId] = useState("");
   const [name, setName] = useState("");
   const [menuClass, setMenuClass] = useState("");
+  const [linkToOtherBranches, setLinkToOtherBranches] = useState(false);
+  const [additionalBranchIds, setAdditionalBranchIds] = useState<string[]>([]);
   const [filter, setFilter] = useState<FilterStatus>("نشط");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterBranchId, setFilterBranchId] = useState("all");

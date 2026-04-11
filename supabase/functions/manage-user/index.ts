@@ -19,6 +19,7 @@ Deno.serve(async (req) => {
 
     // Verify caller is authenticated and is admin
     const authHeader = req.headers.get("Authorization");
+    console.log("Auth header present:", !!authHeader);
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "غير مصرح" }), {
         status: 401,
@@ -30,6 +31,7 @@ Deno.serve(async (req) => {
     const { data: { user: callerUser }, error: authError } =
       await supabaseAdmin.auth.getUser(token);
 
+    console.log("getUser result:", { callerUser: callerUser?.id, authError: authError?.message });
     if (authError || !callerUser) {
       return new Response(JSON.stringify({ error: "غير مصرح" }), {
         status: 401,
@@ -68,6 +70,7 @@ Deno.serve(async (req) => {
       _role: "admin",
     });
 
+    console.log("Roles:", { isAdmin, isOwner, isSysAdmin, userId: callerUser.id, companyId: callerProfile.company_id });
     if (!isAdmin && !isOwner && !isSysAdmin) {
       return new Response(JSON.stringify({ error: "يجب أن تكون مديراً أو مالكاً" }), {
         status: 403,

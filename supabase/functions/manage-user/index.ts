@@ -75,7 +75,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { action, target_user_id, new_password } = await req.json();
+    const body = await req.json();
+    const { action, target_user_id, new_password, updates } = body;
 
     // Verify target user exists; system admins can manage any company's users
     const { data: targetProfile } = await supabaseAdmin
@@ -121,6 +122,60 @@ Deno.serve(async (req) => {
 
       return new Response(
         JSON.stringify({ message: "تم تغيير كلمة المرور بنجاح" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (action === "update_user_profile") {
+      if (!updates || typeof updates !== "object") {
+        return new Response(
+          JSON.stringify({ error: "بيانات التحديث غير صالحة" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const allowedStatuses = ["نشط", "موقف"];
+      const allowedSubscriptionTypes = ["unlimited", "minutes", "date_range"];
+
+      const sanitizedUpdates = {
+        full_name: typeof updates.full_name === "string" ? updates.full_name.trim() : undefined,
+        branch_id: updates.branch_id ?? null,
+        job_role_id: updates.job_role_id ?? null,
+        status: allowedStatuses.includes(updates.status) ? updates.status : undefined,
+        permissions: Array.isArray(updates.permissions) ? updates.permissions.filter((perm) => typeof perm === "string") : undefined,
+        subscription_type: allowedSubscriptionTypes.includes(updates.subscription_type) ? updates.subscription_type : undefined,
+        subscription_minutes: updates.subscription_type === "minutes" ? updates.subscription_minutes ?? null : null,
+        subscription_start: updates.subscription_type === "date_range" ? updates.subscription_start ?? null : null,
+        subscription_end: updates.subscription_type === "date_range" ? updates.subscription_end ?? null : null,
+      };
+
+      const payload = Object.fromEntries(
+        Object.entries(sanitizedUpdates).filter(([_, value]) => value !== undefined)
+      );
+
+      if (Object.keys(payload).length === 0) {
+        return new Response(
+          JSON.stringify({ error: "لا توجد بيانات صالحة للتحديث" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const { data: updatedProfile, error } = await supabaseAdmin
+        .from("profiles")
+        .update(payload)
+        .eq("user_id", target_user_id)
+        .select("id")
+        .single();
+
+      if (error || !updatedProfile) {
+        return new Response(
+          JSON.stringify({ error: "فشل تحديث بيانات المستخدم", details: error?.message }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ message: "تم تحديث بيانات المستخدم بنجاح" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

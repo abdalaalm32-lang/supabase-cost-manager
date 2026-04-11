@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -76,22 +77,35 @@ export const PosGroupsPage: React.FC = () => {
 
   const addMutation = useMutation({
     mutationFn: async () => {
-      const { data: codeData, error: codeError } = await supabase.rpc("generate_category_code", { p_company_id: companyId! });
-      if (codeError) throw codeError;
-      const { error } = await supabase.from("categories").insert({
-        company_id: companyId!,
-        name,
-        branch_id: branchId || null,
-        code: codeData,
-        active: true,
-        menu_engineering_class: menuClass || null,
-      });
-      if (error) throw error;
+      // Collect all branch IDs to create categories for
+      const allBranchIds: (string | null)[] = [branchId || null];
+      if (linkToOtherBranches && additionalBranchIds.length > 0) {
+        for (const bId of additionalBranchIds) {
+          if (bId !== branchId) {
+            allBranchIds.push(bId);
+          }
+        }
+      }
+
+      for (const bId of allBranchIds) {
+        const { data: codeData, error: codeError } = await supabase.rpc("generate_category_code", { p_company_id: companyId! });
+        if (codeError) throw codeError;
+        const { error } = await supabase.from("categories").insert({
+          company_id: companyId!,
+          name,
+          branch_id: bId,
+          code: codeData,
+          active: true,
+          menu_engineering_class: menuClass || null,
+        });
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pos-categories"] });
-      toast.success("تم إضافة المجموعة بنجاح");
-      setOpen(false); setName(""); setBranchId(""); setMenuClass("");
+      const count = linkToOtherBranches ? 1 + additionalBranchIds.filter(b => b !== branchId).length : 1;
+      toast.success(count > 1 ? `تم إضافة المجموعة في ${count} فروع بنجاح` : "تم إضافة المجموعة بنجاح");
+      setOpen(false); setName(""); setBranchId(""); setMenuClass(""); setLinkToOtherBranches(false); setAdditionalBranchIds([]);
     },
     onError: (e: any) => toast.error(e.message),
   });

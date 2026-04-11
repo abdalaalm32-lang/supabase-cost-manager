@@ -54,6 +54,8 @@ export const PosGroupsPage: React.FC = () => {
   const [editName, setEditName] = useState("");
   const [editBranchId, setEditBranchId] = useState("");
   const [editMenuClass, setEditMenuClass] = useState("");
+  const [editLinkToOtherBranches, setEditLinkToOtherBranches] = useState(false);
+  const [editAdditionalBranchIds, setEditAdditionalBranchIds] = useState<string[]>([]);
 
   const { data: branches = [] } = useQuery({
     queryKey: ["branches", companyId],
@@ -112,17 +114,38 @@ export const PosGroupsPage: React.FC = () => {
 
   const editMutation = useMutation({
     mutationFn: async () => {
+      // Update the existing category
       const { error } = await supabase.from("categories").update({
         name: editName,
         branch_id: editBranchId || null,
         menu_engineering_class: editMenuClass || null,
       }).eq("id", editId);
       if (error) throw error;
+
+      // Create copies in additional branches if requested
+      if (editLinkToOtherBranches && editAdditionalBranchIds.length > 0) {
+        for (const bId of editAdditionalBranchIds) {
+          if (bId !== editBranchId) {
+            const { data: codeData, error: codeError } = await supabase.rpc("generate_category_code", { p_company_id: companyId! });
+            if (codeError) throw codeError;
+            const { error: insertError } = await supabase.from("categories").insert({
+              company_id: companyId!,
+              name: editName,
+              branch_id: bId,
+              code: codeData,
+              active: true,
+              menu_engineering_class: editMenuClass || null,
+            });
+            if (insertError) throw insertError;
+          }
+        }
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pos-categories"] });
-      toast.success("تم تعديل المجموعة بنجاح");
-      setEditOpen(false);
+      const extraCount = editLinkToOtherBranches ? editAdditionalBranchIds.filter(b => b !== editBranchId).length : 0;
+      toast.success(extraCount > 0 ? `تم حفظ التعديلات وإضافة المجموعة في ${extraCount} فرع إضافي` : "تم تعديل المجموعة بنجاح");
+      setEditOpen(false); setEditLinkToOtherBranches(false); setEditAdditionalBranchIds([]);
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -141,6 +164,8 @@ export const PosGroupsPage: React.FC = () => {
     setEditName(cat.name);
     setEditBranchId(cat.branch_id || "");
     setEditMenuClass(cat.menu_engineering_class || "");
+    setEditLinkToOtherBranches(false);
+    setEditAdditionalBranchIds([]);
     setEditOpen(true);
   };
 

@@ -208,15 +208,26 @@ export const CompanySettingsPage: React.FC = () => {
   const updateUser = useMutation({
     mutationFn: async () => {
       if (!detailUser) return;
-      const { error } = await supabase.from("profiles").update({
-        full_name: formName, branch_id: formBranchId || null, job_role_id: formJobRoleId || null,
-        status: formStatus ? "نشط" : "موقف", permissions: formPermissions,
-        subscription_type: formSubscriptionType,
-        subscription_minutes: formSubscriptionType === "minutes" ? (formSubscriptionMinutes as number) : null,
-        subscription_start: formSubscriptionType === "date_range" && formSubscriptionStart ? formSubscriptionStart.toISOString() : null,
-        subscription_end: formSubscriptionType === "date_range" && formSubscriptionEnd ? formSubscriptionEnd.toISOString() : null,
-      }).eq("id", detailUser.id);
-      if (error) throw error;
+      const res = await supabase.functions.invoke("manage-user", {
+        body: {
+          action: "update_user_profile",
+          target_user_id: detailUser.user_id,
+          updates: {
+            full_name: formName,
+            branch_id: formBranchId || null,
+            job_role_id: formJobRoleId || null,
+            status: formStatus ? "نشط" : "موقف",
+            permissions: formPermissions,
+            subscription_type: formSubscriptionType,
+            subscription_minutes: formSubscriptionType === "minutes" ? (formSubscriptionMinutes as number) : null,
+            subscription_start: formSubscriptionType === "date_range" && formSubscriptionStart ? formSubscriptionStart.toISOString() : null,
+            subscription_end: formSubscriptionType === "date_range" && formSubscriptionEnd ? formSubscriptionEnd.toISOString() : null,
+          },
+        },
+      });
+
+      if (res.error) throw new Error(res.error.message || "حدث خطأ");
+      if (res.data?.error) throw new Error(res.data.error);
     },
     onSuccess: () => {
       toast.success("تم تحديث المستخدم");

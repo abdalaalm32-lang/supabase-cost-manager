@@ -523,7 +523,7 @@ export const TransferDetailPage: React.FC = () => {
 
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">الموقع المصدر</label>
-              <Select value={sourceId} onValueChange={v => { setSourceId(v); setSourceDepartmentId(""); }} disabled={isLocked}>
+              <Select value={sourceId} onValueChange={v => { setSourceId(v); setSourceDepartmentId(""); if (warehouses.some((w: any) => w.id === v)) setSourceDepartmentId(""); }} disabled={isLocked}>
                 <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="اختر الموقع المصدر..." /></SelectTrigger>
                 <SelectContent>
                   {allLocations.map(loc => (

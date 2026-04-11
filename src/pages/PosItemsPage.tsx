@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -31,6 +32,9 @@ export const PosItemsPage: React.FC = () => {
   const [categoryId, setCategoryId] = useState("");
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
+  const [menuEngClass, setMenuEngClass] = useState("");
+  const [linkToOtherBranches, setLinkToOtherBranches] = useState(false);
+  const [additionalBranchIds, setAdditionalBranchIds] = useState<string[]>([]);
   const [filter, setFilter] = useState<FilterStatus>("نشط");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterBranchId, setFilterBranchId] = useState("all");
@@ -42,8 +46,9 @@ export const PosItemsPage: React.FC = () => {
   const [editPrice, setEditPrice] = useState("");
   const [editBranchId, setEditBranchId] = useState("");
   const [editCategoryId, setEditCategoryId] = useState("");
-  const [menuEngClass, setMenuEngClass] = useState("");
   const [editMenuEngClass, setEditMenuEngClass] = useState("");
+  const [editLinkToOtherBranches, setEditLinkToOtherBranches] = useState(false);
+  const [editAdditionalBranchIds, setEditAdditionalBranchIds] = useState<string[]>([]);
 
   // Fetch branches
   const { data: branches = [] } = useQuery({
@@ -96,24 +101,61 @@ export const PosItemsPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  // Helper to find category for a specific branch
+  const findCategoryForBranch = (targetBranchId: string, currentCategoryName: string | null, allCategories: any[]) => {
+    if (!currentCategoryName) return null;
+    // Try to find a category with the same name in the target branch
+    const match = allCategories.find((c: any) => c.branch_id === targetBranchId && c.name === currentCategoryName);
+    return match?.id || null;
+  };
+
   // Add item
   const addMutation = useMutation({
     mutationFn: async () => {
-      const { data: codeData, error: codeError } = await supabase.rpc("generate_item_code", { p_company_id: companyId! });
-      if (codeError) throw codeError;
       const selectedCat = categories.find((c: any) => c.id === categoryId);
-      const { error } = await supabase.from("pos_items").insert({
-        company_id: companyId!, name, price: parseFloat(price) || 0,
-        branch_id: branchId || null, category_id: categoryId || null,
-        category: selectedCat?.name || null, code: codeData, active: true,
-        menu_engineering_class: menuEngClass || null,
-      });
-      if (error) throw error;
+      
+      // Collect all branch IDs
+      const allBranchIds: (string | null)[] = [branchId || null];
+      if (linkToOtherBranches && additionalBranchIds.length > 0) {
+        for (const bId of additionalBranchIds) {
+          if (bId !== branchId) allBranchIds.push(bId);
+        }
+      }
+
+      // Fetch all active categories to find matches in other branches
+      let allCats: any[] = [];
+      if (allBranchIds.length > 1) {
+        const { data } = await supabase.from("categories").select("*").eq("active", true);
+        allCats = data || [];
+      }
+
+      for (const bId of allBranchIds) {
+        const { data: codeData, error: codeError } = await supabase.rpc("generate_item_code", { p_company_id: companyId! });
+        if (codeError) throw codeError;
+
+        let catId = categoryId || null;
+        let catName = selectedCat?.name || null;
+        // For additional branches, try to find matching category
+        if (bId !== (branchId || null) && selectedCat) {
+          const matchId = findCategoryForBranch(bId!, selectedCat.name, allCats);
+          catId = matchId;
+          catName = matchId ? selectedCat.name : null;
+        }
+
+        const { error } = await supabase.from("pos_items").insert({
+          company_id: companyId!, name, price: parseFloat(price) || 0,
+          branch_id: bId, category_id: catId,
+          category: catName, code: codeData, active: true,
+          menu_engineering_class: menuEngClass || null,
+        });
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pos-items"] });
-      toast.success("تم إضافة الصنف بنجاح");
-      setOpen(false); setName(""); setPrice(""); setBranchId(""); setCategoryId(""); setMenuEngClass("");
+      const count = linkToOtherBranches ? 1 + additionalBranchIds.filter(b => b !== branchId).length : 1;
+      toast.success(count > 1 ? `تم إضافة الصنف في ${count} فروع بنجاح` : "تم إضافة الصنف بنجاح");
+      setOpen(false); setName(""); setPrice(""); setBranchId(""); setCategoryId(""); setMenuEngClass(""); setLinkToOtherBranches(false); setAdditionalBranchIds([]);
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -129,11 +171,42 @@ export const PosItemsPage: React.FC = () => {
         menu_engineering_class: editMenuEngClass || null,
       }).eq("id", editId);
       if (error) throw error;
+
+      // Create copies in additional branches if requested
+      if (editLinkToOtherBranches && editAdditionalBranchIds.length > 0) {
+        let allCats: any[] = [];
+        const { data } = await supabase.from("categories").select("*").eq("active", true);
+        allCats = data || [];
+
+        for (const bId of editAdditionalBranchIds) {
+          if (bId !== editBranchId) {
+            const { data: codeData, error: codeError } = await supabase.rpc("generate_item_code", { p_company_id: companyId! });
+            if (codeError) throw codeError;
+
+            let catId: string | null = null;
+            let catName: string | null = null;
+            if (selectedCat) {
+              const matchId = findCategoryForBranch(bId, selectedCat.name, allCats);
+              catId = matchId;
+              catName = matchId ? selectedCat.name : null;
+            }
+
+            const { error: insertError } = await supabase.from("pos_items").insert({
+              company_id: companyId!, name: editName, price: parseFloat(editPrice) || 0,
+              branch_id: bId, category_id: catId,
+              category: catName, code: codeData, active: true,
+              menu_engineering_class: editMenuEngClass || null,
+            });
+            if (insertError) throw insertError;
+          }
+        }
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pos-items"] });
-      toast.success("تم تعديل الصنف بنجاح");
-      setEditOpen(false);
+      const extraCount = editLinkToOtherBranches ? editAdditionalBranchIds.filter(b => b !== editBranchId).length : 0;
+      toast.success(extraCount > 0 ? `تم حفظ التعديلات وإضافة الصنف في ${extraCount} فرع إضافي` : "تم تعديل الصنف بنجاح");
+      setEditOpen(false); setEditLinkToOtherBranches(false); setEditAdditionalBranchIds([]);
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -155,6 +228,8 @@ export const PosItemsPage: React.FC = () => {
     setEditBranchId(item.branch_id || "");
     setEditCategoryId(item.category_id || "");
     setEditMenuEngClass(item.menu_engineering_class || "");
+    setEditLinkToOtherBranches(false);
+    setEditAdditionalBranchIds([]);
     setEditOpen(true);
   };
 
@@ -179,6 +254,47 @@ export const PosItemsPage: React.FC = () => {
     return result;
   }, [items, filter, searchQuery, filterBranchId]);
 
+  const BranchLinkSection = ({ 
+    currentBranchId, isLinked, onLinkChange, selectedIds, onSelectedChange, idPrefix 
+  }: { 
+    currentBranchId: string; isLinked: boolean; onLinkChange: (v: boolean) => void; 
+    selectedIds: string[]; onSelectedChange: (ids: string[]) => void; idPrefix: string;
+  }) => {
+    if (!currentBranchId || branches.length <= 1) return null;
+    return (
+      <div className="space-y-3 border rounded-lg p-3 bg-muted/30">
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id={`${idPrefix}-link-branches`}
+            checked={isLinked}
+            onCheckedChange={(checked) => {
+              onLinkChange(!!checked);
+              if (!checked) onSelectedChange([]);
+            }}
+          />
+          <Label htmlFor={`${idPrefix}-link-branches`} className="cursor-pointer text-sm">هل تريد ربط الصنف بفروع أخرى؟</Label>
+        </div>
+        {isLinked && (
+          <div className="space-y-2 pr-6">
+            <Label className="text-xs text-muted-foreground">اختر الفروع الإضافية</Label>
+            {branches.filter((b: any) => b.id !== currentBranchId).map((b: any) => (
+              <div key={b.id} className="flex items-center gap-2">
+                <Checkbox
+                  id={`${idPrefix}-branch-${b.id}`}
+                  checked={selectedIds.includes(b.id)}
+                  onCheckedChange={(checked) => {
+                    onSelectedChange(checked ? [...selectedIds, b.id] : selectedIds.filter(id => id !== b.id));
+                  }}
+                />
+                <Label htmlFor={`${idPrefix}-branch-${b.id}`} className="cursor-pointer text-sm">{b.name}</Label>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6 animate-fade-in-up">
       <div className="flex items-center justify-between">
@@ -197,6 +313,14 @@ export const PosItemsPage: React.FC = () => {
                   <SelectContent>{branches.map((b: any) => (<SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>))}</SelectContent>
                 </Select>
               </div>
+              <BranchLinkSection
+                currentBranchId={branchId}
+                isLinked={linkToOtherBranches}
+                onLinkChange={setLinkToOtherBranches}
+                selectedIds={additionalBranchIds}
+                onSelectedChange={setAdditionalBranchIds}
+                idPrefix="add"
+              />
               <div className="space-y-2">
                 <Label>المجموعة</Label>
                 <Select value={categoryId} onValueChange={setCategoryId}>
@@ -242,6 +366,14 @@ export const PosItemsPage: React.FC = () => {
                 <SelectContent>{branches.map((b: any) => (<SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>))}</SelectContent>
               </Select>
             </div>
+            <BranchLinkSection
+              currentBranchId={editBranchId}
+              isLinked={editLinkToOtherBranches}
+              onLinkChange={setEditLinkToOtherBranches}
+              selectedIds={editAdditionalBranchIds}
+              onSelectedChange={setEditAdditionalBranchIds}
+              idPrefix="edit"
+            />
             <div className="space-y-2">
               <Label>المجموعة</Label>
               <Select value={editCategoryId} onValueChange={setEditCategoryId}>

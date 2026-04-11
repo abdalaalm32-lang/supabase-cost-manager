@@ -359,6 +359,23 @@ export const PosItemsPage: React.FC = () => {
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>تعديل الصنف</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
+            {/* Show linked branches */}
+            {(() => {
+              const editingItem = items.find((i: any) => i.id === editId);
+              if (!editingItem) return null;
+              const linked = items.filter((i: any) => i.id !== editId && i.name === editingItem.name && i.branch_id !== editingItem.branch_id);
+              if (linked.length === 0) return null;
+              return (
+                <div className="border rounded-lg p-3 bg-accent/20 space-y-2">
+                  <Label className="text-sm font-medium">الفروع المرتبطة بنفس الصنف</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {linked.map((i: any) => (
+                      <Badge key={i.id} variant="secondary">{i.branches?.name || "—"}</Badge>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
             <div className="space-y-2">
               <Label>الفرع</Label>
               <Select value={editBranchId} onValueChange={(v) => { setEditBranchId(v); setEditCategoryId(""); }}>

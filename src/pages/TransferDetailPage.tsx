@@ -128,6 +128,12 @@ export const TransferDetailPage: React.FC = () => {
     return "branch";
   }, [sourceId, warehouses]);
 
+  // Determine destination location type
+  const destLocationType = useMemo<"branch" | "warehouse">(() => {
+    if (warehouses.some((w: any) => w.id === destinationId)) return "warehouse";
+    return "branch";
+  }, [destinationId, warehouses]);
+
   const { getLocationStock: getSourceStock } = useLocationStock(sourceId || null, sourceLocationType, sourceDepartmentId || null);
 
   // Load existing record
@@ -517,7 +523,7 @@ export const TransferDetailPage: React.FC = () => {
 
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">الموقع المصدر</label>
-              <Select value={sourceId} onValueChange={v => { setSourceId(v); setSourceDepartmentId(""); }} disabled={isLocked}>
+              <Select value={sourceId} onValueChange={v => { setSourceId(v); setSourceDepartmentId(""); if (warehouses.some((w: any) => w.id === v)) setSourceDepartmentId(""); }} disabled={isLocked}>
                 <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="اختر الموقع المصدر..." /></SelectTrigger>
                 <SelectContent>
                   {allLocations.map(loc => (
@@ -527,16 +533,18 @@ export const TransferDetailPage: React.FC = () => {
               </Select>
             </div>
 
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">القسم المصدر (اختياري)</label>
-              <Select value={sourceDepartmentId} onValueChange={setSourceDepartmentId} disabled={isLocked}>
-                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="اختر القسم..." /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">بدون قسم</SelectItem>
-                  {departments.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+            {sourceLocationType !== "warehouse" && (
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">القسم المصدر (اختياري)</label>
+                <Select value={sourceDepartmentId} onValueChange={setSourceDepartmentId} disabled={isLocked}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="اختر القسم..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">بدون قسم</SelectItem>
+                    {departments.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">الموقع المستلم</label>
@@ -550,16 +558,18 @@ export const TransferDetailPage: React.FC = () => {
               </Select>
             </div>
 
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">القسم المستلم (اختياري)</label>
-              <Select value={destinationDepartmentId} onValueChange={setDestinationDepartmentId} disabled={isLocked}>
-                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="اختر القسم..." /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">بدون قسم</SelectItem>
-                  {departments.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+            {destLocationType !== "warehouse" && (
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">القسم المستلم (اختياري)</label>
+                <Select value={destinationDepartmentId} onValueChange={setDestinationDepartmentId} disabled={isLocked}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="اختر القسم..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">بدون قسم</SelectItem>
+                    {departments.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">ملاحظات (اختياري)</label>

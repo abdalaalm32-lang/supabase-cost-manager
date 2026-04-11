@@ -17,9 +17,8 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Verify caller is authenticated and is admin
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
+    if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "غير مصرح" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -27,21 +26,25 @@ Deno.serve(async (req) => {
     }
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user: callerUser }, error: authError } =
-      await supabaseAdmin.auth.getUser(token);
 
-    if (authError || !callerUser) {
+    // Use getClaims for signing-keys compatibility
+    const { data: claimsData, error: claimsError } =
+      await supabaseAdmin.auth.getClaims(token);
+
+    if (claimsError || !claimsData?.claims?.sub) {
+      console.error("getClaims error:", claimsError?.message);
       return new Response(JSON.stringify({ error: "غير مصرح" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Get caller's company
+    const callerId = claimsData.claims.sub as string;
+
     const { data: callerProfile } = await supabaseAdmin
       .from("profiles")
       .select("company_id")
-      .eq("user_id", callerUser.id)
+      .eq("user_id", callerId)
       .single();
 
     if (!callerProfile) {
@@ -51,20 +54,18 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check admin or owner status
     const { data: isAdmin } = await supabaseAdmin.rpc("is_company_admin", {
-      _user_id: callerUser.id,
+      _user_id: callerId,
       _company_id: callerProfile.company_id,
     });
 
     const { data: isOwner } = await supabaseAdmin.rpc("is_company_owner", {
-      _user_id: callerUser.id,
+      _user_id: callerId,
       _company_id: callerProfile.company_id,
     });
 
-    // Check if caller is system admin (has 'admin' role in user_roles)
     const { data: isSysAdmin } = await supabaseAdmin.rpc("has_role", {
-      _user_id: callerUser.id,
+      _user_id: callerId,
       _role: "admin",
     });
 
@@ -182,7 +183,7 @@ Deno.serve(async (req) => {
 
     if (action === "delete_user") {
       // Don't allow deleting yourself
-      if (target_user_id === callerUser.id) {
+      if (target_user_id === callerId) {
         return new Response(
           JSON.stringify({ error: "لا يمكنك حذف حسابك الخاص" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }

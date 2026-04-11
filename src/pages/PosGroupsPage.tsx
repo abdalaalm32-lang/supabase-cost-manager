@@ -276,6 +276,41 @@ export const PosGroupsPage: React.FC = () => {
                 <SelectContent>{branches.map((b: any) => (<SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>))}</SelectContent>
               </Select>
             </div>
+            {/* Link to other branches option */}
+            {editBranchId && branches.length > 1 && (
+              <div className="space-y-3 border rounded-lg p-3 bg-muted/30">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="edit-link-branches"
+                    checked={editLinkToOtherBranches}
+                    onCheckedChange={(checked) => {
+                      setEditLinkToOtherBranches(!!checked);
+                      if (!checked) setEditAdditionalBranchIds([]);
+                    }}
+                  />
+                  <Label htmlFor="edit-link-branches" className="cursor-pointer text-sm">هل تريد ربط المجموعة بفروع أخرى؟</Label>
+                </div>
+                {editLinkToOtherBranches && (
+                  <div className="space-y-2 pr-6">
+                    <Label className="text-xs text-muted-foreground">اختر الفروع الإضافية</Label>
+                    {branches.filter((b: any) => b.id !== editBranchId).map((b: any) => (
+                      <div key={b.id} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`edit-branch-${b.id}`}
+                          checked={editAdditionalBranchIds.includes(b.id)}
+                          onCheckedChange={(checked) => {
+                            setEditAdditionalBranchIds(prev =>
+                              checked ? [...prev, b.id] : prev.filter(id => id !== b.id)
+                            );
+                          }}
+                        />
+                        <Label htmlFor={`edit-branch-${b.id}`} className="cursor-pointer text-sm">{b.name}</Label>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             <div className="space-y-2">
               <Label>تصنيف هندسة المنيو</Label>
               <Select value={editMenuClass} onValueChange={setEditMenuClass}>

@@ -269,6 +269,23 @@ export const PosGroupsPage: React.FC = () => {
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>تعديل المجموعة</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
+            {/* Show linked branches */}
+            {(() => {
+              const editingCat = categories.find((c: any) => c.id === editId);
+              if (!editingCat) return null;
+              const linked = categories.filter((c: any) => c.id !== editId && c.name === editingCat.name && c.branch_id !== editingCat.branch_id);
+              if (linked.length === 0) return null;
+              return (
+                <div className="border rounded-lg p-3 bg-accent/20 space-y-2">
+                  <Label className="text-sm font-medium">الفروع المرتبطة بنفس المجموعة</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {linked.map((c: any) => (
+                      <Badge key={c.id} variant="secondary">{c.branches?.name || "—"}</Badge>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
             <div className="space-y-2">
               <Label>الفرع</Label>
               <Select value={editBranchId} onValueChange={setEditBranchId}>

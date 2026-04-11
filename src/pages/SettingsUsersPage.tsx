@@ -555,7 +555,23 @@ export const SettingsUsersPage: React.FC = () => {
                     <span className={cn("text-sm", formStatus ? "text-success" : "text-destructive")}>
                       {formStatus ? "نشط" : "موقف"}
                     </span>
-                    <Switch checked={formStatus} onCheckedChange={setFormStatus} dir="ltr" />
+                    <Switch checked={formStatus} onCheckedChange={async (checked) => {
+                      setFormStatus(checked);
+                      if (detailUser) {
+                        const newStatus = checked ? "نشط" : "موقف";
+                        const { error } = await supabase
+                          .from("profiles")
+                          .update({ status: newStatus })
+                          .eq("id", detailUser.id);
+                        if (error) {
+                          toast.error("فشل تحديث حالة الحساب");
+                          setFormStatus(!checked);
+                        } else {
+                          toast.success(`تم تغيير حالة الحساب إلى "${newStatus}"`);
+                          queryClient.invalidateQueries({ queryKey: ["settings-users"] });
+                        }
+                      }
+                    }} dir="ltr" />
                   </div>
                 </div>
 

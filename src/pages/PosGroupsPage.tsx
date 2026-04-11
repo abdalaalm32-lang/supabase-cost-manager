@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -41,6 +42,8 @@ export const PosGroupsPage: React.FC = () => {
   const [branchId, setBranchId] = useState("");
   const [name, setName] = useState("");
   const [menuClass, setMenuClass] = useState("");
+  const [linkToOtherBranches, setLinkToOtherBranches] = useState(false);
+  const [additionalBranchIds, setAdditionalBranchIds] = useState<string[]>([]);
   const [filter, setFilter] = useState<FilterStatus>("نشط");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterBranchId, setFilterBranchId] = useState("all");
@@ -74,22 +77,35 @@ export const PosGroupsPage: React.FC = () => {
 
   const addMutation = useMutation({
     mutationFn: async () => {
-      const { data: codeData, error: codeError } = await supabase.rpc("generate_category_code", { p_company_id: companyId! });
-      if (codeError) throw codeError;
-      const { error } = await supabase.from("categories").insert({
-        company_id: companyId!,
-        name,
-        branch_id: branchId || null,
-        code: codeData,
-        active: true,
-        menu_engineering_class: menuClass || null,
-      });
-      if (error) throw error;
+      // Collect all branch IDs to create categories for
+      const allBranchIds: (string | null)[] = [branchId || null];
+      if (linkToOtherBranches && additionalBranchIds.length > 0) {
+        for (const bId of additionalBranchIds) {
+          if (bId !== branchId) {
+            allBranchIds.push(bId);
+          }
+        }
+      }
+
+      for (const bId of allBranchIds) {
+        const { data: codeData, error: codeError } = await supabase.rpc("generate_category_code", { p_company_id: companyId! });
+        if (codeError) throw codeError;
+        const { error } = await supabase.from("categories").insert({
+          company_id: companyId!,
+          name,
+          branch_id: bId,
+          code: codeData,
+          active: true,
+          menu_engineering_class: menuClass || null,
+        });
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["pos-categories"] });
-      toast.success("تم إضافة المجموعة بنجاح");
-      setOpen(false); setName(""); setBranchId(""); setMenuClass("");
+      const count = linkToOtherBranches ? 1 + additionalBranchIds.filter(b => b !== branchId).length : 1;
+      toast.success(count > 1 ? `تم إضافة المجموعة في ${count} فروع بنجاح` : "تم إضافة المجموعة بنجاح");
+      setOpen(false); setName(""); setBranchId(""); setMenuClass(""); setLinkToOtherBranches(false); setAdditionalBranchIds([]);
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -165,6 +181,41 @@ export const PosGroupsPage: React.FC = () => {
                   <SelectContent>{branches.map((b: any) => (<SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>))}</SelectContent>
                 </Select>
               </div>
+              {/* Link to other branches option */}
+              {branchId && branches.length > 1 && (
+                <div className="space-y-3 border rounded-lg p-3 bg-muted/30">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="link-branches"
+                      checked={linkToOtherBranches}
+                      onCheckedChange={(checked) => {
+                        setLinkToOtherBranches(!!checked);
+                        if (!checked) setAdditionalBranchIds([]);
+                      }}
+                    />
+                    <Label htmlFor="link-branches" className="cursor-pointer text-sm">هل تريد ربط المجموعة بفروع أخرى؟</Label>
+                  </div>
+                  {linkToOtherBranches && (
+                    <div className="space-y-2 pr-6">
+                      <Label className="text-xs text-muted-foreground">اختر الفروع الإضافية</Label>
+                      {branches.filter((b: any) => b.id !== branchId).map((b: any) => (
+                        <div key={b.id} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`branch-${b.id}`}
+                            checked={additionalBranchIds.includes(b.id)}
+                            onCheckedChange={(checked) => {
+                              setAdditionalBranchIds(prev =>
+                                checked ? [...prev, b.id] : prev.filter(id => id !== b.id)
+                              );
+                            }}
+                          />
+                          <Label htmlFor={`branch-${b.id}`} className="cursor-pointer text-sm">{b.name}</Label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>تصنيف هندسة المنيو</Label>
                 <Select value={menuClass} onValueChange={setMenuClass}>

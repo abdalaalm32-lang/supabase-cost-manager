@@ -292,7 +292,7 @@ export const MenuEngineeringPage: React.FC = () => {
     });
 
     return rows.sort((a, b) => b.totalProfit - a.totalProfit);
-  }, [posItems, classifiedPosItems, activeTab, salesQtyMap, recipeCostMap, recipeNetProfitMap]);
+  }, [posItems, classifiedPosItems, activeTab, salesQtyMap, recipeCostMap, recipeNetProfitMap, selectedBranch]);
 
   // Totals
   const totals = useMemo(() => {

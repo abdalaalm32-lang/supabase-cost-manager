@@ -63,7 +63,7 @@ export const EditPurchaseInvoicePage: React.FC = () => {
     enabled: !!id,
   });
 
-  const { data: existingItems = [] } = useQuery({
+  const { data: existingItems = [], isFetched: itemsFetched } = useQuery({
     queryKey: ["purchase-items", id],
     queryFn: async () => {
       const { data, error } = await supabase.from("purchase_items").select("*").eq("purchase_order_id", id!);

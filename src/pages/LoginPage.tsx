@@ -26,12 +26,29 @@ export const LoginPage: React.FC = () => {
   const [resetLoading, setResetLoading] = useState(false);
   const [resetError, setResetError] = useState("");
 
+  const [suspended, setSuspended] = useState(false);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setSuspended(false);
     setLoading(true);
     try {
       await login(email, password);
+      // Check profile status after login
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("status")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (profile?.status === "موقف") {
+          await supabase.auth.signOut();
+          setSuspended(true);
+          return;
+        }
+      }
     } catch (err: any) {
       setError(err.message || "فشل تسجيل الدخول");
     } finally {
@@ -166,7 +183,14 @@ export const LoginPage: React.FC = () => {
                     />
                   </div>
                 </div>
-                {error && (
+                {suspended && (
+                  <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-4 text-center space-y-2">
+                    <p className="text-destructive text-sm font-bold">تم إيقاف حسابك من قبل الإدارة.</p>
+                    <p className="text-destructive/80 text-xs">لا يمكنك الوصول إلى النظام حالياً.</p>
+                    <p className="text-muted-foreground text-xs">تواصل مع مدير النظام لإعادة تفعيل حسابك.</p>
+                  </div>
+                )}
+                {error && !suspended && (
                   <p className="text-destructive bg-destructive/10 p-2.5 rounded-xl text-sm border border-destructive/20 text-center">
                     {error}
                   </p>

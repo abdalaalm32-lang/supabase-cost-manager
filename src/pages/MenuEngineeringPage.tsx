@@ -246,6 +246,7 @@ export const MenuEngineeringPage: React.FC = () => {
     const relevantPosItemIds = classifiedPosItems[activeTab];
     const items = posItems.filter((pi: any) => {
       if (!relevantPosItemIds.has(pi.id)) return false;
+      if (selectedBranch !== "all" && pi.branch_id && pi.branch_id !== selectedBranch) return false;
       return true;
     });
 

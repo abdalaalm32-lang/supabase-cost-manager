@@ -32,7 +32,6 @@ export const PurchaseInvoicesTab: React.FC = () => {
   const handleDelete = async () => {
     if (!deleteOrder) return;
     try {
-      // If completed, reverse stock increases
       if (deleteOrder.status === "مكتمل") {
         const { data: items } = await supabase.from("purchase_items").select("*").eq("purchase_order_id", deleteOrder.id);
         if (items) {
@@ -74,6 +73,39 @@ export const PurchaseInvoicesTab: React.FC = () => {
     enabled: !!companyId,
   });
 
+  const { data: branches = [] } = useQuery({
+    queryKey: ["branches-all", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("branches").select("id, name").order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ["warehouses-all", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("warehouses").select("id, name").order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
+  const locationMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    branches.forEach((b: any) => { map[b.id] = b.name; });
+    warehouses.forEach((w: any) => { map[w.id] = w.name; });
+    return map;
+  }, [branches, warehouses]);
+
+  const getLocationName = (order: any) => {
+    if (order.branch_id && locationMap[order.branch_id]) return locationMap[order.branch_id];
+    if (order.warehouse_id && locationMap[order.warehouse_id]) return locationMap[order.warehouse_id];
+    return "—";
+  };
+
   const toggleArchiveMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
       const newStatus = status === "مؤرشف" ? "مكتمل" : "مؤرشف";
@@ -98,11 +130,12 @@ export const PurchaseInvoicesTab: React.FC = () => {
       result = result.filter((o: any) =>
         (o.invoice_number || "").toLowerCase().includes(q) ||
         (o.supplier_name || "").toLowerCase().includes(q) ||
-        String(o.total_amount).includes(q)
+        String(o.total_amount).includes(q) ||
+        getLocationName(o).toLowerCase().includes(q)
       );
     }
     return result;
-  }, [orders, filter, searchQuery]);
+  }, [orders, filter, searchQuery, locationMap]);
 
   const handlePrintInvoice = async (order: any) => {
     const { data: items } = await supabase
@@ -225,7 +258,7 @@ export const PurchaseInvoicesTab: React.FC = () => {
       <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="بحث برقم الفاتورة أو المورد أو المبلغ..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="glass-input pr-9" />
+          <Input placeholder="بحث برقم الفاتورة أو المورد أو المبلغ أو الموقع..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="glass-input pr-9" />
         </div>
         <div className="flex gap-2">
           {(["الكل", "مكتمل", "مؤرشف", "معدل"] as FilterStatus[]).map((s) => (
@@ -233,8 +266,8 @@ export const PurchaseInvoicesTab: React.FC = () => {
           ))}
         </div>
         <ExportButtons
-          data={filtered.map((o: any) => ({ invoice: o.invoice_number || "—", supplier: o.supplier_name, date: new Date(o.date).toLocaleDateString("ar-EG"), creator: o.creator_name || "—", status: o.is_edited ? "معدل" : o.status, total: Number(o.total_amount).toFixed(2) }))}
-          columns={[{ key: "invoice", label: "رقم الفاتورة" }, { key: "supplier", label: "المورد" }, { key: "date", label: "التاريخ" }, { key: "creator", label: "المنشئ" }, { key: "status", label: "الحالة" }, { key: "total", label: "الإجمالي" }]}
+          data={filtered.map((o: any) => ({ invoice: o.invoice_number || "—", supplier: o.supplier_name, location: getLocationName(o), date: new Date(o.date).toLocaleDateString("ar-EG"), creator: o.creator_name || "—", status: o.is_edited ? "معدل" : o.status, total: Number(o.total_amount).toFixed(2) }))}
+          columns={[{ key: "invoice", label: "رقم الفاتورة" }, { key: "supplier", label: "المورد" }, { key: "location", label: "الموقع المستلم" }, { key: "date", label: "التاريخ" }, { key: "creator", label: "المنشئ" }, { key: "status", label: "الحالة" }, { key: "total", label: "الإجمالي" }]}
           filename="فواتير_المشتريات"
           title="فواتير المشتريات"
         />
@@ -246,6 +279,7 @@ export const PurchaseInvoicesTab: React.FC = () => {
             <TableRow>
               <TableHead className="text-right">رقم الفاتورة</TableHead>
               <TableHead className="text-right">المورد</TableHead>
+              <TableHead className="text-right">الموقع المستلم</TableHead>
               <TableHead className="text-right">التاريخ</TableHead>
               <TableHead className="text-right">المنشئ</TableHead>
               <TableHead className="text-right">الحالة</TableHead>
@@ -255,14 +289,15 @@ export const PurchaseInvoicesTab: React.FC = () => {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">جاري التحميل...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">جاري التحميل...</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">لا توجد فواتير</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">لا توجد فواتير</TableCell></TableRow>
             ) : (
               filtered.map((o: any) => (
                 <TableRow key={o.id}>
                   <TableCell className="font-mono text-xs">{o.invoice_number || "—"}</TableCell>
                   <TableCell className="font-medium">{o.supplier_name}</TableCell>
+                  <TableCell className="text-sm">{getLocationName(o)}</TableCell>
                   <TableCell>{new Date(o.date).toLocaleDateString("ar-EG")}</TableCell>
                   <TableCell className="text-sm">{o.creator_name || "—"}</TableCell>
                   <TableCell>

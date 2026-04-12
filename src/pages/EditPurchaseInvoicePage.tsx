@@ -93,7 +93,7 @@ export const EditPurchaseInvoicePage: React.FC = () => {
       })));
       setLoaded(true);
     }
-  }, [order, existingItems, loaded]);
+  }, [order, existingItems, itemsFetched, loaded]);
 
   const { data: suppliers = [] } = useQuery({
     queryKey: ["suppliers-active", companyId],

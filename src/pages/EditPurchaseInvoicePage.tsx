@@ -63,7 +63,7 @@ export const EditPurchaseInvoicePage: React.FC = () => {
     enabled: !!id,
   });
 
-  const { data: existingItems = [] } = useQuery({
+  const { data: existingItems = [], isFetched: itemsFetched } = useQuery({
     queryKey: ["purchase-items", id],
     queryFn: async () => {
       const { data, error } = await supabase.from("purchase_items").select("*").eq("purchase_order_id", id!);
@@ -74,7 +74,7 @@ export const EditPurchaseInvoicePage: React.FC = () => {
   });
 
   useEffect(() => {
-    if (order && existingItems && !loaded) {
+    if (order && itemsFetched && !loaded) {
       setSupplierId(order.supplier_id || "");
       setDepartmentId((order as any).department_id || "");
       setDate(order.date);
@@ -93,7 +93,7 @@ export const EditPurchaseInvoicePage: React.FC = () => {
       })));
       setLoaded(true);
     }
-  }, [order, existingItems, loaded]);
+  }, [order, existingItems, itemsFetched, loaded]);
 
   const { data: suppliers = [] } = useQuery({
     queryKey: ["suppliers-active", companyId],

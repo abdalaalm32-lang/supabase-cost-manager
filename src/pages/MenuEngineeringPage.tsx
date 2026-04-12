@@ -210,19 +210,25 @@ export const MenuEngineeringPage: React.FC = () => {
     return map;
   }, [sales, selectedBranch, dateFrom, dateTo]);
 
-  // Get stock items classified as kitchen/bar and map to POS items via recipes
+  // Get POS items classified as kitchen/bar, with recipe ingredients as fallback
   const classifiedPosItems = useMemo(() => {
     const result: Record<EngClass, Set<string>> = { kitchen: new Set(), bar: new Set() };
 
-    // Map: stock_item_id -> menu_engineering_class
-    const stockClassMap: Record<string, string> = {};
-    stockItems.forEach((si: any) => {
-      if (si.menu_engineering_class) {
-        stockClassMap[si.id] = si.menu_engineering_class;
+    posItems.forEach((pi: any) => {
+      const cls = String(pi.menu_engineering_class || "").toLowerCase();
+      if (cls === "kitchen" || cls === "bar") {
+        result[cls as EngClass].add(pi.id);
       }
     });
 
-    // For each recipe, check if any ingredient is classified
+    const stockClassMap: Record<string, string> = {};
+    stockItems.forEach((si: any) => {
+      const cls = String(si.menu_engineering_class || "").toLowerCase();
+      if (cls === "kitchen" || cls === "bar") {
+        stockClassMap[si.id] = cls;
+      }
+    });
+
     recipes.forEach((r: any) => {
       const classes = new Set<string>();
       (r.recipe_ingredients || []).forEach((ri: any) => {
@@ -232,14 +238,10 @@ export const MenuEngineeringPage: React.FC = () => {
 
       if (classes.has("kitchen")) result.kitchen.add(r.menu_item_id);
       if (classes.has("bar")) result.bar.add(r.menu_item_id);
-      // If no classification, default to kitchen
-      if (classes.size === 0 && r.recipe_ingredients?.length > 0) {
-        result.kitchen.add(r.menu_item_id);
-      }
     });
 
     return result;
-  }, [recipes, stockItems]);
+  }, [posItems, recipes, stockItems]);
 
   // Build engineering rows for active tab
   const engineeringData = useMemo(() => {

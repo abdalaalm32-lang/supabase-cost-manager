@@ -343,6 +343,7 @@ export const PosItemsPage: React.FC = () => {
                   <SelectContent>
                     <SelectItem value="kitchen">Kitchen</SelectItem>
                     <SelectItem value="bar">Bar</SelectItem>
+                    <SelectItem value="none">بدون تصنيف</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -413,6 +414,7 @@ export const PosItemsPage: React.FC = () => {
                 <SelectContent>
                   <SelectItem value="kitchen">Kitchen</SelectItem>
                   <SelectItem value="bar">Bar</SelectItem>
+                  <SelectItem value="none">بدون تصنيف</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -485,6 +487,8 @@ export const PosItemsPage: React.FC = () => {
                       <Badge variant="outline">Kitchen</Badge>
                     ) : item.menu_engineering_class === "bar" ? (
                       <Badge variant="outline">Bar</Badge>
+                    ) : item.menu_engineering_class === "none" ? (
+                      <Badge variant="outline">بدون تصنيف</Badge>
                     ) : "—"}
                   </TableCell>
                   <TableCell className="text-right">{Number(item.price).toFixed(2)}</TableCell>

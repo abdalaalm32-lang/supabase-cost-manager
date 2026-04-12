@@ -220,7 +220,7 @@ export const MenuAnalysisPage: React.FC = () => {
 
   // Filter items by branch and tab
   const filteredPosItems = useMemo(() => {
-    let items = posItems;
+    let items = posItems.filter(i => i.menu_engineering_class !== "none");
     if (selectedBranchId !== "all") {
       items = items.filter(i => i.branch_id === selectedBranchId);
     }

@@ -25,11 +25,13 @@ type FilterStatus = "نشط" | "مؤرشف" | "الكل";
 const CLASS_OPTIONS = [
   { value: "kitchen", label: "Kitchen" },
   { value: "bar", label: "Bar" },
+  { value: "none", label: "بدون تصنيف" },
 ];
 
 const classLabel = (v: string | null) => {
   if (v === "kitchen") return "Kitchen";
   if (v === "bar") return "Bar";
+  if (v === "none") return "بدون تصنيف";
   return "—";
 };
 

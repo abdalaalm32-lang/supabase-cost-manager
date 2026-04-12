@@ -244,7 +244,11 @@ export const MenuEngineeringPage: React.FC = () => {
   // Build engineering rows for active tab
   const engineeringData = useMemo(() => {
     const relevantPosItemIds = classifiedPosItems[activeTab];
-    const items = posItems.filter((pi: any) => relevantPosItemIds.has(pi.id));
+    const items = posItems.filter((pi: any) => {
+      if (!relevantPosItemIds.has(pi.id)) return false;
+      if (selectedBranch !== "all" && pi.branch_id && pi.branch_id !== selectedBranch) return false;
+      return true;
+    });
 
     const totalAllSales = items.reduce((sum: number, pi: any) => {
       const qty = salesQtyMap[pi.id] || 0;
@@ -288,7 +292,7 @@ export const MenuEngineeringPage: React.FC = () => {
     });
 
     return rows.sort((a, b) => b.totalProfit - a.totalProfit);
-  }, [posItems, classifiedPosItems, activeTab, salesQtyMap, recipeCostMap, recipeNetProfitMap]);
+  }, [posItems, classifiedPosItems, activeTab, salesQtyMap, recipeCostMap, recipeNetProfitMap, selectedBranch]);
 
   // Totals
   const totals = useMemo(() => {

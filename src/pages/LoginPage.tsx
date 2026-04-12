@@ -26,12 +26,29 @@ export const LoginPage: React.FC = () => {
   const [resetLoading, setResetLoading] = useState(false);
   const [resetError, setResetError] = useState("");
 
+  const [suspended, setSuspended] = useState(false);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setSuspended(false);
     setLoading(true);
     try {
       await login(email, password);
+      // Check profile status after login
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("status")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (profile?.status === "موقف") {
+          await supabase.auth.signOut();
+          setSuspended(true);
+          return;
+        }
+      }
     } catch (err: any) {
       setError(err.message || "فشل تسجيل الدخول");
     } finally {

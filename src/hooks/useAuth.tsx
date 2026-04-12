@@ -106,6 +106,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  const forceLogoutSuspendedUser = useCallback(async () => {
+    requestIdRef.current += 1;
+    loadingRef.current = false;
+    await supabase.auth.signOut();
+    if (mountedRef.current) {
+      setAuth({ ...EMPTY_AUTH, isReady: true });
+    }
+  }, []);
+
   const loadUserData = useCallback(async (session: Session, preserveExisting = true) => {
     const previousAuth = authRef.current;
     const sameUser = previousAuth.user?.id === session.user.id;
@@ -136,6 +145,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const roles = rolesResult.length > 0
         ? rolesResult
         : (preserveExisting && sameUser ? previousAuth.roles : []);
+
+      if (profile?.status && profile.status !== "نشط") {
+        await forceLogoutSuspendedUser();
+        return;
+      }
+
       const isAdmin = roles.includes("admin");
       const isOwner = roles.includes("owner");
 
@@ -151,7 +166,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       loadingRef.current = false;
     }
-  }, [fetchProfile, fetchRoles]);
+  }, [fetchProfile, fetchRoles, forceLogoutSuspendedUser]);
 
   const scheduleSessionSync = useCallback((session: Session | null, event?: AuthChangeEvent) => {
     if (!mountedRef.current) return;
@@ -225,14 +240,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `user_id=eq.${auth.user.id}` }, () => {
         if (auth.user && mountedRef.current) {
           fetchProfile(auth.user.id).then((profile) => {
-            if (profile && mountedRef.current) setAuth((prev) => ({ ...prev, profile }));
+            if (!mountedRef.current || !profile) return;
+            if (profile.status !== "نشط") {
+              void forceLogoutSuspendedUser();
+              return;
+            }
+            setAuth((prev) => ({ ...prev, profile }));
           });
         }
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [auth.user?.id, fetchProfile, fetchRoles]);
+  }, [auth.user?.id, fetchProfile, fetchRoles, forceLogoutSuspendedUser]);
 
   const login = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });

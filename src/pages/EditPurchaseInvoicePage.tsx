@@ -74,7 +74,7 @@ export const EditPurchaseInvoicePage: React.FC = () => {
   });
 
   useEffect(() => {
-    if (order && existingItems && !loaded) {
+    if (order && itemsFetched && !loaded) {
       setSupplierId(order.supplier_id || "");
       setDepartmentId((order as any).department_id || "");
       setDate(order.date);

@@ -183,7 +183,14 @@ export const LoginPage: React.FC = () => {
                     />
                   </div>
                 </div>
-                {error && (
+                {suspended && (
+                  <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-4 text-center space-y-2">
+                    <p className="text-destructive text-sm font-bold">تم إيقاف حسابك من قبل الإدارة.</p>
+                    <p className="text-destructive/80 text-xs">لا يمكنك الوصول إلى النظام حالياً.</p>
+                    <p className="text-muted-foreground text-xs">تواصل مع مدير النظام لإعادة تفعيل حسابك.</p>
+                  </div>
+                )}
+                {error && !suspended && (
                   <p className="text-destructive bg-destructive/10 p-2.5 rounded-xl text-sm border border-destructive/20 text-center">
                     {error}
                   </p>

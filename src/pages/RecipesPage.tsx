@@ -106,6 +106,11 @@ export const RecipesPage: React.FC = () => {
   const [loadingAllExcel, setLoadingAllExcel] = useState(false);
   const [selectedPrintCategory, setSelectedPrintCategory] = useState<string>("all");
 
+  // Branch propagation state
+  const [showPropagateDialog, setShowPropagateDialog] = useState(false);
+  const [pendingSaveIngredients, setPendingSaveIngredients] = useState<LocalIngredient[]>([]);
+  const [otherBranchMatches, setOtherBranchMatches] = useState<any[]>([]);
+
   const { data: branches = [] } = useQuery({
     queryKey: ["branches-active", companyId],
     queryFn: async () => {

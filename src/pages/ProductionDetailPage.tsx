@@ -122,9 +122,7 @@ export const ProductionDetailPage: React.FC = () => {
     enabled: !!companyId,
   });
 
-  // Stock availability should be calculated per location only (not filtered by department)
-  // Department is only used to categorize the production operation, not to restrict stock view
-  const { getLocationStock } = useLocationStock(locationId || null, locationType, null);
+  const { getLocationStock } = useLocationStock(locationId || null, locationType, selectedDept !== "all" ? selectedDept : null);
 
   // Load existing record
   const { data: existingRecord } = useQuery({

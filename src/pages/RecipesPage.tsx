@@ -459,13 +459,12 @@ export const RecipesPage: React.FC = () => {
       setIsEditing(false);
       queryClient.invalidateQueries({ queryKey: ["recipes"] });
 
-      // Check for matching POS items in other branches (same name + code)
-      if (selectedProduct && selectedProduct.branch_id) {
+      // Check for matching POS items in other branches (same name)
+      if (selectedProduct) {
         const matchingItems = posItems.filter((p: any) =>
           p.id !== selectedProductId &&
           p.name === selectedProduct.name &&
-          p.code === selectedProduct.code &&
-          p.branch_id && p.branch_id !== selectedProduct.branch_id
+          (selectedProduct.branch_id ? (p.branch_id && p.branch_id !== selectedProduct.branch_id) : p.branch_id)
         );
         if (matchingItems.length > 0) {
           const matchesWithBranch = matchingItems.map((p: any) => {

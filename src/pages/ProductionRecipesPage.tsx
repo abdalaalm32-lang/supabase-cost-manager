@@ -57,7 +57,8 @@ export const ProductionRecipesPage: React.FC = () => {
   const [recipeId, setRecipeId] = useState<string | null>(null);
 
   // Produced quantity state
-  const [producedQty, setProducedQty] = useState<number>(0);
+  const [producedQtyStr, setProducedQtyStr] = useState<string>("");
+  const producedQty = Number(producedQtyStr) || 0;
 
   const [showAddIngredients, setShowAddIngredients] = useState(false);
   const [ingredientSearch, setIngredientSearch] = useState("");
@@ -238,7 +239,7 @@ export const ProductionRecipesPage: React.FC = () => {
       setIsEditing(true);
       setIngredients([]);
     }
-    setProducedQty(0);
+    setProducedQtyStr("");
   }, [recipeMap, allStockItems]);
 
   const handleSelectProduct = (productId: string) => {
@@ -491,7 +492,7 @@ export const ProductionRecipesPage: React.FC = () => {
     setIngredients([]);
     setRecipeStatus("draft");
     setIsEditing(true);
-    setProducedQty(0);
+    setProducedQtyStr("");
     queryClient.invalidateQueries({ queryKey: ["production-recipes"] });
     toast({ title: "تم حذف التركيبة" });
   };
@@ -520,7 +521,7 @@ export const ProductionRecipesPage: React.FC = () => {
             setRecipeId(null);
             setRecipeStatus("draft");
             setIsEditing(false);
-            setProducedQty(0);
+            setProducedQtyStr("");
           }}>
             <SelectTrigger className="w-48 h-9 text-sm"><SelectValue placeholder="اختر الفرع" /></SelectTrigger>
             <SelectContent>
@@ -673,8 +674,8 @@ export const ProductionRecipesPage: React.FC = () => {
                         type="number"
                         min="0"
                         step="0.001"
-                        value={producedQty || ""}
-                        onChange={e => setProducedQty(Number(e.target.value) || 0)}
+                        value={producedQtyStr}
+                        onChange={e => setProducedQtyStr(e.target.value)}
                         className="w-28 h-9 text-sm"
                         placeholder="0"
                       />

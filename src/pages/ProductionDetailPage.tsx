@@ -244,28 +244,37 @@ export const ProductionDetailPage: React.FC = () => {
     setSelectedProductId(productId);
     if (!isNew || ingredients.length > 0) return; // Don't overwrite existing ingredients
     try {
-      const { data: recipe } = await supabase
+      let query = supabase
         .from("production_recipes")
         .select("*, production_recipe_ingredients(*)")
-        .eq("stock_item_id", productId)
-        .maybeSingle();
-      if (recipe && recipe.production_recipe_ingredients?.length > 0) {
-        const ings: LocalIngredient[] = recipe.production_recipe_ingredients.map((ri: any) => {
-          const si = allStockItems.find((s: any) => s.id === ri.stock_item_id);
-          const conversionFactor = Number(si?.conversion_factor) || 1;
-          // Convert recipe qty (e.g. grams) to stock unit (e.g. kg) for production
-          const qtyInStockUnit = Number(ri.qty) / conversionFactor;
-          return {
-            stock_item_id: ri.stock_item_id,
-            name: si?.name || "—",
-            code: si?.code || "—",
-            unit: si?.stock_unit || "كجم",
-            required_qty: qtyInStockUnit,
-            unit_cost: Number(si?.avg_cost) || 0,
-          };
-        });
-        setIngredients(ings);
-        toast({ title: "تم تحميل مكونات التركيبة تلقائياً" });
+        .eq("stock_item_id", productId);
+      // Filter by branch if location is a branch
+      if (locationType === "branch" && locationId) {
+        query = query.eq("branch_id", locationId);
+      }
+      const { data: recipe } = await query.maybeSingle();
+      if (recipe) {
+        // Load produced_qty from recipe
+        if (recipe.produced_qty && Number(recipe.produced_qty) > 0) {
+          setProducedQty(String(recipe.produced_qty));
+        }
+        if (recipe.production_recipe_ingredients?.length > 0) {
+          const ings: LocalIngredient[] = recipe.production_recipe_ingredients.map((ri: any) => {
+            const si = allStockItems.find((s: any) => s.id === ri.stock_item_id);
+            const conversionFactor = Number(si?.conversion_factor) || 1;
+            const qtyInStockUnit = Number(ri.qty) / conversionFactor;
+            return {
+              stock_item_id: ri.stock_item_id,
+              name: si?.name || "—",
+              code: si?.code || "—",
+              unit: si?.stock_unit || "كجم",
+              required_qty: qtyInStockUnit,
+              unit_cost: Number(si?.avg_cost) || 0,
+            };
+          });
+          setIngredients(ings);
+          toast({ title: "تم تحميل مكونات التركيبة تلقائياً" });
+        }
       }
     } catch {
       // silently fail - user can still add manually

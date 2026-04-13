@@ -473,7 +473,6 @@ export const ProductionRecipesPage: React.FC = () => {
               {branches.map((b: any) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
             </SelectContent>
           </Select>
-        <div className="flex items-center gap-2 flex-wrap">
           {/* Global Ingredient Search */}
           <div className="relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

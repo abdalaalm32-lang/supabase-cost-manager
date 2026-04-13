@@ -220,7 +220,7 @@ export const LoginPage: React.FC = () => {
                     <p className="text-muted-foreground text-xs">تواصل مع مدير النظام لإعادة تفعيل حسابك.</p>
                   </div>
                 )}
-                {error && !suspended && (
+                {error && !suspended && !companyDeactivated && (
                   <p className="text-destructive bg-destructive/10 p-2.5 rounded-xl text-sm border border-destructive/20 text-center">
                     {error}
                   </p>

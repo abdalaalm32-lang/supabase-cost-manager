@@ -530,7 +530,7 @@ export const ProductionDetailPage: React.FC = () => {
             {/* Location */}
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">نوع الموقع</label>
-              <Select value={locationType} onValueChange={(v: any) => { setLocationType(v); setLocationId(""); }} disabled={isLocked}>
+              <Select value={locationType} onValueChange={(v: any) => { setLocationType(v); setLocationId(""); setSelectedDept("all"); setSelectedCat("all"); setSelectedProductId(""); setIngredients([]); }} disabled={isLocked}>
                 <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="branch">فرع</SelectItem>
@@ -542,7 +542,7 @@ export const ProductionDetailPage: React.FC = () => {
               <label className="text-xs text-muted-foreground mb-1 block">
                 {locationType === "branch" ? "الفرع" : "المخزن"}
               </label>
-              <Select value={locationId} onValueChange={setLocationId} disabled={isLocked}>
+              <Select value={locationId} onValueChange={(v) => { setLocationId(v); setSelectedDept("all"); setSelectedCat("all"); setSelectedProductId(""); setIngredients([]); }} disabled={isLocked}>
                 <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="اختر..." /></SelectTrigger>
                 <SelectContent>
                   {(locationType === "branch" ? branches : warehouses).map((loc: any) => (
@@ -552,23 +552,25 @@ export const ProductionDetailPage: React.FC = () => {
               </Select>
             </div>
 
-            {/* Department */}
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">القسم</label>
-              <Select value={selectedDept} onValueChange={v => { setSelectedDept(v); setSelectedCat("all"); setSelectedProductId(""); }} disabled={isLocked}>
-                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="الكل" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">الكل</SelectItem>
-                  {departments.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Department - only for branches */}
+            {locationType === "branch" && (
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">القسم</label>
+                <Select value={selectedDept} onValueChange={v => { setSelectedDept(v); setSelectedCat("all"); setSelectedProductId(""); setIngredients([]); }} disabled={isLocked || !locationId}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="اختر القسم..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">الكل</SelectItem>
+                    {departments.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {/* Category */}
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">المجموعة</label>
-              <Select value={selectedCat} onValueChange={v => { setSelectedCat(v); setSelectedProductId(""); }} disabled={isLocked}>
-                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="الكل" /></SelectTrigger>
+              <Select value={selectedCat} onValueChange={v => { setSelectedCat(v); setSelectedProductId(""); setIngredients([]); }} disabled={isLocked || !locationId}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="اختر المجموعة..." /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">الكل</SelectItem>
                   {filteredCategories.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
@@ -579,7 +581,7 @@ export const ProductionDetailPage: React.FC = () => {
             {/* Product */}
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">المنتج النهائي</label>
-              <Select value={selectedProductId} onValueChange={handleProductChange} disabled={isLocked}>
+              <Select value={selectedProductId} onValueChange={handleProductChange} disabled={isLocked || !locationId}>
                 <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="اختر المنتج..." /></SelectTrigger>
                 <SelectContent>
                   {filteredProducts.map((p: any) => (

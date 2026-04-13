@@ -265,17 +265,18 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     return () => { supabase.removeChannel(channel); };
   }, [auth.profile?.company_id, auth.isAdmin]);
 
+  // Company deactivation: auto-logout and redirect to login
+  const companyDeactivated = !auth.isAdmin && companyStatus && !companyStatus.active;
+  useEffect(() => {
+    if (companyDeactivated) {
+      supabase.auth.signOut();
+    }
+  }, [companyDeactivated]);
+
   if (!auth.isReady) return null;
   if (!auth.session) return <Navigate to="/login" replace />;
 
-  // Company deactivation: auto-logout and redirect to login
-  useEffect(() => {
-    if (!auth.isAdmin && companyStatus && !companyStatus.active) {
-      supabase.auth.signOut();
-    }
-  }, [companyStatus?.active, auth.isAdmin]);
-
-  if (!auth.isAdmin && companyStatus && !companyStatus.active) {
+  if (companyDeactivated) {
     return <Navigate to="/login?reason=company_deactivated" replace />;
   }
 

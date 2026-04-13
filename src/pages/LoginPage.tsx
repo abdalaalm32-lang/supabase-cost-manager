@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2, ArrowRight, CheckCircle2, Lock, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,6 +28,16 @@ export const LoginPage: React.FC = () => {
 
   const [suspended, setSuspended] = useState(false);
   const [companyDeactivated, setCompanyDeactivated] = useState(false);
+
+  // Check URL param for company deactivation redirect
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("reason") === "company_deactivated") {
+      setCompanyDeactivated(true);
+      // Clean URL
+      window.history.replaceState({}, "", "/login");
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -196,7 +206,14 @@ export const LoginPage: React.FC = () => {
                     />
                   </div>
                 </div>
-                {suspended && (
+                {companyDeactivated && (
+                  <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-4 text-center space-y-2">
+                    <p className="text-destructive text-sm font-bold">تم تعطيل الشركة</p>
+                    <p className="text-destructive/80 text-xs">تم تعطيل شركتك من خلال الإدارة. لا يمكنك الوصول إلى النظام حالياً.</p>
+                    <p className="text-muted-foreground text-xs">تواصل مع مدير النظام لإعادة تفعيل الشركة.</p>
+                  </div>
+                )}
+                {suspended && !companyDeactivated && (
                   <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-4 text-center space-y-2">
                     <p className="text-destructive text-sm font-bold">تم إيقاف حسابك من قبل الإدارة.</p>
                     <p className="text-destructive/80 text-xs">لا يمكنك الوصول إلى النظام حالياً.</p>

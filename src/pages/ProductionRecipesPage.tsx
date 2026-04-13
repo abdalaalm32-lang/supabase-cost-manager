@@ -49,6 +49,7 @@ export const ProductionRecipesPage: React.FC = () => {
 
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [productSearch, setProductSearch] = useState("");
+  const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
 
   const [ingredients, setIngredients] = useState<LocalIngredient[]>([]);
   const [recipeStatus, setRecipeStatus] = useState<RecipeStatus>("draft");
@@ -66,7 +67,22 @@ export const ProductionRecipesPage: React.FC = () => {
   const [showGlobalResults, setShowGlobalResults] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
 
+  // Propagation dialog state
+  const [showPropagateDialog, setShowPropagateDialog] = useState(false);
+  const [pendingSaveIngredients, setPendingSaveIngredients] = useState<LocalIngredient[]>([]);
+  const [otherBranchRecipes, setOtherBranchRecipes] = useState<any[]>([]);
+
   // Queries
+  const { data: branches = [] } = useQuery({
+    queryKey: ["branches-active", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("branches").select("*").eq("active", true).order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
   const { data: allStockItems = [] } = useQuery({
     queryKey: ["stock-items-all", companyId],
     queryFn: async () => {

@@ -74,26 +74,29 @@ export const EditPurchaseInvoicePage: React.FC = () => {
   });
 
   useEffect(() => {
-    if (order && itemsFetched && !loaded) {
+    if (order && itemsFetched && stockItems.length > 0 && !loaded) {
       setSupplierId(order.supplier_id || "");
       setDepartmentId((order as any).department_id || "");
       setDate(order.date);
       setNotes(order.notes || "");
       if (order.branch_id) { setDestinationType("branch"); setDestinationId(order.branch_id); }
       else if (order.warehouse_id) { setDestinationType("warehouse"); setDestinationId(order.warehouse_id); }
-      setItems(existingItems.map((i: any) => ({
-        id: i.id,
-        stock_item_id: i.stock_item_id || "",
-        name: i.name,
-        code: "",
-        quantity: Number(i.quantity),
-        unit_cost: Number(i.unit_cost),
-        total: Number(i.total),
-        unit: i.unit,
-      })));
+      setItems(existingItems.map((i: any) => {
+        const si = stockItems.find((s: any) => s.id === i.stock_item_id);
+        return {
+          id: i.id,
+          stock_item_id: i.stock_item_id || "",
+          name: i.name,
+          code: si?.code || "",
+          quantity: Number(i.quantity),
+          unit_cost: Number(i.unit_cost),
+          total: Number(i.total),
+          unit: i.unit || si?.stock_unit || "",
+        };
+      }));
       setLoaded(true);
     }
-  }, [order, existingItems, itemsFetched, loaded]);
+  }, [order, existingItems, itemsFetched, loaded, stockItems]);
 
   const { data: suppliers = [] } = useQuery({
     queryKey: ["suppliers-active", companyId],

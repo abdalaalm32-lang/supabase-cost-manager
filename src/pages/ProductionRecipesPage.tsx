@@ -429,10 +429,6 @@ export const ProductionRecipesPage: React.FC = () => {
     setOtherBranchRecipes([]);
     toast({ title: "تم حفظ تركيبة الإنتاج بنجاح" });
   };
-    } catch (err: any) {
-      toast({ title: "خطأ", description: err.message, variant: "destructive" });
-    }
-  };
 
   const handleDeleteRecipe = async () => {
     if (!recipeId) return;

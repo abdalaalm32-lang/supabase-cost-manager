@@ -27,11 +27,13 @@ export const LoginPage: React.FC = () => {
   const [resetError, setResetError] = useState("");
 
   const [suspended, setSuspended] = useState(false);
+  const [companyDeactivated, setCompanyDeactivated] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setSuspended(false);
+    setCompanyDeactivated(false);
     setLoading(true);
     try {
       await login(email, password);
@@ -40,7 +42,7 @@ export const LoginPage: React.FC = () => {
       if (user) {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("status")
+          .select("status, company_id")
           .eq("user_id", user.id)
           .maybeSingle();
         if (profile?.status === "موقف") {

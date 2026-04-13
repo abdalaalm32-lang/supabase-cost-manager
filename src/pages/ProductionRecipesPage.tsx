@@ -134,11 +134,17 @@ export const ProductionRecipesPage: React.FC = () => {
     return allStockItems.filter((si: any) => si.category_id === manufacturingCategory.id);
   }, [allStockItems, manufacturingCategory]);
 
+  // Filter recipes by selected branch
+  const branchRecipes = useMemo(() => {
+    if (!selectedBranchId) return recipes;
+    return recipes.filter((r: any) => r.branch_id === selectedBranchId);
+  }, [recipes, selectedBranchId]);
+
   const recipeMap = useMemo(() => {
     const map: Record<string, any> = {};
-    recipes.forEach((r: any) => { map[r.stock_item_id] = r; });
+    branchRecipes.forEach((r: any) => { map[r.stock_item_id] = r; });
     return map;
-  }, [recipes]);
+  }, [branchRecipes]);
 
   const categoryMap = useMemo(() => {
     const map: Record<string, string> = {};

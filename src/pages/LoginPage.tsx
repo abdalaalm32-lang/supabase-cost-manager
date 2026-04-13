@@ -48,6 +48,17 @@ export const LoginPage: React.FC = () => {
           setSuspended(true);
           return;
         }
+        // Check if company is active
+        const { data: company } = await supabase
+          .from("companies")
+          .select("active")
+          .eq("id", profile?.company_id)
+          .maybeSingle();
+        if (company && !company.active) {
+          await supabase.auth.signOut();
+          setCompanyDeactivated(true);
+          return;
+        }
       }
     } catch (err: any) {
       setError(err.message || "فشل تسجيل الدخول");

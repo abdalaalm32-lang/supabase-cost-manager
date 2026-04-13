@@ -547,7 +547,20 @@ export const RecipesPage: React.FC = () => {
   };
 
   // Duplicate recipe
-  const handleDuplicate = () => {
+  // Delete recipe
+  const handleDeleteRecipe = async () => {
+    if (!recipeId) return;
+    await supabase.from("recipe_ingredients").delete().eq("recipe_id", recipeId);
+    await supabase.from("recipes").delete().eq("id", recipeId);
+    setRecipeId(null);
+    setIngredients([]);
+    setRecipeStatus("draft");
+    setIsEditing(true);
+    queryClient.invalidateQueries({ queryKey: ["recipes"] });
+    toast({ title: "تم حذف الوصفة" });
+  };
+
+
     if (ingredients.length === 0) {
       toast({ title: "لا توجد مكونات لنسخها", variant: "destructive" });
       return;

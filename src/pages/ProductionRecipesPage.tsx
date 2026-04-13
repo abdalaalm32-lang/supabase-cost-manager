@@ -790,6 +790,29 @@ export const ProductionRecipesPage: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Propagation Dialog */}
+      <AlertDialog open={showPropagateDialog} onOpenChange={setShowPropagateDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>تطبيق التركيبة على الفروع الأخرى؟</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>هل تريد تطبيق نفس التركيبة على الفروع التالية؟</p>
+              <ul className="list-disc pr-6 space-y-1">
+                {otherBranchRecipes.map((br, idx) => (
+                  <li key={idx} className="text-sm">
+                    {br.branchName} {br.exists ? "(سيتم التحديث)" : "(سيتم الإنشاء)"}
+                  </li>
+                ))}
+              </ul>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handlePropagateCancel}>لا، هذا الفرع فقط</AlertDialogCancel>
+            <AlertDialogAction onClick={handlePropagateConfirm}>نعم، طبّق على الكل</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

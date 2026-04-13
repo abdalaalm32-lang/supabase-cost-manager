@@ -1,0 +1,1 @@
+ALTER TABLE public.production_recipes ADD COLUMN produced_qty numeric NOT NULL DEFAULT 0;

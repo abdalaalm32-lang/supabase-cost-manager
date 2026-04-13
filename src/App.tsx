@@ -265,12 +265,19 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     return () => { supabase.removeChannel(channel); };
   }, [auth.profile?.company_id, auth.isAdmin]);
 
+  // Company deactivation: auto-logout and redirect to login
+  const companyDeactivated = !auth.isAdmin && companyStatus && !companyStatus.active;
+  useEffect(() => {
+    if (companyDeactivated) {
+      supabase.auth.signOut();
+    }
+  }, [companyDeactivated]);
+
   if (!auth.isReady) return null;
   if (!auth.session) return <Navigate to="/login" replace />;
 
-  // Company deactivation check FIRST (not for admins)
-  if (!auth.isAdmin && companyStatus && !companyStatus.active) {
-    return <CompanyDeactivatedOverlay isOwner={auth.isOwner} />;
+  if (companyDeactivated) {
+    return <Navigate to="/login?reason=company_deactivated" replace />;
   }
 
   // Company subscription expiry check (not for admins)

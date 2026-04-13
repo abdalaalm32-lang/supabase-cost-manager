@@ -73,7 +73,7 @@ export const EditPurchaseInvoicePage: React.FC = () => {
     enabled: !!id,
   });
 
-  // useEffect moved after stockItems query below
+  
 
   const { data: suppliers = [] } = useQuery({
     queryKey: ["suppliers-active", companyId],

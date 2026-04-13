@@ -342,6 +342,10 @@ const OwnerOrAdminGuard: React.FC<{ children: React.ReactNode }> = ({ children }
 
 const AppRoutes = () => {
   const { auth, logout } = useAuth();
+  const location = useLocation();
+
+  const loginReason = new URLSearchParams(location.search).get("reason");
+  const allowLoginMessage = location.pathname === "/login" && !!loginReason;
 
   if (!auth.isReady) {
     return (
@@ -361,7 +365,7 @@ const AppRoutes = () => {
   return (
     <Routes>
       {/* Public routes */}
-      <Route path="/login" element={auth.session ? <Navigate to="/" replace /> : <LoginPageWrapper />} />
+      <Route path="/login" element={auth.session && !allowLoginMessage ? <Navigate to="/" replace /> : <LoginPageWrapper />} />
       {/* Registration removed */}
 
       {/* Protected routes inside SystemLayout */}

@@ -1407,6 +1407,29 @@ th { border:1px solid #000; padding:5px 6px; font-size:10px; text-align:center; 
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Branch Propagation Dialog */}
+      <AlertDialog open={showPropagateDialog} onOpenChange={setShowPropagateDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>تطبيق الوصفة على الفروع الأخرى؟</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>يوجد نفس الصنف (بنفس الاسم والكود) في فروع أخرى. هل تريد تطبيق نفس الوصفة عليهم؟</p>
+              <ul className="list-disc pr-6 space-y-1">
+                {otherBranchMatches.map((m, idx) => (
+                  <li key={idx} className="text-sm">
+                    {m.branchName} {m.hasRecipe ? "(سيتم التحديث)" : "(سيتم الإنشاء)"}
+                  </li>
+                ))}
+              </ul>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handlePropagateCancel}>لا، هذا الفرع فقط</AlertDialogCancel>
+            <AlertDialogAction onClick={handlePropagateConfirm}>نعم، طبّق على الكل</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

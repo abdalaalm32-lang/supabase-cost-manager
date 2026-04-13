@@ -458,23 +458,92 @@ export const RecipesPage: React.FC = () => {
       setRecipeStatus("ready");
       setIsEditing(false);
       queryClient.invalidateQueries({ queryKey: ["recipes"] });
+
+      // Check for matching POS items in other branches (same name + code)
+      if (selectedProduct && selectedProduct.branch_id) {
+        const matchingItems = posItems.filter((p: any) =>
+          p.id !== selectedProductId &&
+          p.name === selectedProduct.name &&
+          p.code === selectedProduct.code &&
+          p.branch_id && p.branch_id !== selectedProduct.branch_id
+        );
+        if (matchingItems.length > 0) {
+          const matchesWithBranch = matchingItems.map((p: any) => {
+            const branch = branches.find((b: any) => b.id === p.branch_id);
+            const existingRecipe = recipeMap[p.id];
+            return {
+              posItemId: p.id,
+              branchName: branch?.name || "فرع غير معروف",
+              existingRecipeId: existingRecipe?.id || null,
+              hasRecipe: !!existingRecipe,
+            };
+          });
+          setPendingSaveIngredients([...ingredients]);
+          setOtherBranchMatches(matchesWithBranch);
+          setShowPropagateDialog(true);
+          return;
+        }
+      }
+
       toast({ title: "تم حفظ الوصفة بنجاح" });
     } catch (err: any) {
       toast({ title: "خطأ", description: err.message, variant: "destructive" });
     }
   };
 
-  // Delete recipe
-  const handleDeleteRecipe = async () => {
-    if (!recipeId) return;
-    await supabase.from("recipe_ingredients").delete().eq("recipe_id", recipeId);
-    await supabase.from("recipes").delete().eq("id", recipeId);
-    setRecipeId(null);
-    setIngredients([]);
-    setRecipeStatus("draft");
-    setIsEditing(true);
-    queryClient.invalidateQueries({ queryKey: ["recipes"] });
-    toast({ title: "تم حذف الوصفة" });
+  const handlePropagateConfirm = async () => {
+    try {
+      for (const match of otherBranchMatches) {
+        if (match.existingRecipeId) {
+          // Update existing recipe
+          await supabase.from("recipe_ingredients").delete().eq("recipe_id", match.existingRecipeId);
+          if (pendingSaveIngredients.length > 0) {
+            const rows = pendingSaveIngredients.map((ing) => ({
+              recipe_id: match.existingRecipeId,
+              stock_item_id: ing.stock_item_id,
+              qty: ing.qty,
+            }));
+            await supabase.from("recipe_ingredients").insert(rows);
+          }
+          await supabase.from("recipes").update({ last_updated: new Date().toISOString() }).eq("id", match.existingRecipeId);
+        } else {
+          // Create new recipe for the matching POS item
+          const { data: newRecipe, error } = await supabase
+            .from("recipes")
+            .insert({
+              company_id: companyId!,
+              menu_item_id: match.posItemId,
+              branch_id: posItems.find((p: any) => p.id === match.posItemId)?.branch_id || null,
+            })
+            .select()
+            .single();
+          if (error) continue;
+          if (pendingSaveIngredients.length > 0) {
+            const rows = pendingSaveIngredients.map((ing) => ({
+              recipe_id: newRecipe.id,
+              stock_item_id: ing.stock_item_id,
+              qty: ing.qty,
+            }));
+            await supabase.from("recipe_ingredients").insert(rows);
+          }
+        }
+      }
+      queryClient.invalidateQueries({ queryKey: ["recipes"] });
+      toast({ title: "تم حفظ الوصفة وتطبيقها على جميع الفروع بنجاح" });
+    } catch (err: any) {
+      toast({ title: "خطأ في النشر", description: err.message, variant: "destructive" });
+    } finally {
+      setShowPropagateDialog(false);
+      setPendingSaveIngredients([]);
+      setOtherBranchMatches([]);
+    }
+  };
+
+  const handlePropagateCancel = () => {
+    setShowPropagateDialog(false);
+    setPendingSaveIngredients([]);
+    setOtherBranchMatches([]);
+    toast({ title: "تم حفظ الوصفة بنجاح" });
   };
 
   // Duplicate recipe

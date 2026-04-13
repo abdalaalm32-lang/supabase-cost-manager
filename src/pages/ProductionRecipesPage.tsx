@@ -233,13 +233,14 @@ export const ProductionRecipesPage: React.FC = () => {
         };
       });
       setIngredients(ings);
+      setProducedQtyStr(String(Number(recipe.produced_qty) || ""));
     } else {
       setRecipeId(null);
       setRecipeStatus("draft");
       setIsEditing(true);
       setIngredients([]);
+      setProducedQtyStr("");
     }
-    setProducedQtyStr("");
   }, [recipeMap, allStockItems]);
 
   const handleSelectProduct = (productId: string) => {
@@ -352,12 +353,13 @@ export const ProductionRecipesPage: React.FC = () => {
         const { error } = await supabase.from("production_recipe_ingredients").insert(rows);
         if (error) throw error;
       }
-      await supabase.from("production_recipes").update({ last_updated: new Date().toISOString() }).eq("id", recipeId);
+      await supabase.from("production_recipes").update({ last_updated: new Date().toISOString(), produced_qty: producedQty }).eq("id", recipeId);
     } else {
       const { data: newRecipe, error } = await supabase.from("production_recipes").insert({
         company_id: companyId,
         stock_item_id: selectedProductId,
         branch_id: selectedBranchId || null,
+        produced_qty: producedQty,
       }).select().single();
       if (error) throw error;
       if (ingredientsToSave.length > 0) {
@@ -393,7 +395,7 @@ export const ProductionRecipesPage: React.FC = () => {
         }));
         await supabase.from("production_recipe_ingredients").insert(rows);
       }
-      await supabase.from("production_recipes").update({ last_updated: new Date().toISOString() }).eq("id", otherRecipe.id);
+      await supabase.from("production_recipes").update({ last_updated: new Date().toISOString(), produced_qty: producedQty }).eq("id", otherRecipe.id);
     }
     // Create recipes for linked branches that don't have one yet
     const existingBranchIds = new Set(otherRecipes.map((r: any) => r.branch_id));
@@ -406,6 +408,7 @@ export const ProductionRecipesPage: React.FC = () => {
         company_id: companyId,
         stock_item_id: selectedProductId,
         branch_id: branch.id,
+        produced_qty: producedQty,
       }).select().single();
       if (error) continue;
       if (ingsToPropagate.length > 0) {
@@ -670,15 +673,19 @@ export const ProductionRecipesPage: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       <label className="text-sm font-medium text-muted-foreground whitespace-nowrap">الكمية المنتجة:</label>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.001"
-                        value={producedQtyStr}
-                        onChange={e => setProducedQtyStr(e.target.value)}
-                        className="w-28 h-9 text-sm"
-                        placeholder="0"
-                      />
+                      {isLocked ? (
+                        <span className="text-sm font-semibold">{producedQty || "—"}</span>
+                      ) : (
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.001"
+                          value={producedQtyStr}
+                          onChange={e => setProducedQtyStr(e.target.value)}
+                          className="w-28 h-9 text-sm"
+                          placeholder="0"
+                        />
+                      )}
                       <span className="text-sm text-muted-foreground">{selectedProduct.stock_unit || "كجم"}</span>
                     </div>
                   </div>

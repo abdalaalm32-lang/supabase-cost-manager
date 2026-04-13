@@ -50,6 +50,7 @@ export const AddPurchaseInvoicePage: React.FC = () => {
   const [itemPickerOpen, setItemPickerOpen] = useState(false);
   const [itemSearch, setItemSearch] = useState("");
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [submitted, setSubmitted] = useState(false);
 
   const { data: suppliers = [] } = useQuery({
@@ -104,15 +105,29 @@ export const AddPurchaseInvoicePage: React.FC = () => {
 
   const totalAmount = useMemo(() => items.reduce((sum, i) => sum + i.total, 0), [items]);
 
+  const categories = useMemo(() => {
+    const catSet = new Set<string>();
+    stockItems.forEach((s: any) => {
+      if (s.inventory_categories?.name) catSet.add(s.inventory_categories.name);
+    });
+    return Array.from(catSet).sort();
+  }, [stockItems]);
+
   const filteredStockItems = useMemo(() => {
-    if (!itemSearch.trim()) return stockItems;
-    const q = itemSearch.trim().toLowerCase();
-    return stockItems.filter((s: any) =>
-      s.name.toLowerCase().includes(q) ||
-      (s.code || "").toLowerCase().includes(q) ||
-      (s.inventory_categories?.name || "").toLowerCase().includes(q)
-    );
-  }, [stockItems, itemSearch]);
+    let result = stockItems;
+    if (categoryFilter && categoryFilter !== "all") {
+      result = result.filter((s: any) => s.inventory_categories?.name === categoryFilter);
+    }
+    if (itemSearch.trim()) {
+      const q = itemSearch.trim().toLowerCase();
+      result = result.filter((s: any) =>
+        s.name.toLowerCase().includes(q) ||
+        (s.code || "").toLowerCase().includes(q) ||
+        (s.inventory_categories?.name || "").toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [stockItems, itemSearch, categoryFilter]);
 
   const toggleItemSelection = (id: string) => {
     setSelectedItemIds((prev) => {
@@ -416,9 +431,20 @@ export const AddPurchaseInvoicePage: React.FC = () => {
         <DialogContent className="sm:max-w-2xl max-h-[80vh]">
           <DialogHeader><DialogTitle>اختيار أصناف</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="relative">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="بحث بالصنف أو الكود أو المجموعة..." value={itemSearch} onChange={(e) => setItemSearch(e.target.value)} className="glass-input pr-9" />
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="بحث بالصنف أو الكود..." value={itemSearch} onChange={(e) => setItemSearch(e.target.value)} className="glass-input pr-9" />
+              </div>
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-[180px]"><SelectValue placeholder="كل المجموعات" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">كل المجموعات</SelectItem>
+                  {categories.map((c) => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="max-h-[50vh] overflow-y-auto space-y-1">
               {filteredStockItems.length === 0 ? (

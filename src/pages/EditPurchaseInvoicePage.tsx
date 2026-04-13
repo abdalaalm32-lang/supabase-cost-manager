@@ -163,7 +163,7 @@ export const EditPurchaseInvoicePage: React.FC = () => {
 
   const filteredStockItems = useMemo(() => {
     let result = stockItems;
-    if (categoryFilter) {
+    if (categoryFilter && categoryFilter !== "all") {
       result = result.filter((s: any) => s.inventory_categories?.name === categoryFilter);
     }
     if (itemSearch.trim()) {

@@ -56,6 +56,9 @@ export const ProductionRecipesPage: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [recipeId, setRecipeId] = useState<string | null>(null);
 
+  // Produced quantity state
+  const [producedQty, setProducedQty] = useState<number>(0);
+
   const [showAddIngredients, setShowAddIngredients] = useState(false);
   const [ingredientSearch, setIngredientSearch] = useState("");
   const [filterDept, setFilterDept] = useState("all");
@@ -87,6 +90,17 @@ export const ProductionRecipesPage: React.FC = () => {
     queryKey: ["stock-items-all", companyId],
     queryFn: async () => {
       const { data, error } = await supabase.from("stock_items").select("*").eq("active", true).order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
+  // Fetch stock_item_locations to know which items are linked to which branches
+  const { data: stockItemLocations = [] } = useQuery({
+    queryKey: ["stock-item-locations", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("stock_item_locations").select("*");
       if (error) throw error;
       return data;
     },
@@ -128,11 +142,31 @@ export const ProductionRecipesPage: React.FC = () => {
     return categories.find((c: any) => c.name === "المصنعات" || c.name?.includes("مصنع"));
   }, [categories]);
 
-  // Products are stock items under "المصنعات" category
+  // Build a map: stock_item_id -> Set of branch_ids it's linked to
+  const itemBranchMap = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    for (const loc of stockItemLocations) {
+      if (loc.branch_id) {
+        if (!map.has(loc.stock_item_id)) map.set(loc.stock_item_id, new Set());
+        map.get(loc.stock_item_id)!.add(loc.branch_id);
+      }
+    }
+    return map;
+  }, [stockItemLocations]);
+
+  // Products are stock items under "المصنعات" category, filtered by branch location
   const productItems = useMemo(() => {
     if (!manufacturingCategory) return [];
-    return allStockItems.filter((si: any) => si.category_id === manufacturingCategory.id);
-  }, [allStockItems, manufacturingCategory]);
+    let items = allStockItems.filter((si: any) => si.category_id === manufacturingCategory.id);
+    // If a branch is selected, only show items linked to that branch
+    if (selectedBranchId) {
+      items = items.filter((si: any) => {
+        const linkedBranches = itemBranchMap.get(si.id);
+        return linkedBranches && linkedBranches.has(selectedBranchId);
+      });
+    }
+    return items;
+  }, [allStockItems, manufacturingCategory, selectedBranchId, itemBranchMap]);
 
   // Filter recipes by selected branch
   const branchRecipes = useMemo(() => {
@@ -204,6 +238,7 @@ export const ProductionRecipesPage: React.FC = () => {
       setIsEditing(true);
       setIngredients([]);
     }
+    setProducedQty(0);
   }, [recipeMap, allStockItems]);
 
   const handleSelectProduct = (productId: string) => {
@@ -261,8 +296,6 @@ export const ProductionRecipesPage: React.FC = () => {
   };
 
   // Calculate cost: qty is in recipe_unit. Convert to stock_unit using conversion_factor.
-  // e.g. recipe_unit=جرام, stock_unit=كجم, conversion_factor=1000
-  // If user enters 100 جرام → 100/1000 = 0.1 كجم → cost = 0.1 * avg_cost_per_kg
   const getIngredientCost = (ing: LocalIngredient) => {
     const factor = ing.conversion_factor || 1;
     const qtyInStockUnit = ing.qty / factor;
@@ -272,6 +305,12 @@ export const ProductionRecipesPage: React.FC = () => {
   const totalIngredientsCost = useMemo(() => {
     return ingredients.reduce((sum, ing) => sum + getIngredientCost(ing), 0);
   }, [ingredients]);
+
+  // Unit cost per produced quantity
+  const unitCost = useMemo(() => {
+    if (producedQty > 0) return totalIngredientsCost / producedQty;
+    return 0;
+  }, [totalIngredientsCost, producedQty]);
 
   // Global ingredient search across all production recipes
   const globalSearchResults = useMemo(() => {
@@ -334,11 +373,16 @@ export const ProductionRecipesPage: React.FC = () => {
 
   const propagateToOtherBranches = async (ingsToPropagate: LocalIngredient[]) => {
     if (!selectedProductId || !companyId) return;
+    // Get linked branches for this stock item
+    const linkedBranches = itemBranchMap.get(selectedProductId) || new Set();
+    
     // Find other branch recipes for the same stock_item_id
     const otherRecipes = recipes.filter((r: any) =>
       r.stock_item_id === selectedProductId && r.id !== recipeId && r.branch_id !== selectedBranchId
     );
     for (const otherRecipe of otherRecipes) {
+      // Only propagate to linked branches
+      if (!linkedBranches.has(otherRecipe.branch_id)) continue;
       await supabase.from("production_recipe_ingredients").delete().eq("recipe_id", otherRecipe.id);
       if (ingsToPropagate.length > 0) {
         const rows = ingsToPropagate.map(ing => ({
@@ -350,10 +394,12 @@ export const ProductionRecipesPage: React.FC = () => {
       }
       await supabase.from("production_recipes").update({ last_updated: new Date().toISOString() }).eq("id", otherRecipe.id);
     }
-    // Create recipes for branches that don't have one yet
+    // Create recipes for linked branches that don't have one yet
     const existingBranchIds = new Set(otherRecipes.map((r: any) => r.branch_id));
     if (selectedBranchId) existingBranchIds.add(selectedBranchId);
-    const missingBranches = branches.filter((b: any) => !existingBranchIds.has(b.id));
+    const missingBranches = branches.filter((b: any) => 
+      linkedBranches.has(b.id) && !existingBranchIds.has(b.id)
+    );
     for (const branch of missingBranches) {
       const { data: newR, error } = await supabase.from("production_recipes").insert({
         company_id: companyId,
@@ -380,26 +426,33 @@ export const ProductionRecipesPage: React.FC = () => {
       setIsEditing(false);
       queryClient.invalidateQueries({ queryKey: ["production-recipes"] });
 
-      // Check if there are other branches to propagate to
-      if (selectedBranchId && branches.length > 1) {
-        const otherBranchesWithRecipe = recipes.filter((r: any) =>
-          r.stock_item_id === selectedProductId && r.branch_id !== selectedBranchId
-        );
-        const branchesWithoutRecipe = branches.filter((b: any) => {
-          if (b.id === selectedBranchId) return false;
-          return !otherBranchesWithRecipe.some((r: any) => r.branch_id === b.id);
-        });
-        const allOther = [...otherBranchesWithRecipe.map((r: any) => {
-          const br = branches.find((b: any) => b.id === r.branch_id);
-          return { id: r.id, branchName: br?.name || "فرع غير معروف", exists: true };
-        }), ...branchesWithoutRecipe.map((b: any) => ({
-          id: null, branchName: b.name, exists: false,
-        }))];
-        if (allOther.length > 0) {
-          setPendingSaveIngredients([...ingredients]);
-          setOtherBranchRecipes(allOther);
-          setShowPropagateDialog(true);
-          return;
+      // Check if there are other linked branches to propagate to
+      if (selectedBranchId) {
+        const linkedBranches = itemBranchMap.get(selectedProductId) || new Set();
+        // Get other linked branches (excluding current)
+        const otherLinkedBranchIds = Array.from(linkedBranches).filter(bid => bid !== selectedBranchId);
+        
+        if (otherLinkedBranchIds.length > 0) {
+          const otherBranchesWithRecipe = recipes.filter((r: any) =>
+            r.stock_item_id === selectedProductId && r.branch_id !== selectedBranchId && linkedBranches.has(r.branch_id)
+          );
+          const branchesWithoutRecipe = branches.filter((b: any) => {
+            if (b.id === selectedBranchId) return false;
+            if (!linkedBranches.has(b.id)) return false;
+            return !otherBranchesWithRecipe.some((r: any) => r.branch_id === b.id);
+          });
+          const allOther = [...otherBranchesWithRecipe.map((r: any) => {
+            const br = branches.find((b: any) => b.id === r.branch_id);
+            return { id: r.id, branchName: br?.name || "فرع غير معروف", exists: true };
+          }), ...branchesWithoutRecipe.map((b: any) => ({
+            id: null, branchName: b.name, exists: false,
+          }))];
+          if (allOther.length > 0) {
+            setPendingSaveIngredients([...ingredients]);
+            setOtherBranchRecipes(allOther);
+            setShowPropagateDialog(true);
+            return;
+          }
         }
       }
 
@@ -438,6 +491,7 @@ export const ProductionRecipesPage: React.FC = () => {
     setIngredients([]);
     setRecipeStatus("draft");
     setIsEditing(true);
+    setProducedQty(0);
     queryClient.invalidateQueries({ queryKey: ["production-recipes"] });
     toast({ title: "تم حذف التركيبة" });
   };
@@ -458,18 +512,18 @@ export const ProductionRecipesPage: React.FC = () => {
           {selectedProduct && getStatusBadge(recipeStatus === "editing" ? "editing" : recipeStatus)}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Branch Selector */}
-          <Select value={selectedBranchId || "all"} onValueChange={(v) => {
-            setSelectedBranchId(v === "all" ? null : v);
+          {/* Branch Selector - no "all branches" option */}
+          <Select value={selectedBranchId || ""} onValueChange={(v) => {
+            setSelectedBranchId(v || null);
             setSelectedProductId(null);
             setIngredients([]);
             setRecipeId(null);
             setRecipeStatus("draft");
             setIsEditing(false);
+            setProducedQty(0);
           }}>
             <SelectTrigger className="w-48 h-9 text-sm"><SelectValue placeholder="اختر الفرع" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">كل الفروع</SelectItem>
               {branches.map((b: any) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
             </SelectContent>
           </Select>
@@ -543,148 +597,184 @@ export const ProductionRecipesPage: React.FC = () => {
       {/* Click outside to close global results */}
       {showGlobalResults && <div className="fixed inset-0 z-40" onClick={() => setShowGlobalResults(false)} />}
 
-      {!manufacturingCategory && (
+      {!selectedBranchId && (
+        <div className="glass-card p-6 text-center">
+          <p className="text-muted-foreground">يرجى تحديد الفرع أولاً لعرض المنتجات المصنعة المرتبطة به.</p>
+        </div>
+      )}
+
+      {selectedBranchId && !manufacturingCategory && (
         <div className="glass-card p-6 text-center">
           <p className="text-muted-foreground">لا توجد مجموعة "المصنعات" في مواد المخزون. يرجى إنشاء مجموعة باسم "المصنعات" أولاً.</p>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Right Panel - Products */}
-        <div className="lg:col-span-1 glass-card p-4 space-y-4 max-h-[calc(100vh-180px)] overflow-auto">
-          <h2 className="font-bold text-sm">المنتجات المصنعة</h2>
-          <div className="relative">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="بحث بمنتج أو مجموعة..." value={productSearch} onChange={e => setProductSearch(e.target.value)} className="pr-9 h-9 text-sm" />
-          </div>
-          <div className="space-y-1.5">
-            {filteredProducts.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-4">لا توجد منتجات مصنعة</p>
-            ) : filteredProducts.map((p: any) => {
-              const hasRecipe = !!recipeMap[p.id];
-              const isSelected = selectedProductId === p.id;
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => handleSelectProduct(p.id)}
-                  className={cn(
-                    "w-full text-right p-3 rounded-xl transition-all duration-200 border",
-                    isSelected
-                      ? "bg-primary/10 border-primary/30"
-                      : "bg-muted/20 border-transparent hover:bg-muted/40"
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{p.name}</p>
-                      <span className="text-xs text-muted-foreground font-mono">{p.code}</span>
+      {selectedBranchId && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Right Panel - Products */}
+          <div className="lg:col-span-1 glass-card p-4 space-y-4 max-h-[calc(100vh-180px)] overflow-auto">
+            <h2 className="font-bold text-sm">المنتجات المصنعة</h2>
+            <div className="relative">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="بحث بمنتج أو مجموعة..." value={productSearch} onChange={e => setProductSearch(e.target.value)} className="pr-9 h-9 text-sm" />
+            </div>
+            <div className="space-y-1.5">
+              {filteredProducts.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">لا توجد منتجات مصنعة مرتبطة بهذا الفرع</p>
+              ) : filteredProducts.map((p: any) => {
+                const hasRecipe = !!recipeMap[p.id];
+                const isSelected = selectedProductId === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => handleSelectProduct(p.id)}
+                    className={cn(
+                      "w-full text-right p-3 rounded-xl transition-all duration-200 border",
+                      isSelected
+                        ? "bg-primary/10 border-primary/30"
+                        : "bg-muted/20 border-transparent hover:bg-muted/40"
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{p.name}</p>
+                        <span className="text-xs text-muted-foreground font-mono">{p.code}</span>
+                      </div>
+                      {hasRecipe ? (
+                        <CheckCircle2 size={14} className="text-green-400 flex-shrink-0" />
+                      ) : (
+                        <Clock size={14} className="text-yellow-400 flex-shrink-0" />
+                      )}
                     </div>
-                    {hasRecipe ? (
-                      <CheckCircle2 size={14} className="text-green-400 flex-shrink-0" />
-                    ) : (
-                      <Clock size={14} className="text-yellow-400 flex-shrink-0" />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Left Panel - Recipe Builder */}
+          <div className="lg:col-span-2 space-y-4">
+            {!selectedProduct ? (
+              <div className="glass-card p-12 text-center">
+                <ChefHat size={48} className="mx-auto mb-4 text-muted-foreground/30" />
+                <p className="text-muted-foreground">اختر منتج مصنع من القائمة لبدء بناء التركيبة</p>
+              </div>
+            ) : (
+              <>
+                <div className="glass-card p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <h3 className="font-bold text-lg">{selectedProduct.name}</h3>
+                      <p className="text-sm text-muted-foreground font-mono">{selectedProduct.code}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-medium text-muted-foreground whitespace-nowrap">الكمية المنتجة:</label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.001"
+                        value={producedQty || ""}
+                        onChange={e => setProducedQty(Number(e.target.value) || 0)}
+                        className="w-28 h-9 text-sm"
+                        placeholder="0"
+                      />
+                      <span className="text-sm text-muted-foreground">{selectedProduct.stock_unit || "كجم"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {!isLocked && (
+                  <Button
+                    onClick={() => { setShowAddIngredients(true); setSelectedItemIds(new Set()); setIngredientSearch(""); setFilterDept("all"); setFilterCat("all"); }}
+                    size="sm"
+                  >
+                    <Plus size={14} /> إضافة خامات
+                  </Button>
+                )}
+
+                <div className="glass-card overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-right">الخامة</TableHead>
+                        <TableHead className="text-right">وحدة الوصفة</TableHead>
+                        <TableHead className="text-right">الكمية</TableHead>
+                        <TableHead className="text-right">م. التكلفة/{"\u200b"}وحدة وصفة</TableHead>
+                        <TableHead className="text-right">الإجمالي</TableHead>
+                        {!isLocked && <TableHead className="text-right w-12">حذف</TableHead>}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {ingredients.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground text-sm">
+                            لا توجد خامات — أضف مكونات التركيبة
+                          </TableCell>
+                        </TableRow>
+                      ) : ingredients.map((ing, idx) => {
+                        const total = getIngredientCost(ing);
+                        return (
+                          <TableRow key={idx}>
+                            <TableCell>
+                              <div>
+                                <span className="font-medium text-sm">{ing.name}</span>
+                                <span className="text-xs text-muted-foreground block font-mono">{ing.code}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-sm">{ing.recipe_unit}</TableCell>
+                            <TableCell>
+                              {isLocked ? (
+                                <span className="text-sm">{ing.qty}</span>
+                              ) : (
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="0.001"
+                                  value={ing.qty || ""}
+                                  onChange={e => updateIngredientQty(idx, e.target.value)}
+                                  className="w-24 h-8 text-sm"
+                                />
+                              )}
+                            </TableCell>
+                            <TableCell className="text-sm">{(ing.avg_cost / (ing.conversion_factor || 1)).toFixed(4)} / {ing.recipe_unit}</TableCell>
+                            <TableCell className="text-sm font-semibold">{total.toFixed(4)}</TableCell>
+                            {!isLocked && (
+                              <TableCell>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteIngredient(idx)}>
+                                  <Trash2 size={14} />
+                                </Button>
+                              </TableCell>
+                            )}
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                <div className="glass-card p-4">
+                  <div className="flex items-center justify-center gap-8">
+                    <div className="text-center">
+                      <div className="flex items-center justify-center mb-2">
+                        <ShoppingBasket size={18} className="text-primary" />
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-1">إجمالي تكلفة التركيبة</p>
+                      <p className="font-bold text-lg">{totalIngredientsCost.toFixed(2)} EGP</p>
+                    </div>
+                    {producedQty > 0 && (
+                      <div className="text-center border-r pr-8">
+                        <p className="text-xs text-muted-foreground mb-1">تكلفة الوحدة</p>
+                        <p className="font-bold text-lg">{unitCost.toFixed(2)} EGP</p>
+                        <p className="text-xs text-muted-foreground">لكل {selectedProduct.stock_unit || "كجم"}</p>
+                      </div>
                     )}
                   </div>
-                </button>
-              );
-            })}
+                </div>
+              </>
+            )}
           </div>
         </div>
-
-        {/* Left Panel - Recipe Builder */}
-        <div className="lg:col-span-2 space-y-4">
-          {!selectedProduct ? (
-            <div className="glass-card p-12 text-center">
-              <ChefHat size={48} className="mx-auto mb-4 text-muted-foreground/30" />
-              <p className="text-muted-foreground">اختر منتج مصنع من القائمة لبدء بناء التركيبة</p>
-            </div>
-          ) : (
-            <>
-              <div className="glass-card p-4">
-                <h3 className="font-bold text-lg">{selectedProduct.name}</h3>
-                <p className="text-sm text-muted-foreground font-mono">{selectedProduct.code}</p>
-              </div>
-
-              {!isLocked && (
-                <Button
-                  onClick={() => { setShowAddIngredients(true); setSelectedItemIds(new Set()); setIngredientSearch(""); setFilterDept("all"); setFilterCat("all"); }}
-                  size="sm"
-                >
-                  <Plus size={14} /> إضافة خامات
-                </Button>
-              )}
-
-              <div className="glass-card overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-right">الخامة</TableHead>
-                      <TableHead className="text-right">وحدة الوصفة</TableHead>
-                      <TableHead className="text-right">الكمية</TableHead>
-                      <TableHead className="text-right">م. التكلفة/{"\u200b"}وحدة وصفة</TableHead>
-                      <TableHead className="text-right">الإجمالي</TableHead>
-                      {!isLocked && <TableHead className="text-right w-12">حذف</TableHead>}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {ingredients.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground text-sm">
-                          لا توجد خامات — أضف مكونات التركيبة
-                        </TableCell>
-                      </TableRow>
-                    ) : ingredients.map((ing, idx) => {
-                      const total = getIngredientCost(ing);
-                      return (
-                        <TableRow key={idx}>
-                          <TableCell>
-                            <div>
-                              <span className="font-medium text-sm">{ing.name}</span>
-                              <span className="text-xs text-muted-foreground block font-mono">{ing.code}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-sm">{ing.recipe_unit}</TableCell>
-                          <TableCell>
-                            {isLocked ? (
-                              <span className="text-sm">{ing.qty}</span>
-                            ) : (
-                              <Input
-                                type="number"
-                                min="0"
-                                step="0.001"
-                                value={ing.qty || ""}
-                                onChange={e => updateIngredientQty(idx, e.target.value)}
-                                className="w-24 h-8 text-sm"
-                              />
-                            )}
-                          </TableCell>
-                          <TableCell className="text-sm">{(ing.avg_cost / (ing.conversion_factor || 1)).toFixed(4)} / {ing.recipe_unit}</TableCell>
-                          <TableCell className="text-sm font-semibold">{total.toFixed(4)}</TableCell>
-                          {!isLocked && (
-                            <TableCell>
-                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteIngredient(idx)}>
-                                <Trash2 size={14} />
-                              </Button>
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-
-              <div className="glass-card p-4 text-center">
-                <div className="flex items-center justify-center mb-2">
-                  <ShoppingBasket size={18} className="text-primary" />
-                </div>
-                <p className="text-xs text-muted-foreground mb-1">إجمالي تكلفة التركيبة</p>
-                <p className="font-bold text-lg">{totalIngredientsCost.toFixed(2)} EGP</p>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
+      )}
 
       {/* Add Ingredients Modal */}
       <Dialog open={showAddIngredients} onOpenChange={setShowAddIngredients}>

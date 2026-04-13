@@ -459,11 +459,13 @@ export const RecipesPage: React.FC = () => {
       setIsEditing(false);
       queryClient.invalidateQueries({ queryKey: ["recipes"] });
 
-      // Check for matching POS items in other branches (same name)
+      // Check for matching POS items in other branches (same name - normalized)
       if (selectedProduct) {
+        const normalizeName = (n: string) => n.replace(/\s+/g, ' ').trim();
+        const currentName = normalizeName(selectedProduct.name);
         const matchingItems = posItems.filter((p: any) =>
           p.id !== selectedProductId &&
-          p.name === selectedProduct.name
+          normalizeName(p.name) === currentName
         );
         if (matchingItems.length > 0) {
           const matchesWithBranch = matchingItems.map((p: any) => {
@@ -1412,7 +1414,7 @@ th { border:1px solid #000; padding:5px 6px; font-size:10px; text-align:center; 
           <AlertDialogHeader>
             <AlertDialogTitle>تطبيق الوصفة على الفروع الأخرى؟</AlertDialogTitle>
             <AlertDialogDescription className="space-y-2">
-              <p>يوجد نفس الصنف (بنفس الاسم والكود) في فروع أخرى. هل تريد تطبيق نفس الوصفة عليهم؟</p>
+              <p><p>يوجد نفس الصنف (بنفس الاسم) في فروع أخرى. هل تريد تطبيق نفس الوصفة عليهم؟</p>. هل تريد تطبيق نفس الوصفة عليهم؟</p>
               <ul className="list-disc pr-6 space-y-1">
                 {otherBranchMatches.map((m, idx) => (
                   <li key={idx} className="text-sm">

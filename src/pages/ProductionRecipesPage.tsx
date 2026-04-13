@@ -299,41 +299,136 @@ export const ProductionRecipesPage: React.FC = () => {
     }).filter((item: any) => item.usedInCount > 0);
   }, [globalSearch, allStockItems, recipes, productItems]);
 
+  const saveRecipeCore = async (ingredientsToSave: LocalIngredient[]) => {
+    if (!selectedProductId || !companyId) return;
+    if (recipeId) {
+      await supabase.from("production_recipe_ingredients").delete().eq("recipe_id", recipeId);
+      if (ingredientsToSave.length > 0) {
+        const rows = ingredientsToSave.map(ing => ({
+          recipe_id: recipeId,
+          stock_item_id: ing.stock_item_id,
+          qty: ing.qty,
+        }));
+        const { error } = await supabase.from("production_recipe_ingredients").insert(rows);
+        if (error) throw error;
+      }
+      await supabase.from("production_recipes").update({ last_updated: new Date().toISOString() }).eq("id", recipeId);
+    } else {
+      const { data: newRecipe, error } = await supabase.from("production_recipes").insert({
+        company_id: companyId,
+        stock_item_id: selectedProductId,
+        branch_id: selectedBranchId || null,
+      }).select().single();
+      if (error) throw error;
+      if (ingredientsToSave.length > 0) {
+        const rows = ingredientsToSave.map(ing => ({
+          recipe_id: newRecipe.id,
+          stock_item_id: ing.stock_item_id,
+          qty: ing.qty,
+        }));
+        await supabase.from("production_recipe_ingredients").insert(rows);
+      }
+      setRecipeId(newRecipe.id);
+    }
+  };
+
+  const propagateToOtherBranches = async (ingsToPropagate: LocalIngredient[]) => {
+    if (!selectedProductId || !companyId) return;
+    // Find other branch recipes for the same stock_item_id
+    const otherRecipes = recipes.filter((r: any) =>
+      r.stock_item_id === selectedProductId && r.id !== recipeId && r.branch_id !== selectedBranchId
+    );
+    for (const otherRecipe of otherRecipes) {
+      await supabase.from("production_recipe_ingredients").delete().eq("recipe_id", otherRecipe.id);
+      if (ingsToPropagate.length > 0) {
+        const rows = ingsToPropagate.map(ing => ({
+          recipe_id: otherRecipe.id,
+          stock_item_id: ing.stock_item_id,
+          qty: ing.qty,
+        }));
+        await supabase.from("production_recipe_ingredients").insert(rows);
+      }
+      await supabase.from("production_recipes").update({ last_updated: new Date().toISOString() }).eq("id", otherRecipe.id);
+    }
+    // Create recipes for branches that don't have one yet
+    const existingBranchIds = new Set(otherRecipes.map((r: any) => r.branch_id));
+    if (selectedBranchId) existingBranchIds.add(selectedBranchId);
+    const missingBranches = branches.filter((b: any) => !existingBranchIds.has(b.id));
+    for (const branch of missingBranches) {
+      const { data: newR, error } = await supabase.from("production_recipes").insert({
+        company_id: companyId,
+        stock_item_id: selectedProductId,
+        branch_id: branch.id,
+      }).select().single();
+      if (error) continue;
+      if (ingsToPropagate.length > 0) {
+        const rows = ingsToPropagate.map(ing => ({
+          recipe_id: newR.id,
+          stock_item_id: ing.stock_item_id,
+          qty: ing.qty,
+        }));
+        await supabase.from("production_recipe_ingredients").insert(rows);
+      }
+    }
+  };
+
   const handleSave = async () => {
     if (!selectedProductId || !companyId) return;
     try {
-      if (recipeId) {
-        await supabase.from("production_recipe_ingredients").delete().eq("recipe_id", recipeId);
-        if (ingredients.length > 0) {
-          const rows = ingredients.map(ing => ({
-            recipe_id: recipeId,
-            stock_item_id: ing.stock_item_id,
-            qty: ing.qty,
-          }));
-          const { error } = await supabase.from("production_recipe_ingredients").insert(rows);
-          if (error) throw error;
-        }
-        await supabase.from("production_recipes").update({ last_updated: new Date().toISOString() }).eq("id", recipeId);
-      } else {
-        const { data: newRecipe, error } = await supabase.from("production_recipes").insert({
-          company_id: companyId,
-          stock_item_id: selectedProductId,
-        }).select().single();
-        if (error) throw error;
-        if (ingredients.length > 0) {
-          const rows = ingredients.map(ing => ({
-            recipe_id: newRecipe.id,
-            stock_item_id: ing.stock_item_id,
-            qty: ing.qty,
-          }));
-          await supabase.from("production_recipe_ingredients").insert(rows);
-        }
-        setRecipeId(newRecipe.id);
-      }
+      await saveRecipeCore(ingredients);
       setRecipeStatus("ready");
       setIsEditing(false);
       queryClient.invalidateQueries({ queryKey: ["production-recipes"] });
+
+      // Check if there are other branches to propagate to
+      if (selectedBranchId && branches.length > 1) {
+        const otherBranchesWithRecipe = recipes.filter((r: any) =>
+          r.stock_item_id === selectedProductId && r.branch_id !== selectedBranchId
+        );
+        const branchesWithoutRecipe = branches.filter((b: any) => {
+          if (b.id === selectedBranchId) return false;
+          return !otherBranchesWithRecipe.some((r: any) => r.branch_id === b.id);
+        });
+        const allOther = [...otherBranchesWithRecipe.map((r: any) => {
+          const br = branches.find((b: any) => b.id === r.branch_id);
+          return { id: r.id, branchName: br?.name || "فرع غير معروف", exists: true };
+        }), ...branchesWithoutRecipe.map((b: any) => ({
+          id: null, branchName: b.name, exists: false,
+        }))];
+        if (allOther.length > 0) {
+          setPendingSaveIngredients([...ingredients]);
+          setOtherBranchRecipes(allOther);
+          setShowPropagateDialog(true);
+          return;
+        }
+      }
+
       toast({ title: "تم حفظ تركيبة الإنتاج بنجاح" });
+    } catch (err: any) {
+      toast({ title: "خطأ", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handlePropagateConfirm = async () => {
+    try {
+      await propagateToOtherBranches(pendingSaveIngredients);
+      queryClient.invalidateQueries({ queryKey: ["production-recipes"] });
+      toast({ title: "تم حفظ التركيبة وتطبيقها على جميع الفروع بنجاح" });
+    } catch (err: any) {
+      toast({ title: "خطأ في النشر", description: err.message, variant: "destructive" });
+    } finally {
+      setShowPropagateDialog(false);
+      setPendingSaveIngredients([]);
+      setOtherBranchRecipes([]);
+    }
+  };
+
+  const handlePropagateCancel = () => {
+    setShowPropagateDialog(false);
+    setPendingSaveIngredients([]);
+    setOtherBranchRecipes([]);
+    toast({ title: "تم حفظ تركيبة الإنتاج بنجاح" });
+  };
     } catch (err: any) {
       toast({ title: "خطأ", description: err.message, variant: "destructive" });
     }

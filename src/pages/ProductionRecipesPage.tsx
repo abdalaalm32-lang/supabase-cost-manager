@@ -458,6 +458,22 @@ export const ProductionRecipesPage: React.FC = () => {
           {selectedProduct && getStatusBadge(recipeStatus === "editing" ? "editing" : recipeStatus)}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Branch Selector */}
+          <Select value={selectedBranchId || "all"} onValueChange={(v) => {
+            setSelectedBranchId(v === "all" ? null : v);
+            setSelectedProductId(null);
+            setIngredients([]);
+            setRecipeId(null);
+            setRecipeStatus("draft");
+            setIsEditing(false);
+          }}>
+            <SelectTrigger className="w-48 h-9 text-sm"><SelectValue placeholder="اختر الفرع" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">كل الفروع</SelectItem>
+              {branches.map((b: any) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        <div className="flex items-center gap-2 flex-wrap">
           {/* Global Ingredient Search */}
           <div className="relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

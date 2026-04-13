@@ -560,7 +560,7 @@ export const RecipesPage: React.FC = () => {
     toast({ title: "تم حذف الوصفة" });
   };
 
-
+  const handleDuplicate = () => {
     if (ingredients.length === 0) {
       toast({ title: "لا توجد مكونات لنسخها", variant: "destructive" });
       return;

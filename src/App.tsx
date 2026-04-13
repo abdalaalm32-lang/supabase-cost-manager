@@ -267,11 +267,19 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
   // Company deactivation: auto-logout and redirect to login
   const companyDeactivated = !auth.isAdmin && companyStatus && !companyStatus.active;
+  const userSuspended = !!(auth.profile && auth.profile.status !== "نشط");
+
   useEffect(() => {
     if (companyDeactivated) {
       supabase.auth.signOut();
     }
   }, [companyDeactivated]);
+
+  useEffect(() => {
+    if (userSuspended) {
+      supabase.auth.signOut();
+    }
+  }, [userSuspended]);
 
   if (!auth.isReady) return null;
   if (!auth.session) return <Navigate to="/login" replace />;
@@ -288,8 +296,10 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     }
   }
 
-  // Individual user suspension check
-  if (auth.profile && auth.profile.status !== "نشط") return <SuspendedOverlay />;
+  // Individual user suspension: redirect to login
+  if (userSuspended) {
+    return <Navigate to="/login?reason=user_suspended" replace />;
+  }
 
   // Individual user subscription expiry check (not for admins/owners)
   if (!auth.isAdmin && !auth.isOwner && auth.profile) {

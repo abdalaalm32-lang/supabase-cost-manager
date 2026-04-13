@@ -34,7 +34,10 @@ export const LoginPage: React.FC = () => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("reason") === "company_deactivated") {
       setCompanyDeactivated(true);
-      // Clean URL
+      window.history.replaceState({}, "", "/login");
+    }
+    if (params.get("reason") === "user_suspended") {
+      setSuspended(true);
       window.history.replaceState({}, "", "/login");
     }
   }, []);

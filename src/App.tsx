@@ -282,24 +282,19 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   }, [userSuspended]);
 
   if (!auth.isReady) return null;
-  if (!auth.session) return <Navigate to="/login" replace />;
 
+  // Check deactivation/suspension BEFORE session check so the reason param is preserved
   if (companyDeactivated) {
     return <Navigate to="/login?reason=company_deactivated" replace />;
   }
 
-  // Company subscription expiry check (not for admins)
-  if (!auth.isAdmin && companyStatus && companyStatus.subscription_type !== "unlimited" && companyStatus.subscription_end) {
-    const endDate = new Date(companyStatus.subscription_end);
-    if (endDate < new Date()) {
-      return <SubscriptionExpiredOverlay type="company" />;
-    }
-  }
-
-  // Individual user suspension: redirect to login
   if (userSuspended) {
     return <Navigate to="/login?reason=user_suspended" replace />;
   }
+
+  if (!auth.session) return <Navigate to="/login" replace />;
+
+  // Company subscription expiry check (not for admins)
 
   // Individual user subscription expiry check (not for admins/owners)
   if (!auth.isAdmin && !auth.isOwner && auth.profile) {

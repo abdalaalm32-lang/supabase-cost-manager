@@ -463,8 +463,7 @@ export const RecipesPage: React.FC = () => {
       if (selectedProduct) {
         const matchingItems = posItems.filter((p: any) =>
           p.id !== selectedProductId &&
-          p.name === selectedProduct.name &&
-          (selectedProduct.branch_id ? (p.branch_id && p.branch_id !== selectedProduct.branch_id) : p.branch_id)
+          p.name === selectedProduct.name
         );
         if (matchingItems.length > 0) {
           const matchesWithBranch = matchingItems.map((p: any) => {

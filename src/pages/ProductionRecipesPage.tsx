@@ -57,7 +57,8 @@ export const ProductionRecipesPage: React.FC = () => {
   const [recipeId, setRecipeId] = useState<string | null>(null);
 
   // Produced quantity state
-  const [producedQty, setProducedQty] = useState<number>(0);
+  const [producedQtyStr, setProducedQtyStr] = useState<string>("");
+  const producedQty = Number(producedQtyStr) || 0;
 
   const [showAddIngredients, setShowAddIngredients] = useState(false);
   const [ingredientSearch, setIngredientSearch] = useState("");

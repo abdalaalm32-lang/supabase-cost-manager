@@ -1028,6 +1028,7 @@ export type Database = {
           company_id: string
           id: string
           last_updated: string
+          produced_qty: number
           stock_item_id: string
         }
         Insert: {
@@ -1035,6 +1036,7 @@ export type Database = {
           company_id: string
           id?: string
           last_updated?: string
+          produced_qty?: number
           stock_item_id: string
         }
         Update: {
@@ -1042,6 +1044,7 @@ export type Database = {
           company_id?: string
           id?: string
           last_updated?: string
+          produced_qty?: number
           stock_item_id?: string
         }
         Relationships: [

@@ -17,6 +17,64 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    // Verify caller's JWT
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "غير مصرح" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: claimsData, error: claimsError } =
+      await supabaseAdmin.auth.getClaims(token);
+
+    if (claimsError || !claimsData?.claims?.sub) {
+      return new Response(
+        JSON.stringify({ error: "غير مصرح" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const callerId = claimsData.claims.sub as string;
+
+    // Verify caller is a system admin or company admin/owner
+    const { data: callerProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("company_id")
+      .eq("user_id", callerId)
+      .single();
+
+    if (!callerProfile) {
+      return new Response(
+        JSON.stringify({ error: "لم يتم العثور على الملف الشخصي" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { data: isSysAdmin } = await supabaseAdmin.rpc("has_role", {
+      _user_id: callerId,
+      _role: "admin",
+    });
+
+    const { data: isCompanyAdmin } = await supabaseAdmin.rpc("is_company_admin", {
+      _user_id: callerId,
+      _company_id: callerProfile.company_id,
+    });
+
+    const { data: isOwner } = await supabaseAdmin.rpc("is_company_owner", {
+      _user_id: callerId,
+      _company_id: callerProfile.company_id,
+    });
+
+    if (!isSysAdmin && !isCompanyAdmin && !isOwner) {
+      return new Response(
+        JSON.stringify({ error: "يجب أن تكون مديراً أو مالكاً لإنشاء مستخدم" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const {
       email,
       password,
@@ -43,6 +101,14 @@ Deno.serve(async (req) => {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         }
+      );
+    }
+
+    // Non-system-admins can only create users in their own company
+    if (!isSysAdmin && company_id !== callerProfile.company_id) {
+      return new Response(
+        JSON.stringify({ error: "لا يمكنك إنشاء مستخدم في شركة أخرى" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -113,7 +179,7 @@ Deno.serve(async (req) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    return new Response(JSON.stringify({ error: (err as Error).message }), {
+    return new Response(JSON.stringify({ error: "حدث خطأ غير متوقع" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

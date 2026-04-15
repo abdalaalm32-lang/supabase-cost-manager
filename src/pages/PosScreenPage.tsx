@@ -684,28 +684,36 @@ export const PosScreenPage: React.FC = () => {
               ) : (
                 <div className="flex flex-col gap-1.5">
                   {cart.map((item) => (
-                    <div key={item.id} className="flex items-center gap-2 p-2 rounded-lg border border-border/50 bg-muted/30">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-foreground text-xs truncate">{item.name}</p>
-                        <p className="text-[10px] text-muted-foreground">{item.category_name}</p>
+                    <div key={item.id} className="flex flex-col gap-1 p-2 rounded-lg border border-border/50 bg-muted/30">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-foreground text-xs truncate">{item.name}</p>
+                          <p className="text-[10px] text-muted-foreground">{item.category_name}</p>
+                        </div>
+                        <div className="flex items-center gap-0.5">
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => updateQty(item.id, -1)}><Minus className="h-3 w-3" /></Button>
+                          <Input
+                            type="number" min={1} value={item.quantity}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value);
+                              if (!isNaN(val) && val > 0) setCart((prev) => prev.map((c) => c.id === item.id ? { ...c, quantity: val } : c));
+                              else if (e.target.value === "") setCart((prev) => prev.map((c) => c.id === item.id ? { ...c, quantity: 1 } : c));
+                            }}
+                            className="w-10 h-6 text-center font-bold text-foreground text-xs p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          />
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => updateQty(item.id, 1)}><Plus className="h-3 w-3" /></Button>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-primary text-xs whitespace-nowrap">{(item.unit_price * item.quantity).toFixed(2)}</span>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => removeFromCart(item.id)}><Trash2 className="h-3 w-3" /></Button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-0.5">
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => updateQty(item.id, -1)}><Minus className="h-3 w-3" /></Button>
-                        <Input
-                          type="number" min={1} value={item.quantity}
-                          onChange={(e) => {
-                            const val = parseInt(e.target.value);
-                            if (!isNaN(val) && val > 0) setCart((prev) => prev.map((c) => c.id === item.id ? { ...c, quantity: val } : c));
-                            else if (e.target.value === "") setCart((prev) => prev.map((c) => c.id === item.id ? { ...c, quantity: 1 } : c));
-                          }}
-                          className="w-10 h-6 text-center font-bold text-foreground text-xs p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                        />
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => updateQty(item.id, 1)}><Plus className="h-3 w-3" /></Button>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-bold text-primary text-xs whitespace-nowrap">{(item.unit_price * item.quantity).toFixed(2)}</span>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => removeFromCart(item.id)}><Trash2 className="h-3 w-3" /></Button>
-                      </div>
+                      <Input
+                        placeholder="ملاحظات على الصنف..."
+                        value={item.notes || ""}
+                        onChange={(e) => setCart((prev) => prev.map((c) => c.id === item.id ? { ...c, notes: e.target.value } : c))}
+                        className="glass-input h-6 text-[10px] px-2"
+                      />
                     </div>
                   ))}
                 </div>

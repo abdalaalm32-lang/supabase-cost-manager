@@ -18,11 +18,13 @@ import { format } from "date-fns";
 import {
   Plus, Minus, Trash2, ShoppingCart, CalendarIcon, Store,
   FileText, Printer, AlertCircle, Archive, LayoutGrid, Percent, Tag,
-  Search, Maximize, Minimize, Pause, StickyNote, User, Keyboard
+  Search, Maximize, Minimize, Pause, StickyNote, User, Keyboard,
+  UtensilsCrossed, ShoppingBag, Truck, Banknote, CreditCard
 } from "lucide-react";
 import { PosReceiptPrint } from "@/components/pos/PosReceiptPrint";
 import { PosHeldInvoices } from "@/components/pos/PosHeldInvoices";
 import { PosDailyStats } from "@/components/pos/PosDailyStats";
+import { PosShiftManager } from "@/components/pos/PosShiftManager";
 
 interface CartItem {
   id: string;
@@ -32,6 +34,17 @@ interface CartItem {
   unit_price: number;
   quantity: number;
 }
+
+const ORDER_TYPES = [
+  { value: "صالة", label: "صالة", icon: UtensilsCrossed },
+  { value: "تيك أواي", label: "تيك أواي", icon: ShoppingBag },
+  { value: "دليفري", label: "دليفري", icon: Truck },
+];
+
+const PAYMENT_METHODS = [
+  { value: "كاش", label: "كاش", icon: Banknote },
+  { value: "فيزا", label: "فيزا", icon: CreditCard },
+];
 
 export const PosScreenPage: React.FC = () => {
   const { auth } = useAuth();
@@ -67,12 +80,14 @@ export const PosScreenPage: React.FC = () => {
   const [invoiceNotes, setInvoiceNotes] = useState(saved?.invoiceNotes || "");
   const [showNotes, setShowNotes] = useState(false);
   const [receiptData, setReceiptData] = useState<any>(null);
+  const [orderType, setOrderType] = useState<string>(saved?.orderType || "صالة");
+  const [paymentMethod, setPaymentMethod] = useState<string>(saved?.paymentMethod || "كاش");
 
   // Persist draft to sessionStorage
   useEffect(() => {
-    const draft = { cart, branchId, saleDate: saleDate?.toISOString(), taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId, customerName, invoiceNotes };
+    const draft = { cart, branchId, saleDate: saleDate?.toISOString(), taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId, customerName, invoiceNotes, orderType, paymentMethod };
     sessionStorage.setItem("pos_draft", JSON.stringify(draft));
-  }, [cart, branchId, saleDate, taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId, customerName, invoiceNotes]);
+  }, [cart, branchId, saleDate, taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId, customerName, invoiceNotes, orderType, paymentMethod]);
 
   // Load archived sale from navigation state
   useEffect(() => {
@@ -97,6 +112,8 @@ export const PosScreenPage: React.FC = () => {
       setTaxEnabled(sale.tax_enabled);
       setTaxRate(sale.tax_rate || 0);
       setTaxInputVisible(sale.tax_enabled);
+      setOrderType((sale as any).order_type || "صالة");
+      setPaymentMethod((sale as any).payment_method || "كاش");
       if (sale.discount_amount > 0) {
         setDiscountEnabled(true);
         setDiscountType("fixed");
@@ -228,6 +245,8 @@ export const PosScreenPage: React.FC = () => {
     setCustomerName("");
     setInvoiceNotes("");
     setShowNotes(false);
+    setOrderType("صالة");
+    setPaymentMethod("كاش");
     sessionStorage.removeItem("pos_draft");
   };
 
@@ -248,6 +267,8 @@ export const PosScreenPage: React.FC = () => {
     setTaxEnabled(sale.tax_enabled);
     setTaxRate(sale.tax_rate || 0);
     setTaxInputVisible(sale.tax_enabled);
+    setOrderType(sale.order_type || "صالة");
+    setPaymentMethod(sale.payment_method || "كاش");
     if (sale.discount_amount > 0) {
       setDiscountEnabled(true);
       setDiscountType("fixed");
@@ -270,32 +291,34 @@ export const PosScreenPage: React.FC = () => {
       if (cart.length === 0) throw new Error("السلة فارغة");
       if (!branchId) throw new Error("يجب اختيار الفرع");
 
+      const salePayload = {
+        branch_id: branchId || null,
+        date: saleDate ? saleDate.toISOString() : new Date().toISOString(),
+        total_amount: total, status,
+        tax_enabled: taxEnabled, tax_rate: taxEnabled ? taxRate : 0, tax_amount: taxAmount,
+        discount_amount: discountAmount,
+        order_type: orderType,
+        payment_method: paymentMethod,
+        notes: invoiceNotes || null,
+      };
+
       if (editingSaleId) {
-        // Verify the sale still exists before editing
         const { data: existingSale } = await supabase.from("pos_sales").select("id, invoice_number").eq("id", editingSaleId).maybeSingle();
         
         if (existingSale) {
           const { error: delErr } = await supabase.from("pos_sale_items").delete().eq("sale_id", editingSaleId);
           if (delErr) throw delErr;
 
-          const { error: saleErr } = await supabase.from("pos_sales").update({
-            branch_id: branchId || null,
-            date: saleDate ? saleDate.toISOString() : new Date().toISOString(),
-            total_amount: total, status,
-            tax_enabled: taxEnabled, tax_rate: taxEnabled ? taxRate : 0, tax_amount: taxAmount,
-            discount_amount: discountAmount,
-          }).eq("id", editingSaleId);
+          const { error: saleErr } = await supabase.from("pos_sales").update(salePayload as any).eq("id", editingSaleId);
           if (saleErr) throw saleErr;
 
           const saleItems = cart.map((c) => ({ sale_id: editingSaleId, pos_item_id: c.pos_item_id, quantity: c.quantity, unit_price: c.unit_price, total: c.unit_price * c.quantity }));
           const { error: itemsErr } = await supabase.from("pos_sale_items").insert(saleItems);
           if (itemsErr) throw itemsErr;
 
-          // Fetch updated invoice number for receipt
           const { data: updatedSale } = await supabase.from("pos_sales").select("invoice_number").eq("id", editingSaleId).single();
           return { id: editingSaleId, invoice_number: updatedSale?.invoice_number };
         }
-        // Sale no longer exists — fall through to create new sale
         setEditingSaleId(null);
       }
 
@@ -303,11 +326,7 @@ export const PosScreenPage: React.FC = () => {
       if (numErr) throw numErr;
 
       const { data: sale, error: saleErr } = await supabase.from("pos_sales").insert({
-        company_id: companyId, branch_id: branchId || null,
-        date: saleDate ? saleDate.toISOString() : new Date().toISOString(),
-        total_amount: total, status, invoice_number: invoiceNum,
-        tax_enabled: taxEnabled, tax_rate: taxEnabled ? taxRate : 0, tax_amount: taxAmount,
-        discount_amount: discountAmount,
+        company_id: companyId, invoice_number: invoiceNum, ...salePayload,
       } as any).select().single();
       if (saleErr) throw saleErr;
 
@@ -320,7 +339,6 @@ export const PosScreenPage: React.FC = () => {
       const branchName = branches?.find((b) => b.id === branchId)?.name || "";
 
       if (status === "مكتمل") {
-        // Set receipt data and trigger print
         setReceiptData({
           invoiceNumber: sale.invoice_number,
           branchName,
@@ -331,6 +349,9 @@ export const PosScreenPage: React.FC = () => {
           discountLabel: discountEnabled ? (discountType === "percent" ? `${discountValue}%` : `${discountValue} EGP`) : "",
           taxAmount, taxRate, total,
           companyName: company?.name,
+          notes: invoiceNotes || undefined,
+          orderType,
+          paymentMethod,
         });
         toast.success("تم تنفيذ الفاتورة بنجاح");
       } else if (status === "معلق") {
@@ -343,6 +364,8 @@ export const PosScreenPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ["pos-sales"] });
       queryClient.invalidateQueries({ queryKey: ["pos-held-sales"] });
       queryClient.invalidateQueries({ queryKey: ["pos-daily-stats"] });
+      queryClient.invalidateQueries({ queryKey: ["pos-current-shift"] });
+      queryClient.invalidateQueries({ queryKey: ["pos-shift-sales"] });
     },
     onError: (e: any) => toast.error(e.message || "حدث خطأ"),
   });
@@ -375,6 +398,7 @@ export const PosScreenPage: React.FC = () => {
           .text-sm { font-size: 12px; }
           .text-xs { font-size: 10px; }
           .text-\\[9px\\] { font-size: 9px; }
+          .text-\\[10px\\] { font-size: 10px; }
           .border-dashed { border-style: dashed; }
           .border-dotted { border-style: dotted; }
           .border-gray-400 { border-color: #9ca3af; }
@@ -385,12 +409,15 @@ export const PosScreenPage: React.FC = () => {
           .pt-2 { padding-top: 8px; }
           .mb-2 { margin-bottom: 8px; }
           .mt-1 { margin-top: 4px; }
+          .mt-2 { margin-top: 8px; }
           .mt-3 { margin-top: 12px; }
           .py-1 { padding-top: 4px; padding-bottom: 4px; }
+          .pt-1 { padding-top: 4px; }
           .space-y-1 > * + * { margin-top: 4px; }
           .flex { display: flex; }
           .justify-between { justify-content: space-between; }
           .text-gray-500 { color: #6b7280; }
+          .w-full { width: 100%; }
           @media print { body { width: 80mm; } }
         </style>
       </head>
@@ -425,9 +452,12 @@ export const PosScreenPage: React.FC = () => {
 
       <div className="flex flex-col h-[calc(100vh-4rem)]" dir="rtl">
         {/* Top bar */}
-        <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-card/50 print:hidden">
+        <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-card/50 print:hidden flex-wrap gap-2">
           <PosDailyStats companyId={companyId || ""} branchId={branchId} />
           <div className="flex items-center gap-2">
+            {companyId && (
+              <PosShiftManager companyId={companyId} branchId={branchId} userName={auth.profile?.full_name || ""} />
+            )}
             <div className="hidden lg:flex items-center gap-1 text-[10px] text-muted-foreground border border-border/30 rounded-md px-2 py-1">
               <Keyboard className="h-3 w-3" />
               <span>F1 دفع</span>
@@ -536,6 +566,53 @@ export const PosScreenPage: React.FC = () => {
                   <div className="flex items-center gap-1">
                     <span className="text-[10px] text-muted-foreground">ضريبة</span>
                     <Switch dir="ltr" checked={taxEnabled} onCheckedChange={(v) => { setTaxEnabled(v); if (v) setTaxInputVisible(true); else { setTaxInputVisible(false); setTaxRate(0); } }} className="scale-75" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Order Type & Payment Method */}
+              <div className="flex gap-2 mb-2">
+                {/* Order Type Selector */}
+                <div className="flex-1">
+                  <div className="flex rounded-lg border border-border/50 overflow-hidden">
+                    {ORDER_TYPES.map((type) => (
+                      <button
+                        key={type.value}
+                        className={cn(
+                          "flex-1 flex items-center justify-center gap-1 px-1.5 py-1.5 text-[10px] font-medium transition-colors",
+                          orderType === type.value
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted/30 text-muted-foreground hover:bg-muted/60"
+                        )}
+                        onClick={() => setOrderType(type.value)}
+                      >
+                        <type.icon className="h-3 w-3" />
+                        {type.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Method Selector */}
+              <div className="flex gap-2 mb-2">
+                <div className="flex-1">
+                  <div className="flex rounded-lg border border-border/50 overflow-hidden">
+                    {PAYMENT_METHODS.map((method) => (
+                      <button
+                        key={method.value}
+                        className={cn(
+                          "flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-[10px] font-medium transition-colors",
+                          paymentMethod === method.value
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted/30 text-muted-foreground hover:bg-muted/60"
+                        )}
+                        onClick={() => setPaymentMethod(method.value)}
+                      >
+                        <method.icon className="h-3 w-3" />
+                        {method.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -683,7 +760,12 @@ export const PosScreenPage: React.FC = () => {
                     </div>
                   )}
                   <div className="border-t border-border/30 pt-2 flex justify-between items-center">
-                    <span className="text-muted-foreground text-xs">الإجمالي النهائي</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground text-xs">الإجمالي النهائي</span>
+                      <Badge variant="outline" className="text-[9px] h-4 px-1">
+                        {ORDER_TYPES.find(t => t.value === orderType)?.label} · {paymentMethod}
+                      </Badge>
+                    </div>
                     <span className="text-xl font-black text-gradient">{total.toFixed(2)} <span className="text-sm">EGP</span></span>
                   </div>
                 </>

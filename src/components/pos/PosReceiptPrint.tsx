@@ -19,10 +19,13 @@ interface PosReceiptPrintProps {
   taxRate: number;
   total: number;
   companyName?: string;
+  notes?: string;
+  orderType?: string;
+  paymentMethod?: string;
 }
 
 export const PosReceiptPrint = forwardRef<HTMLDivElement, PosReceiptPrintProps>(
-  ({ invoiceNumber, branchName, customerName, date, items, subtotal, discountAmount, discountLabel, taxAmount, taxRate, total, companyName }, ref) => {
+  ({ invoiceNumber, branchName, customerName, date, items, subtotal, discountAmount, discountLabel, taxAmount, taxRate, total, companyName, notes, orderType, paymentMethod }, ref) => {
     return (
       <div ref={ref} className="fixed -left-[9999px] top-0 bg-white" dir="rtl">
         <div className="w-[80mm] mx-auto p-2 text-black text-xs font-mono" style={{ fontFamily: "'Cairo', monospace" }}>
@@ -33,6 +36,8 @@ export const PosReceiptPrint = forwardRef<HTMLDivElement, PosReceiptPrintProps>(
             <p className="text-[10px] mt-1">{date}</p>
             {invoiceNumber && <p className="text-[10px]">فاتورة رقم: {invoiceNumber}</p>}
             {customerName && <p className="text-[10px]">العميل: {customerName}</p>}
+            {orderType && <p className="text-[10px]">نوع الطلب: {orderType}</p>}
+            {paymentMethod && <p className="text-[10px]">طريقة الدفع: {paymentMethod}</p>}
           </div>
 
           {/* Items */}
@@ -80,6 +85,13 @@ export const PosReceiptPrint = forwardRef<HTMLDivElement, PosReceiptPrintProps>(
               <span>{total.toFixed(2)} EGP</span>
             </div>
           </div>
+
+          {/* Notes */}
+          {notes && (
+            <div className="border-t border-dashed border-gray-400 pt-2 mt-2">
+              <p className="text-[10px]"><span className="font-bold">ملاحظات:</span> {notes}</p>
+            </div>
+          )}
 
           {/* Footer */}
           <div className="text-center mt-3 border-t border-dashed border-gray-400 pt-2">

@@ -33,6 +33,7 @@ interface CartItem {
   category_name: string;
   unit_price: number;
   quantity: number;
+  notes?: string;
 }
 
 const ORDER_TYPES = [
@@ -66,7 +67,7 @@ export const PosScreenPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [cart, setCart] = useState<CartItem[]>(saved?.cart || []);
   const [branchId, setBranchId] = useState<string>(saved?.branchId || "");
-  const [saleDate, setSaleDate] = useState<Date | undefined>(saved?.saleDate ? new Date(saved.saleDate) : undefined);
+  // Date is always today - no picker needed
   const [taxEnabled, setTaxEnabled] = useState(saved?.taxEnabled || false);
   const [taxRate, setTaxRate] = useState<number>(saved?.taxRate || 0);
   const [taxInputVisible, setTaxInputVisible] = useState(saved?.taxInputVisible || false);
@@ -78,7 +79,6 @@ export const PosScreenPage: React.FC = () => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [customerName, setCustomerName] = useState(saved?.customerName || "");
   const [invoiceNotes, setInvoiceNotes] = useState(saved?.invoiceNotes || "");
-  const [showNotes, setShowNotes] = useState(false);
   const [receiptData, setReceiptData] = useState<any>(null);
   const [orderType, setOrderType] = useState<string>(saved?.orderType || "صالة");
   const [paymentMethod, setPaymentMethod] = useState<string>(saved?.paymentMethod || "كاش");

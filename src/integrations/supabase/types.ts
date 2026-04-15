@@ -399,6 +399,63 @@ export type Database = {
           },
         ]
       }
+      customer_feedback: {
+        Row: {
+          company_id: string
+          created_at: string
+          customer_id: string | null
+          customer_name: string
+          customer_phone: string | null
+          id: string
+          message: string
+          reply: string | null
+          resolved_at: string | null
+          status: string
+          type: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          customer_id?: string | null
+          customer_name: string
+          customer_phone?: string | null
+          id?: string
+          message: string
+          reply?: string | null
+          resolved_at?: string | null
+          status?: string
+          type?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          customer_id?: string | null
+          customer_name?: string
+          customer_phone?: string | null
+          id?: string
+          message?: string
+          reply?: string | null
+          resolved_at?: string | null
+          status?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_feedback_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_feedback_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address: string | null
@@ -893,6 +950,7 @@ export type Database = {
           customer_id: string | null
           customer_name: string | null
           customer_phone: string | null
+          customer_rating: number | null
           date: string
           delivery_status: string | null
           discount_amount: number
@@ -915,6 +973,7 @@ export type Database = {
           customer_id?: string | null
           customer_name?: string | null
           customer_phone?: string | null
+          customer_rating?: number | null
           date?: string
           delivery_status?: string | null
           discount_amount?: number
@@ -937,6 +996,7 @@ export type Database = {
           customer_id?: string | null
           customer_name?: string | null
           customer_phone?: string | null
+          customer_rating?: number | null
           date?: string
           delivery_status?: string | null
           discount_amount?: number

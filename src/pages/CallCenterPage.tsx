@@ -46,7 +46,7 @@ const PAYMENT_METHODS = [
 export const CallCenterPage: React.FC = () => {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;
-  const branchId = auth.profile?.branch_id || "";
+  const branchId = (auth.profile as any)?.branch_id || "";
   const queryClient = useQueryClient();
   const receiptRef = useRef<HTMLDivElement>(null);
 

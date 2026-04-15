@@ -75,7 +75,7 @@ export const PosScreenPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [customerName, setCustomerName] = useState(saved?.customerName || "");
-  const [invoiceNotes, setInvoiceNotes] = useState(saved?.invoiceNotes || "");
+  
   const [receiptData, setReceiptData] = useState<any>(null);
   const [orderType, setOrderType] = useState<string>(saved?.orderType || "صالة");
   const [paymentMethod, setPaymentMethod] = useState<string>(saved?.paymentMethod || "كاش");

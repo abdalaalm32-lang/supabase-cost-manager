@@ -13,7 +13,7 @@ import {
   Store, ArrowRightLeft, ClipboardCheck, Trash2,
   Layers, PieChart, BarChart3, ShieldBan, Factory,
   ChevronDown, Monitor, Receipt, BrainCircuit, FolderOpen, UtensilsCrossed, MessageSquare,
-  Shield, Building2, Sun, Moon
+  Shield, Building2, Sun, Moon, Phone
 } from "lucide-react";
 
 interface SystemLayoutProps {
@@ -42,6 +42,9 @@ const mainNavItems: NavItem[] = [
       { id: "pos-groups", path: "/pos/groups", label: "المجموعات", icon: FolderOpen },
       { id: "pos-items", path: "/pos/items", label: "الأصناف", icon: UtensilsCrossed },
     ],
+  },
+  {
+    id: "call-center", path: "/call-center", label: "الكول سنتر", icon: Phone,
   },
   {
     id: "inventory", path: "/inventory", label: "إدارة المخزون", icon: Package,

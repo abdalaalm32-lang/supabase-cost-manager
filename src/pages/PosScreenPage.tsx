@@ -85,9 +85,9 @@ export const PosScreenPage: React.FC = () => {
 
   // Persist draft to sessionStorage
   useEffect(() => {
-    const draft = { cart, branchId, saleDate: saleDate?.toISOString(), taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId, customerName, invoiceNotes, orderType, paymentMethod };
+    const draft = { cart, branchId, taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId, customerName, invoiceNotes, orderType, paymentMethod };
     sessionStorage.setItem("pos_draft", JSON.stringify(draft));
-  }, [cart, branchId, saleDate, taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId, customerName, invoiceNotes, orderType, paymentMethod]);
+  }, [cart, branchId, taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId, customerName, invoiceNotes, orderType, paymentMethod]);
 
   // Load archived sale from navigation state
   useEffect(() => {

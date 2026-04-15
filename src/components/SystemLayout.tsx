@@ -44,7 +44,7 @@ const mainNavItems: NavItem[] = [
     ],
   },
   {
-    id: "call-center", path: "/call-center", label: "الكول سنتر", icon: Phone,
+    id: "call_center", path: "/call-center", label: "الكول سنتر", icon: Phone,
   },
   {
     id: "inventory", path: "/inventory", label: "إدارة المخزون", icon: Package,

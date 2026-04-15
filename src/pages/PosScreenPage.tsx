@@ -666,17 +666,10 @@ export const PosScreenPage: React.FC = () => {
                   </Select>
                 </div>
                 <div className="flex-1">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className={cn("glass-input h-8 text-xs w-full justify-start", !saleDate && "text-muted-foreground")}>
-                        <CalendarIcon className="h-3.5 w-3.5 ml-1" />
-                        {saleDate ? format(saleDate, "yyyy/MM/dd") : "التاريخ"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar mode="single" selected={saleDate} onSelect={setSaleDate} className="p-3 pointer-events-auto" />
-                    </PopoverContent>
-                  </Popover>
+                  <Button variant="outline" className="glass-input h-8 text-xs w-full justify-start text-muted-foreground" disabled>
+                    <CalendarIcon className="h-3.5 w-3.5 ml-1" />
+                    {format(new Date(), "yyyy/MM/dd")}
+                  </Button>
                 </div>
               </div>
             </div>

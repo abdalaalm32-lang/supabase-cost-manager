@@ -82,9 +82,9 @@ export const PosScreenPage: React.FC = () => {
 
   // Persist draft to sessionStorage
   useEffect(() => {
-    const draft = { cart, branchId, taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId, customerName, invoiceNotes, orderType, paymentMethod };
+    const draft = { cart, branchId, taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId, customerName, orderType, paymentMethod };
     sessionStorage.setItem("pos_draft", JSON.stringify(draft));
-  }, [cart, branchId, taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId, customerName, invoiceNotes, orderType, paymentMethod]);
+  }, [cart, branchId, taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId, customerName, orderType, paymentMethod]);
 
   // Load archived sale from navigation state
   useEffect(() => {
@@ -239,7 +239,7 @@ export const PosScreenPage: React.FC = () => {
     setTaxRate(0);
     setTaxInputVisible(false);
     setCustomerName("");
-    setInvoiceNotes("");
+    
     if (!keepOrderType) {
       setOrderType("صالة");
       setPaymentMethod("كاش");
@@ -346,7 +346,7 @@ export const PosScreenPage: React.FC = () => {
           discountLabel: discountEnabled ? (discountType === "percent" ? `${discountValue}%` : `${discountValue} EGP`) : "",
           taxAmount, taxRate, total,
           companyName: company?.name,
-          notes: invoiceNotes || undefined,
+          notes: cart.filter(c => c.notes).map(c => `${c.name}: ${c.notes}`).join(" | ") || undefined,
           orderType,
           paymentMethod,
         });

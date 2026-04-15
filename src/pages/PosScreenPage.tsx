@@ -108,7 +108,7 @@ export const PosScreenPage: React.FC = () => {
 
       setEditingSaleId(saleId);
       setBranchId(sale.branch_id || "");
-      setSaleDate(new Date(sale.date));
+      // date is always today
       setTaxEnabled(sale.tax_enabled);
       setTaxRate(sale.tax_rate || 0);
       setTaxInputVisible(sale.tax_enabled);
@@ -233,7 +233,7 @@ export const PosScreenPage: React.FC = () => {
 
   const removeFromCart = (id: string) => setCart((prev) => prev.filter((c) => c.id !== id));
 
-  const clearAll = () => {
+  const clearAll = (keepOrderType = false) => {
     setCart([]);
     setEditingSaleId(null);
     setDiscountEnabled(false);
@@ -241,12 +241,12 @@ export const PosScreenPage: React.FC = () => {
     setTaxEnabled(false);
     setTaxRate(0);
     setTaxInputVisible(false);
-    setSaleDate(undefined);
     setCustomerName("");
     setInvoiceNotes("");
-    setShowNotes(false);
-    setOrderType("صالة");
-    setPaymentMethod("كاش");
+    if (!keepOrderType) {
+      setOrderType("صالة");
+      setPaymentMethod("كاش");
+    }
     sessionStorage.removeItem("pos_draft");
   };
 
@@ -263,7 +263,7 @@ export const PosScreenPage: React.FC = () => {
   const handleResumeHeld = (sale: any, saleItems: any[]) => {
     setEditingSaleId(sale.id);
     setBranchId(sale.branch_id || "");
-    setSaleDate(new Date(sale.date));
+    // date is always today
     setTaxEnabled(sale.tax_enabled);
     setTaxRate(sale.tax_rate || 0);
     setTaxInputVisible(sale.tax_enabled);
@@ -293,7 +293,7 @@ export const PosScreenPage: React.FC = () => {
 
       const salePayload = {
         branch_id: branchId || null,
-        date: saleDate ? saleDate.toISOString() : new Date().toISOString(),
+        date: new Date().toISOString(),
         total_amount: total, status,
         tax_enabled: taxEnabled, tax_rate: taxEnabled ? taxRate : 0, tax_amount: taxAmount,
         discount_amount: discountAmount,
@@ -343,8 +343,8 @@ export const PosScreenPage: React.FC = () => {
           invoiceNumber: sale.invoice_number,
           branchName,
           customerName,
-          date: format(saleDate || new Date(), "yyyy/MM/dd HH:mm"),
-          items: cart.map((c) => ({ name: c.name, quantity: c.quantity, unit_price: c.unit_price })),
+          date: format(new Date(), "yyyy/MM/dd HH:mm"),
+          items: cart.map((c) => ({ name: c.name, quantity: c.quantity, unit_price: c.unit_price, notes: c.notes })),
           subtotal, discountAmount,
           discountLabel: discountEnabled ? (discountType === "percent" ? `${discountValue}%` : `${discountValue} EGP`) : "",
           taxAmount, taxRate, total,
@@ -360,7 +360,7 @@ export const PosScreenPage: React.FC = () => {
         toast.success("تم أرشفة الفاتورة");
       }
 
-      clearAll();
+      clearAll(true);
       queryClient.invalidateQueries({ queryKey: ["pos-sales"] });
       queryClient.invalidateQueries({ queryKey: ["pos-held-sales"] });
       queryClient.invalidateQueries({ queryKey: ["pos-daily-stats"] });

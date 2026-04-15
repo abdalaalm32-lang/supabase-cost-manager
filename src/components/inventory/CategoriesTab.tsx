@@ -380,7 +380,6 @@ export const CategoriesTab: React.FC = () => {
                 <Input value={categories.find((c: any) => c.id === editId)?.code || "—"} disabled className="glass-input font-mono text-sm bg-muted/30" />
               </div>
             )}
-            </div>
             <div className="space-y-2">
               <Label>نوع التخزين</Label>
               <Select value={storageType} onValueChange={setStorageType}>

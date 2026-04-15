@@ -271,25 +271,32 @@ export const PosScreenPage: React.FC = () => {
       if (!branchId) throw new Error("يجب اختيار الفرع");
 
       if (editingSaleId) {
-        const { error: delErr } = await supabase.from("pos_sale_items").delete().eq("sale_id", editingSaleId);
-        if (delErr) throw delErr;
+        // Verify the sale still exists before editing
+        const { data: existingSale } = await supabase.from("pos_sales").select("id, invoice_number").eq("id", editingSaleId).maybeSingle();
+        
+        if (existingSale) {
+          const { error: delErr } = await supabase.from("pos_sale_items").delete().eq("sale_id", editingSaleId);
+          if (delErr) throw delErr;
 
-        const { error: saleErr } = await supabase.from("pos_sales").update({
-          branch_id: branchId || null,
-          date: saleDate ? saleDate.toISOString() : new Date().toISOString(),
-          total_amount: total, status,
-          tax_enabled: taxEnabled, tax_rate: taxEnabled ? taxRate : 0, tax_amount: taxAmount,
-          discount_amount: discountAmount,
-        }).eq("id", editingSaleId);
-        if (saleErr) throw saleErr;
+          const { error: saleErr } = await supabase.from("pos_sales").update({
+            branch_id: branchId || null,
+            date: saleDate ? saleDate.toISOString() : new Date().toISOString(),
+            total_amount: total, status,
+            tax_enabled: taxEnabled, tax_rate: taxEnabled ? taxRate : 0, tax_amount: taxAmount,
+            discount_amount: discountAmount,
+          }).eq("id", editingSaleId);
+          if (saleErr) throw saleErr;
 
-        const saleItems = cart.map((c) => ({ sale_id: editingSaleId, pos_item_id: c.pos_item_id, quantity: c.quantity, unit_price: c.unit_price, total: c.unit_price * c.quantity }));
-        const { error: itemsErr } = await supabase.from("pos_sale_items").insert(saleItems);
-        if (itemsErr) throw itemsErr;
+          const saleItems = cart.map((c) => ({ sale_id: editingSaleId, pos_item_id: c.pos_item_id, quantity: c.quantity, unit_price: c.unit_price, total: c.unit_price * c.quantity }));
+          const { error: itemsErr } = await supabase.from("pos_sale_items").insert(saleItems);
+          if (itemsErr) throw itemsErr;
 
-        // Fetch invoice number for receipt
-        const { data: updatedSale } = await supabase.from("pos_sales").select("invoice_number").eq("id", editingSaleId).single();
-        return { id: editingSaleId, invoice_number: updatedSale?.invoice_number };
+          // Fetch updated invoice number for receipt
+          const { data: updatedSale } = await supabase.from("pos_sales").select("invoice_number").eq("id", editingSaleId).single();
+          return { id: editingSaleId, invoice_number: updatedSale?.invoice_number };
+        }
+        // Sale no longer exists — fall through to create new sale
+        setEditingSaleId(null);
       }
 
       const { data: invoiceNum, error: numErr } = await supabase.rpc("generate_invoice_number", { p_company_id: companyId });
@@ -340,16 +347,74 @@ export const PosScreenPage: React.FC = () => {
     onError: (e: any) => toast.error(e.message || "حدث خطأ"),
   });
 
+  // Print receipt using printable iframe
+  const printReceipt = useCallback(() => {
+    if (!receiptRef.current) return;
+    const printContent = receiptRef.current.innerHTML;
+    const printWindow = window.open("", "_blank", "width=320,height=600");
+    if (!printWindow) {
+      toast.error("يرجى السماح بالنوافذ المنبثقة للطباعة");
+      return;
+    }
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html dir="rtl">
+      <head>
+        <meta charset="utf-8" />
+        <title>إيصال</title>
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'Cairo', monospace; direction: rtl; width: 80mm; margin: 0 auto; padding: 8px; font-size: 12px; color: #000; }
+          table { width: 100%; border-collapse: collapse; }
+          th, td { padding: 2px 0; font-size: 10px; }
+          .text-center { text-align: center; }
+          .text-right { text-align: right; }
+          .text-left { text-align: left; }
+          .font-bold { font-weight: bold; }
+          .text-sm { font-size: 12px; }
+          .text-xs { font-size: 10px; }
+          .text-\\[9px\\] { font-size: 9px; }
+          .border-dashed { border-style: dashed; }
+          .border-dotted { border-style: dotted; }
+          .border-gray-400 { border-color: #9ca3af; }
+          .border-gray-200 { border-color: #e5e7eb; }
+          .border-b { border-bottom-width: 1px; }
+          .border-t { border-top-width: 1px; }
+          .pb-2 { padding-bottom: 8px; }
+          .pt-2 { padding-top: 8px; }
+          .mb-2 { margin-bottom: 8px; }
+          .mt-1 { margin-top: 4px; }
+          .mt-3 { margin-top: 12px; }
+          .py-1 { padding-top: 4px; padding-bottom: 4px; }
+          .space-y-1 > * + * { margin-top: 4px; }
+          .flex { display: flex; }
+          .justify-between { justify-content: space-between; }
+          .text-gray-500 { color: #6b7280; }
+          @media print { body { width: 80mm; } }
+        </style>
+      </head>
+      <body>${printContent}</body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.onload = () => {
+      printWindow.focus();
+      printWindow.print();
+      printWindow.close();
+    };
+  }, []);
+
   // Auto-print receipt
   useEffect(() => {
     if (receiptData) {
       const timer = setTimeout(() => {
-        window.print();
+        printReceipt();
         setReceiptData(null);
-      }, 300);
+      }, 400);
       return () => clearTimeout(timer);
     }
-  }, [receiptData]);
+  }, [receiptData, printReceipt]);
 
   return (
     <>

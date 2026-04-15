@@ -24,7 +24,7 @@ interface PosReceiptPrintProps {
 export const PosReceiptPrint = forwardRef<HTMLDivElement, PosReceiptPrintProps>(
   ({ invoiceNumber, branchName, customerName, date, items, subtotal, discountAmount, discountLabel, taxAmount, taxRate, total, companyName }, ref) => {
     return (
-      <div ref={ref} className="hidden print:block print:fixed print:inset-0 print:z-[9999] print:bg-white" dir="rtl">
+      <div ref={ref} className="fixed -left-[9999px] top-0 bg-white" dir="rtl">
         <div className="w-[80mm] mx-auto p-2 text-black text-xs font-mono" style={{ fontFamily: "'Cairo', monospace" }}>
           {/* Header */}
           <div className="text-center border-b border-dashed border-gray-400 pb-2 mb-2">

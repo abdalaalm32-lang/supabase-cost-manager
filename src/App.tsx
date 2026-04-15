@@ -59,6 +59,7 @@ import { SystemLayout } from "@/components/SystemLayout";
 import { AdminMessagesPage } from "@/pages/AdminMessagesPage";
 import { AdminSubscriptionLogPage } from "@/pages/AdminSubscriptionLogPage";
 import { PnlPage } from "@/pages/PnlPage";
+import { CallCenterPage } from "@/pages/CallCenterPage";
 
 const queryClient = new QueryClient();
 
@@ -386,6 +387,7 @@ const AppRoutes = () => {
                 <Route path="/pos/analytics" element={<PermissionGuard permKey="pos"><PosAnalyticsPage /></PermissionGuard>} />
                 <Route path="/pos/groups" element={<PermissionGuard permKey="pos"><PosGroupsPage /></PermissionGuard>} />
                 <Route path="/pos/items" element={<PermissionGuard permKey="pos"><PosItemsPage /></PermissionGuard>} />
+                <Route path="/call-center" element={<PermissionGuard permKey="call_center"><CallCenterPage /></PermissionGuard>} />
                 <Route path="/inventory" element={<PermissionGuard permKey="inventory"><Navigate to="/inventory/materials" replace /></PermissionGuard>} />
                 <Route path="/inventory/materials" element={<PermissionGuard permKey="inventory"><InventoryMaterialsPage /></PermissionGuard>} />
                 <Route path="/inventory/balances" element={<PermissionGuard permKey="inventory"><InventoryBalancesPage /></PermissionGuard>} />

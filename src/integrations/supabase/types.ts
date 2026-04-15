@@ -399,6 +399,44 @@ export type Database = {
           },
         ]
       }
+      customers: {
+        Row: {
+          address: string | null
+          company_id: string
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          phone: string
+        }
+        Insert: {
+          address?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          phone: string
+        }
+        Update: {
+          address?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customers_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       departments: {
         Row: {
           active: boolean
@@ -851,7 +889,12 @@ export type Database = {
           branch_id: string | null
           company_id: string
           created_at: string
+          customer_address: string | null
+          customer_id: string | null
+          customer_name: string | null
+          customer_phone: string | null
           date: string
+          delivery_status: string | null
           discount_amount: number
           id: string
           invoice_number: string | null
@@ -868,7 +911,12 @@ export type Database = {
           branch_id?: string | null
           company_id: string
           created_at?: string
+          customer_address?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
           date?: string
+          delivery_status?: string | null
           discount_amount?: number
           id?: string
           invoice_number?: string | null
@@ -885,7 +933,12 @@ export type Database = {
           branch_id?: string | null
           company_id?: string
           created_at?: string
+          customer_address?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
           date?: string
+          delivery_status?: string | null
           discount_amount?: number
           id?: string
           invoice_number?: string | null
@@ -911,6 +964,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_sales_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
             referencedColumns: ["id"]
           },
         ]

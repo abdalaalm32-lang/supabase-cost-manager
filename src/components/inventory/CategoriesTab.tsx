@@ -325,6 +325,7 @@ export const CategoriesTab: React.FC = () => {
             <TableRow>
               <TableHead className="text-right">الكود</TableHead>
               <TableHead className="text-right">اسم المجموعة</TableHead>
+              <TableHead className="text-right">كود الأصناف</TableHead>
               <TableHead className="text-right">الأقسام التابعة</TableHead>
               <TableHead className="text-right">نوع التخزين</TableHead>
               <TableHead className="text-right">الحالة</TableHead>
@@ -333,14 +334,15 @@ export const CategoriesTab: React.FC = () => {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">جاري التحميل...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">جاري التحميل...</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">لا توجد مجموعات</TableCell></TableRow>
+              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">لا توجد مجموعات</TableCell></TableRow>
             ) : (
               filtered.map((cat: any) => (
                 <TableRow key={cat.id}>
                   <TableCell className="font-mono text-xs">{cat.code || "—"}</TableCell>
                   <TableCell className="font-medium">{cat.name}</TableCell>
+                  <TableCell className="font-mono text-xs">{cat.identifier_code || "—"}</TableCell>
                   <TableCell className="text-sm">{getDeptNames(cat)}</TableCell>
                   <TableCell>{cat.storage_type || "—"}</TableCell>
                   <TableCell>

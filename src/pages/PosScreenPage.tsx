@@ -627,17 +627,6 @@ export const PosScreenPage: React.FC = () => {
                 </div>
               </div>
 
-              {showNotes && (
-                <div className="mb-2">
-                  <Textarea
-                    placeholder="ملاحظات على الفاتورة..."
-                    value={invoiceNotes}
-                    onChange={(e) => setInvoiceNotes(e.target.value)}
-                    className="glass-input text-xs min-h-[50px] resize-none"
-                    rows={2}
-                  />
-                </div>
-              )}
 
               {discountEnabled && (
                 <div className="mb-2">

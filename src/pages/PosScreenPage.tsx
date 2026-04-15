@@ -556,9 +556,6 @@ export const PosScreenPage: React.FC = () => {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowNotes(!showNotes)} title="ملاحظات">
-                    <StickyNote className={cn("h-3.5 w-3.5", invoiceNotes && "text-primary")} />
-                  </Button>
                   <div className="flex items-center gap-1">
                     <span className="text-[10px] text-muted-foreground">خصم</span>
                     <Switch dir="ltr" checked={discountEnabled} onCheckedChange={(v) => { setDiscountEnabled(v); if (!v) setDiscountValue(0); }} className="scale-75" />

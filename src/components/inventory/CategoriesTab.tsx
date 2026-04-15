@@ -374,6 +374,12 @@ export const CategoriesTab: React.FC = () => {
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="مثال: لحوم طازجة" className="glass-input" />
               {submitted && !name.trim() && <p className="text-sm text-destructive">هذا الحقل مطلوب</p>}
             </div>
+            {editId && (
+              <div className="space-y-2">
+                <Label>كود المجموعة</Label>
+                <Input value={categories.find((c: any) => c.id === editId)?.code || "—"} disabled className="glass-input font-mono text-sm bg-muted/30" />
+              </div>
+            )}
             <div className="space-y-2">
               <Label>نوع التخزين</Label>
               <Select value={storageType} onValueChange={setStorageType}>

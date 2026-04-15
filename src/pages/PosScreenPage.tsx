@@ -292,7 +292,7 @@ export const PosScreenPage: React.FC = () => {
 
       const salePayload = {
         branch_id: branchId || null,
-        date: new Date().toISOString(),
+        date: saleDate.toISOString(),
         total_amount: total, status,
         tax_enabled: taxEnabled, tax_rate: taxEnabled ? taxRate : 0, tax_amount: taxAmount,
         discount_amount: discountAmount,
@@ -342,7 +342,7 @@ export const PosScreenPage: React.FC = () => {
           invoiceNumber: sale.invoice_number,
           branchName,
           customerName,
-          date: format(new Date(), "yyyy/MM/dd HH:mm"),
+          date: format(saleDate, "yyyy/MM/dd HH:mm"),
           items: cart.map((c) => ({ name: c.name, quantity: c.quantity, unit_price: c.unit_price, notes: c.notes })),
           subtotal, discountAmount,
           discountLabel: discountEnabled ? (discountType === "percent" ? `${discountValue}%` : `${discountValue} EGP`) : "",

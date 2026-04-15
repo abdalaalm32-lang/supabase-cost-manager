@@ -52,7 +52,8 @@ export const PosShiftManager: React.FC<PosShiftManagerProps> = ({ companyId, bra
         .select("*, pos_sale_items(*, pos_items:pos_item_id(name))")
         .eq("company_id", companyId)
         .eq("status", "مكتمل")
-        .gte("date", currentShift.opened_at);
+        .gte("date", currentShift.opened_at)
+        .lte("date", currentShift.closed_at || new Date().toISOString());
       if (branchId) query = query.eq("branch_id", branchId);
       const { data, error } = await query;
       if (error) throw error;

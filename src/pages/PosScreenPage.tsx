@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -64,7 +66,7 @@ export const PosScreenPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [cart, setCart] = useState<CartItem[]>(saved?.cart || []);
   const [branchId, setBranchId] = useState<string>(saved?.branchId || "");
-  // Date is always today - no picker needed
+  const [saleDate, setSaleDate] = useState<Date>(saved?.saleDate ? new Date(saved.saleDate) : new Date());
   const [taxEnabled, setTaxEnabled] = useState(saved?.taxEnabled || false);
   const [taxRate, setTaxRate] = useState<number>(saved?.taxRate || 0);
   const [taxInputVisible, setTaxInputVisible] = useState(saved?.taxInputVisible || false);
@@ -82,9 +84,9 @@ export const PosScreenPage: React.FC = () => {
 
   // Persist draft to sessionStorage
   useEffect(() => {
-    const draft = { cart, branchId, taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId, customerName, orderType, paymentMethod };
+    const draft = { cart, branchId, saleDate: saleDate.toISOString(), taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId, customerName, orderType, paymentMethod };
     sessionStorage.setItem("pos_draft", JSON.stringify(draft));
-  }, [cart, branchId, taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId, customerName, orderType, paymentMethod]);
+  }, [cart, branchId, saleDate, taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId, customerName, orderType, paymentMethod]);
 
   // Load archived sale from navigation state
   useEffect(() => {
@@ -290,7 +292,7 @@ export const PosScreenPage: React.FC = () => {
 
       const salePayload = {
         branch_id: branchId || null,
-        date: new Date().toISOString(),
+        date: saleDate.toISOString(),
         total_amount: total, status,
         tax_enabled: taxEnabled, tax_rate: taxEnabled ? taxRate : 0, tax_amount: taxAmount,
         discount_amount: discountAmount,
@@ -340,7 +342,7 @@ export const PosScreenPage: React.FC = () => {
           invoiceNumber: sale.invoice_number,
           branchName,
           customerName,
-          date: format(new Date(), "yyyy/MM/dd HH:mm"),
+          date: format(saleDate, "yyyy/MM/dd HH:mm"),
           items: cart.map((c) => ({ name: c.name, quantity: c.quantity, unit_price: c.unit_price, notes: c.notes })),
           subtotal, discountAmount,
           discountLabel: discountEnabled ? (discountType === "percent" ? `${discountValue}%` : `${discountValue} EGP`) : "",
@@ -663,10 +665,17 @@ export const PosScreenPage: React.FC = () => {
                   </Select>
                 </div>
                 <div className="flex-1">
-                  <Button variant="outline" className="glass-input h-8 text-xs w-full justify-start text-muted-foreground" disabled>
-                    <CalendarIcon className="h-3.5 w-3.5 ml-1" />
-                    {format(new Date(), "yyyy/MM/dd")}
-                  </Button>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="glass-input h-8 text-xs w-full justify-start">
+                        <CalendarIcon className="h-3.5 w-3.5 ml-1" />
+                        {format(saleDate, "yyyy/MM/dd")}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar mode="single" selected={saleDate} onSelect={(d) => d && setSaleDate(d)} className="p-3 pointer-events-auto" />
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
             </div>

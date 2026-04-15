@@ -8,17 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
   Plus, Minus, Trash2, ShoppingCart, CalendarIcon, Store,
   FileText, Printer, AlertCircle, Archive, LayoutGrid, Percent, Tag,
-  Search, Maximize, Minimize, Pause, StickyNote, User, Keyboard,
+  Search, Maximize, Minimize, Pause, User, Keyboard,
   UtensilsCrossed, ShoppingBag, Truck, Banknote, CreditCard
 } from "lucide-react";
 import { PosReceiptPrint } from "@/components/pos/PosReceiptPrint";
@@ -33,6 +30,7 @@ interface CartItem {
   category_name: string;
   unit_price: number;
   quantity: number;
+  notes?: string;
 }
 
 const ORDER_TYPES = [
@@ -66,7 +64,7 @@ export const PosScreenPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [cart, setCart] = useState<CartItem[]>(saved?.cart || []);
   const [branchId, setBranchId] = useState<string>(saved?.branchId || "");
-  const [saleDate, setSaleDate] = useState<Date | undefined>(saved?.saleDate ? new Date(saved.saleDate) : undefined);
+  // Date is always today - no picker needed
   const [taxEnabled, setTaxEnabled] = useState(saved?.taxEnabled || false);
   const [taxRate, setTaxRate] = useState<number>(saved?.taxRate || 0);
   const [taxInputVisible, setTaxInputVisible] = useState(saved?.taxInputVisible || false);
@@ -77,17 +75,16 @@ export const PosScreenPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [customerName, setCustomerName] = useState(saved?.customerName || "");
-  const [invoiceNotes, setInvoiceNotes] = useState(saved?.invoiceNotes || "");
-  const [showNotes, setShowNotes] = useState(false);
+  
   const [receiptData, setReceiptData] = useState<any>(null);
   const [orderType, setOrderType] = useState<string>(saved?.orderType || "صالة");
   const [paymentMethod, setPaymentMethod] = useState<string>(saved?.paymentMethod || "كاش");
 
   // Persist draft to sessionStorage
   useEffect(() => {
-    const draft = { cart, branchId, saleDate: saleDate?.toISOString(), taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId, customerName, invoiceNotes, orderType, paymentMethod };
+    const draft = { cart, branchId, taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId, customerName, orderType, paymentMethod };
     sessionStorage.setItem("pos_draft", JSON.stringify(draft));
-  }, [cart, branchId, saleDate, taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId, customerName, invoiceNotes, orderType, paymentMethod]);
+  }, [cart, branchId, taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId, customerName, orderType, paymentMethod]);
 
   // Load archived sale from navigation state
   useEffect(() => {
@@ -108,7 +105,7 @@ export const PosScreenPage: React.FC = () => {
 
       setEditingSaleId(saleId);
       setBranchId(sale.branch_id || "");
-      setSaleDate(new Date(sale.date));
+      // date is always today
       setTaxEnabled(sale.tax_enabled);
       setTaxRate(sale.tax_rate || 0);
       setTaxInputVisible(sale.tax_enabled);
@@ -233,7 +230,7 @@ export const PosScreenPage: React.FC = () => {
 
   const removeFromCart = (id: string) => setCart((prev) => prev.filter((c) => c.id !== id));
 
-  const clearAll = () => {
+  const clearAll = (keepOrderType = false) => {
     setCart([]);
     setEditingSaleId(null);
     setDiscountEnabled(false);
@@ -241,12 +238,12 @@ export const PosScreenPage: React.FC = () => {
     setTaxEnabled(false);
     setTaxRate(0);
     setTaxInputVisible(false);
-    setSaleDate(undefined);
     setCustomerName("");
-    setInvoiceNotes("");
-    setShowNotes(false);
-    setOrderType("صالة");
-    setPaymentMethod("كاش");
+    
+    if (!keepOrderType) {
+      setOrderType("صالة");
+      setPaymentMethod("كاش");
+    }
     sessionStorage.removeItem("pos_draft");
   };
 
@@ -263,7 +260,7 @@ export const PosScreenPage: React.FC = () => {
   const handleResumeHeld = (sale: any, saleItems: any[]) => {
     setEditingSaleId(sale.id);
     setBranchId(sale.branch_id || "");
-    setSaleDate(new Date(sale.date));
+    // date is always today
     setTaxEnabled(sale.tax_enabled);
     setTaxRate(sale.tax_rate || 0);
     setTaxInputVisible(sale.tax_enabled);
@@ -293,13 +290,13 @@ export const PosScreenPage: React.FC = () => {
 
       const salePayload = {
         branch_id: branchId || null,
-        date: saleDate ? saleDate.toISOString() : new Date().toISOString(),
+        date: new Date().toISOString(),
         total_amount: total, status,
         tax_enabled: taxEnabled, tax_rate: taxEnabled ? taxRate : 0, tax_amount: taxAmount,
         discount_amount: discountAmount,
         order_type: orderType,
         payment_method: paymentMethod,
-        notes: invoiceNotes || null,
+        notes: cart.filter(c => c.notes).map(c => `${c.name}: ${c.notes}`).join(" | ") || null,
       };
 
       if (editingSaleId) {
@@ -343,13 +340,13 @@ export const PosScreenPage: React.FC = () => {
           invoiceNumber: sale.invoice_number,
           branchName,
           customerName,
-          date: format(saleDate || new Date(), "yyyy/MM/dd HH:mm"),
-          items: cart.map((c) => ({ name: c.name, quantity: c.quantity, unit_price: c.unit_price })),
+          date: format(new Date(), "yyyy/MM/dd HH:mm"),
+          items: cart.map((c) => ({ name: c.name, quantity: c.quantity, unit_price: c.unit_price, notes: c.notes })),
           subtotal, discountAmount,
           discountLabel: discountEnabled ? (discountType === "percent" ? `${discountValue}%` : `${discountValue} EGP`) : "",
           taxAmount, taxRate, total,
           companyName: company?.name,
-          notes: invoiceNotes || undefined,
+          notes: cart.filter(c => c.notes).map(c => `${c.name}: ${c.notes}`).join(" | ") || undefined,
           orderType,
           paymentMethod,
         });
@@ -360,7 +357,7 @@ export const PosScreenPage: React.FC = () => {
         toast.success("تم أرشفة الفاتورة");
       }
 
-      clearAll();
+      clearAll(true);
       queryClient.invalidateQueries({ queryKey: ["pos-sales"] });
       queryClient.invalidateQueries({ queryKey: ["pos-held-sales"] });
       queryClient.invalidateQueries({ queryKey: ["pos-daily-stats"] });
@@ -556,9 +553,6 @@ export const PosScreenPage: React.FC = () => {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowNotes(!showNotes)} title="ملاحظات">
-                    <StickyNote className={cn("h-3.5 w-3.5", invoiceNotes && "text-primary")} />
-                  </Button>
                   <div className="flex items-center gap-1">
                     <span className="text-[10px] text-muted-foreground">خصم</span>
                     <Switch dir="ltr" checked={discountEnabled} onCheckedChange={(v) => { setDiscountEnabled(v); if (!v) setDiscountValue(0); }} className="scale-75" />
@@ -630,17 +624,6 @@ export const PosScreenPage: React.FC = () => {
                 </div>
               </div>
 
-              {showNotes && (
-                <div className="mb-2">
-                  <Textarea
-                    placeholder="ملاحظات على الفاتورة..."
-                    value={invoiceNotes}
-                    onChange={(e) => setInvoiceNotes(e.target.value)}
-                    className="glass-input text-xs min-h-[50px] resize-none"
-                    rows={2}
-                  />
-                </div>
-              )}
 
               {discountEnabled && (
                 <div className="mb-2">
@@ -680,17 +663,10 @@ export const PosScreenPage: React.FC = () => {
                   </Select>
                 </div>
                 <div className="flex-1">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className={cn("glass-input h-8 text-xs w-full justify-start", !saleDate && "text-muted-foreground")}>
-                        <CalendarIcon className="h-3.5 w-3.5 ml-1" />
-                        {saleDate ? format(saleDate, "yyyy/MM/dd") : "التاريخ"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar mode="single" selected={saleDate} onSelect={setSaleDate} className="p-3 pointer-events-auto" />
-                    </PopoverContent>
-                  </Popover>
+                  <Button variant="outline" className="glass-input h-8 text-xs w-full justify-start text-muted-foreground" disabled>
+                    <CalendarIcon className="h-3.5 w-3.5 ml-1" />
+                    {format(new Date(), "yyyy/MM/dd")}
+                  </Button>
                 </div>
               </div>
             </div>
@@ -705,28 +681,36 @@ export const PosScreenPage: React.FC = () => {
               ) : (
                 <div className="flex flex-col gap-1.5">
                   {cart.map((item) => (
-                    <div key={item.id} className="flex items-center gap-2 p-2 rounded-lg border border-border/50 bg-muted/30">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-foreground text-xs truncate">{item.name}</p>
-                        <p className="text-[10px] text-muted-foreground">{item.category_name}</p>
+                    <div key={item.id} className="flex flex-col gap-1 p-2 rounded-lg border border-border/50 bg-muted/30">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-foreground text-xs truncate">{item.name}</p>
+                          <p className="text-[10px] text-muted-foreground">{item.category_name}</p>
+                        </div>
+                        <div className="flex items-center gap-0.5">
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => updateQty(item.id, -1)}><Minus className="h-3 w-3" /></Button>
+                          <Input
+                            type="number" min={1} value={item.quantity}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value);
+                              if (!isNaN(val) && val > 0) setCart((prev) => prev.map((c) => c.id === item.id ? { ...c, quantity: val } : c));
+                              else if (e.target.value === "") setCart((prev) => prev.map((c) => c.id === item.id ? { ...c, quantity: 1 } : c));
+                            }}
+                            className="w-10 h-6 text-center font-bold text-foreground text-xs p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          />
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => updateQty(item.id, 1)}><Plus className="h-3 w-3" /></Button>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-primary text-xs whitespace-nowrap">{(item.unit_price * item.quantity).toFixed(2)}</span>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => removeFromCart(item.id)}><Trash2 className="h-3 w-3" /></Button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-0.5">
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => updateQty(item.id, -1)}><Minus className="h-3 w-3" /></Button>
-                        <Input
-                          type="number" min={1} value={item.quantity}
-                          onChange={(e) => {
-                            const val = parseInt(e.target.value);
-                            if (!isNaN(val) && val > 0) setCart((prev) => prev.map((c) => c.id === item.id ? { ...c, quantity: val } : c));
-                            else if (e.target.value === "") setCart((prev) => prev.map((c) => c.id === item.id ? { ...c, quantity: 1 } : c));
-                          }}
-                          className="w-10 h-6 text-center font-bold text-foreground text-xs p-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                        />
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => updateQty(item.id, 1)}><Plus className="h-3 w-3" /></Button>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-bold text-primary text-xs whitespace-nowrap">{(item.unit_price * item.quantity).toFixed(2)}</span>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => removeFromCart(item.id)}><Trash2 className="h-3 w-3" /></Button>
-                      </div>
+                      <Input
+                        placeholder="ملاحظات على الصنف..."
+                        value={item.notes || ""}
+                        onChange={(e) => setCart((prev) => prev.map((c) => c.id === item.id ? { ...c, notes: e.target.value } : c))}
+                        className="glass-input h-6 text-[10px] px-2"
+                      />
                     </div>
                   ))}
                 </div>

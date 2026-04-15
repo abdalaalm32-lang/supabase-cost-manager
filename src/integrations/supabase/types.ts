@@ -855,6 +855,9 @@ export type Database = {
           discount_amount: number
           id: string
           invoice_number: string | null
+          notes: string | null
+          order_type: string
+          payment_method: string
           status: string
           tax_amount: number
           tax_enabled: boolean
@@ -869,6 +872,9 @@ export type Database = {
           discount_amount?: number
           id?: string
           invoice_number?: string | null
+          notes?: string | null
+          order_type?: string
+          payment_method?: string
           status?: string
           tax_amount?: number
           tax_enabled?: boolean
@@ -883,6 +889,9 @@ export type Database = {
           discount_amount?: number
           id?: string
           invoice_number?: string | null
+          notes?: string | null
+          order_type?: string
+          payment_method?: string
           status?: string
           tax_amount?: number
           tax_enabled?: boolean
@@ -899,6 +908,60 @@ export type Database = {
           },
           {
             foreignKeyName: "pos_sales_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pos_shifts: {
+        Row: {
+          branch_id: string | null
+          closed_at: string | null
+          closed_by: string | null
+          company_id: string
+          created_at: string
+          id: string
+          opened_at: string
+          opened_by: string | null
+          opening_cash: number
+          status: string
+        }
+        Insert: {
+          branch_id?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          opened_at?: string
+          opened_by?: string | null
+          opening_cash?: number
+          status?: string
+        }
+        Update: {
+          branch_id?: string | null
+          closed_at?: string | null
+          closed_by?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          opened_at?: string
+          opened_by?: string | null
+          opening_cash?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_shifts_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_shifts_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"

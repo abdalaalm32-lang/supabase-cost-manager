@@ -9,18 +9,37 @@ interface PosDailyStatsProps {
 }
 
 export const PosDailyStats: React.FC<PosDailyStatsProps> = ({ companyId, branchId }) => {
-  const today = new Date().toISOString().split("T")[0];
+  // Get current open shift to scope stats
+  const { data: currentShift } = useQuery({
+    queryKey: ["pos-current-shift", companyId, branchId],
+    queryFn: async () => {
+      let query = supabase
+        .from("pos_shifts")
+        .select("*")
+        .eq("company_id", companyId)
+        .eq("status", "مفتوح")
+        .order("opened_at", { ascending: false })
+        .limit(1);
+      if (branchId) query = query.eq("branch_id", branchId);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data?.[0] || null;
+    },
+    enabled: !!companyId,
+  });
+
+  const shiftOpenedAt = currentShift?.opened_at;
 
   const { data: stats } = useQuery({
-    queryKey: ["pos-daily-stats", companyId, branchId, today],
+    queryKey: ["pos-daily-stats", companyId, branchId, shiftOpenedAt],
     queryFn: async () => {
+      if (!shiftOpenedAt) return { totalSales: 0, invoiceCount: 0, avgInvoice: 0 };
       let query = supabase
         .from("pos_sales")
         .select("total_amount, status")
         .eq("company_id", companyId)
         .eq("status", "مكتمل")
-        .gte("date", `${today}T00:00:00`)
-        .lte("date", `${today}T23:59:59`);
+        .gte("date", shiftOpenedAt);
       if (branchId) query = query.eq("branch_id", branchId);
       const { data, error } = await query;
       if (error) throw error;

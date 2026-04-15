@@ -4,6 +4,7 @@ interface ReceiptItem {
   name: string;
   quantity: number;
   unit_price: number;
+  notes?: string;
 }
 
 interface PosReceiptPrintProps {
@@ -52,12 +53,19 @@ export const PosReceiptPrint = forwardRef<HTMLDivElement, PosReceiptPrintProps>(
             </thead>
             <tbody>
               {items.map((item, i) => (
-                <tr key={i} className="border-b border-dotted border-gray-200">
-                  <td className="text-right py-1 text-[10px]">{item.name}</td>
-                  <td className="text-center py-1 text-[10px]">{item.quantity}</td>
-                  <td className="text-center py-1 text-[10px]">{item.unit_price.toFixed(2)}</td>
-                  <td className="text-left py-1 text-[10px]">{(item.unit_price * item.quantity).toFixed(2)}</td>
-                </tr>
+                <React.Fragment key={i}>
+                  <tr className="border-b border-dotted border-gray-200">
+                    <td className="text-right py-1 text-[10px]">{item.name}</td>
+                    <td className="text-center py-1 text-[10px]">{item.quantity}</td>
+                    <td className="text-center py-1 text-[10px]">{item.unit_price.toFixed(2)}</td>
+                    <td className="text-left py-1 text-[10px]">{(item.unit_price * item.quantity).toFixed(2)}</td>
+                  </tr>
+                  {item.notes && (
+                    <tr>
+                      <td colSpan={4} className="text-right text-[9px] text-gray-500 pb-1 pr-2">⤷ {item.notes}</td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>

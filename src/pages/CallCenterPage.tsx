@@ -860,7 +860,7 @@ export const CallCenterPage: React.FC = () => {
                   <p className="text-sm">لا توجد أوردرات مستلمة</p>
                 </div>
               ) : (
-                <div className="rounded-lg border border-border/30 overflow-hidden">
+                <div className="rounded-lg border border-border/30 overflow-hidden" dir="rtl">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -876,17 +876,17 @@ export const CallCenterPage: React.FC = () => {
                     <TableBody>
                       {deliveredOrders.map((order: any) => (
                         <TableRow key={order.id}>
-                          <TableCell className="text-xs font-mono">{order.invoice_number}</TableCell>
-                          <TableCell className="text-xs">{order.customer_name || "—"}</TableCell>
-                          <TableCell className="text-xs" dir="ltr">{order.customer_phone || "—"}</TableCell>
-                          <TableCell className="text-xs font-bold">{order.total_amount.toFixed(0)} EGP</TableCell>
-                          <TableCell className="text-xs">{format(new Date(order.date), "yyyy/MM/dd HH:mm")}</TableCell>
-                          <TableCell>
+                          <TableCell className="text-xs text-right font-mono">{order.invoice_number}</TableCell>
+                          <TableCell className="text-xs text-right">{order.customer_name || "—"}</TableCell>
+                          <TableCell className="text-xs text-right" dir="ltr">{order.customer_phone || "—"}</TableCell>
+                          <TableCell className="text-xs text-right font-bold">{order.total_amount.toFixed(0)} EGP</TableCell>
+                          <TableCell className="text-xs text-right">{format(new Date(order.date), "yyyy/MM/dd HH:mm")}</TableCell>
+                          <TableCell className="text-right">
                             {order.customer_rating ? renderStars(order.customer_rating) : (
                               <span className="text-[10px] text-muted-foreground">بدون تقييم</span>
                             )}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="text-right">
                             <div className="flex items-center gap-1">
                               <Button
                                 variant="ghost"
@@ -952,7 +952,7 @@ export const CallCenterPage: React.FC = () => {
                   ) : (
                     <div className="space-y-6">
                       {/* Customers Table */}
-                      <div className="rounded-lg border border-border/30 overflow-hidden">
+                      <div className="rounded-lg border border-border/30 overflow-hidden" dir="rtl">
                         <Table>
                           <TableHeader>
                             <TableRow>
@@ -969,12 +969,12 @@ export const CallCenterPage: React.FC = () => {
                               const stats = customerOrderStats[cust.phone] || { count: 0, total: 0 };
                               return (
                                 <TableRow key={cust.id}>
-                                  <TableCell className="text-xs font-medium">{cust.name}</TableCell>
-                                  <TableCell className="text-xs" dir="ltr">{cust.phone}</TableCell>
-                                  <TableCell className="text-xs truncate max-w-[200px]">{cust.address || "—"}</TableCell>
-                                  <TableCell className="text-xs">{stats.count}</TableCell>
-                                  <TableCell className="text-xs font-bold">{stats.total.toFixed(0)} EGP</TableCell>
-                                  <TableCell>
+                                  <TableCell className="text-xs text-right font-medium">{cust.name}</TableCell>
+                                  <TableCell className="text-xs text-right" dir="ltr">{cust.phone}</TableCell>
+                                  <TableCell className="text-xs text-right truncate max-w-[200px]">{cust.address || "—"}</TableCell>
+                                  <TableCell className="text-xs text-right">{stats.count}</TableCell>
+                                  <TableCell className="text-xs text-right font-bold">{stats.total.toFixed(0)} EGP</TableCell>
+                                  <TableCell className="text-right">
                                     <a href={`tel:${cust.phone}`}>
                                       <Button variant="ghost" size="icon" className="h-6 w-6 text-emerald-500">
                                         <PhoneCall className="h-3 w-3" />

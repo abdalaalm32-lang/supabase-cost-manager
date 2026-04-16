@@ -672,7 +672,14 @@ table{width:100%;border-collapse:collapse;}
             </div>
 
             {/* Product grid */}
-            <ScrollArea className="flex-1">
+            <ScrollArea className="flex-1 relative">
+              {!currentShiftForExpenses && (
+                <div className="absolute inset-0 z-10 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 rounded-lg">
+                  <PlayCircle className="h-12 w-12 text-muted-foreground opacity-40" />
+                  <p className="text-sm font-bold text-muted-foreground">يجب فتح شيفت أولاً</p>
+                  <p className="text-xs text-muted-foreground">اضغط على زر "فتح شيفت" في الشريط العلوي</p>
+                </div>
+              )}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5" dir="rtl">
                 {filteredItems.map((item) => {
                   const inCart = cart.find((c) => c.pos_item_id === item.id);
@@ -681,7 +688,8 @@ table{width:100%;border-collapse:collapse;}
                       key={item.id}
                       className={cn(
                         "glass-card p-3 rounded-xl flex flex-col gap-1.5 hover:border-primary/50 transition-all cursor-pointer group relative",
-                        inCart && "border-primary/40 bg-primary/5"
+                        inCart && "border-primary/40 bg-primary/5",
+                        !currentShiftForExpenses && "pointer-events-none opacity-50"
                       )}
                       onClick={() => addToCart(item)}
                     >

@@ -606,7 +606,20 @@ table{width:100%;border-collapse:collapse;}
               </button>
             )}
             {companyId && (
-              <PosShiftManager companyId={companyId} branchId={branchId} userName={auth.profile?.full_name || ""} />
+              <PosShiftManager companyId={companyId} branchId={branchId} userName={auth.profile?.full_name || ""} printViaIframe={printViaIframe} />
+            )}
+            {companyId && currentShiftForExpenses && (
+              <PosShiftExpenses companyId={companyId} shiftId={currentShiftForExpenses.id} userName={auth.profile?.full_name || ""} />
+            )}
+            {companyId && (
+              <PosReturnsManager
+                companyId={companyId}
+                branchId={branchId}
+                userName={auth.profile?.full_name || ""}
+                userRole={auth.profile?.role || "مستخدم"}
+                printViaIframe={printViaIframe}
+                companyName={company?.name}
+              />
             )}
             <div className="hidden lg:flex items-center gap-1 text-[10px] text-muted-foreground border border-border/30 rounded-md px-2 py-1">
               <Keyboard className="h-3 w-3" />

@@ -97,6 +97,7 @@ export const PosScreenPage: React.FC = () => {
   const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false);
   const deliveryAudioRef = useRef<HTMLAudioElement | null>(null);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+  const [deliveryFee, setDeliveryFee] = useState<number>(saved?.deliveryFee || 0);
 
   // Pending delivery orders query
   const { data: pendingDeliveryOrders } = useQuery({

@@ -78,6 +78,19 @@ const OfflineScreen = () => (
   </div>
 );
 
+const AppLoadingScreen: React.FC<{ message?: string }> = ({ message = "جاري التحميل..." }) => (
+  <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
+    <img src={loginBg} alt="" className="absolute inset-0 w-full h-full object-cover" />
+    <div className="absolute inset-0 bg-[hsl(220,60%,8%)]/75 backdrop-blur-sm" />
+    <div className="absolute inset-0 bg-gradient-to-br from-[hsl(199,89%,40%)]/15 via-transparent to-[hsl(260,60%,30%)]/10" />
+    <div className="relative z-10 text-center animate-fade-in-up">
+      <img src={logo3m} alt="3M GSC Logo" className="w-32 h-32 mx-auto mb-4 object-contain drop-shadow-lg" />
+      <h1 className="text-3xl font-black text-gradient mb-2">3M GSC</h1>
+      <p className="text-muted-foreground text-sm">{message}</p>
+    </div>
+  </div>
+);
+
 const useOnlineStatus = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   useEffect(() => {
@@ -115,7 +128,6 @@ const CompanyDeactivatedOverlay: React.FC<{ isOwner: boolean }> = ({ isOwner }) 
   const [sent, setSent] = useState(false);
   const [replyData, setReplyData] = useState<any>(null);
 
-  // Check if there's already a reply to a previous inquiry
   const { data: existingTicket } = useQuery({
     queryKey: ["suspension-inquiry", auth.profile?.company_id],
     queryFn: async () => {
@@ -153,7 +165,6 @@ const CompanyDeactivatedOverlay: React.FC<{ isOwner: boolean }> = ({ isOwner }) 
       });
       setSent(true);
     } catch {
-      // silent
     } finally {
       setIsSending(false);
     }
@@ -240,7 +251,6 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   const { auth } = useAuth();
   const qc = useQueryClient();
 
-  // Check if company is active and subscription status
   const { data: companyStatus } = useQuery({
     queryKey: ["company-active-status", auth.profile?.company_id],
     queryFn: async () => {
@@ -255,7 +265,6 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     refetchInterval: 15000,
   });
 
-  // Subscribe to company changes for instant deactivation
   useEffect(() => {
     if (!auth.profile?.company_id || auth.isAdmin) return;
     const channel = supabase
@@ -265,9 +274,8 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [auth.profile?.company_id, auth.isAdmin]);
+  }, [auth.profile?.company_id, auth.isAdmin, qc]);
 
-  // Company deactivation: auto-logout and redirect to login
   const companyDeactivated = !auth.isAdmin && companyStatus && !companyStatus.active;
   const userSuspended = !!(auth.profile && auth.profile.status !== "نشط");
 
@@ -284,21 +292,10 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   }, [userSuspended]);
 
   if (!auth.isReady) return null;
-
-  // Check deactivation/suspension BEFORE session check so the reason param is preserved
-  if (companyDeactivated) {
-    return <Navigate to="/login?reason=company_deactivated" replace />;
-  }
-
-  if (userSuspended) {
-    return <Navigate to="/login?reason=user_suspended" replace />;
-  }
-
+  if (companyDeactivated) return <Navigate to="/login?reason=company_deactivated" replace />;
+  if (userSuspended) return <Navigate to="/login?reason=user_suspended" replace />;
   if (!auth.session) return <Navigate to="/login" replace />;
 
-  // Company subscription expiry check (not for admins)
-
-  // Individual user subscription expiry check (not for admins/owners)
   if (!auth.isAdmin && !auth.isOwner && auth.profile) {
     const p = auth.profile as any;
     if (p.subscription_type && p.subscription_type !== "unlimited" && p.subscription_end) {
@@ -312,9 +309,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   return <>{children}</>;
 };
 
-const LoginPageWrapper = () => {
-  return <LoginPage />;
-};
+const LoginPageWrapper = () => <LoginPage />;
 
 const PermissionGuard: React.FC<{ permKey: string; children: React.ReactNode }> = ({ permKey, children }) => {
   const { auth, hasPermission } = useAuth();
@@ -350,111 +345,98 @@ const AppRoutes = () => {
   const allowLoginMessage = location.pathname === "/login" && !!loginReason;
 
   if (!auth.isReady) {
-    return (
-      <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
-        <img src={loginBg} alt="" className="absolute inset-0 w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-[hsl(220,60%,8%)]/75 backdrop-blur-sm" />
-        <div className="absolute inset-0 bg-gradient-to-br from-[hsl(199,89%,40%)]/15 via-transparent to-[hsl(260,60%,30%)]/10" />
-        <div className="relative z-10 text-center animate-fade-in-up">
-          <img src={logo3m} alt="3M GSC Logo" className="w-32 h-32 mx-auto mb-4 object-contain drop-shadow-lg" />
-          <h1 className="text-3xl font-black text-gradient mb-2">3M GSC</h1>
-          <p className="text-muted-foreground text-sm">جاري التحميل...</p>
-        </div>
-      </div>
-    );
+    return <AppLoadingScreen />;
   }
 
   return (
-    <Routes>
-      {/* Public routes */}
-      <Route path="/login" element={auth.session && !allowLoginMessage ? <Navigate to="/" replace /> : <LoginPageWrapper />} />
-      {/* Registration removed */}
-
-      {/* Protected routes inside SystemLayout */}
-      <Route
-        path="/*"
-        element={
-          <ProtectedRoute>
-            <SystemLayout
-              onLogout={logout}
-              companyName={auth.profile?.company_id || ""}
-              userName={auth.profile?.full_name || ""}
-            >
-              <Routes>
-                <Route path="/" element={<DashboardPage />} />
-                <Route path="/pos" element={<Navigate to="/pos/screen" replace />} />
-                <Route path="/pos/screen" element={<PermissionGuard permKey="pos"><PosScreenPage /></PermissionGuard>} />
-                <Route path="/sales" element={<Navigate to="/pos/invoices" replace />} />
-                <Route path="/pos/invoices" element={<PermissionGuard permKey="sales_management"><PosInvoicesPage /></PermissionGuard>} />
-                <Route path="/pos/analytics" element={<PermissionGuard permKey="sales_management"><PosAnalyticsPage /></PermissionGuard>} />
-                <Route path="/pos/groups" element={<PermissionGuard permKey="sales_management"><PosGroupsPage /></PermissionGuard>} />
-                <Route path="/pos/items" element={<PermissionGuard permKey="sales_management"><PosItemsPage /></PermissionGuard>} />
-                <Route path="/call-center" element={<PermissionGuard permKey="call_center"><CallCenterPage /></PermissionGuard>} />
-                <Route path="/sales/driver-settlement" element={<PermissionGuard permKey="sales_management"><DriverSettlementPage /></PermissionGuard>} />
-                <Route path="/inventory" element={<PermissionGuard permKey="inventory"><Navigate to="/inventory/materials" replace /></PermissionGuard>} />
-                <Route path="/inventory/materials" element={<PermissionGuard permKey="inventory"><InventoryMaterialsPage /></PermissionGuard>} />
-                <Route path="/inventory/balances" element={<PermissionGuard permKey="inventory"><InventoryBalancesPage /></PermissionGuard>} />
-                <Route path="/transfers" element={<PermissionGuard permKey="transfers"><TransferListPage /></PermissionGuard>} />
-                <Route path="/transfers/add" element={<PermissionGuard permKey="transfers"><TransferDetailPage /></PermissionGuard>} />
-                <Route path="/transfers/:id" element={<PermissionGuard permKey="transfers"><TransferDetailPage /></PermissionGuard>} />
-                <Route path="/stocktake" element={<PermissionGuard permKey="stocktake"><Navigate to="/stocktake/periodic" replace /></PermissionGuard>} />
-                <Route path="/stocktake/periodic" element={<PermissionGuard permKey="stocktake"><StocktakeListPage /></PermissionGuard>} />
-                <Route path="/stocktake/periodic/:id" element={<PermissionGuard permKey="stocktake"><StocktakeDetailPage /></PermissionGuard>} />
-                <Route path="/stocktake/instant" element={<PermissionGuard permKey="stocktake"><InstantStocktakeListPage /></PermissionGuard>} />
-                <Route path="/stocktake/instant/:id" element={<PermissionGuard permKey="stocktake"><StocktakeDetailPage /></PermissionGuard>} />
-                <Route path="/stocktake/:id" element={<PermissionGuard permKey="stocktake"><StocktakeDetailPage /></PermissionGuard>} />
-                <Route path="/recipes" element={<PermissionGuard permKey="recipes"><Navigate to="/recipes/products" replace /></PermissionGuard>} />
-                <Route path="/recipes/products" element={<PermissionGuard permKey="recipes"><RecipesPage /></PermissionGuard>} />
-                <Route path="/recipes/production" element={<PermissionGuard permKey="recipes"><ProductionRecipesPage /></PermissionGuard>} />
-                <Route path="/production" element={<PermissionGuard permKey="production"><ProductionListPage /></PermissionGuard>} />
-                <Route path="/production/add" element={<PermissionGuard permKey="production"><ProductionDetailPage /></PermissionGuard>} />
-                <Route path="/production/:id" element={<PermissionGuard permKey="production"><ProductionDetailPage /></PermissionGuard>} />
-                <Route path="/waste" element={<PermissionGuard permKey="waste"><WasteListPage /></PermissionGuard>} />
-                <Route path="/waste/:id" element={<PermissionGuard permKey="waste"><WasteDetailPage /></PermissionGuard>} />
-                <Route path="/purchases" element={<PermissionGuard permKey="purchases"><Navigate to="/purchases/invoices" replace /></PermissionGuard>} />
-                <Route path="/purchases/invoices" element={<PermissionGuard permKey="purchases"><PurchaseInvoicesPage /></PermissionGuard>} />
-                <Route path="/purchases/suppliers" element={<PermissionGuard permKey="purchases"><PurchaseSuppliersPage /></PermissionGuard>} />
-                <Route path="/purchases/add-invoice" element={<PermissionGuard permKey="purchases"><AddPurchaseInvoicePage /></PermissionGuard>} />
-                <Route path="/purchases/edit-invoice/:id" element={<PermissionGuard permKey="purchases"><EditPurchaseInvoicePage /></PermissionGuard>} />
-                <Route path="/purchases/view-invoice/:id" element={<PermissionGuard permKey="purchases"><EditPurchaseInvoicePage /></PermissionGuard>} />
-                <Route path="/costing" element={<PermissionGuard permKey="costing"><CostAnalysisPage /></PermissionGuard>} />
-                <Route path="/menu-costing" element={<PermissionGuard permKey="menu-costing"><Navigate to="/menu-costing/indirect-expenses" replace /></PermissionGuard>} />
-                <Route path="/menu-costing/indirect-expenses" element={<PermissionGuard permKey="menu-costing"><IndirectExpensesPage /></PermissionGuard>} />
-                <Route path="/menu-costing/analysis" element={<PermissionGuard permKey="menu-costing"><MenuAnalysisPage /></PermissionGuard>} />
-                <Route path="/menu-costing/report" element={<PermissionGuard permKey="menu-costing"><MenuFinalReportPage /></PermissionGuard>} />
-                <Route path="/menu-engineering" element={<PermissionGuard permKey="menu-engineering"><MenuEngineeringPage /></PermissionGuard>} />
-                <Route path="/cost-adjustment" element={<PermissionGuard permKey="cost-adjustment"><CostAdjustmentPage /></PermissionGuard>} />
-                <Route path="/cost-adjustment/add" element={<PermissionGuard permKey="cost-adjustment"><AddCostAdjustmentPage /></PermissionGuard>} />
-                <Route path="/cost-adjustment/edit/:id" element={<PermissionGuard permKey="cost-adjustment"><AddCostAdjustmentPage /></PermissionGuard>} />
-                <Route path="/cost-adjustment/view/:id" element={<PermissionGuard permKey="cost-adjustment"><AddCostAdjustmentPage /></PermissionGuard>} />
-                <Route path="/pnl" element={<PnlPage />} />
-                <Route path="/reports" element={<PermissionGuard permKey="reports"><Navigate to="/reports/inventory-movement" replace /></PermissionGuard>} />
-                <Route path="/reports/inventory-movement" element={<PermissionGuard permKey="reports"><InventoryMovementPage /></PermissionGuard>} />
-                <Route path="/reports/purchases" element={<PermissionGuard permKey="reports"><PurchaseReportsPage /></PermissionGuard>} />
-                <Route path="/reports/inventory-levels" element={<PermissionGuard permKey="reports"><InventoryLevelsPage /></PermissionGuard>} />
-                <Route path="/reports/production" element={<PermissionGuard permKey="reports"><ProductionReportsPage /></PermissionGuard>} />
-                <Route path="/reports/waste" element={<PermissionGuard permKey="reports"><WasteReportsPage /></PermissionGuard>} />
-                <Route path="/reports/transfers" element={<PermissionGuard permKey="reports"><TransferReportsPage /></PermissionGuard>} />
-                <Route path="/reports/cost-adjustments" element={<PermissionGuard permKey="reports"><CostAdjustmentReportsPage /></PermissionGuard>} />
-                <Route path="/reports/inventory-turnover" element={<PermissionGuard permKey="reports"><InventoryTurnoverPage /></PermissionGuard>} />
-                <Route path="/settings" element={<AdminGuard><Navigate to="/settings/companies" replace /></AdminGuard>} />
-                <Route path="/settings/companies" element={<AdminGuard><AdminCompaniesPage /></AdminGuard>} />
-                <Route path="/settings/messages" element={<AdminGuard><AdminMessagesPage /></AdminGuard>} />
-                <Route path="/settings/subscription-log" element={<AdminGuard><AdminSubscriptionLogPage /></AdminGuard>} />
-                <Route path="/settings/users" element={<AdminGuard><SettingsUsersPage /></AdminGuard>} />
-                <Route path="/settings/warehouses" element={<AdminGuard><SettingsWarehousesPage /></AdminGuard>} />
-                <Route path="/settings/branches" element={<AdminGuard><SettingsBranchesPage /></AdminGuard>} />
-                <Route path="/company-settings" element={<OwnerOrAdminGuard><Navigate to="/company-settings/users" replace /></OwnerOrAdminGuard>} />
-                <Route path="/company-settings/users" element={<OwnerOrAdminGuard><CompanySettingsPage /></OwnerOrAdminGuard>} />
-                <Route path="/company-settings/warehouses" element={<OwnerOrAdminGuard><SettingsWarehousesPage /></OwnerOrAdminGuard>} />
-                <Route path="/company-settings/branches" element={<OwnerOrAdminGuard><SettingsBranchesPage /></OwnerOrAdminGuard>} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </SystemLayout>
-          </ProtectedRoute>
-        }
-      />
-    </Routes>
+    <Suspense fallback={<AppLoadingScreen message="جاري فتح الصفحة..." />}>
+      <Routes>
+        <Route path="/login" element={auth.session && !allowLoginMessage ? <Navigate to="/" replace /> : <LoginPageWrapper />} />
+        <Route
+          path="/*"
+          element={
+            <ProtectedRoute>
+              <SystemLayout
+                onLogout={logout}
+                companyName={auth.profile?.company_id || ""}
+                userName={auth.profile?.full_name || ""}
+              >
+                <Routes>
+                  <Route path="/" element={<DashboardPage />} />
+                  <Route path="/pos" element={<Navigate to="/pos/screen" replace />} />
+                  <Route path="/pos/screen" element={<PermissionGuard permKey="pos"><PosScreenPage /></PermissionGuard>} />
+                  <Route path="/sales" element={<Navigate to="/pos/invoices" replace />} />
+                  <Route path="/pos/invoices" element={<PermissionGuard permKey="sales_management"><PosInvoicesPage /></PermissionGuard>} />
+                  <Route path="/pos/analytics" element={<PermissionGuard permKey="sales_management"><PosAnalyticsPage /></PermissionGuard>} />
+                  <Route path="/pos/groups" element={<PermissionGuard permKey="sales_management"><PosGroupsPage /></PermissionGuard>} />
+                  <Route path="/pos/items" element={<PermissionGuard permKey="sales_management"><PosItemsPage /></PermissionGuard>} />
+                  <Route path="/call-center" element={<PermissionGuard permKey="call_center"><CallCenterPage /></PermissionGuard>} />
+                  <Route path="/sales/driver-settlement" element={<PermissionGuard permKey="sales_management"><DriverSettlementPage /></PermissionGuard>} />
+                  <Route path="/inventory" element={<PermissionGuard permKey="inventory"><Navigate to="/inventory/materials" replace /></PermissionGuard>} />
+                  <Route path="/inventory/materials" element={<PermissionGuard permKey="inventory"><InventoryMaterialsPage /></PermissionGuard>} />
+                  <Route path="/inventory/balances" element={<PermissionGuard permKey="inventory"><InventoryBalancesPage /></PermissionGuard>} />
+                  <Route path="/transfers" element={<PermissionGuard permKey="transfers"><TransferListPage /></PermissionGuard>} />
+                  <Route path="/transfers/add" element={<PermissionGuard permKey="transfers"><TransferDetailPage /></PermissionGuard>} />
+                  <Route path="/transfers/:id" element={<PermissionGuard permKey="transfers"><TransferDetailPage /></PermissionGuard>} />
+                  <Route path="/stocktake" element={<PermissionGuard permKey="stocktake"><Navigate to="/stocktake/periodic" replace /></PermissionGuard>} />
+                  <Route path="/stocktake/periodic" element={<PermissionGuard permKey="stocktake"><StocktakeListPage /></PermissionGuard>} />
+                  <Route path="/stocktake/periodic/:id" element={<PermissionGuard permKey="stocktake"><StocktakeDetailPage /></PermissionGuard>} />
+                  <Route path="/stocktake/instant" element={<PermissionGuard permKey="stocktake"><InstantStocktakeListPage /></PermissionGuard>} />
+                  <Route path="/stocktake/instant/:id" element={<PermissionGuard permKey="stocktake"><StocktakeDetailPage /></PermissionGuard>} />
+                  <Route path="/stocktake/:id" element={<PermissionGuard permKey="stocktake"><StocktakeDetailPage /></PermissionGuard>} />
+                  <Route path="/recipes" element={<PermissionGuard permKey="recipes"><Navigate to="/recipes/products" replace /></PermissionGuard>} />
+                  <Route path="/recipes/products" element={<PermissionGuard permKey="recipes"><RecipesPage /></PermissionGuard>} />
+                  <Route path="/recipes/production" element={<PermissionGuard permKey="recipes"><ProductionRecipesPage /></PermissionGuard>} />
+                  <Route path="/production" element={<PermissionGuard permKey="production"><ProductionListPage /></PermissionGuard>} />
+                  <Route path="/production/add" element={<PermissionGuard permKey="production"><ProductionDetailPage /></PermissionGuard>} />
+                  <Route path="/production/:id" element={<PermissionGuard permKey="production"><ProductionDetailPage /></PermissionGuard>} />
+                  <Route path="/waste" element={<PermissionGuard permKey="waste"><WasteListPage /></PermissionGuard>} />
+                  <Route path="/waste/:id" element={<PermissionGuard permKey="waste"><WasteDetailPage /></PermissionGuard>} />
+                  <Route path="/purchases" element={<PermissionGuard permKey="purchases"><Navigate to="/purchases/invoices" replace /></PermissionGuard>} />
+                  <Route path="/purchases/invoices" element={<PermissionGuard permKey="purchases"><PurchaseInvoicesPage /></PermissionGuard>} />
+                  <Route path="/purchases/suppliers" element={<PermissionGuard permKey="purchases"><PurchaseSuppliersPage /></PermissionGuard>} />
+                  <Route path="/purchases/add-invoice" element={<PermissionGuard permKey="purchases"><AddPurchaseInvoicePage /></PermissionGuard>} />
+                  <Route path="/purchases/edit-invoice/:id" element={<PermissionGuard permKey="purchases"><EditPurchaseInvoicePage /></PermissionGuard>} />
+                  <Route path="/purchases/view-invoice/:id" element={<PermissionGuard permKey="purchases"><EditPurchaseInvoicePage /></PermissionGuard>} />
+                  <Route path="/costing" element={<PermissionGuard permKey="costing"><CostAnalysisPage /></PermissionGuard>} />
+                  <Route path="/menu-costing" element={<PermissionGuard permKey="menu-costing"><Navigate to="/menu-costing/indirect-expenses" replace /></PermissionGuard>} />
+                  <Route path="/menu-costing/indirect-expenses" element={<PermissionGuard permKey="menu-costing"><IndirectExpensesPage /></PermissionGuard>} />
+                  <Route path="/menu-costing/analysis" element={<PermissionGuard permKey="menu-costing"><MenuAnalysisPage /></PermissionGuard>} />
+                  <Route path="/menu-costing/report" element={<PermissionGuard permKey="menu-costing"><MenuFinalReportPage /></PermissionGuard>} />
+                  <Route path="/menu-engineering" element={<PermissionGuard permKey="menu-engineering"><MenuEngineeringPage /></PermissionGuard>} />
+                  <Route path="/cost-adjustment" element={<PermissionGuard permKey="cost-adjustment"><CostAdjustmentPage /></PermissionGuard>} />
+                  <Route path="/cost-adjustment/add" element={<PermissionGuard permKey="cost-adjustment"><AddCostAdjustmentPage /></PermissionGuard>} />
+                  <Route path="/cost-adjustment/edit/:id" element={<PermissionGuard permKey="cost-adjustment"><AddCostAdjustmentPage /></PermissionGuard>} />
+                  <Route path="/cost-adjustment/view/:id" element={<PermissionGuard permKey="cost-adjustment"><AddCostAdjustmentPage /></PermissionGuard>} />
+                  <Route path="/pnl" element={<PnlPage />} />
+                  <Route path="/reports" element={<PermissionGuard permKey="reports"><Navigate to="/reports/inventory-movement" replace /></PermissionGuard>} />
+                  <Route path="/reports/inventory-movement" element={<PermissionGuard permKey="reports"><InventoryMovementPage /></PermissionGuard>} />
+                  <Route path="/reports/purchases" element={<PermissionGuard permKey="reports"><PurchaseReportsPage /></PermissionGuard>} />
+                  <Route path="/reports/inventory-levels" element={<PermissionGuard permKey="reports"><InventoryLevelsPage /></PermissionGuard>} />
+                  <Route path="/reports/production" element={<PermissionGuard permKey="reports"><ProductionReportsPage /></PermissionGuard>} />
+                  <Route path="/reports/waste" element={<PermissionGuard permKey="reports"><WasteReportsPage /></PermissionGuard>} />
+                  <Route path="/reports/transfers" element={<PermissionGuard permKey="reports"><TransferReportsPage /></PermissionGuard>} />
+                  <Route path="/reports/cost-adjustments" element={<PermissionGuard permKey="reports"><CostAdjustmentReportsPage /></PermissionGuard>} />
+                  <Route path="/reports/inventory-turnover" element={<PermissionGuard permKey="reports"><InventoryTurnoverPage /></PermissionGuard>} />
+                  <Route path="/settings" element={<AdminGuard><Navigate to="/settings/companies" replace /></AdminGuard>} />
+                  <Route path="/settings/companies" element={<AdminGuard><AdminCompaniesPage /></AdminGuard>} />
+                  <Route path="/settings/messages" element={<AdminGuard><AdminMessagesPage /></AdminGuard>} />
+                  <Route path="/settings/subscription-log" element={<AdminGuard><AdminSubscriptionLogPage /></AdminGuard>} />
+                  <Route path="/settings/users" element={<AdminGuard><SettingsUsersPage /></AdminGuard>} />
+                  <Route path="/settings/warehouses" element={<AdminGuard><SettingsWarehousesPage /></AdminGuard>} />
+                  <Route path="/settings/branches" element={<AdminGuard><SettingsBranchesPage /></AdminGuard>} />
+                  <Route path="/company-settings" element={<OwnerOrAdminGuard><Navigate to="/company-settings/users" replace /></OwnerOrAdminGuard>} />
+                  <Route path="/company-settings/users" element={<OwnerOrAdminGuard><CompanySettingsPage /></OwnerOrAdminGuard>} />
+                  <Route path="/company-settings/warehouses" element={<OwnerOrAdminGuard><SettingsWarehousesPage /></OwnerOrAdminGuard>} />
+                  <Route path="/company-settings/branches" element={<OwnerOrAdminGuard><SettingsBranchesPage /></OwnerOrAdminGuard>} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </SystemLayout>
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </Suspense>
   );
 };
 

@@ -1,29 +1,37 @@
 import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { format, startOfDay, endOfDay } from "date-fns";
-import { CalendarIcon, Clock, Eye, Layers, DollarSign, Receipt, Printer } from "lucide-react";
+import { CalendarIcon, Clock, Eye, Layers, Receipt, Printer, Trash2, KeyRound } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
+import { toast } from "sonner";
 
 export const PosShiftsPage: React.FC = () => {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;
+  const queryClient = useQueryClient();
 
   const [branchId, setBranchId] = useState("");
   const [dateFrom, setDateFrom] = useState<Date | undefined>(new Date());
   const [dateTo, setDateTo] = useState<Date | undefined>(new Date());
   const [detailShift, setDetailShift] = useState<any>(null);
+  const [deleteShift, setDeleteShift] = useState<any>(null);
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const { data: branches } = useQuery({
     queryKey: ["branches", companyId],
@@ -106,6 +114,72 @@ export const PosShiftsPage: React.FC = () => {
     enabled: !!detailShift,
   });
 
+  // Delete shift mutation
+  const deleteShiftMutation = useMutation({
+    mutationFn: async (shiftId: string) => {
+      // Delete expenses first
+      await supabase.from("pos_shift_expenses").delete().eq("shift_id", shiftId);
+      // Delete the shift
+      const { error } = await supabase.from("pos_shifts").delete().eq("id", shiftId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("تم حذف الشيفت بنجاح");
+      queryClient.invalidateQueries({ queryKey: ["pos-shifts-list"] });
+      setDeleteShift(null);
+    },
+    onError: () => {
+      toast.error("فشل في حذف الشيفت");
+    },
+  });
+
+  // Save POS password
+  const savePasswordMutation = useMutation({
+    mutationFn: async () => {
+      if (!auth.profile?.id) throw new Error("No profile");
+      const { error } = await supabase
+        .from("profiles")
+        .update({ pos_password: newPassword })
+        .eq("id", auth.profile.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("تم حفظ باسورد الشيفت بنجاح");
+      setShowPasswordDialog(false);
+      setNewPassword("");
+      setConfirmPassword("");
+    },
+    onError: () => {
+      toast.error("فشل في حفظ الباسورد");
+    },
+  });
+
+  // Print shift
+  const handlePrintShift = (shift: any) => {
+    const html = `<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"><title>شيفت ${shift.shift_number || ""}</title>
+    <style>body{font-family:Arial,sans-serif;padding:20px;font-size:14px}h2{text-align:center;margin-bottom:20px}
+    .row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dotted #ccc}
+    .label{color:#666}.value{font-weight:bold}.section{margin:12px 0;padding:8px;background:#f5f5f5;border-radius:6px}
+    </style></head><body>
+    <h2>تقرير الشيفت ${shift.shift_number || ""}</h2>
+    <div class="section">
+      <div class="row"><span class="label">كود الشيفت:</span><span class="value">${shift.shift_number || "—"}</span></div>
+      <div class="row"><span class="label">الحالة:</span><span class="value">${shift.status}</span></div>
+      <div class="row"><span class="label">الكاشير (فتح):</span><span class="value">${shift.opened_by || "—"}</span></div>
+      ${shift.closed_by ? `<div class="row"><span class="label">الكاشير (إغلاق):</span><span class="value">${shift.closed_by}</span></div>` : ""}
+      <div class="row"><span class="label">وقت الفتح:</span><span class="value">${format(new Date(shift.opened_at), "yyyy/MM/dd HH:mm")}</span></div>
+      <div class="row"><span class="label">وقت الإغلاق:</span><span class="value">${shift.closed_at ? format(new Date(shift.closed_at), "yyyy/MM/dd HH:mm") : "مفتوح"}</span></div>
+      <div class="row"><span class="label">المبلغ الافتتاحي:</span><span class="value">${(shift.opening_cash || 0).toFixed(2)} EGP</span></div>
+    </div>
+    </body></html>`;
+    const w = window.open("", "_blank", "width=400,height=600");
+    if (w) {
+      w.document.write(html);
+      w.document.close();
+      w.print();
+    }
+  };
+
   const totalShifts = shifts?.length || 0;
   const openShifts = shifts?.filter((s: any) => s.status === "مفتوح").length || 0;
   const closedShifts = shifts?.filter((s: any) => s.status === "مغلق").length || 0;
@@ -130,26 +204,32 @@ export const PosShiftsPage: React.FC = () => {
 
   return (
     <div className="space-y-6" dir="rtl">
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="glass-card border-border/50">
-          <CardContent className="flex items-center gap-4 p-4">
-            <div className="p-3 rounded-xl bg-primary/10"><Layers className="h-5 w-5 text-primary" /></div>
-            <div><p className="text-xs text-muted-foreground">إجمالي الشيفتات</p><p className="text-xl font-black text-foreground">{totalShifts}</p></div>
-          </CardContent>
-        </Card>
-        <Card className="glass-card border-border/50">
-          <CardContent className="flex items-center gap-4 p-4">
-            <div className="p-3 rounded-xl bg-green-500/10"><Clock className="h-5 w-5 text-green-500" /></div>
-            <div><p className="text-xs text-muted-foreground">مفتوح</p><p className="text-xl font-black text-green-500">{openShifts}</p></div>
-          </CardContent>
-        </Card>
-        <Card className="glass-card border-border/50">
-          <CardContent className="flex items-center gap-4 p-4">
-            <div className="p-3 rounded-xl bg-muted"><Receipt className="h-5 w-5 text-muted-foreground" /></div>
-            <div><p className="text-xs text-muted-foreground">مغلق</p><p className="text-xl font-black text-foreground">{closedShifts}</p></div>
-          </CardContent>
-        </Card>
+      {/* Stats + Password Button */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1">
+          <Card className="glass-card border-border/50">
+            <CardContent className="flex items-center gap-4 p-4">
+              <div className="p-3 rounded-xl bg-primary/10"><Layers className="h-5 w-5 text-primary" /></div>
+              <div><p className="text-xs text-muted-foreground">إجمالي الشيفتات</p><p className="text-xl font-black text-foreground">{totalShifts}</p></div>
+            </CardContent>
+          </Card>
+          <Card className="glass-card border-border/50">
+            <CardContent className="flex items-center gap-4 p-4">
+              <div className="p-3 rounded-xl bg-green-500/10"><Clock className="h-5 w-5 text-green-500" /></div>
+              <div><p className="text-xs text-muted-foreground">مفتوح</p><p className="text-xl font-black text-green-500">{openShifts}</p></div>
+            </CardContent>
+          </Card>
+          <Card className="glass-card border-border/50">
+            <CardContent className="flex items-center gap-4 p-4">
+              <div className="p-3 rounded-xl bg-muted"><Receipt className="h-5 w-5 text-muted-foreground" /></div>
+              <div><p className="text-xs text-muted-foreground">مغلق</p><p className="text-xl font-black text-foreground">{closedShifts}</p></div>
+            </CardContent>
+          </Card>
+        </div>
+        <Button variant="outline" className="gap-2" onClick={() => setShowPasswordDialog(true)}>
+          <KeyRound className="h-4 w-4" />
+          باسورد الشيفت
+        </Button>
       </div>
 
       {/* Filters */}
@@ -205,7 +285,7 @@ export const PosShiftsPage: React.FC = () => {
       {/* Table */}
       <Card className="glass-card border-border/50">
         <CardContent className="p-0">
-          <ScrollArea className="h-[calc(100vh-380px)]">
+          <ScrollArea className="h-[calc(100vh-420px)]">
             <Table>
               <TableHeader>
                 <TableRow className="border-border/50">
@@ -215,7 +295,7 @@ export const PosShiftsPage: React.FC = () => {
                   <TableHead className="text-right">وقت الفتح</TableHead>
                   <TableHead className="text-right">وقت الإغلاق</TableHead>
                   <TableHead className="text-right">المبلغ الافتتاحي</TableHead>
-                  <TableHead className="text-center">تفاصيل</TableHead>
+                  <TableHead className="text-center">إجراءات</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -226,20 +306,28 @@ export const PosShiftsPage: React.FC = () => {
                 ) : (
                   shifts.map((shift: any) => (
                     <TableRow key={shift.id} className="border-border/30 hover:bg-muted/30">
-                      <TableCell className="font-mono text-xs font-bold text-primary">{shift.shift_number || "—"}</TableCell>
-                      <TableCell>
+                      <TableCell className="font-mono text-xs font-bold text-primary py-3">{shift.shift_number || "—"}</TableCell>
+                      <TableCell className="py-3">
                         <Badge variant={shift.status === "مفتوح" ? "default" : "secondary"} className={cn("text-[10px]", shift.status === "مفتوح" && "bg-green-500/20 text-green-500 border-green-500/30")}>
                           {shift.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-sm">{shift.opened_by || "—"}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{format(new Date(shift.opened_at), "yyyy/MM/dd HH:mm")}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground">{shift.closed_at ? format(new Date(shift.closed_at), "yyyy/MM/dd HH:mm") : "—"}</TableCell>
-                      <TableCell className="font-bold text-sm">{(shift.opening_cash || 0).toFixed(2)} EGP</TableCell>
-                      <TableCell className="text-center">
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setDetailShift(shift)}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                      <TableCell className="text-sm py-3">{shift.opened_by || "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground py-3">{format(new Date(shift.opened_at), "yyyy/MM/dd HH:mm")}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground py-3">{shift.closed_at ? format(new Date(shift.closed_at), "yyyy/MM/dd HH:mm") : "—"}</TableCell>
+                      <TableCell className="font-bold text-sm py-3">{(shift.opening_cash || 0).toFixed(2)} EGP</TableCell>
+                      <TableCell className="text-center py-3">
+                        <div className="flex items-center justify-center gap-1">
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setDetailShift(shift)} title="تفاصيل">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handlePrintShift(shift)} title="طباعة">
+                            <Printer className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => setDeleteShift(shift)} title="حذف">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -297,6 +385,73 @@ export const PosShiftsPage: React.FC = () => {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteShift} onOpenChange={(open) => !open && setDeleteShift(null)}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>تأكيد حذف الشيفت</AlertDialogTitle>
+            <AlertDialogDescription>
+              هل أنت متأكد من حذف الشيفت <span className="font-bold text-primary">{deleteShift?.shift_number || ""}</span>؟ لا يمكن التراجع عن هذا الإجراء.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row-reverse gap-2">
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteShift && deleteShiftMutation.mutate(deleteShift.id)}
+            >
+              حذف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* POS Password Dialog */}
+      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+        <DialogContent className="max-w-sm" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-5 w-5 text-primary" />
+              تعيين باسورد الشيفت
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">الباسورد الجديد</label>
+              <Input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="أدخل الباسورد"
+                className="glass-input"
+              />
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground mb-1 block">تأكيد الباسورد</label>
+              <Input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="أعد إدخال الباسورد"
+                className="glass-input"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                if (!newPassword) return toast.error("أدخل الباسورد");
+                if (newPassword !== confirmPassword) return toast.error("الباسورد غير متطابق");
+                savePasswordMutation.mutate();
+              }}
+              disabled={savePasswordMutation.isPending}
+            >
+              حفظ الباسورد
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

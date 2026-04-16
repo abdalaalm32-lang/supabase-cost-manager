@@ -513,51 +513,14 @@ export const PosScreenPage: React.FC = () => {
       toast.error("يرجى السماح بالنوافذ المنبثقة للطباعة");
       return;
     }
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html dir="rtl">
-      <head>
-        <meta charset="utf-8" />
-        <title>إيصال</title>
-        <style>
-          @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: 'Cairo', monospace; direction: rtl; width: 80mm; margin: 0 auto; padding: 8px; font-size: 12px; color: #000; }
-          table { width: 100%; border-collapse: collapse; }
-          th, td { padding: 2px 0; font-size: 10px; }
-          .text-center { text-align: center; }
-          .text-right { text-align: right; }
-          .text-left { text-align: left; }
-          .font-bold { font-weight: bold; }
-          .text-sm { font-size: 12px; }
-          .text-xs { font-size: 10px; }
-          .text-\\[9px\\] { font-size: 9px; }
-          .text-\\[10px\\] { font-size: 10px; }
-          .border-dashed { border-style: dashed; }
-          .border-dotted { border-style: dotted; }
-          .border-gray-400 { border-color: #9ca3af; }
-          .border-gray-200 { border-color: #e5e7eb; }
-          .border-b { border-bottom-width: 1px; }
-          .border-t { border-top-width: 1px; }
-          .pb-2 { padding-bottom: 8px; }
-          .pt-2 { padding-top: 8px; }
-          .mb-2 { margin-bottom: 8px; }
-          .mt-1 { margin-top: 4px; }
-          .mt-2 { margin-top: 8px; }
-          .mt-3 { margin-top: 12px; }
-          .py-1 { padding-top: 4px; padding-bottom: 4px; }
-          .pt-1 { padding-top: 4px; }
-          .space-y-1 > * + * { margin-top: 4px; }
-          .flex { display: flex; }
-          .justify-between { justify-content: space-between; }
-          .text-gray-500 { color: #6b7280; }
-          .w-full { width: 100%; }
-          @media print { body { width: 80mm; } }
-        </style>
-      </head>
-      <body>${printContent}</body>
-      </html>
-    `);
+    printWindow.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"/><title>إيصال</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Cairo','Tahoma',sans-serif;direction:rtl;width:72mm;margin:0 auto;padding:4px 6px;font-size:11px;color:#000;line-height:1.4;}
+table{width:100%;border-collapse:collapse;}
+@media print{@page{size:80mm auto;margin:0;}body{width:72mm;}}
+</style></head><body>${printContent}</body></html>`);
     printWindow.document.close();
     printWindow.onload = () => {
       printWindow.focus();

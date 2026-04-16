@@ -326,7 +326,7 @@ ${totalReturns > 0 ? `<p class="expense-label">- المرتجعات: ${totalRetu
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="gap-1 text-[10px] border-green-500/30 text-green-500">
             <Clock className="h-3 w-3" />
-            {(currentShift as any).shift_name || (currentShift as any).shift_number || "شيفت"} منذ {format(new Date(currentShift.opened_at), "HH:mm")}
+            {(currentShift as any).shift_name || (currentShift as any).shift_number || "شيفت"} منذ {currentShift.opened_at && !isNaN(new Date(currentShift.opened_at).getTime()) ? format(new Date(currentShift.opened_at), "HH:mm") : "—"}
           </Badge>
           <Button variant="destructive" size="sm" className="h-7 text-[10px] gap-1" onClick={() => verifyPassword("close")}>
             <StopCircle className="h-3 w-3" />

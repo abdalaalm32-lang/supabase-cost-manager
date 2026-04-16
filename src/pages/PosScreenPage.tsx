@@ -554,11 +554,19 @@ export const PosScreenPage: React.FC = () => {
           <PosDailyStats companyId={companyId || ""} branchId={branchId} />
           <div className="flex items-center gap-2">
             {(pendingDeliveryOrders?.length ?? 0) > 0 && (
-              <div className="relative flex items-center gap-1 px-2 py-1 rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-500 text-[10px] font-bold animate-pulse">
+              <button
+                onClick={() => { setDeliveryDialogOpen(true); setNewDeliveryCount(0); }}
+                className="relative flex items-center gap-1 px-2 py-1 rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-500 text-[10px] font-bold animate-pulse hover:bg-amber-500/20 transition-colors cursor-pointer"
+              >
                 <Bell className="h-3 w-3" />
                 <Truck className="h-3 w-3" />
                 {pendingDeliveryOrders?.length} دليفري
-              </div>
+                {newDeliveryCount > 0 && (
+                  <Badge className="absolute -top-2 -left-2 h-4 min-w-4 px-1 text-[9px] bg-destructive text-destructive-foreground">
+                    {newDeliveryCount}
+                  </Badge>
+                )}
+              </button>
             )}
             {companyId && (
               <PosShiftManager companyId={companyId} branchId={branchId} userName={auth.profile?.full_name || ""} />

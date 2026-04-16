@@ -12,13 +12,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
   Plus, Minus, Trash2, ShoppingCart, CalendarIcon, Store,
   FileText, Printer, AlertCircle, Archive, LayoutGrid, Percent, Tag,
   Search, Maximize, Minimize, Pause, User, Keyboard,
-  UtensilsCrossed, ShoppingBag, Truck, Banknote, CreditCard, Bell
+  UtensilsCrossed, ShoppingBag, Truck, Banknote, CreditCard, Bell,
+  ChefHat, CheckCircle2, Clock, MapPin, Phone
 } from "lucide-react";
 import { PosReceiptPrint } from "@/components/pos/PosReceiptPrint";
 import { PosHeldInvoices } from "@/components/pos/PosHeldInvoices";
@@ -44,6 +47,13 @@ const ORDER_TYPES = [
 const PAYMENT_METHODS = [
   { value: "كاش", label: "كاش", icon: Banknote },
   { value: "فيزا", label: "فيزا", icon: CreditCard },
+];
+
+const DELIVERY_STATUSES = [
+  { value: "جديد", label: "جديد", icon: Clock, color: "text-amber-500" },
+  { value: "قيد التحضير", label: "قيد التحضير", icon: ChefHat, color: "text-blue-500" },
+  { value: "خرج للتوصيل", label: "خرج للتوصيل", icon: Truck, color: "text-purple-500" },
+  { value: "تم التسليم", label: "تم التسليم", icon: CheckCircle2, color: "text-emerald-500" },
 ];
 
 export const PosScreenPage: React.FC = () => {
@@ -84,6 +94,7 @@ export const PosScreenPage: React.FC = () => {
 
   // Delivery orders notification
   const [newDeliveryCount, setNewDeliveryCount] = useState(0);
+  const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false);
   const deliveryAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // Pending delivery orders query
@@ -92,16 +103,32 @@ export const PosScreenPage: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pos_sales")
-        .select("id, invoice_number, customer_name, customer_phone, customer_address, total_amount, delivery_fee, date, delivery_status")
+        .select("id, invoice_number, customer_name, customer_phone, customer_address, total_amount, delivery_fee, date, delivery_status, driver_id, notes")
         .eq("company_id", companyId!)
         .eq("order_type", "دليفري")
-        .in("delivery_status", ["جديد", "قيد التحضير"])
+        .in("delivery_status", ["جديد", "قيد التحضير", "خرج للتوصيل"])
         .order("date", { ascending: false });
       if (error) throw error;
       return data;
     },
     enabled: !!companyId,
-    refetchInterval: 30000,
+    refetchInterval: 15000,
+  });
+
+  // Delivery drivers
+  const { data: deliveryDrivers } = useQuery({
+    queryKey: ["delivery-drivers", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("delivery_drivers")
+        .select("*")
+        .eq("company_id", companyId!)
+        .eq("active", true)
+        .order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
   });
 
   // Realtime subscription for new delivery orders
@@ -130,7 +157,7 @@ export const PosScreenPage: React.FC = () => {
               duration: 8000,
               action: {
                 label: "عرض",
-                onClick: () => {},
+                onClick: () => setDeliveryDialogOpen(true),
               },
             });
             queryClient.invalidateQueries({ queryKey: ["pos-pending-delivery"] });
@@ -142,7 +169,19 @@ export const PosScreenPage: React.FC = () => {
     return () => { supabase.removeChannel(channel); };
   }, [companyId, queryClient]);
 
-  // Persist draft to sessionStorage
+  // Update delivery order (status + driver)
+  const updateDeliveryOrder = useMutation({
+    mutationFn: async ({ saleId, updates }: { saleId: string; updates: Record<string, any> }) => {
+      const { error } = await supabase.from("pos_sales").update(updates as any).eq("id", saleId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("تم تحديث الأوردر");
+      queryClient.invalidateQueries({ queryKey: ["pos-pending-delivery"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   useEffect(() => {
     const draft = { cart, branchId, saleDate: saleDate.toISOString(), taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId, customerName, orderType, paymentMethod };
     sessionStorage.setItem("pos_draft", JSON.stringify(draft));
@@ -515,11 +554,19 @@ export const PosScreenPage: React.FC = () => {
           <PosDailyStats companyId={companyId || ""} branchId={branchId} />
           <div className="flex items-center gap-2">
             {(pendingDeliveryOrders?.length ?? 0) > 0 && (
-              <div className="relative flex items-center gap-1 px-2 py-1 rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-500 text-[10px] font-bold animate-pulse">
+              <button
+                onClick={() => { setDeliveryDialogOpen(true); setNewDeliveryCount(0); }}
+                className="relative flex items-center gap-1 px-2 py-1 rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-500 text-[10px] font-bold animate-pulse hover:bg-amber-500/20 transition-colors cursor-pointer"
+              >
                 <Bell className="h-3 w-3" />
                 <Truck className="h-3 w-3" />
                 {pendingDeliveryOrders?.length} دليفري
-              </div>
+                {newDeliveryCount > 0 && (
+                  <Badge className="absolute -top-2 -left-2 h-4 min-w-4 px-1 text-[9px] bg-destructive text-destructive-foreground">
+                    {newDeliveryCount}
+                  </Badge>
+                )}
+              </button>
             )}
             {companyId && (
               <PosShiftManager companyId={companyId} branchId={branchId} userName={auth.profile?.full_name || ""} />
@@ -858,6 +905,114 @@ export const PosScreenPage: React.FC = () => {
           @page { size: 80mm auto; margin: 0; }
         }
       `}</style>
+
+      {/* Delivery Management Dialog */}
+      <Dialog open={deliveryDialogOpen} onOpenChange={setDeliveryDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Truck className="h-5 w-5 text-primary" />
+              إدارة أوردرات الدليفري
+              <Badge variant="outline" className="text-xs">{pendingDeliveryOrders?.length ?? 0} أوردر</Badge>
+            </DialogTitle>
+          </DialogHeader>
+
+          {(!pendingDeliveryOrders || pendingDeliveryOrders.length === 0) ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <Truck className="h-12 w-12 mx-auto mb-3 opacity-30" />
+              <p className="text-sm">لا توجد أوردرات دليفري حالياً</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {pendingDeliveryOrders.map((order: any) => {
+                const statusInfo = DELIVERY_STATUSES.find(s => s.value === order.delivery_status);
+                const StatusIcon = statusInfo?.icon || Clock;
+                const nextStatus = (() => {
+                  const idx = DELIVERY_STATUSES.findIndex(s => s.value === order.delivery_status);
+                  return idx < DELIVERY_STATUSES.length - 1 ? DELIVERY_STATUSES[idx + 1] : null;
+                })();
+
+                return (
+                  <div key={order.id} className="p-3 rounded-xl border border-border/50 bg-card/50 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[10px] font-mono">{order.invoice_number}</Badge>
+                        <Badge variant="outline" className={cn("text-[10px] gap-1", statusInfo?.color)}>
+                          <StatusIcon className="h-3 w-3" />
+                          {order.delivery_status}
+                        </Badge>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground">{format(new Date(order.date), "HH:mm")}</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <User className="h-3 w-3 text-muted-foreground" />
+                        <span>{order.customer_name || "—"}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Phone className="h-3 w-3 text-muted-foreground" />
+                        <span dir="ltr">{order.customer_phone || "—"}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 col-span-2">
+                        <MapPin className="h-3 w-3 text-muted-foreground shrink-0" />
+                        <span className="truncate">{order.customer_address || "—"}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-primary">{order.total_amount?.toFixed(0)} EGP</span>
+                      {order.delivery_fee > 0 && (
+                        <Badge variant="outline" className="text-[10px]">توصيل: {order.delivery_fee} EGP</Badge>
+                      )}
+                    </div>
+
+                    {order.notes && (
+                      <p className="text-[10px] text-muted-foreground bg-muted/30 p-1.5 rounded">{order.notes}</p>
+                    )}
+
+                    <div className="flex items-center gap-2 pt-1">
+                      {/* Driver selection */}
+                      <Select
+                        value={order.driver_id || ""}
+                        onValueChange={(driverId) => updateDeliveryOrder.mutate({
+                          saleId: order.id,
+                          updates: { driver_id: driverId || null }
+                        })}
+                      >
+                        <SelectTrigger className="glass-input h-8 text-xs flex-1">
+                          <SelectValue placeholder="اختر الطيار" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {deliveryDrivers?.map((d: any) => (
+                            <SelectItem key={d.id} value={d.id} className="text-xs">{d.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      {/* Next status button */}
+                      {nextStatus && (
+                        <Button
+                          size="sm"
+                          className="gap-1 text-xs h-8"
+                          onClick={() => updateDeliveryOrder.mutate({
+                            saleId: order.id,
+                            updates: { delivery_status: nextStatus.value }
+                          })}
+                          disabled={updateDeliveryOrder.isPending}
+                        >
+                          <nextStatus.icon className="h-3 w-3" />
+                          {nextStatus.label}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

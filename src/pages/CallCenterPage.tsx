@@ -714,7 +714,7 @@ export const CallCenterPage: React.FC = () => {
 
                   <Button
                     className="w-full gap-1"
-                    disabled={cart.length === 0 || !customerPhone || !customerName || saveSale.isPending}
+                    disabled={cart.length === 0 || !customerPhone || !customerName || !selectedBranchId || saveSale.isPending}
                     onClick={() => saveSale.mutate()}
                   >
                     <Send className="h-4 w-4" />

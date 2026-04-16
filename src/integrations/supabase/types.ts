@@ -1258,6 +1258,7 @@ export type Database = {
           opened_at: string
           opened_by: string | null
           opening_cash: number
+          shift_number: string | null
           status: string
         }
         Insert: {
@@ -1270,6 +1271,7 @@ export type Database = {
           opened_at?: string
           opened_by?: string | null
           opening_cash?: number
+          shift_number?: string | null
           status?: string
         }
         Update: {
@@ -1282,6 +1284,7 @@ export type Database = {
           opened_at?: string
           opened_by?: string | null
           opening_cash?: number
+          shift_number?: string | null
           status?: string
         }
         Relationships: [
@@ -1579,6 +1582,7 @@ export type Database = {
           job_role_id: string | null
           permissions: string[]
           phone: string | null
+          pos_password: string | null
           role: string
           status: string
           subscription_end: string | null
@@ -1599,6 +1603,7 @@ export type Database = {
           job_role_id?: string | null
           permissions?: string[]
           phone?: string | null
+          pos_password?: string | null
           role?: string
           status?: string
           subscription_end?: string | null
@@ -1619,6 +1624,7 @@ export type Database = {
           job_role_id?: string | null
           permissions?: string[]
           phone?: string | null
+          pos_password?: string | null
           role?: string
           status?: string
           subscription_end?: string | null
@@ -2812,6 +2818,7 @@ export type Database = {
         Args: { p_company_id: string }
         Returns: string
       }
+      generate_shift_number: { Args: { p_company_id: string }; Returns: string }
       generate_stock_item_code: {
         Args: { p_company_id: string; p_identifier_code: string }
         Returns: string

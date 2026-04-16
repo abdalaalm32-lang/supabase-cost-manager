@@ -21,7 +21,7 @@ import {
   FileText, Printer, AlertCircle, Archive, LayoutGrid, Percent, Tag,
   Search, Maximize, Minimize, Pause, User, Keyboard,
   UtensilsCrossed, ShoppingBag, Truck, Banknote, CreditCard, Bell,
-  ChefHat, CheckCircle2, Clock, MapPin, Phone
+  ChefHat, CheckCircle2, Clock, MapPin, Phone, PlayCircle
 } from "lucide-react";
 import { PosReceiptPrint } from "@/components/pos/PosReceiptPrint";
 import { PosHeldInvoices } from "@/components/pos/PosHeldInvoices";

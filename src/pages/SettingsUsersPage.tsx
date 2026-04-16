@@ -577,6 +577,31 @@ export const SettingsUsersPage: React.FC = () => {
                   </div>
                 </div>
 
+                {detailUser && (
+                  <div className="space-y-2">
+                    <Label>كلمة مرور نقطة البيع (POS Password)</Label>
+                    <Input
+                      className="glass-input"
+                      type="text"
+                      value={(detailUser as any)?.pos_password || ""}
+                      onChange={async (e) => {
+                        const val = e.target.value;
+                        const { error } = await supabase
+                          .from("profiles")
+                          .update({ pos_password: val || null } as any)
+                          .eq("id", detailUser.id);
+                        if (!error) {
+                          setDetailUser({ ...detailUser, pos_password: val });
+                          queryClient.invalidateQueries({ queryKey: ["settings-users"] });
+                        }
+                      }}
+                      placeholder="اتركه فارغاً لإلغاء الحماية"
+                      dir="ltr"
+                    />
+                    <p className="text-xs text-muted-foreground">يستخدم عند فتح وإغلاق الشيفت في نقطة البيع</p>
+                  </div>
+                )}
+
                 <div className="space-y-3 p-3 rounded-xl border border-border/50 bg-muted/30">
                   <Label className="font-bold">مدة الاشتراك</Label>
                   <Select value={formSubscriptionType} onValueChange={setFormSubscriptionType}>

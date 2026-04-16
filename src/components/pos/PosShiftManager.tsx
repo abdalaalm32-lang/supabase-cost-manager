@@ -10,7 +10,13 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { PlayCircle, StopCircle, Clock, Lock } from "lucide-react";
-import { format } from "date-fns";
+import { format, isValid } from "date-fns";
+
+const safeFormat = (dateVal: any, fmt: string, fallback = "—") => {
+  if (!dateVal) return fallback;
+  const d = new Date(dateVal);
+  return isValid(d) ? format(d, fmt) : fallback;
+};
 
 interface PosShiftManagerProps {
   companyId: string;
@@ -277,8 +283,8 @@ td:nth-child(2),th:nth-child(2){text-align:center;}
 ${(currentShift as any).shift_name ? `<p style="font-size:10px;margin-top:2px">${(currentShift as any).shift_name}</p>` : ""}
 <p style="font-size:9px;color:#666;">CostControl POS</p></div>
 <div class="sep">
-<p><b>فتح:</b> ${format(new Date(currentShift.opened_at), "yyyy/MM/dd HH:mm")}</p>
-<p><b>إغلاق:</b> ${format(new Date(), "yyyy/MM/dd HH:mm")}</p>
+<p><b>فتح:</b> ${safeFormat(currentShift.opened_at, "yyyy/MM/dd HH:mm")}</p>
+<p><b>إغلاق:</b> ${safeFormat(new Date(), "yyyy/MM/dd HH:mm")}</p>
 <p><b>الكاشير:</b> ${currentShift.opened_by || "-"}</p>
 <p><b>المبلغ الافتتاحي:</b> ${(currentShift.opening_cash || 0).toFixed(2)} EGP</p>
 </div>
@@ -326,7 +332,7 @@ ${totalReturns > 0 ? `<p class="expense-label">- المرتجعات: ${totalRetu
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="gap-1 text-[10px] border-green-500/30 text-green-500">
             <Clock className="h-3 w-3" />
-            {(currentShift as any).shift_name || (currentShift as any).shift_number || "شيفت"} منذ {currentShift.opened_at && !isNaN(new Date(currentShift.opened_at).getTime()) ? format(new Date(currentShift.opened_at), "HH:mm") : "—"}
+            {(currentShift as any).shift_name || (currentShift as any).shift_number || "شيفت"} منذ {safeFormat(currentShift.opened_at, "HH:mm")}
           </Badge>
           <Button variant="destructive" size="sm" className="h-7 text-[10px] gap-1" onClick={() => verifyPassword("close")}>
             <StopCircle className="h-3 w-3" />
@@ -436,7 +442,7 @@ ${totalReturns > 0 ? `<p class="expense-label">- المرتجعات: ${totalRetu
             <div className="p-3 rounded-lg bg-muted/50 space-y-1">
               <p><span className="text-muted-foreground">كود الشيفت:</span> <span className="font-bold text-primary">{(currentShift as any)?.shift_number || "—"}</span></p>
               {(currentShift as any)?.shift_name && <p><span className="text-muted-foreground">اسم الشيفت:</span> <span className="font-bold">{(currentShift as any)?.shift_name}</span></p>}
-              <p><span className="text-muted-foreground">وقت الفتح:</span> {currentShift && format(new Date(currentShift.opened_at), "yyyy/MM/dd HH:mm")}</p>
+              <p><span className="text-muted-foreground">وقت الفتح:</span> {safeFormat(currentShift?.opened_at, "yyyy/MM/dd HH:mm")}</p>
               <p><span className="text-muted-foreground">الكاشير:</span> {currentShift?.opened_by}</p>
               <p><span className="text-muted-foreground">المبلغ الافتتاحي:</span> {(currentShift?.opening_cash || 0).toFixed(2)} EGP</p>
             </div>

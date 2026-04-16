@@ -169,7 +169,19 @@ export const PosScreenPage: React.FC = () => {
     return () => { supabase.removeChannel(channel); };
   }, [companyId, queryClient]);
 
-  // Persist draft to sessionStorage
+  // Update delivery order (status + driver)
+  const updateDeliveryOrder = useMutation({
+    mutationFn: async ({ saleId, updates }: { saleId: string; updates: Record<string, any> }) => {
+      const { error } = await supabase.from("pos_sales").update(updates as any).eq("id", saleId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("تم تحديث الأوردر");
+      queryClient.invalidateQueries({ queryKey: ["pos-pending-delivery"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   useEffect(() => {
     const draft = { cart, branchId, saleDate: saleDate.toISOString(), taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId, customerName, orderType, paymentMethod };
     sessionStorage.setItem("pos_draft", JSON.stringify(draft));

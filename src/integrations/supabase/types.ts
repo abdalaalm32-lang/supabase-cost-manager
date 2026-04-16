@@ -981,6 +981,7 @@ export type Database = {
       }
       pos_sales: {
         Row: {
+          assigned_cashier_id: string | null
           branch_id: string | null
           company_id: string
           created_at: string
@@ -1006,6 +1007,7 @@ export type Database = {
           total_amount: number
         }
         Insert: {
+          assigned_cashier_id?: string | null
           branch_id?: string | null
           company_id: string
           created_at?: string
@@ -1031,6 +1033,7 @@ export type Database = {
           total_amount?: number
         }
         Update: {
+          assigned_cashier_id?: string | null
           branch_id?: string | null
           company_id?: string
           created_at?: string
@@ -1056,6 +1059,13 @@ export type Database = {
           total_amount?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "pos_sales_assigned_cashier_id_fkey"
+            columns: ["assigned_cashier_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pos_sales_branch_id_fkey"
             columns: ["branch_id"]

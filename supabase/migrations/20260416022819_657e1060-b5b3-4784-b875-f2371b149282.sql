@@ -1,0 +1,1 @@
+ALTER TABLE public.pos_sales ADD COLUMN assigned_cashier_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL DEFAULT NULL;

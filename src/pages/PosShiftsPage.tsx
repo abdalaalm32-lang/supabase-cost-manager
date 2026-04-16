@@ -184,7 +184,19 @@ export const PosShiftsPage: React.FC = () => {
               <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={dateTo} onSelect={setDateTo} className="pointer-events-auto" /></PopoverContent>
             </Popover>
             <div className="mr-auto">
-              <ExportButtons data={tableData} filename="سجل_الشيفتات" />
+              <ExportButtons
+                data={tableData}
+                filename="سجل_الشيفتات"
+                title="سجل الشيفتات"
+                columns={[
+                  { header: "كود الشيفت", key: "كود الشيفت" },
+                  { header: "الحالة", key: "الحالة" },
+                  { header: "الكاشير", key: "الكاشير" },
+                  { header: "وقت الفتح", key: "وقت الفتح" },
+                  { header: "وقت الإغلاق", key: "وقت الإغلاق" },
+                  { header: "المبلغ الافتتاحي", key: "المبلغ الافتتاحي" },
+                ]}
+              />
             </div>
           </div>
         </CardContent>

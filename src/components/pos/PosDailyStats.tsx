@@ -94,7 +94,7 @@ export const PosDailyStats: React.FC<PosDailyStatsProps> = ({ companyId, branchI
           </SelectItem>
           {closedShifts.map((s: any) => (
             <SelectItem key={s.id} value={s.id} className="text-[10px]">
-              شيفت {format(new Date(s.opened_at), "HH:mm")} - {format(new Date(s.closed_at), "HH:mm")}
+              {s.shift_name || `شيفت ${format(new Date(s.opened_at), "HH:mm")}`} - {format(new Date(s.closed_at), "HH:mm")}
             </SelectItem>
           ))}
         </SelectContent>

@@ -376,6 +376,10 @@ export const PosScreenPage: React.FC = () => {
   }, [items, selectedCategory, branchId, searchQuery]);
 
   const addToCart = (item: any) => {
+    if (!currentShiftForExpenses) {
+      toast.error("يجب فتح شيفت أولاً قبل إضافة أصناف");
+      return;
+    }
     setCart((prev) => {
       const existing = prev.find((c) => c.pos_item_id === item.id);
       if (existing) {
@@ -567,13 +571,15 @@ table{width:100%;border-collapse:collapse;}
 </style></head><body>${printContent}</body></html>`);
   }, [printViaIframe]);
 
-  // Auto-print receipt
+  // Auto-print receipt — wait longer to ensure DOM renders
   useEffect(() => {
     if (receiptData) {
       const timer = setTimeout(() => {
-        printReceipt();
+        if (receiptRef.current && receiptRef.current.innerHTML) {
+          printReceipt();
+        }
         setReceiptData(null);
-      }, 400);
+      }, 800);
       return () => clearTimeout(timer);
     }
   }, [receiptData, printReceipt]);

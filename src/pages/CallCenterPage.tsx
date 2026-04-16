@@ -142,6 +142,21 @@ export const CallCenterPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  // Cashier users (profiles) filtered by branch
+  const { data: branchUsers } = useQuery({
+    queryKey: ["branch-users", companyId, selectedBranchId],
+    queryFn: async () => {
+      let query = supabase.from("profiles").select("id, full_name, branch_id").eq("company_id", companyId!).eq("status", "نشط");
+      if (selectedBranchId) {
+        query = query.eq("branch_id", selectedBranchId);
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
   const { data: categories } = useQuery({
     queryKey: ["pos-categories-active", companyId],
     queryFn: async () => {

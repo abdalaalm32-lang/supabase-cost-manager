@@ -97,6 +97,7 @@ export const PosScreenPage: React.FC = () => {
   const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false);
   const deliveryAudioRef = useRef<HTMLAudioElement | null>(null);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+  const [deliveryFee, setDeliveryFee] = useState<number>(saved?.deliveryFee || 0);
 
   // Pending delivery orders query
   const { data: pendingDeliveryOrders } = useQuery({
@@ -104,13 +105,25 @@ export const PosScreenPage: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pos_sales")
-        .select("id, invoice_number, customer_name, customer_phone, customer_address, total_amount, delivery_fee, date, delivery_status, driver_id, notes, discount_amount, tax_amount, tax_rate, payment_method")
+        .select("id, invoice_number, customer_name, customer_phone, customer_address, customer_id, total_amount, delivery_fee, date, delivery_status, driver_id, notes, discount_amount, tax_amount, tax_rate, payment_method")
         .eq("company_id", companyId!)
         .eq("order_type", "دليفري")
         .in("delivery_status", ["جديد", "قيد التحضير", "خرج للتوصيل"])
         .order("date", { ascending: false });
       if (error) throw error;
-      return data;
+      // Fetch phone2 for customers
+      const customerIds = [...new Set((data || []).map((o: any) => o.customer_id).filter(Boolean))];
+      let phone2Map: Record<string, string> = {};
+      if (customerIds.length > 0) {
+        const { data: customers } = await supabase
+          .from("customers")
+          .select("id, phone2")
+          .in("id", customerIds);
+        if (customers) {
+          customers.forEach((c: any) => { if (c.phone2) phone2Map[c.id] = c.phone2; });
+        }
+      }
+      return (data || []).map((o: any) => ({ ...o, customer_phone2: o.customer_id ? phone2Map[o.customer_id] || null : null }));
     },
     enabled: !!companyId,
     refetchInterval: 15000,
@@ -198,9 +211,9 @@ export const PosScreenPage: React.FC = () => {
   });
 
   useEffect(() => {
-    const draft = { cart, branchId, saleDate: saleDate.toISOString(), taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId, customerName, orderType, paymentMethod };
+    const draft = { cart, branchId, saleDate: saleDate.toISOString(), taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId, customerName, orderType, paymentMethod, deliveryFee };
     sessionStorage.setItem("pos_draft", JSON.stringify(draft));
-  }, [cart, branchId, saleDate, taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId, customerName, orderType, paymentMethod]);
+  }, [cart, branchId, saleDate, taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId, customerName, orderType, paymentMethod, deliveryFee]);
 
   // Load archived sale from navigation state
   useEffect(() => {
@@ -355,6 +368,7 @@ export const PosScreenPage: React.FC = () => {
     setTaxRate(0);
     setTaxInputVisible(false);
     setCustomerName("");
+    setDeliveryFee(0);
     
     if (!keepOrderType) {
       setOrderType("صالة");
@@ -412,6 +426,7 @@ export const PosScreenPage: React.FC = () => {
         discount_amount: discountAmount,
         order_type: orderType,
         payment_method: paymentMethod,
+        delivery_fee: orderType === "دليفري" ? deliveryFee : 0,
         notes: cart.filter(c => c.notes).map(c => `${c.name}: ${c.notes}`).join(" | ") || null,
       };
 
@@ -755,6 +770,22 @@ export const PosScreenPage: React.FC = () => {
                 </div>
               </div>
 
+              {/* Delivery fee input */}
+              {orderType === "دليفري" && (
+                <div className="mb-2">
+                  <div className="relative">
+                    <Truck className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      type="number"
+                      placeholder="رسوم التوصيل (EGP)"
+                      value={deliveryFee || ""}
+                      onChange={(e) => setDeliveryFee(Number(e.target.value))}
+                      className="glass-input h-8 text-xs pr-8"
+                    />
+                  </div>
+                </div>
+              )}
+
 
               {discountEnabled && (
                 <div className="mb-2">
@@ -971,6 +1002,9 @@ export const PosScreenPage: React.FC = () => {
                       <div className="flex items-center gap-1.5">
                         <Phone className="h-3 w-3 text-muted-foreground" />
                         <span dir="ltr">{order.customer_phone || "—"}</span>
+                        {order.customer_phone2 && (
+                          <span dir="ltr" className="text-muted-foreground">/ {order.customer_phone2}</span>
+                        )}
                       </div>
                       <div className="flex items-center gap-1.5 col-span-2">
                         <MapPin className="h-3 w-3 text-muted-foreground shrink-0" />
@@ -1046,7 +1080,8 @@ export const PosScreenPage: React.FC = () => {
                                 total: i.total,
                               })) || [];
                               const itemsRows = items.map(i => `<tr><td style="text-align:right;padding:3px 0;font-size:10px">${i.name}</td><td style="text-align:center;font-size:10px">${i.qty}</td><td style="text-align:center;font-size:10px">${i.price?.toFixed(2)}</td><td style="text-align:left;font-size:10px">${i.total?.toFixed(2)}</td></tr>`).join("");
-                              const driverReceiptHTML = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>إيصال توصيل</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Cairo',sans-serif;width:80mm;margin:0 auto;padding:10px;font-size:12px;color:#000}h2{text-align:center;font-size:14px;margin-bottom:4px}.sep{border-bottom:1px dashed #000;margin:6px 0}.info{font-size:11px;padding:2px 0}.label{font-weight:bold}table{width:100%;border-collapse:collapse;margin:6px 0}th{font-size:10px;border-bottom:1px solid #000;padding:3px 0;text-align:center}td{padding:3px 0}.total-row{font-weight:bold;font-size:13px;text-align:center;padding:6px 0;border-top:2px dashed #000;margin-top:6px}.footer{text-align:center;font-size:9px;color:#666;margin-top:8px;border-top:1px dashed #ccc;padding-top:4px}@media print{@page{size:80mm auto;margin:0}}</style></head><body><h2>🚚 إيصال توصيل</h2><p style="text-align:center;font-size:10px">${company?.name || "CostControl"}</p><div class="sep"></div><div class="info"><span class="label">فاتورة:</span> ${order.invoice_number}</div><div class="info"><span class="label">التاريخ:</span> ${format(new Date(order.date), "yyyy/MM/dd HH:mm")}</div><div class="sep"></div><div class="info"><span class="label">العميل:</span> ${order.customer_name || "—"}</div><div class="info"><span class="label">الهاتف:</span> <span dir="ltr">${order.customer_phone || "—"}</span></div><div class="info"><span class="label">العنوان:</span> ${order.customer_address || "—"}</div>${driverName ? `<div class="sep"></div><div class="info"><span class="label">الطيار:</span> ${driverName}</div>${driverPhone ? `<div class="info"><span class="label">هاتف الطيار:</span> <span dir="ltr">${driverPhone}</span></div>` : ""}` : ""}<div class="sep"></div><table><thead><tr><th style="text-align:right">الصنف</th><th>الكمية</th><th>السعر</th><th style="text-align:left">الإجمالي</th></tr></thead><tbody>${itemsRows}</tbody></table>${order.discount_amount > 0 ? `<div class="info"><span class="label">خصم:</span> ${order.discount_amount?.toFixed(2)} EGP</div>` : ""}${order.tax_amount > 0 ? `<div class="info"><span class="label">ضريبة ${order.tax_rate}%:</span> ${order.tax_amount?.toFixed(2)} EGP</div>` : ""}<div class="info"><span class="label">رسوم التوصيل:</span> ${order.delivery_fee?.toFixed(2) || "0.00"} EGP</div><div class="total-row">الإجمالي المطلوب: ${((order.total_amount ?? 0) + (order.delivery_fee ?? 0)).toFixed(2)} EGP</div><div class="info" style="text-align:center;font-size:10px;margin-top:4px"><span class="label">طريقة الدفع:</span> ${order.payment_method || "كاش"}</div>${order.notes ? `<div class="sep"></div><div class="info" style="font-size:10px"><span class="label">ملاحظات:</span> ${order.notes}</div>` : ""}<div class="footer">شكراً لتعاملكم معنا • ${company?.name || "CostControl"}</div><script>window.onload=function(){window.print();window.onafterprint=function(){window.close()}}</script></body></html>`;
+                              const phone2Line = order.customer_phone2 ? `<div class="info"><span class="label">هاتف 2:</span> <span dir="ltr">${order.customer_phone2}</span></div>` : "";
+                              const driverReceiptHTML = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>إيصال توصيل</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Cairo',sans-serif;width:80mm;margin:0 auto;padding:10px;font-size:12px;color:#000}h2{text-align:center;font-size:14px;margin-bottom:4px}.sep{border-bottom:1px dashed #000;margin:6px 0}.info{font-size:11px;padding:2px 0}.label{font-weight:bold}table{width:100%;border-collapse:collapse;margin:6px 0}th{font-size:10px;border-bottom:1px solid #000;padding:3px 0;text-align:center}td{padding:3px 0}.total-row{font-weight:bold;font-size:13px;text-align:center;padding:6px 0;border-top:2px dashed #000;margin-top:6px}.footer{text-align:center;font-size:9px;color:#666;margin-top:8px;border-top:1px dashed #ccc;padding-top:4px}@media print{@page{size:80mm auto;margin:0}}</style></head><body><h2>🚚 إيصال توصيل</h2><p style="text-align:center;font-size:10px">${company?.name || "CostControl"}</p><div class="sep"></div><div class="info"><span class="label">فاتورة:</span> ${order.invoice_number}</div><div class="info"><span class="label">التاريخ:</span> ${format(new Date(order.date), "yyyy/MM/dd HH:mm")}</div><div class="sep"></div><div class="info"><span class="label">العميل:</span> ${order.customer_name || "—"}</div><div class="info"><span class="label">الهاتف:</span> <span dir="ltr">${order.customer_phone || "—"}</span></div>${phone2Line}<div class="info"><span class="label">العنوان:</span> ${order.customer_address || "—"}</div>${driverName ? `<div class="sep"></div><div class="info"><span class="label">الطيار:</span> ${driverName}</div>${driverPhone ? `<div class="info"><span class="label">هاتف الطيار:</span> <span dir="ltr">${driverPhone}</span></div>` : ""}` : ""}<div class="sep"></div><table><thead><tr><th style="text-align:right">الصنف</th><th>الكمية</th><th>السعر</th><th style="text-align:left">الإجمالي</th></tr></thead><tbody>${itemsRows}</tbody></table>${order.discount_amount > 0 ? `<div class="info"><span class="label">خصم:</span> ${order.discount_amount?.toFixed(2)} EGP</div>` : ""}${order.tax_amount > 0 ? `<div class="info"><span class="label">ضريبة ${order.tax_rate}%:</span> ${order.tax_amount?.toFixed(2)} EGP</div>` : ""}<div class="info"><span class="label">رسوم التوصيل:</span> ${order.delivery_fee?.toFixed(2) || "0.00"} EGP</div><div class="total-row">الإجمالي المطلوب: ${((order.total_amount ?? 0) + (order.delivery_fee ?? 0)).toFixed(2)} EGP</div><div class="info" style="text-align:center;font-size:10px;margin-top:4px"><span class="label">طريقة الدفع:</span> ${order.payment_method || "كاش"}</div>${order.notes ? `<div class="sep"></div><div class="info" style="font-size:10px"><span class="label">ملاحظات:</span> ${order.notes}</div>` : ""}<div class="footer">شكراً لتعاملكم معنا • ${company?.name || "CostControl"}</div><script>window.onload=function(){window.print();window.onafterprint=function(){window.close()}}</script></body></html>`;
                               const w = window.open("", "_blank", "width=320,height=600");
                               if (w) { w.document.write(driverReceiptHTML); w.document.close(); }
                             }}

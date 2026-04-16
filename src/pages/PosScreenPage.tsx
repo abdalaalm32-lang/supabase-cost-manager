@@ -157,7 +157,7 @@ export const PosScreenPage: React.FC = () => {
               duration: 8000,
               action: {
                 label: "عرض",
-                onClick: () => {},
+                onClick: () => setDeliveryDialogOpen(true),
               },
             });
             queryClient.invalidateQueries({ queryKey: ["pos-pending-delivery"] });

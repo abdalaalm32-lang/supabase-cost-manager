@@ -635,27 +635,15 @@ export const CallCenterPage: React.FC = () => {
                       className="glass-input pr-8 text-xs h-8"
                     />
                   </div>
-                  <div className="flex gap-2">
-                    <div className="flex-1 relative">
-                      <Truck className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                      <Input
-                        type="number"
-                        placeholder="رسوم التوصيل"
-                        value={deliveryFee || ""}
-                        onChange={e => setDeliveryFee(Number(e.target.value))}
-                        className="glass-input pr-8 text-xs h-8"
-                      />
-                    </div>
-                    <Select value={selectedDriverId} onValueChange={setSelectedDriverId}>
-                      <SelectTrigger className="glass-input h-8 text-xs flex-1">
-                        <SelectValue placeholder="الطيار" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {drivers?.map((d: any) => (
-                          <SelectItem key={d.id} value={d.id} className="text-xs">{d.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="relative">
+                    <Truck className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      type="number"
+                      placeholder="رسوم التوصيل"
+                      value={deliveryFee || ""}
+                      onChange={e => setDeliveryFee(Number(e.target.value))}
+                      className="glass-input pr-8 text-xs h-8"
+                    />
                   </div>
                 </div>
 

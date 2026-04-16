@@ -383,10 +383,11 @@ const AppRoutes = () => {
                 <Route path="/" element={<DashboardPage />} />
                 <Route path="/pos" element={<Navigate to="/pos/screen" replace />} />
                 <Route path="/pos/screen" element={<PermissionGuard permKey="pos"><PosScreenPage /></PermissionGuard>} />
-                <Route path="/pos/invoices" element={<PermissionGuard permKey="pos"><PosInvoicesPage /></PermissionGuard>} />
-                <Route path="/pos/analytics" element={<PermissionGuard permKey="pos"><PosAnalyticsPage /></PermissionGuard>} />
-                <Route path="/pos/groups" element={<PermissionGuard permKey="pos"><PosGroupsPage /></PermissionGuard>} />
-                <Route path="/pos/items" element={<PermissionGuard permKey="pos"><PosItemsPage /></PermissionGuard>} />
+                <Route path="/sales" element={<Navigate to="/pos/invoices" replace />} />
+                <Route path="/pos/invoices" element={<PermissionGuard permKey="sales_management"><PosInvoicesPage /></PermissionGuard>} />
+                <Route path="/pos/analytics" element={<PermissionGuard permKey="sales_management"><PosAnalyticsPage /></PermissionGuard>} />
+                <Route path="/pos/groups" element={<PermissionGuard permKey="sales_management"><PosGroupsPage /></PermissionGuard>} />
+                <Route path="/pos/items" element={<PermissionGuard permKey="sales_management"><PosItemsPage /></PermissionGuard>} />
                 <Route path="/call-center" element={<PermissionGuard permKey="call_center"><CallCenterPage /></PermissionGuard>} />
                 <Route path="/inventory" element={<PermissionGuard permKey="inventory"><Navigate to="/inventory/materials" replace /></PermissionGuard>} />
                 <Route path="/inventory/materials" element={<PermissionGuard permKey="inventory"><InventoryMaterialsPage /></PermissionGuard>} />

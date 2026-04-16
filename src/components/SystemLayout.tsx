@@ -33,14 +33,14 @@ interface NavItem {
 
 const mainNavItems: NavItem[] = [
   { id: "dashboard", path: "/", label: "لوحة التحكم", icon: LayoutDashboard },
+  { id: "pos", path: "/pos/screen", label: "نقطة البيع", icon: Monitor },
   {
-    id: "pos", path: "/pos", label: "نقطة البيع (POS)", icon: Store,
+    id: "sales_management", path: "/sales", label: "إدارة المبيعات", icon: Store,
     children: [
-      { id: "pos-screen", path: "/pos/screen", label: "شاشة البيع", icon: Monitor },
-      { id: "pos-invoices", path: "/pos/invoices", label: "سجل الفواتير", icon: Receipt },
-      { id: "pos-analytics", path: "/pos/analytics", label: "ذكاء المبيعات", icon: BrainCircuit },
-      { id: "pos-groups", path: "/pos/groups", label: "المجموعات", icon: FolderOpen },
-      { id: "pos-items", path: "/pos/items", label: "الأصناف", icon: UtensilsCrossed },
+      { id: "sales-invoices", path: "/pos/invoices", label: "سجل الفواتير", icon: Receipt },
+      { id: "sales-analytics", path: "/pos/analytics", label: "ذكاء المبيعات", icon: BrainCircuit },
+      { id: "sales-groups", path: "/pos/groups", label: "المجموعات", icon: FolderOpen },
+      { id: "sales-items", path: "/pos/items", label: "الأصناف", icon: UtensilsCrossed },
     ],
   },
   {

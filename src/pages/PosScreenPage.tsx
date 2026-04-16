@@ -94,6 +94,7 @@ export const PosScreenPage: React.FC = () => {
 
   // Delivery orders notification
   const [newDeliveryCount, setNewDeliveryCount] = useState(0);
+  const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false);
   const deliveryAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // Pending delivery orders query

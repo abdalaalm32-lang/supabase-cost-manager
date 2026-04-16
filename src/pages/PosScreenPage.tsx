@@ -104,7 +104,7 @@ export const PosScreenPage: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pos_sales")
-        .select("id, invoice_number, customer_name, customer_phone, customer_address, total_amount, delivery_fee, date, delivery_status, driver_id, notes")
+        .select("id, invoice_number, customer_name, customer_phone, customer_address, total_amount, delivery_fee, date, delivery_status, driver_id, notes, discount_amount, tax_amount, tax_rate, payment_method")
         .eq("company_id", companyId!)
         .eq("order_type", "دليفري")
         .in("delivery_status", ["جديد", "قيد التحضير", "خرج للتوصيل"])
@@ -114,6 +114,20 @@ export const PosScreenPage: React.FC = () => {
     },
     enabled: !!companyId,
     refetchInterval: 15000,
+  });
+
+  // Fetch items for expanded delivery order
+  const { data: expandedOrderItems } = useQuery({
+    queryKey: ["delivery-order-items", expandedOrderId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pos_sale_items")
+        .select("*, pos_items:pos_item_id(name)")
+        .eq("sale_id", expandedOrderId!);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!expandedOrderId,
   });
 
   // Delivery drivers

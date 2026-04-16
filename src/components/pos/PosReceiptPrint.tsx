@@ -23,46 +23,52 @@ interface PosReceiptPrintProps {
   notes?: string;
   orderType?: string;
   paymentMethod?: string;
+  deliveryFee?: number;
+  customerPhone?: string;
+  customerPhone2?: string;
+  customerAddress?: string;
 }
 
 export const PosReceiptPrint = forwardRef<HTMLDivElement, PosReceiptPrintProps>(
-  ({ invoiceNumber, branchName, customerName, date, items, subtotal, discountAmount, discountLabel, taxAmount, taxRate, total, companyName, notes, orderType, paymentMethod }, ref) => {
+  ({ invoiceNumber, branchName, customerName, date, items, subtotal, discountAmount, discountLabel, taxAmount, taxRate, total, companyName, notes, orderType, paymentMethod, deliveryFee, customerPhone, customerPhone2, customerAddress }, ref) => {
     return (
-      <div ref={ref} className="fixed -left-[9999px] top-0 bg-white" dir="rtl">
-        <div className="w-[80mm] mx-auto p-2 text-black text-xs font-mono" style={{ fontFamily: "'Cairo', monospace" }}>
+      <div ref={ref} style={{ position: "fixed", left: "-9999px", top: 0, background: "#fff", direction: "rtl" }}>
+        <div style={{ width: "72mm", margin: "0 auto", padding: "4px 6px", color: "#000", fontFamily: "'Cairo', 'Tahoma', sans-serif", fontSize: "11px", lineHeight: "1.4" }}>
           {/* Header */}
-          <div className="text-center border-b border-dashed border-gray-400 pb-2 mb-2">
-            <h2 className="text-sm font-bold">{companyName || "CostControl"}</h2>
-            {branchName && <p className="text-[10px]">{branchName}</p>}
-            <p className="text-[10px] mt-1">{date}</p>
-            {invoiceNumber && <p className="text-[10px]">فاتورة رقم: {invoiceNumber}</p>}
-            {customerName && <p className="text-[10px]">العميل: {customerName}</p>}
-            {orderType && <p className="text-[10px]">نوع الطلب: {orderType}</p>}
-            {paymentMethod && <p className="text-[10px]">طريقة الدفع: {paymentMethod}</p>}
+          <div style={{ textAlign: "center", borderBottom: "1px dashed #000", paddingBottom: "6px", marginBottom: "6px" }}>
+            <div style={{ fontSize: "14px", fontWeight: "bold" }}>{companyName || "CostControl"}</div>
+            {branchName && <div style={{ fontSize: "10px" }}>{branchName}</div>}
+            <div style={{ fontSize: "10px", marginTop: "3px" }}>{date}</div>
+            {invoiceNumber && <div style={{ fontSize: "10px" }}>فاتورة رقم: {invoiceNumber}</div>}
+            {customerName && <div style={{ fontSize: "10px" }}>العميل: {customerName}</div>}
+            {customerPhone && <div style={{ fontSize: "10px" }} dir="ltr">{customerPhone}{customerPhone2 ? ` / ${customerPhone2}` : ""}</div>}
+            {customerAddress && <div style={{ fontSize: "10px" }}>العنوان: {customerAddress}</div>}
+            {orderType && <div style={{ fontSize: "10px" }}>نوع الطلب: {orderType}</div>}
+            {paymentMethod && <div style={{ fontSize: "10px" }}>طريقة الدفع: {paymentMethod}</div>}
           </div>
 
           {/* Items */}
-          <table className="w-full mb-2">
+          <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: "6px" }}>
             <thead>
-              <tr className="border-b border-dashed border-gray-400">
-                <th className="text-right text-[10px] py-1">الصنف</th>
-                <th className="text-center text-[10px] py-1">الكمية</th>
-                <th className="text-center text-[10px] py-1">السعر</th>
-                <th className="text-left text-[10px] py-1">المجموع</th>
+              <tr style={{ borderBottom: "1px dashed #000" }}>
+                <th style={{ textAlign: "right", fontSize: "10px", padding: "2px 0" }}>الصنف</th>
+                <th style={{ textAlign: "center", fontSize: "10px", padding: "2px 0" }}>الكمية</th>
+                <th style={{ textAlign: "center", fontSize: "10px", padding: "2px 0" }}>السعر</th>
+                <th style={{ textAlign: "left", fontSize: "10px", padding: "2px 0" }}>المجموع</th>
               </tr>
             </thead>
             <tbody>
               {items.map((item, i) => (
                 <React.Fragment key={i}>
-                  <tr className="border-b border-dotted border-gray-200">
-                    <td className="text-right py-1 text-[10px]">{item.name}</td>
-                    <td className="text-center py-1 text-[10px]">{item.quantity}</td>
-                    <td className="text-center py-1 text-[10px]">{item.unit_price.toFixed(2)}</td>
-                    <td className="text-left py-1 text-[10px]">{(item.unit_price * item.quantity).toFixed(2)}</td>
+                  <tr style={{ borderBottom: "1px dotted #ccc" }}>
+                    <td style={{ textAlign: "right", padding: "2px 0", fontSize: "10px" }}>{item.name}</td>
+                    <td style={{ textAlign: "center", padding: "2px 0", fontSize: "10px" }}>{item.quantity}</td>
+                    <td style={{ textAlign: "center", padding: "2px 0", fontSize: "10px" }}>{item.unit_price.toFixed(2)}</td>
+                    <td style={{ textAlign: "left", padding: "2px 0", fontSize: "10px" }}>{(item.unit_price * item.quantity).toFixed(2)}</td>
                   </tr>
                   {item.notes && (
                     <tr>
-                      <td colSpan={4} className="text-right text-[9px] text-gray-500 pb-1 pr-2">⤷ {item.notes}</td>
+                      <td colSpan={4} style={{ textAlign: "right", fontSize: "9px", color: "#666", paddingBottom: "2px", paddingRight: "8px" }}>⤷ {item.notes}</td>
                     </tr>
                   )}
                 </React.Fragment>
@@ -71,40 +77,46 @@ export const PosReceiptPrint = forwardRef<HTMLDivElement, PosReceiptPrintProps>(
           </table>
 
           {/* Totals */}
-          <div className="border-t border-dashed border-gray-400 pt-2 space-y-1">
-            <div className="flex justify-between">
+          <div style={{ borderTop: "1px dashed #000", paddingTop: "6px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px" }}>
               <span>الإجمالي الفرعي:</span>
-              <span>{subtotal.toFixed(2)} EGP</span>
+              <span>{subtotal.toFixed(2)}</span>
             </div>
             {discountAmount > 0 && (
-              <div className="flex justify-between">
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px" }}>
                 <span>خصم {discountLabel || ""}:</span>
-                <span>- {discountAmount.toFixed(2)} EGP</span>
+                <span>- {discountAmount.toFixed(2)}</span>
               </div>
             )}
             {taxAmount > 0 && (
-              <div className="flex justify-between">
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px" }}>
                 <span>ضريبة {taxRate}%:</span>
-                <span>{taxAmount.toFixed(2)} EGP</span>
+                <span>{taxAmount.toFixed(2)}</span>
               </div>
             )}
-            <div className="flex justify-between font-bold text-sm border-t border-dashed border-gray-400 pt-1 mt-1">
+            {(deliveryFee ?? 0) > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px" }}>
+                <span>رسوم التوصيل:</span>
+                <span>{(deliveryFee ?? 0).toFixed(2)}</span>
+              </div>
+            )}
+            <div style={{ display: "flex", justifyContent: "space-between", fontWeight: "bold", fontSize: "13px", borderTop: "1px dashed #000", paddingTop: "4px", marginTop: "4px" }}>
               <span>الإجمالي:</span>
-              <span>{total.toFixed(2)} EGP</span>
+              <span>{(total + (deliveryFee ?? 0)).toFixed(2)} EGP</span>
             </div>
           </div>
 
           {/* Notes */}
           {notes && (
-            <div className="border-t border-dashed border-gray-400 pt-2 mt-2">
-              <p className="text-[10px]"><span className="font-bold">ملاحظات:</span> {notes}</p>
+            <div style={{ borderTop: "1px dashed #000", paddingTop: "6px", marginTop: "6px" }}>
+              <div style={{ fontSize: "10px" }}><span style={{ fontWeight: "bold" }}>ملاحظات:</span> {notes}</div>
             </div>
           )}
 
           {/* Footer */}
-          <div className="text-center mt-3 border-t border-dashed border-gray-400 pt-2">
-            <p className="text-[10px]">شكراً لزيارتكم</p>
-            <p className="text-[9px] text-gray-500 mt-1">CostControl POS System</p>
+          <div style={{ textAlign: "center", marginTop: "8px", borderTop: "1px dashed #000", paddingTop: "6px" }}>
+            <div style={{ fontSize: "10px" }}>شكراً لزيارتكم</div>
+            <div style={{ fontSize: "9px", color: "#666", marginTop: "3px" }}>CostControl POS System</div>
           </div>
         </div>
       </div>

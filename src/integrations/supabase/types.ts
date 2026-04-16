@@ -937,6 +937,112 @@ export type Database = {
           },
         ]
       }
+      pos_return_items: {
+        Row: {
+          id: string
+          item_name: string
+          pos_item_id: string | null
+          quantity: number
+          return_id: string
+          total: number
+          unit_price: number
+        }
+        Insert: {
+          id?: string
+          item_name: string
+          pos_item_id?: string | null
+          quantity?: number
+          return_id: string
+          total?: number
+          unit_price?: number
+        }
+        Update: {
+          id?: string
+          item_name?: string
+          pos_item_id?: string | null
+          quantity?: number
+          return_id?: string
+          total?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_return_items_pos_item_id_fkey"
+            columns: ["pos_item_id"]
+            isOneToOne: false
+            referencedRelation: "pos_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_return_items_return_id_fkey"
+            columns: ["return_id"]
+            isOneToOne: false
+            referencedRelation: "pos_returns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pos_returns: {
+        Row: {
+          branch_id: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          date: string
+          id: string
+          reason: string | null
+          return_number: string | null
+          sale_id: string
+          total_amount: number
+        }
+        Insert: {
+          branch_id?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          id?: string
+          reason?: string | null
+          return_number?: string | null
+          sale_id: string
+          total_amount?: number
+        }
+        Update: {
+          branch_id?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          id?: string
+          reason?: string | null
+          return_number?: string | null
+          sale_id?: string
+          total_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_returns_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_returns_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_returns_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "pos_sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pos_sale_items: {
         Row: {
           id: string
@@ -1092,6 +1198,51 @@ export type Database = {
             columns: ["driver_id"]
             isOneToOne: false
             referencedRelation: "delivery_drivers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pos_shift_expenses: {
+        Row: {
+          amount: number
+          company_id: string
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          shift_id: string
+        }
+        Insert: {
+          amount?: number
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          description: string
+          id?: string
+          shift_id: string
+        }
+        Update: {
+          amount?: number
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          shift_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_shift_expenses_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_shift_expenses_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "pos_shifts"
             referencedColumns: ["id"]
           },
         ]
@@ -2654,6 +2805,10 @@ export type Database = {
         Returns: string
       }
       generate_purchase_invoice_number: {
+        Args: { p_company_id: string }
+        Returns: string
+      }
+      generate_return_number: {
         Args: { p_company_id: string }
         Returns: string
       }

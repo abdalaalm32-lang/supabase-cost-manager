@@ -368,6 +368,7 @@ export const PosScreenPage: React.FC = () => {
     setTaxRate(0);
     setTaxInputVisible(false);
     setCustomerName("");
+    setDeliveryFee(0);
     
     if (!keepOrderType) {
       setOrderType("صالة");

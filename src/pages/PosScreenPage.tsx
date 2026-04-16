@@ -602,11 +602,6 @@ ${notes ? `<div style="border-top:1px dashed #000;padding-top:6px;margin-top:6px
 
   return (
     <>
-      {/* Print-only receipt */}
-      {receiptData && (
-        <PosReceiptPrint ref={receiptRef} {...receiptData} />
-      )}
-
       <div className="flex flex-col h-[calc(100vh-4rem)]" dir="rtl">
         {/* Top bar */}
         <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-card/50 print:hidden flex-wrap gap-2">

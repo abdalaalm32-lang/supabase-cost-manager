@@ -10,7 +10,13 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { PlayCircle, StopCircle, Clock, Lock } from "lucide-react";
-import { format } from "date-fns";
+import { format, isValid } from "date-fns";
+
+const safeFormat = (dateVal: any, fmt: string, fallback = "—") => {
+  if (!dateVal) return fallback;
+  const d = new Date(dateVal);
+  return isValid(d) ? format(d, fmt) : fallback;
+};
 
 interface PosShiftManagerProps {
   companyId: string;

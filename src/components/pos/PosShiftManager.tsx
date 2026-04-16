@@ -15,9 +15,10 @@ interface PosShiftManagerProps {
   companyId: string;
   branchId: string;
   userName: string;
+  printViaIframe?: (html: string) => void;
 }
 
-export const PosShiftManager: React.FC<PosShiftManagerProps> = ({ companyId, branchId, userName }) => {
+export const PosShiftManager: React.FC<PosShiftManagerProps> = ({ companyId, branchId, userName, printViaIframe }) => {
   const queryClient = useQueryClient();
   const [showOpenDialog, setShowOpenDialog] = useState(false);
   const [showCloseDialog, setShowCloseDialog] = useState(false);
@@ -62,6 +63,42 @@ export const PosShiftManager: React.FC<PosShiftManagerProps> = ({ companyId, bra
     enabled: !!currentShift,
   });
 
+  // Get shift expenses
+  const { data: shiftExpenses } = useQuery({
+    queryKey: ["pos-shift-expenses", currentShift?.id],
+    queryFn: async () => {
+      if (!currentShift) return null;
+      const { data, error } = await supabase
+        .from("pos_shift_expenses")
+        .select("*")
+        .eq("shift_id", currentShift.id)
+        .order("created_at");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!currentShift,
+  });
+
+  // Get shift returns
+  const { data: shiftReturns } = useQuery({
+    queryKey: ["pos-shift-returns", currentShift?.id],
+    queryFn: async () => {
+      if (!currentShift) return null;
+      const { data, error } = await supabase
+        .from("pos_returns")
+        .select("*")
+        .eq("company_id", companyId)
+        .gte("date", currentShift.opened_at)
+        .lte("date", new Date().toISOString());
+      if (branchId) {
+        // filter client-side since we already have the data
+      }
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!currentShift,
+  });
+
   const openShift = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("pos_shifts").insert({
@@ -92,7 +129,6 @@ export const PosShiftManager: React.FC<PosShiftManagerProps> = ({ companyId, bra
       if (error) throw error;
     },
     onSuccess: () => {
-      // Print shift report
       printShiftReport();
       toast.success("تم إغلاق الشيفت بنجاح");
       setShowCloseDialog(false);
@@ -101,13 +137,16 @@ export const PosShiftManager: React.FC<PosShiftManagerProps> = ({ companyId, bra
     onError: (e: any) => toast.error(e.message),
   });
 
+  const totalSales = shiftSales?.reduce((s, sale) => s + sale.total_amount, 0) ?? 0;
+  const totalCash = shiftSales?.filter((s: any) => s.payment_method === "كاش").reduce((s, sale) => s + sale.total_amount, 0) ?? 0;
+  const totalVisa = shiftSales?.filter((s: any) => s.payment_method === "فيزا").reduce((s, sale) => s + sale.total_amount, 0) ?? 0;
+  const invoiceCount = shiftSales?.length ?? 0;
+  const totalExpenses = shiftExpenses?.reduce((s: number, e: any) => s + (e.amount || 0), 0) ?? 0;
+  const totalReturns = shiftReturns?.reduce((s: number, r: any) => s + (r.total_amount || 0), 0) ?? 0;
+  const netCash = (currentShift?.opening_cash ?? 0) + totalCash - totalExpenses - totalReturns;
+
   const printShiftReport = useCallback(() => {
     if (!currentShift || !shiftSales) return;
-
-    const totalSales = shiftSales.reduce((s, sale) => s + sale.total_amount, 0);
-    const totalCash = shiftSales.filter((s: any) => (s as any).payment_method === "كاش").reduce((s, sale) => s + sale.total_amount, 0);
-    const totalVisa = shiftSales.filter((s: any) => (s as any).payment_method === "فيزا").reduce((s, sale) => s + sale.total_amount, 0);
-    const invoiceCount = shiftSales.length;
 
     // Aggregate items
     const itemMap = new Map<string, { name: string; qty: number; total: number }>();
@@ -115,25 +154,26 @@ export const PosShiftManager: React.FC<PosShiftManagerProps> = ({ companyId, bra
       (sale.pos_sale_items as any[])?.forEach((si: any) => {
         const name = si.pos_items?.name || "صنف";
         const existing = itemMap.get(name);
-        if (existing) {
-          existing.qty += si.quantity;
-          existing.total += si.total;
-        } else {
-          itemMap.set(name, { name, qty: si.quantity, total: si.total });
-        }
+        if (existing) { existing.qty += si.quantity; existing.total += si.total; }
+        else { itemMap.set(name, { name, qty: si.quantity, total: si.total }); }
       });
     });
     const itemsList = Array.from(itemMap.values()).sort((a, b) => b.total - a.total);
 
-    const printWindow = window.open("", "_blank", "width=320,height=700");
-    if (!printWindow) { toast.error("يرجى السماح بالنوافذ المنبثقة"); return; }
+    const expensesRows = (shiftExpenses || []).map((e: any) =>
+      `<tr><td>${e.description}</td><td style="text-align:left">${e.amount?.toFixed(2)}</td></tr>`
+    ).join("");
 
-    printWindow.document.write(`<!DOCTYPE html>
+    const returnsRows = (shiftReturns || []).map((r: any) =>
+      `<tr><td>${r.return_number || "—"}</td><td style="text-align:left">${r.total_amount?.toFixed(2)}</td></tr>`
+    ).join("");
+
+    const html = `<!DOCTYPE html>
 <html dir="rtl"><head><meta charset="utf-8"/><title>تقرير الشيفت</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:'Cairo',sans-serif;direction:rtl;width:80mm;margin:0 auto;padding:8px;font-size:11px;color:#000;}
+body{font-family:'Cairo',sans-serif;direction:rtl;width:72mm;margin:0 auto;padding:8px;font-size:11px;color:#000;}
 table{width:100%;border-collapse:collapse;}
 th,td{padding:3px 0;font-size:10px;text-align:right;}
 td:last-child,th:last-child{text-align:left;}
@@ -142,7 +182,8 @@ td:nth-child(2),th:nth-child(2){text-align:center;}
 .bold{font-weight:bold;}
 .sep{border-top:1px dashed #999;margin:6px 0;padding-top:6px;}
 .total-row{font-size:14px;font-weight:bold;}
-@media print{body{width:80mm;}}
+.expense-label{color:#c00;}
+@media print{@page{size:80mm auto;margin:0}body{width:72mm;}}
 </style></head><body>
 <div class="center"><h2 style="font-size:14px;">تقرير إغلاق الشيفت</h2>
 <p style="font-size:9px;color:#666;">CostControl POS</p></div>
@@ -162,13 +203,31 @@ td:nth-child(2),th:nth-child(2){text-align:center;}
 <table><thead><tr><th>الصنف</th><th>الكمية</th><th>الإجمالي</th></tr></thead><tbody>
 ${itemsList.map(i => `<tr><td>${i.name}</td><td style="text-align:center">${i.qty}</td><td style="text-align:left">${i.total.toFixed(2)}</td></tr>`).join("")}
 </tbody></table></div>
-<div class="sep center total-row">
-<p>صافي الشيفت: ${totalSales.toFixed(2)} EGP</p>
+${totalExpenses > 0 ? `<div class="sep"><p class="bold expense-label">المصروفات (${(shiftExpenses || []).length})</p>
+<table><thead><tr><th>الوصف</th><th>المبلغ</th></tr></thead><tbody>${expensesRows}</tbody></table>
+<p class="bold" style="margin-top:4px">إجمالي المصروفات: ${totalExpenses.toFixed(2)} EGP</p></div>` : ""}
+${totalReturns > 0 ? `<div class="sep"><p class="bold expense-label">المرتجعات (${(shiftReturns || []).length})</p>
+<table><thead><tr><th>رقم المرتجع</th><th>المبلغ</th></tr></thead><tbody>${returnsRows}</tbody></table>
+<p class="bold" style="margin-top:4px">إجمالي المرتجعات: ${totalReturns.toFixed(2)} EGP</p></div>` : ""}
+<div class="sep center">
+<p>إجمالي المبيعات: ${totalSales.toFixed(2)} EGP</p>
+${totalExpenses > 0 ? `<p class="expense-label">- المصروفات: ${totalExpenses.toFixed(2)} EGP</p>` : ""}
+${totalReturns > 0 ? `<p class="expense-label">- المرتجعات: ${totalReturns.toFixed(2)} EGP</p>` : ""}
+<p class="total-row" style="margin-top:6px">صافي الشيفت: ${(totalSales - totalExpenses - totalReturns).toFixed(2)} EGP</p>
+<p style="font-size:11px;margin-top:4px">المتوقع في الدرج (كاش): ${netCash.toFixed(2)} EGP</p>
 </div>
-</body></html>`);
-    printWindow.document.close();
-    printWindow.onload = () => { printWindow.focus(); printWindow.print(); printWindow.close(); };
-  }, [currentShift, shiftSales]);
+</body></html>`;
+
+    if (printViaIframe) {
+      printViaIframe(html);
+    } else {
+      const printWindow = window.open("", "_blank", "width=320,height=700");
+      if (!printWindow) { toast.error("يرجى السماح بالنوافذ المنبثقة"); return; }
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.onload = () => { printWindow.focus(); printWindow.print(); printWindow.close(); };
+    }
+  }, [currentShift, shiftSales, shiftExpenses, shiftReturns, totalSales, totalCash, totalVisa, invoiceCount, totalExpenses, totalReturns, netCash, printViaIframe]);
 
   return (
     <>
@@ -225,8 +284,29 @@ ${itemsList.map(i => `<tr><td>${i.name}</td><td style="text-align:center">${i.qt
               <p><span className="text-muted-foreground">المبلغ الافتتاحي:</span> {(currentShift?.opening_cash || 0).toFixed(2)} EGP</p>
             </div>
             <div className="p-3 rounded-lg bg-primary/5 space-y-1">
-              <p><span className="text-muted-foreground">عدد الفواتير:</span> <span className="font-bold">{shiftSales?.length || 0}</span></p>
-              <p><span className="text-muted-foreground">إجمالي المبيعات:</span> <span className="font-bold text-primary">{(shiftSales?.reduce((s, r) => s + r.total_amount, 0) || 0).toFixed(2)} EGP</span></p>
+              <p><span className="text-muted-foreground">عدد الفواتير:</span> <span className="font-bold">{invoiceCount}</span></p>
+              <p><span className="text-muted-foreground">إجمالي المبيعات:</span> <span className="font-bold text-primary">{totalSales.toFixed(2)} EGP</span></p>
+              <p><span className="text-muted-foreground">كاش:</span> <span className="font-bold">{totalCash.toFixed(2)} EGP</span></p>
+              <p><span className="text-muted-foreground">فيزا:</span> <span className="font-bold">{totalVisa.toFixed(2)} EGP</span></p>
+            </div>
+            {totalExpenses > 0 && (
+              <div className="p-3 rounded-lg bg-destructive/5 border border-destructive/10 space-y-1">
+                <p className="font-bold text-destructive text-xs">المصروفات ({(shiftExpenses || []).length})</p>
+                {(shiftExpenses || []).map((e: any) => (
+                  <p key={e.id} className="text-xs"><span className="text-muted-foreground">{e.description}:</span> <span className="font-bold">{e.amount?.toFixed(2)} EGP</span></p>
+                ))}
+                <p className="text-xs font-bold border-t border-destructive/10 pt-1 mt-1">إجمالي: {totalExpenses.toFixed(2)} EGP</p>
+              </div>
+            )}
+            {totalReturns > 0 && (
+              <div className="p-3 rounded-lg bg-destructive/5 border border-destructive/10 space-y-1">
+                <p className="font-bold text-destructive text-xs">المرتجعات ({(shiftReturns || []).length})</p>
+                <p className="text-xs font-bold">إجمالي: {totalReturns.toFixed(2)} EGP</p>
+              </div>
+            )}
+            <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 space-y-1">
+              <p><span className="text-muted-foreground">صافي الشيفت:</span> <span className="font-bold text-primary text-lg">{(totalSales - totalExpenses - totalReturns).toFixed(2)} EGP</span></p>
+              <p className="text-xs"><span className="text-muted-foreground">المتوقع في الدرج (كاش):</span> <span className="font-bold">{netCash.toFixed(2)} EGP</span></p>
             </div>
             <p className="text-xs text-muted-foreground">سيتم طباعة تقرير الشيفت تلقائياً عند الإغلاق</p>
           </div>

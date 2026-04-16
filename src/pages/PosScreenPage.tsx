@@ -27,6 +27,8 @@ import { PosReceiptPrint } from "@/components/pos/PosReceiptPrint";
 import { PosHeldInvoices } from "@/components/pos/PosHeldInvoices";
 import { PosDailyStats } from "@/components/pos/PosDailyStats";
 import { PosShiftManager } from "@/components/pos/PosShiftManager";
+import { PosShiftExpenses } from "@/components/pos/PosShiftExpenses";
+import { PosReturnsManager } from "@/components/pos/PosReturnsManager";
 
 interface CartItem {
   id: string;
@@ -98,6 +100,25 @@ export const PosScreenPage: React.FC = () => {
   const deliveryAudioRef = useRef<HTMLAudioElement | null>(null);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [deliveryFee, setDeliveryFee] = useState<number>(saved?.deliveryFee || 0);
+
+  // Current shift query for expenses
+  const { data: currentShiftForExpenses } = useQuery({
+    queryKey: ["pos-current-shift", companyId, branchId],
+    queryFn: async () => {
+      let query = supabase
+        .from("pos_shifts")
+        .select("id")
+        .eq("company_id", companyId!)
+        .eq("status", "مفتوح")
+        .order("opened_at", { ascending: false })
+        .limit(1);
+      if (branchId) query = query.eq("branch_id", branchId);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data?.[0] || null;
+    },
+    enabled: !!companyId,
+  });
 
   // Pending delivery orders query
   const { data: pendingDeliveryOrders } = useQuery({
@@ -585,7 +606,20 @@ table{width:100%;border-collapse:collapse;}
               </button>
             )}
             {companyId && (
-              <PosShiftManager companyId={companyId} branchId={branchId} userName={auth.profile?.full_name || ""} />
+              <PosShiftManager companyId={companyId} branchId={branchId} userName={auth.profile?.full_name || ""} printViaIframe={printViaIframe} />
+            )}
+            {companyId && currentShiftForExpenses && (
+              <PosShiftExpenses companyId={companyId} shiftId={currentShiftForExpenses.id} userName={auth.profile?.full_name || ""} />
+            )}
+            {companyId && (
+              <PosReturnsManager
+                companyId={companyId}
+                branchId={branchId}
+                userName={auth.profile?.full_name || ""}
+                userRole={auth.profile?.role || "مستخدم"}
+                printViaIframe={printViaIframe}
+                companyName={company?.name}
+              />
             )}
             <div className="hidden lg:flex items-center gap-1 text-[10px] text-muted-foreground border border-border/30 rounded-md px-2 py-1">
               <Keyboard className="h-3 w-3" />

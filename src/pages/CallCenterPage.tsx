@@ -620,13 +620,23 @@ export const CallCenterPage: React.FC = () => {
                     <User className="h-3.5 w-3.5 text-primary" />
                     <span className="text-xs font-bold">بيانات العميل والفرع</span>
                   </div>
-                  <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
+                  <Select value={selectedBranchId} onValueChange={(v) => { setSelectedBranchId(v); setSelectedCashierId(""); }}>
                     <SelectTrigger className={cn("glass-input h-8 text-xs", !selectedBranchId && "border-destructive/50")}>
                       <Store className="h-3.5 w-3.5 ml-1 text-muted-foreground" />
                       <SelectValue placeholder="اختر الفرع *" />
                     </SelectTrigger>
                     <SelectContent>
                       {branches?.map((b: any) => (<SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={selectedCashierId} onValueChange={setSelectedCashierId}>
+                    <SelectTrigger className="glass-input h-8 text-xs">
+                      <User className="h-3.5 w-3.5 ml-1 text-muted-foreground" />
+                      <SelectValue placeholder="اختر الكاشير (اختياري)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none" className="text-xs">بدون تحديد</SelectItem>
+                      {branchUsers?.map((u: any) => (<SelectItem key={u.id} value={u.id} className="text-xs">{u.full_name}</SelectItem>))}
                     </SelectContent>
                   </Select>
                   <div className="relative">

@@ -105,7 +105,7 @@ export const PosScreenPage: React.FC = () => {
     queryFn: async () => {
       let query = supabase
         .from("pos_sales")
-        .select("id, invoice_number, customer_name, customer_phone, customer_address, customer_id, total_amount, delivery_fee, date, delivery_status, driver_id, notes, discount_amount, tax_amount, tax_rate, payment_method, branch_id")
+        .select("id, invoice_number, customer_name, customer_phone, customer_address, customer_id, total_amount, delivery_fee, date, delivery_status, driver_id, notes, discount_amount, tax_amount, tax_rate, payment_method, branch_id, assigned_cashier_id")
         .eq("company_id", companyId!)
         .eq("order_type", "دليفري")
         .in("delivery_status", ["جديد", "قيد التحضير", "خرج للتوصيل"])
@@ -115,8 +115,13 @@ export const PosScreenPage: React.FC = () => {
       }
       const { data, error } = await query;
       if (error) throw error;
+
+      // Filter by assigned_cashier_id: show orders assigned to current user OR unassigned
+      const currentProfileId = auth.profile?.id;
+      const filtered = (data || []).filter((o: any) => !o.assigned_cashier_id || o.assigned_cashier_id === currentProfileId);
+
       // Fetch phone2 for customers
-      const customerIds = [...new Set((data || []).map((o: any) => o.customer_id).filter(Boolean))];
+      const customerIds = [...new Set(filtered.map((o: any) => o.customer_id).filter(Boolean))];
       let phone2Map: Record<string, string> = {};
       if (customerIds.length > 0) {
         const { data: customers } = await supabase
@@ -127,7 +132,7 @@ export const PosScreenPage: React.FC = () => {
           customers.forEach((c: any) => { if (c.phone2) phone2Map[c.id] = c.phone2; });
         }
       }
-      return (data || []).map((o: any) => ({ ...o, customer_phone2: o.customer_id ? phone2Map[o.customer_id] || null : null }));
+      return filtered.map((o: any) => ({ ...o, customer_phone2: o.customer_id ? phone2Map[o.customer_id] || null : null }));
     },
     enabled: !!companyId,
     refetchInterval: 15000,

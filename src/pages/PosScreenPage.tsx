@@ -178,6 +178,8 @@ export const PosScreenPage: React.FC = () => {
         },
         (payload: any) => {
           if (payload.new?.order_type === "دليفري" && payload.new?.delivery_status === "جديد") {
+            // Only notify if the order is for the selected branch
+            if (branchId && payload.new?.branch_id !== branchId) return;
             setNewDeliveryCount(prev => prev + 1);
             // Play notification sound
             try {
@@ -199,7 +201,7 @@ export const PosScreenPage: React.FC = () => {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [companyId, queryClient]);
+  }, [companyId, branchId, queryClient]);
 
   // Update delivery order (status + driver)
   const updateDeliveryOrder = useMutation({

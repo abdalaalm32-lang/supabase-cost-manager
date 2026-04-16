@@ -1002,6 +1002,9 @@ export const PosScreenPage: React.FC = () => {
                       <div className="flex items-center gap-1.5">
                         <Phone className="h-3 w-3 text-muted-foreground" />
                         <span dir="ltr">{order.customer_phone || "—"}</span>
+                        {order.customer_phone2 && (
+                          <span dir="ltr" className="text-muted-foreground">/ {order.customer_phone2}</span>
+                        )}
                       </div>
                       <div className="flex items-center gap-1.5 col-span-2">
                         <MapPin className="h-3 w-3 text-muted-foreground shrink-0" />

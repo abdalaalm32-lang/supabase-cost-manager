@@ -505,16 +505,33 @@ export const PosScreenPage: React.FC = () => {
     onError: (e: any) => toast.error(e.message || "حدث خطأ"),
   });
 
-  // Print receipt using printable iframe
+  // Silent print using hidden iframe (no new tab)
+  const printViaIframe = useCallback((htmlContent: string) => {
+    const existingFrame = document.getElementById("silent-print-frame");
+    if (existingFrame) existingFrame.remove();
+    const iframe = document.createElement("iframe");
+    iframe.id = "silent-print-frame";
+    iframe.style.cssText = "position:fixed;left:-9999px;top:0;width:0;height:0;border:none;";
+    document.body.appendChild(iframe);
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc) { toast.error("تعذر فتح الطباعة"); return; }
+    doc.open();
+    doc.write(htmlContent);
+    doc.close();
+    iframe.onload = () => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch (e) { console.error("Print error", e); }
+      setTimeout(() => iframe.remove(), 2000);
+    };
+  }, []);
+
+  // Print receipt using hidden iframe
   const printReceipt = useCallback(() => {
     if (!receiptRef.current) return;
     const printContent = receiptRef.current.innerHTML;
-    const printWindow = window.open("", "_blank", "width=320,height=600");
-    if (!printWindow) {
-      toast.error("يرجى السماح بالنوافذ المنبثقة للطباعة");
-      return;
-    }
-    printWindow.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"/><title>إيصال</title>
+    printViaIframe(`<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"/><title>إيصال</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -522,13 +539,7 @@ body{font-family:'Cairo','Tahoma',sans-serif;direction:rtl;width:72mm;margin:0 a
 table{width:100%;border-collapse:collapse;}
 @media print{@page{size:80mm auto;margin:0;}body{width:72mm;}}
 </style></head><body>${printContent}</body></html>`);
-    printWindow.document.close();
-    printWindow.onload = () => {
-      printWindow.focus();
-      printWindow.print();
-      printWindow.close();
-    };
-  }, []);
+  }, [printViaIframe]);
 
   // Auto-print receipt
   useEffect(() => {
@@ -1030,9 +1041,8 @@ table{width:100%;border-collapse:collapse;}
                             className="gap-1.5 text-xs h-8"
                             onClick={() => {
                               const items = expandedOrderItems?.map((i: any) => `${(i.pos_items as any)?.name || "—"} × ${i.quantity}`) || [];
-                              const kitchenHTML = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>طلب مطبخ</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Cairo','Tahoma',sans-serif;width:72mm;margin:0 auto;padding:4px 6px;font-size:12px;color:#000;line-height:1.4}h2{text-align:center;font-size:14px;border-bottom:2px dashed #000;padding-bottom:6px;margin-bottom:8px}.item{padding:4px 0;border-bottom:1px dotted #ccc;font-size:13px;font-weight:bold}.footer{text-align:center;margin-top:10px;font-size:10px;border-top:1px dashed #000;padding-top:6px}@media print{@page{size:80mm auto;margin:0}}</style></head><body><h2>🍳 طلب مطبخ</h2><p style="text-align:center;font-size:11px;margin-bottom:8px">${order.invoice_number} • ${order.customer_name || "عميل"}</p>${items.map(i => `<div class="item">▸ ${i}</div>`).join("")}${order.notes ? `<div style="margin-top:8px;padding:4px;background:#f5f5f5;font-size:10px;border-radius:4px">ملاحظات: ${order.notes}</div>` : ""}<div class="footer">${format(new Date(order.date), "yyyy/MM/dd HH:mm")}</div><script>window.onload=function(){window.print();window.onafterprint=function(){window.close()}}</script></body></html>`;
-                              const w = window.open("", "_blank", "width=320,height=500");
-                              if (w) { w.document.write(kitchenHTML); w.document.close(); }
+                              const kitchenHTML = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>طلب مطبخ</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Cairo','Tahoma',sans-serif;width:72mm;margin:0 auto;padding:4px 6px;font-size:12px;color:#000;line-height:1.4}h2{text-align:center;font-size:14px;border-bottom:2px dashed #000;padding-bottom:6px;margin-bottom:8px}.item{padding:4px 0;border-bottom:1px dotted #ccc;font-size:13px;font-weight:bold}.footer{text-align:center;margin-top:10px;font-size:10px;border-top:1px dashed #000;padding-top:6px}@media print{@page{size:80mm auto;margin:0}}</style></head><body><h2>🍳 طلب مطبخ</h2><p style="text-align:center;font-size:11px;margin-bottom:8px">${order.invoice_number} • ${order.customer_name || "عميل"}</p>${items.map(i => `<div class="item">▸ ${i}</div>`).join("")}${order.notes ? `<div style="margin-top:8px;padding:4px;background:#f5f5f5;font-size:10px;border-radius:4px">ملاحظات: ${order.notes}</div>` : ""}<div class="footer">${format(new Date(order.date), "yyyy/MM/dd HH:mm")}</div></body></html>`;
+                              printViaIframe(kitchenHTML);
                             }}
                           >
                             <ChefHat className="h-3.5 w-3.5" />
@@ -1051,9 +1061,8 @@ table{width:100%;border-collapse:collapse;}
                               })) || [];
                               const itemsRows = items.map(i => `<tr><td style="text-align:right;padding:3px 0;font-size:10px">${i.name}</td><td style="text-align:center;font-size:10px">${i.qty}</td><td style="text-align:center;font-size:10px">${i.price?.toFixed(2)}</td><td style="text-align:left;font-size:10px">${i.total?.toFixed(2)}</td></tr>`).join("");
                               const phone2Line = order.customer_phone2 ? `<div class="info"><span class="label">هاتف 2:</span> <span dir="ltr">${order.customer_phone2}</span></div>` : "";
-                              const driverReceiptHTML = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>إيصال توصيل</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Cairo','Tahoma',sans-serif;width:72mm;margin:0 auto;padding:4px 6px;font-size:11px;color:#000;line-height:1.4}h2{text-align:center;font-size:14px;margin-bottom:4px}.sep{border-bottom:1px dashed #000;margin:6px 0}.info{font-size:10px;padding:2px 0}.label{font-weight:bold}table{width:100%;border-collapse:collapse;margin:6px 0}th{font-size:10px;border-bottom:1px solid #000;padding:3px 0;text-align:center}td{padding:3px 0;font-size:10px}.total-row{font-weight:bold;font-size:13px;text-align:center;padding:6px 0;border-top:2px dashed #000;margin-top:6px}.footer{text-align:center;font-size:9px;color:#666;margin-top:8px;border-top:1px dashed #ccc;padding-top:4px}@media print{@page{size:80mm auto;margin:0}}</style></head><body><h2>🚚 إيصال توصيل</h2><p style="text-align:center;font-size:10px">${company?.name || "CostControl"}</p><div class="sep"></div><div class="info"><span class="label">فاتورة:</span> ${order.invoice_number}</div><div class="info"><span class="label">التاريخ:</span> ${format(new Date(order.date), "yyyy/MM/dd HH:mm")}</div><div class="sep"></div><div class="info"><span class="label">العميل:</span> ${order.customer_name || "—"}</div><div class="info"><span class="label">الهاتف:</span> <span dir="ltr">${order.customer_phone || "—"}</span></div>${phone2Line}<div class="info"><span class="label">العنوان:</span> ${order.customer_address || "—"}</div>${driverName ? `<div class="sep"></div><div class="info"><span class="label">الطيار:</span> ${driverName}</div>${driverPhone ? `<div class="info"><span class="label">هاتف الطيار:</span> <span dir="ltr">${driverPhone}</span></div>` : ""}` : ""}<div class="sep"></div><table><thead><tr><th style="text-align:right">الصنف</th><th>الكمية</th><th>السعر</th><th style="text-align:left">الإجمالي</th></tr></thead><tbody>${itemsRows}</tbody></table>${order.discount_amount > 0 ? `<div class="info"><span class="label">خصم:</span> ${order.discount_amount?.toFixed(2)} EGP</div>` : ""}${order.tax_amount > 0 ? `<div class="info"><span class="label">ضريبة ${order.tax_rate}%:</span> ${order.tax_amount?.toFixed(2)} EGP</div>` : ""}<div class="info"><span class="label">رسوم التوصيل:</span> ${order.delivery_fee?.toFixed(2) || "0.00"} EGP</div><div class="total-row">الإجمالي المطلوب: ${((order.total_amount ?? 0) + (order.delivery_fee ?? 0)).toFixed(2)} EGP</div><div class="info" style="text-align:center;font-size:10px;margin-top:4px"><span class="label">طريقة الدفع:</span> ${order.payment_method || "كاش"}</div>${order.notes ? `<div class="sep"></div><div class="info" style="font-size:10px"><span class="label">ملاحظات:</span> ${order.notes}</div>` : ""}<div class="footer">شكراً لتعاملكم معنا • ${company?.name || "CostControl"}</div><script>window.onload=function(){window.print();window.onafterprint=function(){window.close()}}</script></body></html>`;
-                              const w = window.open("", "_blank", "width=320,height=600");
-                              if (w) { w.document.write(driverReceiptHTML); w.document.close(); }
+                              const driverReceiptHTML = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>إيصال توصيل</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Cairo','Tahoma',sans-serif;width:72mm;margin:0 auto;padding:4px 6px;font-size:11px;color:#000;line-height:1.4}h2{text-align:center;font-size:14px;margin-bottom:4px}.sep{border-bottom:1px dashed #000;margin:6px 0}.info{font-size:10px;padding:2px 0}.label{font-weight:bold}table{width:100%;border-collapse:collapse;margin:6px 0}th{font-size:10px;border-bottom:1px solid #000;padding:3px 0;text-align:center}td{padding:3px 0;font-size:10px}.total-row{font-weight:bold;font-size:13px;text-align:center;padding:6px 0;border-top:2px dashed #000;margin-top:6px}.footer{text-align:center;font-size:9px;color:#666;margin-top:8px;border-top:1px dashed #ccc;padding-top:4px}@media print{@page{size:80mm auto;margin:0}}</style></head><body><h2>🚚 إيصال توصيل</h2><p style="text-align:center;font-size:10px">${company?.name || "CostControl"}</p><div class="sep"></div><div class="info"><span class="label">فاتورة:</span> ${order.invoice_number}</div><div class="info"><span class="label">التاريخ:</span> ${format(new Date(order.date), "yyyy/MM/dd HH:mm")}</div><div class="sep"></div><div class="info"><span class="label">العميل:</span> ${order.customer_name || "—"}</div><div class="info"><span class="label">الهاتف:</span> <span dir="ltr">${order.customer_phone || "—"}</span></div>${phone2Line}<div class="info"><span class="label">العنوان:</span> ${order.customer_address || "—"}</div>${driverName ? `<div class="sep"></div><div class="info"><span class="label">الطيار:</span> ${driverName}</div>${driverPhone ? `<div class="info"><span class="label">هاتف الطيار:</span> <span dir="ltr">${driverPhone}</span></div>` : ""}` : ""}<div class="sep"></div><table><thead><tr><th style="text-align:right">الصنف</th><th>الكمية</th><th>السعر</th><th style="text-align:left">الإجمالي</th></tr></thead><tbody>${itemsRows}</tbody></table>${order.discount_amount > 0 ? `<div class="info"><span class="label">خصم:</span> ${order.discount_amount?.toFixed(2)} EGP</div>` : ""}${order.tax_amount > 0 ? `<div class="info"><span class="label">ضريبة ${order.tax_rate}%:</span> ${order.tax_amount?.toFixed(2)} EGP</div>` : ""}<div class="info"><span class="label">رسوم التوصيل:</span> ${order.delivery_fee?.toFixed(2) || "0.00"} EGP</div><div class="total-row">الإجمالي المطلوب: ${((order.total_amount ?? 0) + (order.delivery_fee ?? 0)).toFixed(2)} EGP</div><div class="info" style="text-align:center;font-size:10px;margin-top:4px"><span class="label">طريقة الدفع:</span> ${order.payment_method || "كاش"}</div>${order.notes ? `<div class="sep"></div><div class="info" style="font-size:10px"><span class="label">ملاحظات:</span> ${order.notes}</div>` : ""}<div class="footer">شكراً لتعاملكم معنا • ${company?.name || "CostControl"}</div></body></html>`;
+                              printViaIframe(driverReceiptHTML);
                             }}
                           >
                             <Printer className="h-3.5 w-3.5" />

@@ -60,6 +60,7 @@ const AdminSubscriptionLogPage = lazy(() => import("@/pages/AdminSubscriptionLog
 const PnlPage = lazy(() => import("@/pages/PnlPage").then((m) => ({ default: m.PnlPage })));
 const CallCenterPage = lazy(() => import("@/pages/CallCenterPage").then((m) => ({ default: m.CallCenterPage })));
 const DriverSettlementPage = lazy(() => import("@/pages/DriverSettlementPage").then((m) => ({ default: m.DriverSettlementPage })));
+const PosShiftsPage = lazy(() => import("@/pages/PosShiftsPage").then((m) => ({ default: m.PosShiftsPage })));
 
 const queryClient = new QueryClient();
 
@@ -398,6 +399,7 @@ const AppRoutes = () => {
                   <Route path="/pos/items" element={<PermissionGuard permKey="sales_management"><PosItemsPage /></PermissionGuard>} />
                   <Route path="/call-center" element={<PermissionGuard permKey="call_center"><CallCenterPage /></PermissionGuard>} />
                   <Route path="/sales/driver-settlement" element={<PermissionGuard permKey="sales_management"><DriverSettlementPage /></PermissionGuard>} />
+                  <Route path="/sales/shifts" element={<PermissionGuard permKey="sales_management"><PosShiftsPage /></PermissionGuard>} />
                   <Route path="/inventory" element={<PermissionGuard permKey="inventory"><Navigate to="/inventory/materials" replace /></PermissionGuard>} />
                   <Route path="/inventory/materials" element={<PermissionGuard permKey="inventory"><InventoryMaterialsPage /></PermissionGuard>} />
                   <Route path="/inventory/balances" element={<PermissionGuard permKey="inventory"><InventoryBalancesPage /></PermissionGuard>} />

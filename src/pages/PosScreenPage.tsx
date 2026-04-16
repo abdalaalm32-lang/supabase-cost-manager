@@ -486,6 +486,7 @@ export const PosScreenPage: React.FC = () => {
           notes: cart.filter(c => c.notes).map(c => `${c.name}: ${c.notes}`).join(" | ") || undefined,
           orderType,
           paymentMethod,
+          deliveryFee: orderType === "دليفري" ? deliveryFee : 0,
         });
         toast.success("تم تنفيذ الفاتورة بنجاح");
       } else if (status === "معلق") {

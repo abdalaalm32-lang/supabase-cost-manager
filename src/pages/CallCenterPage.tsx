@@ -332,6 +332,7 @@ export const CallCenterPage: React.FC = () => {
   const saveSale = useMutation({
     mutationFn: async () => {
       if (!companyId) throw new Error("لا يوجد شركة");
+      if (!selectedBranchId) throw new Error("يجب اختيار الفرع");
       if (!customerPhone) throw new Error("رقم التليفون مطلوب");
       if (!customerName) throw new Error("اسم العميل مطلوب");
       if (!customerAddress) throw new Error("العنوان مطلوب");

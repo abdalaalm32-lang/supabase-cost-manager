@@ -68,8 +68,11 @@ export const CallCenterPage: React.FC = () => {
   const [phoneSearch, setPhoneSearch] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [customerPhone2, setCustomerPhone2] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
   const [customerId, setCustomerId] = useState<string | null>(null);
+  const [deliveryFee, setDeliveryFee] = useState<number>(0);
+  const [selectedDriverId, setSelectedDriverId] = useState<string>("");
 
   // Cart
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -120,10 +123,27 @@ export const CallCenterPage: React.FC = () => {
     if (foundCustomer) {
       setCustomerName(foundCustomer.name);
       setCustomerPhone(foundCustomer.phone);
+      setCustomerPhone2((foundCustomer as any).phone2 || "");
       setCustomerAddress(foundCustomer.address || "");
       setCustomerId(foundCustomer.id);
     }
   }, [foundCustomer]);
+
+  // Delivery drivers
+  const { data: drivers } = useQuery({
+    queryKey: ["delivery-drivers", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("delivery_drivers")
+        .select("*")
+        .eq("company_id", companyId!)
+        .eq("active", true)
+        .order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
 
   // Branches, categories, items
   const { data: branches } = useQuery({

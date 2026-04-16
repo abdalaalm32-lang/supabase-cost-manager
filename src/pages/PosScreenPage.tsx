@@ -49,6 +49,13 @@ const PAYMENT_METHODS = [
   { value: "فيزا", label: "فيزا", icon: CreditCard },
 ];
 
+const DELIVERY_STATUSES = [
+  { value: "جديد", label: "جديد", icon: Clock, color: "text-amber-500" },
+  { value: "قيد التحضير", label: "قيد التحضير", icon: ChefHat, color: "text-blue-500" },
+  { value: "خرج للتوصيل", label: "خرج للتوصيل", icon: Truck, color: "text-purple-500" },
+  { value: "تم التسليم", label: "تم التسليم", icon: CheckCircle2, color: "text-emerald-500" },
+];
+
 export const PosScreenPage: React.FC = () => {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;

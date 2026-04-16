@@ -50,7 +50,7 @@ export const PosReturnsManager: React.FC<PosReturnsManagerProps> = ({
   const [reportDate, setReportDate] = useState<Date>(new Date());
 
   // Only manager or owner can access returns
-  const canReturn = userRole === "مدير" || userRole === "مالك";
+  const canReturn = userRole === "مدير" || userRole === "مالك" || userRole === "مدير نظام" || userRole === "مدير شركة";
 
   // Search for invoice
   const searchSale = useMutation({

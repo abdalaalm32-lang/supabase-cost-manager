@@ -363,18 +363,18 @@ export const CallCenterPage: React.FC = () => {
 
         if (existingCust) {
           cId = existingCust.id;
-          await supabase.from("customers").update({ name: customerName, address: customerAddress }).eq("id", cId);
+          await supabase.from("customers").update({ name: customerName, address: customerAddress, phone2: customerPhone2 || null } as any).eq("id", cId);
         } else {
           const { data: newCust, error: custErr } = await supabase
             .from("customers")
-            .insert({ company_id: companyId, name: customerName, phone: customerPhone, address: customerAddress })
+            .insert({ company_id: companyId, name: customerName, phone: customerPhone, phone2: customerPhone2 || null, address: customerAddress } as any)
             .select()
             .single();
           if (custErr) throw custErr;
           cId = newCust.id;
         }
       } else {
-        await supabase.from("customers").update({ name: customerName, address: customerAddress }).eq("id", cId);
+        await supabase.from("customers").update({ name: customerName, address: customerAddress, phone2: customerPhone2 || null } as any).eq("id", cId);
       }
 
       const { data: invoiceNum, error: numErr } = await supabase.rpc("generate_invoice_number", { p_company_id: companyId });
@@ -398,6 +398,8 @@ export const CallCenterPage: React.FC = () => {
         customer_name: customerName,
         customer_phone: customerPhone,
         customer_address: customerAddress,
+        delivery_fee: deliveryFee || 0,
+        driver_id: selectedDriverId || null,
         notes: cart.filter(c => c.notes).map(c => `${c.name}: ${c.notes}`).join(" | ") || null,
       } as any).select().single();
       if (saleErr) throw saleErr;

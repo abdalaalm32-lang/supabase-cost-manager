@@ -465,6 +465,7 @@ export type Database = {
           name: string
           notes: string | null
           phone: string
+          phone2: string | null
         }
         Insert: {
           address?: string | null
@@ -474,6 +475,7 @@ export type Database = {
           name: string
           notes?: string | null
           phone: string
+          phone2?: string | null
         }
         Update: {
           address?: string | null
@@ -483,10 +485,46 @@ export type Database = {
           name?: string
           notes?: string | null
           phone?: string
+          phone2?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "customers_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delivery_drivers: {
+        Row: {
+          active: boolean
+          company_id: string
+          created_at: string
+          id: string
+          name: string
+          phone: string | null
+        }
+        Insert: {
+          active?: boolean
+          company_id: string
+          created_at?: string
+          id?: string
+          name: string
+          phone?: string | null
+        }
+        Update: {
+          active?: boolean
+          company_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          phone?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_drivers_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
@@ -952,8 +990,10 @@ export type Database = {
           customer_phone: string | null
           customer_rating: number | null
           date: string
+          delivery_fee: number
           delivery_status: string | null
           discount_amount: number
+          driver_id: string | null
           id: string
           invoice_number: string | null
           notes: string | null
@@ -975,8 +1015,10 @@ export type Database = {
           customer_phone?: string | null
           customer_rating?: number | null
           date?: string
+          delivery_fee?: number
           delivery_status?: string | null
           discount_amount?: number
+          driver_id?: string | null
           id?: string
           invoice_number?: string | null
           notes?: string | null
@@ -998,8 +1040,10 @@ export type Database = {
           customer_phone?: string | null
           customer_rating?: number | null
           date?: string
+          delivery_fee?: number
           delivery_status?: string | null
           discount_amount?: number
+          driver_id?: string | null
           id?: string
           invoice_number?: string | null
           notes?: string | null
@@ -1031,6 +1075,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_sales_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_drivers"
             referencedColumns: ["id"]
           },
         ]

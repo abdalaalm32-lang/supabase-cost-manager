@@ -101,6 +101,25 @@ export const PosScreenPage: React.FC = () => {
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [deliveryFee, setDeliveryFee] = useState<number>(saved?.deliveryFee || 0);
 
+  // Current shift query for expenses
+  const { data: currentShiftForExpenses } = useQuery({
+    queryKey: ["pos-current-shift", companyId, branchId],
+    queryFn: async () => {
+      let query = supabase
+        .from("pos_shifts")
+        .select("id")
+        .eq("company_id", companyId!)
+        .eq("status", "مفتوح")
+        .order("opened_at", { ascending: false })
+        .limit(1);
+      if (branchId) query = query.eq("branch_id", branchId);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data?.[0] || null;
+    },
+    enabled: !!companyId,
+  });
+
   // Pending delivery orders query
   const { data: pendingDeliveryOrders } = useQuery({
     queryKey: ["pos-pending-delivery", companyId, branchId],

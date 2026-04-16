@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
-  Phone, Plus, Minus, Trash2, Search, Truck, User, MapPin,
+  Phone, Plus, Minus, Trash2, Search, Truck, User, MapPin, Store,
   ShoppingCart, LayoutGrid, Banknote, CreditCard, Clock, CheckCircle2,
   ChefHat, PackageCheck, Send, Star, PhoneCall, MessageSquare,
   Users, TrendingUp, FileText, AlertCircle

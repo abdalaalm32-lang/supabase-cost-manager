@@ -922,7 +922,7 @@ export const PosScreenPage: React.FC = () => {
       `}</style>
 
       {/* Delivery Management Dialog */}
-      <Dialog open={deliveryDialogOpen} onOpenChange={setDeliveryDialogOpen}>
+      <Dialog open={deliveryDialogOpen} onOpenChange={(open) => { setDeliveryDialogOpen(open); if (!open) setExpandedOrderId(null); }}>
         <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto" dir="rtl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -946,10 +946,13 @@ export const PosScreenPage: React.FC = () => {
                   const idx = DELIVERY_STATUSES.findIndex(s => s.value === order.delivery_status);
                   return idx < DELIVERY_STATUSES.length - 1 ? DELIVERY_STATUSES[idx + 1] : null;
                 })();
+                const isExpanded = expandedOrderId === order.id;
+                const driverName = deliveryDrivers?.find((d: any) => d.id === order.driver_id)?.name;
+                const driverPhone = deliveryDrivers?.find((d: any) => d.id === order.driver_id)?.phone;
 
                 return (
                   <div key={order.id} className="p-3 rounded-xl border border-border/50 bg-card/50 space-y-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between cursor-pointer" onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}>
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="text-[10px] font-mono">{order.invoice_number}</Badge>
                         <Badge variant="outline" className={cn("text-[10px] gap-1", statusInfo?.color)}>
@@ -986,7 +989,87 @@ export const PosScreenPage: React.FC = () => {
                       <p className="text-[10px] text-muted-foreground bg-muted/30 p-1.5 rounded">{order.notes}</p>
                     )}
 
+                    {/* Expanded: Show items */}
+                    {isExpanded && (
+                      <div className="border-t border-border/30 pt-2 space-y-2">
+                        <p className="text-xs font-bold">الأصناف:</p>
+                        {expandedOrderItems && expandedOrderItems.length > 0 ? (
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="text-xs text-right h-7">الصنف</TableHead>
+                                <TableHead className="text-xs text-center h-7">الكمية</TableHead>
+                                <TableHead className="text-xs text-center h-7">السعر</TableHead>
+                                <TableHead className="text-xs text-center h-7">الإجمالي</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {expandedOrderItems.map((item: any) => (
+                                <TableRow key={item.id}>
+                                  <TableCell className="text-xs py-1">{(item.pos_items as any)?.name || "—"}</TableCell>
+                                  <TableCell className="text-xs text-center py-1">{item.quantity}</TableCell>
+                                  <TableCell className="text-xs text-center py-1">{item.unit_price?.toFixed(2)}</TableCell>
+                                  <TableCell className="text-xs text-center py-1">{item.total?.toFixed(2)}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        ) : (
+                          <p className="text-[10px] text-muted-foreground">جاري التحميل...</p>
+                        )}
+
+                        {/* Print Buttons */}
+                        <div className="flex items-center gap-2 pt-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1.5 text-xs h-8"
+                            onClick={() => {
+                              const items = expandedOrderItems?.map((i: any) => `${(i.pos_items as any)?.name || "—"} × ${i.quantity}`) || [];
+                              const kitchenHTML = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>طلب مطبخ</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Cairo',sans-serif;width:80mm;margin:0 auto;padding:10px;font-size:12px;color:#000}h2{text-align:center;font-size:14px;border-bottom:2px dashed #000;padding-bottom:6px;margin-bottom:8px}.item{padding:4px 0;border-bottom:1px dotted #ccc;font-size:13px;font-weight:bold}.footer{text-align:center;margin-top:10px;font-size:10px;border-top:1px dashed #000;padding-top:6px}@media print{@page{size:80mm auto;margin:0}}</style></head><body><h2>🍳 طلب مطبخ</h2><p style="text-align:center;font-size:11px;margin-bottom:8px">${order.invoice_number} • ${order.customer_name || "عميل"}</p>${items.map(i => `<div class="item">▸ ${i}</div>`).join("")}${order.notes ? `<div style="margin-top:8px;padding:4px;background:#f5f5f5;font-size:10px;border-radius:4px">ملاحظات: ${order.notes}</div>` : ""}<div class="footer">${format(new Date(order.date), "yyyy/MM/dd HH:mm")}</div><script>window.onload=function(){window.print();window.onafterprint=function(){window.close()}}</script></body></html>`;
+                              const w = window.open("", "_blank", "width=320,height=500");
+                              if (w) { w.document.write(kitchenHTML); w.document.close(); }
+                            }}
+                          >
+                            <ChefHat className="h-3.5 w-3.5" />
+                            طباعة المطبخ
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="gap-1.5 text-xs h-8"
+                            onClick={() => {
+                              const items = expandedOrderItems?.map((i: any) => ({
+                                name: (i.pos_items as any)?.name || "—",
+                                qty: i.quantity,
+                                price: i.unit_price,
+                                total: i.total,
+                              })) || [];
+                              const itemsRows = items.map(i => `<tr><td style="text-align:right;padding:3px 0;font-size:10px">${i.name}</td><td style="text-align:center;font-size:10px">${i.qty}</td><td style="text-align:center;font-size:10px">${i.price?.toFixed(2)}</td><td style="text-align:left;font-size:10px">${i.total?.toFixed(2)}</td></tr>`).join("");
+                              const driverReceiptHTML = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>إيصال توصيل</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Cairo',sans-serif;width:80mm;margin:0 auto;padding:10px;font-size:12px;color:#000}h2{text-align:center;font-size:14px;margin-bottom:4px}.sep{border-bottom:1px dashed #000;margin:6px 0}.info{font-size:11px;padding:2px 0}.label{font-weight:bold}table{width:100%;border-collapse:collapse;margin:6px 0}th{font-size:10px;border-bottom:1px solid #000;padding:3px 0;text-align:center}td{padding:3px 0}.total-row{font-weight:bold;font-size:13px;text-align:center;padding:6px 0;border-top:2px dashed #000;margin-top:6px}.footer{text-align:center;font-size:9px;color:#666;margin-top:8px;border-top:1px dashed #ccc;padding-top:4px}@media print{@page{size:80mm auto;margin:0}}</style></head><body><h2>🚚 إيصال توصيل</h2><p style="text-align:center;font-size:10px">${company?.name || "CostControl"}</p><div class="sep"></div><div class="info"><span class="label">فاتورة:</span> ${order.invoice_number}</div><div class="info"><span class="label">التاريخ:</span> ${format(new Date(order.date), "yyyy/MM/dd HH:mm")}</div><div class="sep"></div><div class="info"><span class="label">العميل:</span> ${order.customer_name || "—"}</div><div class="info"><span class="label">الهاتف:</span> <span dir="ltr">${order.customer_phone || "—"}</span></div><div class="info"><span class="label">العنوان:</span> ${order.customer_address || "—"}</div>${driverName ? `<div class="sep"></div><div class="info"><span class="label">الطيار:</span> ${driverName}</div>${driverPhone ? `<div class="info"><span class="label">هاتف الطيار:</span> <span dir="ltr">${driverPhone}</span></div>` : ""}` : ""}<div class="sep"></div><table><thead><tr><th style="text-align:right">الصنف</th><th>الكمية</th><th>السعر</th><th style="text-align:left">الإجمالي</th></tr></thead><tbody>${itemsRows}</tbody></table>${order.discount_amount > 0 ? `<div class="info"><span class="label">خصم:</span> ${order.discount_amount?.toFixed(2)} EGP</div>` : ""}${order.tax_amount > 0 ? `<div class="info"><span class="label">ضريبة ${order.tax_rate}%:</span> ${order.tax_amount?.toFixed(2)} EGP</div>` : ""}<div class="info"><span class="label">رسوم التوصيل:</span> ${order.delivery_fee?.toFixed(2) || "0.00"} EGP</div><div class="total-row">الإجمالي المطلوب: ${((order.total_amount ?? 0) + (order.delivery_fee ?? 0)).toFixed(2)} EGP</div><div class="info" style="text-align:center;font-size:10px;margin-top:4px"><span class="label">طريقة الدفع:</span> ${order.payment_method || "كاش"}</div>${order.notes ? `<div class="sep"></div><div class="info" style="font-size:10px"><span class="label">ملاحظات:</span> ${order.notes}</div>` : ""}<div class="footer">شكراً لتعاملكم معنا • ${company?.name || "CostControl"}</div><script>window.onload=function(){window.print();window.onafterprint=function(){window.close()}}</script></body></html>`;
+                              const w = window.open("", "_blank", "width=320,height=600");
+                              if (w) { w.document.write(driverReceiptHTML); w.document.close(); }
+                            }}
+                          >
+                            <Printer className="h-3.5 w-3.5" />
+                            إيصال الطيار
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex items-center gap-2 pt-1">
+                      {/* Expand/collapse button */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="gap-1 text-xs h-8"
+                        onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}
+                      >
+                        <FileText className="h-3 w-3" />
+                        {isExpanded ? "إخفاء" : "التفاصيل"}
+                      </Button>
+
                       {/* Driver selection */}
                       <Select
                         value={order.driver_id || ""}

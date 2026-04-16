@@ -79,14 +79,11 @@ const OfflineScreen = () => (
 );
 
 const AppLoadingScreen: React.FC<{ message?: string }> = ({ message = "جاري التحميل..." }) => (
-  <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
-    <img src={loginBg} alt="" className="absolute inset-0 w-full h-full object-cover" />
-    <div className="absolute inset-0 bg-[hsl(220,60%,8%)]/75 backdrop-blur-sm" />
-    <div className="absolute inset-0 bg-gradient-to-br from-[hsl(199,89%,40%)]/15 via-transparent to-[hsl(260,60%,30%)]/10" />
-    <div className="relative z-10 text-center animate-fade-in-up">
-      <img src={logo3m} alt="3M GSC Logo" className="w-32 h-32 mx-auto mb-4 object-contain drop-shadow-lg" />
-      <h1 className="text-3xl font-black text-gradient mb-2">3M GSC</h1>
-      <p className="text-muted-foreground text-sm">{message}</p>
+  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/30 p-6">
+    <div className="w-full max-w-sm rounded-3xl border border-border/50 bg-card/90 p-8 text-center shadow-2xl backdrop-blur-xl">
+      <div className="mx-auto mb-5 h-14 w-14 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
+      <h1 className="mb-2 text-2xl font-black text-foreground">جاري التحميل</h1>
+      <p className="text-sm leading-6 text-muted-foreground">{message}</p>
     </div>
   </div>
 );
@@ -118,6 +115,35 @@ const SuspendedOverlay = () => (
         تم إيقاف حسابك من قبل الإدارة. لا يمكنك الوصول إلى النظام حالياً.
         <br />تواصل مع مدير النظام لإعادة تفعيل حسابك.
       </p>
+    </div>
+  </div>
+);
+
+const MissingProfileScreen: React.FC<{ onLogout: () => Promise<void> }> = ({ onLogout }) => (
+  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/30 p-6">
+    <div className="w-full max-w-md rounded-3xl border border-border/50 bg-card/95 p-8 text-center shadow-2xl backdrop-blur-xl">
+      <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+        <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+      </div>
+      <h2 className="mb-3 text-2xl font-black text-foreground">تعذر تجهيز الحساب</h2>
+      <p className="text-sm leading-6 text-muted-foreground">
+        حصل تأخير أو مشكلة في تحميل بيانات الحساب، لذلك النظام لم يعد يتركك على شاشة سوداء.
+        يمكنك إعادة المحاولة أو تسجيل الخروج ثم الدخول مرة أخرى.
+      </p>
+      <div className="mt-6 flex items-center justify-center gap-3">
+        <button
+          onClick={() => window.location.reload()}
+          className="rounded-xl bg-secondary px-5 py-2.5 text-sm font-bold text-secondary-foreground transition-opacity hover:opacity-90"
+        >
+          إعادة المحاولة
+        </button>
+        <button
+          onClick={() => void onLogout()}
+          className="rounded-xl bg-destructive px-5 py-2.5 text-sm font-bold text-destructive-foreground transition-opacity hover:opacity-90"
+        >
+          تسجيل الخروج
+        </button>
+      </div>
     </div>
   </div>
 );
@@ -225,8 +251,8 @@ const SubscriptionExpiredOverlay: React.FC<{ type: "company" | "user" }> = ({ ty
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
       <div className="absolute inset-0 bg-background/60 backdrop-blur-xl" />
       <div className="relative z-10 text-center p-8 max-w-md">
-        <div className="w-20 h-20 rounded-full bg-amber-500/15 flex items-center justify-center mx-auto mb-6">
-          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-500"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
+        <div className="w-20 h-20 rounded-full bg-primary/15 flex items-center justify-center mx-auto mb-6">
+          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
         </div>
         <h2 className="text-2xl font-black text-foreground mb-3">
           {type === "company" ? "انتهت مدة اشتراك الشركة" : "انتهت مدة اشتراكك"}
@@ -248,7 +274,7 @@ const SubscriptionExpiredOverlay: React.FC<{ type: "company" | "user" }> = ({ ty
 };
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { auth } = useAuth();
+  const { auth, logout } = useAuth();
   const qc = useQueryClient();
 
   const { data: companyStatus } = useQuery({
@@ -291,10 +317,11 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     }
   }, [userSuspended]);
 
-  if (!auth.isReady) return null;
+  if (!auth.isReady) return <AppLoadingScreen message="جاري تجهيز الجلسة..." />;
   if (companyDeactivated) return <Navigate to="/login?reason=company_deactivated" replace />;
   if (userSuspended) return <Navigate to="/login?reason=user_suspended" replace />;
   if (!auth.session) return <Navigate to="/login" replace />;
+  if (!auth.profile && !auth.isAdmin && !auth.isOwner) return <MissingProfileScreen onLogout={logout} />;
 
   if (!auth.isAdmin && !auth.isOwner && auth.profile) {
     const p = auth.profile as any;
@@ -312,27 +339,27 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 const LoginPageWrapper = () => <LoginPage />;
 
 const PermissionGuard: React.FC<{ permKey: string; children: React.ReactNode }> = ({ permKey, children }) => {
-  const { auth, hasPermission } = useAuth();
-  if (!auth.isReady) return null;
+  const { auth, hasPermission, logout } = useAuth();
+  if (!auth.isReady) return <AppLoadingScreen message="جاري التحقق من الصلاحيات..." />;
   if (!auth.session) return <Navigate to="/login" replace />;
-  if (!auth.profile && !auth.isAdmin && !auth.isOwner) return null;
+  if (!auth.profile && !auth.isAdmin && !auth.isOwner) return <MissingProfileScreen onLogout={logout} />;
   if (!hasPermission(permKey)) return <Navigate to="/" replace />;
   return <>{children}</>;
 };
 
 const AdminGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { auth } = useAuth();
-  if (!auth.isReady) return null;
+  if (!auth.isReady) return <AppLoadingScreen message="جاري التحقق من الحساب..." />;
   if (!auth.session) return <Navigate to="/login" replace />;
   if (!auth.isAdmin) return <Navigate to="/" replace />;
   return <>{children}</>;
 };
 
 const OwnerOrAdminGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { auth, hasPermission } = useAuth();
-  if (!auth.isReady) return null;
+  const { auth, hasPermission, logout } = useAuth();
+  if (!auth.isReady) return <AppLoadingScreen message="جاري التحقق من الحساب..." />;
   if (!auth.session) return <Navigate to="/login" replace />;
-  if (!auth.profile && !auth.isAdmin && !auth.isOwner) return null;
+  if (!auth.profile && !auth.isAdmin && !auth.isOwner) return <MissingProfileScreen onLogout={logout} />;
   if (!auth.isAdmin && !auth.isOwner && !hasPermission("settings")) return <Navigate to="/" replace />;
   return <>{children}</>;
 };

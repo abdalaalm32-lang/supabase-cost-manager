@@ -334,10 +334,13 @@ export const CallCenterPage: React.FC = () => {
     setCart([]);
     setCustomerName("");
     setCustomerPhone("");
+    setCustomerPhone2("");
     setCustomerAddress("");
     setCustomerId(null);
     setPhoneSearch("");
     setPaymentMethod("كاش");
+    setDeliveryFee(0);
+    setSelectedDriverId("");
   }, []);
 
   // Save/create customer and order

@@ -105,13 +105,25 @@ export const PosScreenPage: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pos_sales")
-        .select("id, invoice_number, customer_name, customer_phone, customer_address, total_amount, delivery_fee, date, delivery_status, driver_id, notes, discount_amount, tax_amount, tax_rate, payment_method")
+        .select("id, invoice_number, customer_name, customer_phone, customer_address, customer_id, total_amount, delivery_fee, date, delivery_status, driver_id, notes, discount_amount, tax_amount, tax_rate, payment_method")
         .eq("company_id", companyId!)
         .eq("order_type", "دليفري")
         .in("delivery_status", ["جديد", "قيد التحضير", "خرج للتوصيل"])
         .order("date", { ascending: false });
       if (error) throw error;
-      return data;
+      // Fetch phone2 for customers
+      const customerIds = [...new Set((data || []).map((o: any) => o.customer_id).filter(Boolean))];
+      let phone2Map: Record<string, string> = {};
+      if (customerIds.length > 0) {
+        const { data: customers } = await supabase
+          .from("customers")
+          .select("id, phone2")
+          .in("id", customerIds);
+        if (customers) {
+          customers.forEach((c: any) => { if (c.phone2) phone2Map[c.id] = c.phone2; });
+        }
+      }
+      return (data || []).map((o: any) => ({ ...o, customer_phone2: o.customer_id ? phone2Map[o.customer_id] || null : null }));
     },
     enabled: !!companyId,
     refetchInterval: 15000,

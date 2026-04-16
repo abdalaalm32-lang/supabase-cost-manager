@@ -17,7 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format, startOfDay, endOfDay } from "date-fns";
 import {
   Truck, Plus, Trash2, Edit2, Phone, CalendarIcon,
-  Users, Banknote, PackageCheck, TrendingUp
+  Users, Banknote, PackageCheck, TrendingUp, Printer
 } from "lucide-react";
 
 export const DriverSettlementPage: React.FC = () => {
@@ -148,6 +148,10 @@ export const DriverSettlementPage: React.FC = () => {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <div className="p-4 space-y-4" dir="rtl">
       {/* Header */}
@@ -156,9 +160,14 @@ export const DriverSettlementPage: React.FC = () => {
           <Truck className="h-5 w-5 text-primary" />
           <h1 className="text-lg font-bold">تسوية حسابات الطيارين</h1>
         </div>
-        <Button size="sm" className="gap-1" onClick={() => { setEditingDriver(null); setDriverName(""); setDriverPhone(""); setDriverDialog(true); }}>
-          <Plus className="h-3.5 w-3.5" /> إضافة طيار
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" className="gap-1" onClick={handlePrint}>
+            <Printer className="h-3.5 w-3.5" /> طباعة
+          </Button>
+          <Button size="sm" className="gap-1" onClick={() => { setEditingDriver(null); setDriverName(""); setDriverPhone(""); setDriverDialog(true); }}>
+            <Plus className="h-3.5 w-3.5" /> إضافة طيار
+          </Button>
+        </div>
       </div>
 
       {/* Drivers list */}

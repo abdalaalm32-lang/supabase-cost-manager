@@ -202,8 +202,33 @@ export const CallCenterPage: React.FC = () => {
       return data;
     },
     enabled: !!companyId,
-    refetchInterval: 15000,
   });
+
+  // Realtime subscription for delivery status updates
+  useEffect(() => {
+    if (!companyId) return;
+    const channel = supabase
+      .channel("call-center-delivery-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "pos_sales",
+          filter: `company_id=eq.${companyId}`,
+        },
+        (payload: any) => {
+          const row = payload.new || payload.old;
+          if (row?.order_type === "دليفري") {
+            queryClient.invalidateQueries({ queryKey: ["call-center-active-orders"] });
+            queryClient.invalidateQueries({ queryKey: ["call-center-delivered-orders"] });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [companyId, queryClient]);
 
   // Delivered orders
   const { data: deliveredOrders } = useQuery({
@@ -402,6 +427,7 @@ export const CallCenterPage: React.FC = () => {
         customer_address: customerAddress,
         delivery_fee: deliveryFee || 0,
         driver_id: null,
+        assigned_cashier_id: selectedCashierId || null,
         notes: cart.filter(c => c.notes).map(c => `${c.name}: ${c.notes}`).join(" | ") || null,
       } as any).select().single();
       if (saleErr) throw saleErr;

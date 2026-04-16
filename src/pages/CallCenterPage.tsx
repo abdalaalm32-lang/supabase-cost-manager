@@ -61,6 +61,7 @@ export const CallCenterPage: React.FC = () => {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;
   const [selectedBranchId, setSelectedBranchId] = useState<string>("");
+  const [selectedCashierId, setSelectedCashierId] = useState<string>("");
   const queryClient = useQueryClient();
   const receiptRef = useRef<HTMLDivElement>(null);
 

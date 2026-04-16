@@ -427,7 +427,7 @@ export const CallCenterPage: React.FC = () => {
         customer_address: customerAddress,
         delivery_fee: deliveryFee || 0,
         driver_id: null,
-        assigned_cashier_id: selectedCashierId || null,
+        assigned_cashier_id: (selectedCashierId && selectedCashierId !== "none") ? selectedCashierId : null,
         notes: cart.filter(c => c.notes).map(c => `${c.name}: ${c.notes}`).join(" | ") || null,
       } as any).select().single();
       if (saleErr) throw saleErr;

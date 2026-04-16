@@ -589,15 +589,13 @@ ${notes ? `<div style="border-top:1px dashed #000;padding-top:6px;margin-top:6px
     printViaIframe(html);
   }, [receiptData, printViaIframe]);
 
-  // Auto-print receipt — wait longer to ensure DOM renders
+  // Auto-print receipt
   useEffect(() => {
     if (receiptData) {
       const timer = setTimeout(() => {
-        if (receiptRef.current && receiptRef.current.innerHTML) {
-          printReceipt();
-        }
+        printReceipt();
         setReceiptData(null);
-      }, 800);
+      }, 300);
       return () => clearTimeout(timer);
     }
   }, [receiptData, printReceipt]);

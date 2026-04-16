@@ -253,8 +253,8 @@ export const CallCenterPage: React.FC = () => {
 
   const filteredItems = useMemo(() => {
     if (!items) return [];
-    let filtered = branchId
-      ? items.filter((i: any) => !i.branch_id || i.branch_id === branchId)
+    let filtered = selectedBranchId
+      ? items.filter((i: any) => !i.branch_id || i.branch_id === selectedBranchId)
       : items;
     if (selectedCategory !== "all") {
       filtered = filtered.filter((i: any) => i.category_id === selectedCategory);
@@ -264,7 +264,7 @@ export const CallCenterPage: React.FC = () => {
       filtered = filtered.filter((i: any) => i.name.toLowerCase().includes(q) || i.code?.toLowerCase().includes(q));
     }
     return filtered.sort((a: any, b: any) => (a.code || "").localeCompare(b.code || ""));
-  }, [items, branchId, selectedCategory, searchQuery]);
+  }, [items, selectedBranchId, selectedCategory, searchQuery]);
 
   const filteredCustomers = useMemo(() => {
     if (!allCustomers) return [];
@@ -367,7 +367,7 @@ export const CallCenterPage: React.FC = () => {
 
       const { data: sale, error: saleErr } = await supabase.from("pos_sales").insert({
         company_id: companyId,
-        branch_id: branchId || null,
+        branch_id: selectedBranchId || null,
         invoice_number: invoiceNum,
         date: new Date().toISOString(),
         total_amount: total,
@@ -402,7 +402,7 @@ export const CallCenterPage: React.FC = () => {
       return sale;
     },
     onSuccess: (sale) => {
-      const branchName = branches?.find(b => b.id === branchId)?.name || "";
+      const branchName = branches?.find(b => b.id === selectedBranchId)?.name || "";
       setReceiptData({
         invoiceNumber: (sale as any).invoice_number,
         branchName,

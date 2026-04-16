@@ -1202,6 +1202,47 @@ export type Database = {
           },
         ]
       }
+      pos_shift_definitions: {
+        Row: {
+          active: boolean
+          cashier_profile_id: string | null
+          company_id: string
+          created_at: string
+          definition_code: string | null
+          id: string
+          pos_password: string | null
+          shift_name: string
+        }
+        Insert: {
+          active?: boolean
+          cashier_profile_id?: string | null
+          company_id: string
+          created_at?: string
+          definition_code?: string | null
+          id?: string
+          pos_password?: string | null
+          shift_name: string
+        }
+        Update: {
+          active?: boolean
+          cashier_profile_id?: string | null
+          company_id?: string
+          created_at?: string
+          definition_code?: string | null
+          id?: string
+          pos_password?: string | null
+          shift_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_shift_definitions_cashier_profile_id_fkey"
+            columns: ["cashier_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pos_shift_expenses: {
         Row: {
           amount: number
@@ -1258,6 +1299,7 @@ export type Database = {
           opened_at: string
           opened_by: string | null
           opening_cash: number
+          shift_name: string | null
           shift_number: string | null
           status: string
         }
@@ -1271,6 +1313,7 @@ export type Database = {
           opened_at?: string
           opened_by?: string | null
           opening_cash?: number
+          shift_name?: string | null
           shift_number?: string | null
           status?: string
         }
@@ -1284,6 +1327,7 @@ export type Database = {
           opened_at?: string
           opened_by?: string | null
           opening_cash?: number
+          shift_name?: string | null
           shift_number?: string | null
           status?: string
         }
@@ -2815,6 +2859,10 @@ export type Database = {
         Returns: string
       }
       generate_return_number: {
+        Args: { p_company_id: string }
+        Returns: string
+      }
+      generate_shift_definition_code: {
         Args: { p_company_id: string }
         Returns: string
       }

@@ -30,9 +30,8 @@ export const PosShiftsPage: React.FC = () => {
   const [dateTo, setDateTo] = useState<Date | undefined>(new Date());
   const [detailShift, setDetailShift] = useState<any>(null);
   const [deleteShift, setDeleteShift] = useState<any>(null);
-  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [editingPasswordId, setEditingPasswordId] = useState<string | null>(null);
+  const [editPasswordValue, setEditPasswordValue] = useState("");
 
   const { data: branches } = useQuery({
     queryKey: ["branches", companyId],

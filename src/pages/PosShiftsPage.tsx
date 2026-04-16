@@ -11,11 +11,11 @@ import { Calendar } from "@/components/ui/calendar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { format, startOfDay, endOfDay } from "date-fns";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CalendarIcon, Clock, Eye, Layers, Receipt, Printer, Trash2, KeyRound, Users, Check, X, Save } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
 import { toast } from "sonner";
@@ -61,6 +61,22 @@ export const PosShiftsPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  // Cashiers list
+  const { data: cashiers } = useQuery({
+    queryKey: ["pos-cashiers", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, user_code, email, pos_password, status")
+        .eq("company_id", companyId!)
+        .eq("status", "نشط")
+        .order("full_name");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!companyId,
+  });
+
   // Detail shift data
   const { data: detailSales } = useQuery({
     queryKey: ["pos-shift-detail-sales", detailShift?.id],
@@ -85,11 +101,7 @@ export const PosShiftsPage: React.FC = () => {
     queryKey: ["pos-shift-detail-expenses", detailShift?.id],
     queryFn: async () => {
       if (!detailShift) return [];
-      const { data, error } = await supabase
-        .from("pos_shift_expenses")
-        .select("*")
-        .eq("shift_id", detailShift.id)
-        .order("created_at");
+      const { data, error } = await supabase.from("pos_shift_expenses").select("*").eq("shift_id", detailShift.id).order("created_at");
       if (error) throw error;
       return data || [];
     },
@@ -100,11 +112,7 @@ export const PosShiftsPage: React.FC = () => {
     queryKey: ["pos-shift-detail-returns", detailShift?.id],
     queryFn: async () => {
       if (!detailShift) return [];
-      let query = supabase
-        .from("pos_returns")
-        .select("*")
-        .eq("company_id", companyId!)
-        .gte("date", detailShift.opened_at);
+      let query = supabase.from("pos_returns").select("*").eq("company_id", companyId!).gte("date", detailShift.opened_at);
       if (detailShift.closed_at) query = query.lte("date", detailShift.closed_at);
       if (detailShift.branch_id) query = query.eq("branch_id", detailShift.branch_id);
       const { data, error } = await query;
@@ -114,47 +122,32 @@ export const PosShiftsPage: React.FC = () => {
     enabled: !!detailShift,
   });
 
-  // Delete shift mutation
+  // Delete shift
   const deleteShiftMutation = useMutation({
     mutationFn: async (shiftId: string) => {
-      // Delete expenses first
       await supabase.from("pos_shift_expenses").delete().eq("shift_id", shiftId);
-      // Delete the shift
       const { error } = await supabase.from("pos_shifts").delete().eq("id", shiftId);
       if (error) throw error;
     },
-    onSuccess: () => {
-      toast.success("تم حذف الشيفت بنجاح");
-      queryClient.invalidateQueries({ queryKey: ["pos-shifts-list"] });
-      setDeleteShift(null);
-    },
-    onError: () => {
-      toast.error("فشل في حذف الشيفت");
-    },
+    onSuccess: () => { toast.success("تم حذف الشيفت"); queryClient.invalidateQueries({ queryKey: ["pos-shifts-list"] }); setDeleteShift(null); },
+    onError: () => { toast.error("فشل في حذف الشيفت"); },
   });
 
-  // Save POS password
+  // Save cashier password
   const savePasswordMutation = useMutation({
-    mutationFn: async () => {
-      if (!auth.profile?.id) throw new Error("No profile");
-      const { error } = await supabase
-        .from("profiles")
-        .update({ pos_password: newPassword })
-        .eq("id", auth.profile.id);
+    mutationFn: async ({ profileId, password }: { profileId: string; password: string }) => {
+      const { error } = await supabase.from("profiles").update({ pos_password: password }).eq("id", profileId);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("تم حفظ باسورد الشيفت بنجاح");
-      setShowPasswordDialog(false);
-      setNewPassword("");
-      setConfirmPassword("");
+      toast.success("تم حفظ الباسورد");
+      setEditingPasswordId(null);
+      setEditPasswordValue("");
+      queryClient.invalidateQueries({ queryKey: ["pos-cashiers"] });
     },
-    onError: () => {
-      toast.error("فشل في حفظ الباسورد");
-    },
+    onError: () => { toast.error("فشل في حفظ الباسورد"); },
   });
 
-  // Print shift
   const handlePrintShift = (shift: any) => {
     const html = `<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"><title>شيفت ${shift.shift_number || ""}</title>
     <style>body{font-family:Arial,sans-serif;padding:20px;font-size:14px}h2{text-align:center;margin-bottom:20px}
@@ -170,21 +163,15 @@ export const PosShiftsPage: React.FC = () => {
       <div class="row"><span class="label">وقت الفتح:</span><span class="value">${format(new Date(shift.opened_at), "yyyy/MM/dd HH:mm")}</span></div>
       <div class="row"><span class="label">وقت الإغلاق:</span><span class="value">${shift.closed_at ? format(new Date(shift.closed_at), "yyyy/MM/dd HH:mm") : "مفتوح"}</span></div>
       <div class="row"><span class="label">المبلغ الافتتاحي:</span><span class="value">${(shift.opening_cash || 0).toFixed(2)} EGP</span></div>
-    </div>
-    </body></html>`;
+    </div></body></html>`;
     const w = window.open("", "_blank", "width=400,height=600");
-    if (w) {
-      w.document.write(html);
-      w.document.close();
-      w.print();
-    }
+    if (w) { w.document.write(html); w.document.close(); w.print(); }
   };
 
   const totalShifts = shifts?.length || 0;
   const openShifts = shifts?.filter((s: any) => s.status === "مفتوح").length || 0;
   const closedShifts = shifts?.filter((s: any) => s.status === "مغلق").length || 0;
 
-  // Detail calculations
   const dTotalSales = detailSales?.reduce((s: number, sale: any) => s + sale.total_amount, 0) ?? 0;
   const dTotalCash = detailSales?.filter((s: any) => s.payment_method === "كاش").reduce((s: number, sale: any) => s + sale.total_amount, 0) ?? 0;
   const dTotalVisa = detailSales?.filter((s: any) => s.payment_method === "فيزا").reduce((s: number, sale: any) => s + sale.total_amount, 0) ?? 0;
@@ -204,139 +191,219 @@ export const PosShiftsPage: React.FC = () => {
 
   return (
     <div className="space-y-6" dir="rtl">
-      {/* Stats + Password Button */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1">
-          <Card className="glass-card border-border/50">
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="p-3 rounded-xl bg-primary/10"><Layers className="h-5 w-5 text-primary" /></div>
-              <div><p className="text-xs text-muted-foreground">إجمالي الشيفتات</p><p className="text-xl font-black text-foreground">{totalShifts}</p></div>
-            </CardContent>
-          </Card>
-          <Card className="glass-card border-border/50">
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="p-3 rounded-xl bg-green-500/10"><Clock className="h-5 w-5 text-green-500" /></div>
-              <div><p className="text-xs text-muted-foreground">مفتوح</p><p className="text-xl font-black text-green-500">{openShifts}</p></div>
-            </CardContent>
-          </Card>
-          <Card className="glass-card border-border/50">
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="p-3 rounded-xl bg-muted"><Receipt className="h-5 w-5 text-muted-foreground" /></div>
-              <div><p className="text-xs text-muted-foreground">مغلق</p><p className="text-xl font-black text-foreground">{closedShifts}</p></div>
-            </CardContent>
-          </Card>
-        </div>
-        <Button variant="outline" className="gap-2" onClick={() => setShowPasswordDialog(true)}>
-          <KeyRound className="h-4 w-4" />
-          باسورد الشيفت
-        </Button>
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="glass-card border-border/50">
+          <CardContent className="flex items-center gap-4 p-4">
+            <div className="p-3 rounded-xl bg-primary/10"><Layers className="h-5 w-5 text-primary" /></div>
+            <div><p className="text-xs text-muted-foreground">إجمالي الشيفتات</p><p className="text-xl font-black text-foreground">{totalShifts}</p></div>
+          </CardContent>
+        </Card>
+        <Card className="glass-card border-border/50">
+          <CardContent className="flex items-center gap-4 p-4">
+            <div className="p-3 rounded-xl bg-green-500/10"><Clock className="h-5 w-5 text-green-500" /></div>
+            <div><p className="text-xs text-muted-foreground">مفتوح</p><p className="text-xl font-black text-green-500">{openShifts}</p></div>
+          </CardContent>
+        </Card>
+        <Card className="glass-card border-border/50">
+          <CardContent className="flex items-center gap-4 p-4">
+            <div className="p-3 rounded-xl bg-muted"><Receipt className="h-5 w-5 text-muted-foreground" /></div>
+            <div><p className="text-xs text-muted-foreground">مغلق</p><p className="text-xl font-black text-foreground">{closedShifts}</p></div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Filters */}
-      <Card className="glass-card border-border/50">
-        <CardContent className="p-4">
-          <div className="flex flex-wrap items-center gap-3">
-            {branches && branches.length > 1 && (
-              <Select value={branchId} onValueChange={setBranchId}>
-                <SelectTrigger className="glass-input w-[180px]"><SelectValue placeholder="كل الفروع" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">كل الفروع</SelectItem>
-                  {branches.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            )}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("glass-input w-[150px] justify-start text-sm", !dateFrom && "text-muted-foreground")}>
-                  <CalendarIcon className="h-4 w-4 ml-1" />
-                  {dateFrom ? format(dateFrom, "yyyy/MM/dd") : "من"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} className="pointer-events-auto" /></PopoverContent>
-            </Popover>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("glass-input w-[150px] justify-start text-sm", !dateTo && "text-muted-foreground")}>
-                  <CalendarIcon className="h-4 w-4 ml-1" />
-                  {dateTo ? format(dateTo, "yyyy/MM/dd") : "إلى"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={dateTo} onSelect={setDateTo} className="pointer-events-auto" /></PopoverContent>
-            </Popover>
-            <div className="mr-auto">
-              <ExportButtons
-                data={tableData}
-                filename="سجل_الشيفتات"
-                title="سجل الشيفتات"
-                columns={[
-                  { label: "كود الشيفت", key: "كود الشيفت" },
-                  { label: "الحالة", key: "الحالة" },
-                  { label: "الكاشير", key: "الكاشير" },
-                  { label: "وقت الفتح", key: "وقت الفتح" },
-                  { label: "وقت الإغلاق", key: "وقت الإغلاق" },
-                  { label: "المبلغ الافتتاحي", key: "المبلغ الافتتاحي" },
-                ]}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Tabs */}
+      <Tabs defaultValue="shifts" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="shifts" className="gap-2"><Receipt className="h-4 w-4" /> سجل الشيفتات</TabsTrigger>
+          <TabsTrigger value="cashiers" className="gap-2"><Users className="h-4 w-4" /> كاشيرات الشيفت</TabsTrigger>
+        </TabsList>
 
-      {/* Table */}
-      <Card className="glass-card border-border/50">
-        <CardContent className="p-0">
-          <ScrollArea className="h-[calc(100vh-420px)]">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-border/50">
-                  <TableHead className="text-right">كود الشيفت</TableHead>
-                  <TableHead className="text-right">الحالة</TableHead>
-                  <TableHead className="text-right">الكاشير</TableHead>
-                  <TableHead className="text-right">وقت الفتح</TableHead>
-                  <TableHead className="text-right">وقت الإغلاق</TableHead>
-                  <TableHead className="text-right">المبلغ الافتتاحي</TableHead>
-                  <TableHead className="text-center">إجراءات</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">جاري التحميل...</TableCell></TableRow>
-                ) : !shifts?.length ? (
-                  <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">لا توجد شيفتات</TableCell></TableRow>
-                ) : (
-                  shifts.map((shift: any) => (
-                    <TableRow key={shift.id} className="border-border/30 hover:bg-muted/30">
-                      <TableCell className="font-mono text-xs font-bold text-primary py-3">{shift.shift_number || "—"}</TableCell>
-                      <TableCell className="py-3">
-                        <Badge variant={shift.status === "مفتوح" ? "default" : "secondary"} className={cn("text-[10px]", shift.status === "مفتوح" && "bg-green-500/20 text-green-500 border-green-500/30")}>
-                          {shift.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm py-3">{shift.opened_by || "—"}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground py-3">{format(new Date(shift.opened_at), "yyyy/MM/dd HH:mm")}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground py-3">{shift.closed_at ? format(new Date(shift.closed_at), "yyyy/MM/dd HH:mm") : "—"}</TableCell>
-                      <TableCell className="font-bold text-sm py-3">{(shift.opening_cash || 0).toFixed(2)} EGP</TableCell>
-                      <TableCell className="text-center py-3">
-                        <div className="flex items-center justify-center gap-1">
-                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setDetailShift(shift)} title="تفاصيل">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handlePrintShift(shift)} title="طباعة">
-                            <Printer className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => setDeleteShift(shift)} title="حذف">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
+        {/* Tab: Shifts History */}
+        <TabsContent value="shifts" className="space-y-4">
+          {/* Filters */}
+          <Card className="glass-card border-border/50">
+            <CardContent className="p-4">
+              <div className="flex flex-wrap items-center gap-3">
+                {branches && branches.length > 1 && (
+                  <Select value={branchId} onValueChange={setBranchId}>
+                    <SelectTrigger className="glass-input w-[180px]"><SelectValue placeholder="كل الفروع" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">كل الفروع</SelectItem>
+                      {branches.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 )}
-              </TableBody>
-            </Table>
-          </ScrollArea>
-        </CardContent>
-      </Card>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn("glass-input w-[150px] justify-start text-sm", !dateFrom && "text-muted-foreground")}>
+                      <CalendarIcon className="h-4 w-4 ml-1" />
+                      {dateFrom ? format(dateFrom, "yyyy/MM/dd") : "من"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} className="pointer-events-auto" /></PopoverContent>
+                </Popover>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn("glass-input w-[150px] justify-start text-sm", !dateTo && "text-muted-foreground")}>
+                      <CalendarIcon className="h-4 w-4 ml-1" />
+                      {dateTo ? format(dateTo, "yyyy/MM/dd") : "إلى"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={dateTo} onSelect={setDateTo} className="pointer-events-auto" /></PopoverContent>
+                </Popover>
+                <div className="mr-auto">
+                  <ExportButtons
+                    data={tableData}
+                    filename="سجل_الشيفتات"
+                    title="سجل الشيفتات"
+                    columns={[
+                      { label: "كود الشيفت", key: "كود الشيفت" },
+                      { label: "الحالة", key: "الحالة" },
+                      { label: "الكاشير", key: "الكاشير" },
+                      { label: "وقت الفتح", key: "وقت الفتح" },
+                      { label: "وقت الإغلاق", key: "وقت الإغلاق" },
+                      { label: "المبلغ الافتتاحي", key: "المبلغ الافتتاحي" },
+                    ]}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Shifts Table */}
+          <Card className="glass-card border-border/50">
+            <CardContent className="p-0">
+              <ScrollArea className="h-[calc(100vh-480px)]">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-border/50">
+                      <TableHead className="text-right">كود الشيفت</TableHead>
+                      <TableHead className="text-right">الحالة</TableHead>
+                      <TableHead className="text-right">الكاشير</TableHead>
+                      <TableHead className="text-right">وقت الفتح</TableHead>
+                      <TableHead className="text-right">وقت الإغلاق</TableHead>
+                      <TableHead className="text-right">المبلغ الافتتاحي</TableHead>
+                      <TableHead className="text-center">إجراءات</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoading ? (
+                      <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">جاري التحميل...</TableCell></TableRow>
+                    ) : !shifts?.length ? (
+                      <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">لا توجد شيفتات</TableCell></TableRow>
+                    ) : (
+                      shifts.map((shift: any) => (
+                        <TableRow key={shift.id} className="border-border/30 hover:bg-muted/30">
+                          <TableCell className="font-mono text-xs font-bold text-primary py-3">{shift.shift_number || "—"}</TableCell>
+                          <TableCell className="py-3">
+                            <Badge variant={shift.status === "مفتوح" ? "default" : "secondary"} className={cn("text-[10px]", shift.status === "مفتوح" && "bg-green-500/20 text-green-500 border-green-500/30")}>
+                              {shift.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm py-3">{shift.opened_by || "—"}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground py-3">{format(new Date(shift.opened_at), "yyyy/MM/dd HH:mm")}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground py-3">{shift.closed_at ? format(new Date(shift.closed_at), "yyyy/MM/dd HH:mm") : "—"}</TableCell>
+                          <TableCell className="font-bold text-sm py-3">{(shift.opening_cash || 0).toFixed(2)} EGP</TableCell>
+                          <TableCell className="text-center py-3">
+                            <div className="flex items-center justify-center gap-1">
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setDetailShift(shift)} title="تفاصيل">
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handlePrintShift(shift)} title="طباعة">
+                                <Printer className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => setDeleteShift(shift)} title="حذف">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab: Cashiers */}
+        <TabsContent value="cashiers" className="space-y-4">
+          <Card className="glass-card border-border/50">
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-border/50">
+                    <TableHead className="text-right">كود المستخدم</TableHead>
+                    <TableHead className="text-right">الاسم</TableHead>
+                    <TableHead className="text-right">البريد</TableHead>
+                    <TableHead className="text-center">باسورد الشيفت</TableHead>
+                    <TableHead className="text-center">إجراءات</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {!cashiers?.length ? (
+                    <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">لا يوجد مستخدمين</TableCell></TableRow>
+                  ) : (
+                    cashiers.map((c: any) => (
+                      <TableRow key={c.id} className="border-border/30 hover:bg-muted/30">
+                        <TableCell className="font-mono text-xs font-bold text-primary py-3">{c.user_code || "—"}</TableCell>
+                        <TableCell className="text-sm py-3">{c.full_name}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground py-3">{c.email}</TableCell>
+                        <TableCell className="text-center py-3">
+                          {c.pos_password ? (
+                            <Badge className="bg-green-500/20 text-green-500 border-green-500/30 text-[10px]">
+                              <Check className="h-3 w-3 ml-1" /> مُعيّن
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-[10px]">
+                              <X className="h-3 w-3 ml-1" /> غير مُعيّن
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center py-3">
+                          {editingPasswordId === c.id ? (
+                            <div className="flex items-center justify-center gap-2">
+                              <Input
+                                type="password"
+                                value={editPasswordValue}
+                                onChange={(e) => setEditPasswordValue(e.target.value)}
+                                placeholder="الباسورد الجديد"
+                                className="glass-input h-8 w-[140px] text-sm"
+                              />
+                              <Button
+                                size="sm"
+                                className="h-8 px-2"
+                                onClick={() => {
+                                  if (!editPasswordValue) return toast.error("أدخل الباسورد");
+                                  savePasswordMutation.mutate({ profileId: c.id, password: editPasswordValue });
+                                }}
+                                disabled={savePasswordMutation.isPending}
+                              >
+                                <Save className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => { setEditingPasswordId(null); setEditPasswordValue(""); }}>
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button variant="outline" size="sm" className="h-7 gap-1 text-xs" onClick={() => { setEditingPasswordId(c.id); setEditPasswordValue(""); }}>
+                              <KeyRound className="h-3.5 w-3.5" />
+                              {c.pos_password ? "تغيير" : "تعيين"}
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Detail Dialog */}
       <Dialog open={!!detailShift} onOpenChange={(open) => !open && setDetailShift(null)}>
@@ -408,52 +475,6 @@ export const PosShiftsPage: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* POS Password Dialog */}
-      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
-        <DialogContent className="max-w-sm" dir="rtl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <KeyRound className="h-5 w-5 text-primary" />
-              تعيين باسورد الشيفت
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <label className="text-sm text-muted-foreground mb-1 block">الباسورد الجديد</label>
-              <Input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="أدخل الباسورد"
-                className="glass-input"
-              />
-            </div>
-            <div>
-              <label className="text-sm text-muted-foreground mb-1 block">تأكيد الباسورد</label>
-              <Input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="أعد إدخال الباسورد"
-                className="glass-input"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              onClick={() => {
-                if (!newPassword) return toast.error("أدخل الباسورد");
-                if (newPassword !== confirmPassword) return toast.error("الباسورد غير متطابق");
-                savePasswordMutation.mutate();
-              }}
-              disabled={savePasswordMutation.isPending}
-            >
-              حفظ الباسورد
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

@@ -12,13 +12,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
   Plus, Minus, Trash2, ShoppingCart, CalendarIcon, Store,
   FileText, Printer, AlertCircle, Archive, LayoutGrid, Percent, Tag,
   Search, Maximize, Minimize, Pause, User, Keyboard,
-  UtensilsCrossed, ShoppingBag, Truck, Banknote, CreditCard, Bell
+  UtensilsCrossed, ShoppingBag, Truck, Banknote, CreditCard, Bell,
+  ChefHat, CheckCircle2, Clock, MapPin, Phone
 } from "lucide-react";
 import { PosReceiptPrint } from "@/components/pos/PosReceiptPrint";
 import { PosHeldInvoices } from "@/components/pos/PosHeldInvoices";

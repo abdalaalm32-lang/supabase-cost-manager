@@ -21,7 +21,7 @@ import {
   FileText, Printer, AlertCircle, Archive, LayoutGrid, Percent, Tag,
   Search, Maximize, Minimize, Pause, User, Keyboard,
   UtensilsCrossed, ShoppingBag, Truck, Banknote, CreditCard, Bell,
-  ChefHat, CheckCircle2, Clock, MapPin, Phone
+  ChefHat, CheckCircle2, Clock, MapPin, Phone, PlayCircle
 } from "lucide-react";
 import { PosReceiptPrint } from "@/components/pos/PosReceiptPrint";
 import { PosHeldInvoices } from "@/components/pos/PosHeldInvoices";
@@ -376,6 +376,10 @@ export const PosScreenPage: React.FC = () => {
   }, [items, selectedCategory, branchId, searchQuery]);
 
   const addToCart = (item: any) => {
+    if (!currentShiftForExpenses) {
+      toast.error("يجب فتح شيفت أولاً قبل إضافة أصناف");
+      return;
+    }
     setCart((prev) => {
       const existing = prev.find((c) => c.pos_item_id === item.id);
       if (existing) {
@@ -553,19 +557,37 @@ export const PosScreenPage: React.FC = () => {
     };
   }, []);
 
-  // Print receipt using hidden iframe
+  // Print receipt using hidden iframe - direct HTML approach for reliability
   const printReceipt = useCallback(() => {
-    if (!receiptRef.current) return;
-    const printContent = receiptRef.current.innerHTML;
-    printViaIframe(`<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"/><title>إيصال</title>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
-*{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:'Cairo','Tahoma',sans-serif;direction:rtl;width:72mm;margin:0 auto;padding:4px 6px;font-size:11px;color:#000;line-height:1.4;}
-table{width:100%;border-collapse:collapse;}
-@media print{@page{size:80mm auto;margin:0;}body{width:72mm;}}
-</style></head><body>${printContent}</body></html>`);
-  }, [printViaIframe]);
+    if (!receiptData) return;
+    const { invoiceNumber, branchName, customerName: cn2, date, items, subtotal, discountAmount: da, discountLabel: dl, taxAmount: ta, taxRate: tr, total: t, companyName: cName, notes, orderType: ot, paymentMethod: pm, deliveryFee: df } = receiptData;
+    const itemsRows = items.map((item: any) => 
+      `<tr style="border-bottom:1px dotted #ccc"><td style="text-align:right;padding:2px 0;font-size:10px">${item.name}</td><td style="text-align:center;padding:2px 0;font-size:10px">${item.quantity}</td><td style="text-align:center;padding:2px 0;font-size:10px">${item.unit_price.toFixed(2)}</td><td style="text-align:left;padding:2px 0;font-size:10px">${(item.unit_price * item.quantity).toFixed(2)}</td></tr>${item.notes ? `<tr><td colspan="4" style="text-align:right;font-size:9px;color:#666;padding-bottom:2px;padding-right:8px">⤷ ${item.notes}</td></tr>` : ""}`
+    ).join("");
+    const html = `<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"/><title>إيصال</title>
+<style>@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Cairo','Tahoma',sans-serif;direction:rtl;width:72mm;margin:0 auto;padding:4px 6px;font-size:11px;color:#000;line-height:1.4;}table{width:100%;border-collapse:collapse;}@media print{@page{size:80mm auto;margin:0;}body{width:72mm;}}</style></head><body>
+<div style="text-align:center;border-bottom:1px dashed #000;padding-bottom:6px;margin-bottom:6px">
+<div style="font-size:14px;font-weight:bold">${cName || "CostControl"}</div>
+${branchName ? `<div style="font-size:10px">${branchName}</div>` : ""}
+<div style="font-size:10px;margin-top:3px">${date}</div>
+${invoiceNumber ? `<div style="font-size:10px">فاتورة رقم: ${invoiceNumber}</div>` : ""}
+${cn2 ? `<div style="font-size:10px">العميل: ${cn2}</div>` : ""}
+${ot ? `<div style="font-size:10px">نوع الطلب: ${ot}</div>` : ""}
+${pm ? `<div style="font-size:10px">طريقة الدفع: ${pm}</div>` : ""}
+</div>
+<table style="width:100%;border-collapse:collapse;margin-bottom:6px"><thead><tr style="border-bottom:1px dashed #000"><th style="text-align:right;font-size:10px;padding:2px 0">الصنف</th><th style="text-align:center;font-size:10px;padding:2px 0">الكمية</th><th style="text-align:center;font-size:10px;padding:2px 0">السعر</th><th style="text-align:left;font-size:10px;padding:2px 0">المجموع</th></tr></thead><tbody>${itemsRows}</tbody></table>
+<div style="border-top:1px dashed #000;padding-top:6px">
+<div style="display:flex;justify-content:space-between;font-size:10px"><span>الإجمالي الفرعي:</span><span>${subtotal.toFixed(2)}</span></div>
+${da > 0 ? `<div style="display:flex;justify-content:space-between;font-size:10px"><span>خصم ${dl || ""}:</span><span>- ${da.toFixed(2)}</span></div>` : ""}
+${ta > 0 ? `<div style="display:flex;justify-content:space-between;font-size:10px"><span>ضريبة ${tr}%:</span><span>${ta.toFixed(2)}</span></div>` : ""}
+${(df ?? 0) > 0 ? `<div style="display:flex;justify-content:space-between;font-size:10px"><span>رسوم التوصيل:</span><span>${(df ?? 0).toFixed(2)}</span></div>` : ""}
+<div style="display:flex;justify-content:space-between;font-weight:bold;font-size:13px;border-top:1px dashed #000;padding-top:4px;margin-top:4px"><span>الإجمالي:</span><span>${(t + (df ?? 0)).toFixed(2)} EGP</span></div>
+</div>
+${notes ? `<div style="border-top:1px dashed #000;padding-top:6px;margin-top:6px"><div style="font-size:10px"><span style="font-weight:bold">ملاحظات:</span> ${notes}</div></div>` : ""}
+<div style="text-align:center;margin-top:8px;border-top:1px dashed #000;padding-top:6px"><div style="font-size:10px">شكراً لزيارتكم</div><div style="font-size:9px;color:#666;margin-top:3px">CostControl POS System</div></div>
+</body></html>`;
+    printViaIframe(html);
+  }, [receiptData, printViaIframe]);
 
   // Auto-print receipt
   useEffect(() => {
@@ -573,18 +595,13 @@ table{width:100%;border-collapse:collapse;}
       const timer = setTimeout(() => {
         printReceipt();
         setReceiptData(null);
-      }, 400);
+      }, 300);
       return () => clearTimeout(timer);
     }
   }, [receiptData, printReceipt]);
 
   return (
     <>
-      {/* Print-only receipt */}
-      {receiptData && (
-        <PosReceiptPrint ref={receiptRef} {...receiptData} />
-      )}
-
       <div className="flex flex-col h-[calc(100vh-4rem)]" dir="rtl">
         {/* Top bar */}
         <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-card/50 print:hidden flex-wrap gap-2">
@@ -666,7 +683,14 @@ table{width:100%;border-collapse:collapse;}
             </div>
 
             {/* Product grid */}
-            <ScrollArea className="flex-1">
+            <ScrollArea className="flex-1 relative">
+              {!currentShiftForExpenses && (
+                <div className="absolute inset-0 z-10 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3 rounded-lg">
+                  <PlayCircle className="h-12 w-12 text-muted-foreground opacity-40" />
+                  <p className="text-sm font-bold text-muted-foreground">يجب فتح شيفت أولاً</p>
+                  <p className="text-xs text-muted-foreground">اضغط على زر "فتح شيفت" في الشريط العلوي</p>
+                </div>
+              )}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5" dir="rtl">
                 {filteredItems.map((item) => {
                   const inCart = cart.find((c) => c.pos_item_id === item.id);
@@ -675,7 +699,8 @@ table{width:100%;border-collapse:collapse;}
                       key={item.id}
                       className={cn(
                         "glass-card p-3 rounded-xl flex flex-col gap-1.5 hover:border-primary/50 transition-all cursor-pointer group relative",
-                        inCart && "border-primary/40 bg-primary/5"
+                        inCart && "border-primary/40 bg-primary/5",
+                        !currentShiftForExpenses && "pointer-events-none opacity-50"
                       )}
                       onClick={() => addToCart(item)}
                     >

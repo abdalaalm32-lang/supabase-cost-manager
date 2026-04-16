@@ -143,13 +143,27 @@ export const CallCenterPage: React.FC = () => {
     enabled: !!companyId,
   });
 
-  // Cashier users (profiles) filtered by branch
+  // Cashier users (profiles) filtered by branch + job role "كاشير"
   const { data: branchUsers } = useQuery({
     queryKey: ["branch-users", companyId, selectedBranchId],
     queryFn: async () => {
-      let query = supabase.from("profiles").select("id, full_name, branch_id").eq("company_id", companyId!).eq("status", "نشط");
+      // First get job_role ids with name "كاشير"
+      const { data: cashierRoles } = await supabase
+        .from("job_roles")
+        .select("id")
+        .eq("company_id", companyId!)
+        .ilike("name", "%كاشير%");
+      const cashierRoleIds = cashierRoles?.map((r: any) => r.id) || [];
+
+      let query = supabase.from("profiles").select("id, full_name, branch_id, job_role_id").eq("company_id", companyId!).eq("status", "نشط");
       if (selectedBranchId) {
         query = query.eq("branch_id", selectedBranchId);
+      }
+      if (cashierRoleIds.length > 0) {
+        query = query.in("job_role_id", cashierRoleIds);
+      } else {
+        // No cashier role defined — return empty
+        return [];
       }
       const { data, error } = await query;
       if (error) throw error;

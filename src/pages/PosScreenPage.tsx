@@ -27,6 +27,8 @@ import { PosReceiptPrint } from "@/components/pos/PosReceiptPrint";
 import { PosHeldInvoices } from "@/components/pos/PosHeldInvoices";
 import { PosDailyStats } from "@/components/pos/PosDailyStats";
 import { PosShiftManager } from "@/components/pos/PosShiftManager";
+import { PosShiftExpenses } from "@/components/pos/PosShiftExpenses";
+import { PosReturnsManager } from "@/components/pos/PosReturnsManager";
 
 interface CartItem {
   id: string;

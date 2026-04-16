@@ -103,16 +103,32 @@ export const PosScreenPage: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pos_sales")
-        .select("id, invoice_number, customer_name, customer_phone, customer_address, total_amount, delivery_fee, date, delivery_status")
+        .select("id, invoice_number, customer_name, customer_phone, customer_address, total_amount, delivery_fee, date, delivery_status, driver_id, notes")
         .eq("company_id", companyId!)
         .eq("order_type", "دليفري")
-        .in("delivery_status", ["جديد", "قيد التحضير"])
+        .in("delivery_status", ["جديد", "قيد التحضير", "خرج للتوصيل"])
         .order("date", { ascending: false });
       if (error) throw error;
       return data;
     },
     enabled: !!companyId,
-    refetchInterval: 30000,
+    refetchInterval: 15000,
+  });
+
+  // Delivery drivers
+  const { data: deliveryDrivers } = useQuery({
+    queryKey: ["delivery-drivers", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("delivery_drivers")
+        .select("*")
+        .eq("company_id", companyId!)
+        .eq("active", true)
+        .order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
   });
 
   // Realtime subscription for new delivery orders

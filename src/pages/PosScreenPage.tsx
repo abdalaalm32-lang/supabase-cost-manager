@@ -101,15 +101,19 @@ export const PosScreenPage: React.FC = () => {
 
   // Pending delivery orders query
   const { data: pendingDeliveryOrders } = useQuery({
-    queryKey: ["pos-pending-delivery", companyId],
+    queryKey: ["pos-pending-delivery", companyId, branchId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("pos_sales")
-        .select("id, invoice_number, customer_name, customer_phone, customer_address, customer_id, total_amount, delivery_fee, date, delivery_status, driver_id, notes, discount_amount, tax_amount, tax_rate, payment_method")
+        .select("id, invoice_number, customer_name, customer_phone, customer_address, customer_id, total_amount, delivery_fee, date, delivery_status, driver_id, notes, discount_amount, tax_amount, tax_rate, payment_method, branch_id")
         .eq("company_id", companyId!)
         .eq("order_type", "دليفري")
         .in("delivery_status", ["جديد", "قيد التحضير", "خرج للتوصيل"])
         .order("date", { ascending: false });
+      if (branchId) {
+        query = query.eq("branch_id", branchId);
+      }
+      const { data, error } = await query;
       if (error) throw error;
       // Fetch phone2 for customers
       const customerIds = [...new Set((data || []).map((o: any) => o.customer_id).filter(Boolean))];

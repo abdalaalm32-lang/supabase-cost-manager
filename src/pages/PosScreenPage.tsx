@@ -505,16 +505,33 @@ export const PosScreenPage: React.FC = () => {
     onError: (e: any) => toast.error(e.message || "حدث خطأ"),
   });
 
-  // Print receipt using printable iframe
+  // Silent print using hidden iframe (no new tab)
+  const printViaIframe = useCallback((htmlContent: string) => {
+    const existingFrame = document.getElementById("silent-print-frame");
+    if (existingFrame) existingFrame.remove();
+    const iframe = document.createElement("iframe");
+    iframe.id = "silent-print-frame";
+    iframe.style.cssText = "position:fixed;left:-9999px;top:0;width:0;height:0;border:none;";
+    document.body.appendChild(iframe);
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc) { toast.error("تعذر فتح الطباعة"); return; }
+    doc.open();
+    doc.write(htmlContent);
+    doc.close();
+    iframe.onload = () => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch (e) { console.error("Print error", e); }
+      setTimeout(() => iframe.remove(), 2000);
+    };
+  }, []);
+
+  // Print receipt using hidden iframe
   const printReceipt = useCallback(() => {
     if (!receiptRef.current) return;
     const printContent = receiptRef.current.innerHTML;
-    const printWindow = window.open("", "_blank", "width=320,height=600");
-    if (!printWindow) {
-      toast.error("يرجى السماح بالنوافذ المنبثقة للطباعة");
-      return;
-    }
-    printWindow.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"/><title>إيصال</title>
+    printViaIframe(`<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"/><title>إيصال</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -522,13 +539,7 @@ body{font-family:'Cairo','Tahoma',sans-serif;direction:rtl;width:72mm;margin:0 a
 table{width:100%;border-collapse:collapse;}
 @media print{@page{size:80mm auto;margin:0;}body{width:72mm;}}
 </style></head><body>${printContent}</body></html>`);
-    printWindow.document.close();
-    printWindow.onload = () => {
-      printWindow.focus();
-      printWindow.print();
-      printWindow.close();
-    };
-  }, []);
+  }, [printViaIframe]);
 
   // Auto-print receipt
   useEffect(() => {

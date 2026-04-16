@@ -60,7 +60,7 @@ import { AdminMessagesPage } from "@/pages/AdminMessagesPage";
 import { AdminSubscriptionLogPage } from "@/pages/AdminSubscriptionLogPage";
 import { PnlPage } from "@/pages/PnlPage";
 import { CallCenterPage } from "@/pages/CallCenterPage";
-
+import { DriverSettlementPage } from "@/pages/DriverSettlementPage";
 const queryClient = new QueryClient();
 
 const OfflineScreen = () => (
@@ -389,6 +389,7 @@ const AppRoutes = () => {
                 <Route path="/pos/groups" element={<PermissionGuard permKey="sales_management"><PosGroupsPage /></PermissionGuard>} />
                 <Route path="/pos/items" element={<PermissionGuard permKey="sales_management"><PosItemsPage /></PermissionGuard>} />
                 <Route path="/call-center" element={<PermissionGuard permKey="call_center"><CallCenterPage /></PermissionGuard>} />
+                <Route path="/sales/driver-settlement" element={<PermissionGuard permKey="sales_management"><DriverSettlementPage /></PermissionGuard>} />
                 <Route path="/inventory" element={<PermissionGuard permKey="inventory"><Navigate to="/inventory/materials" replace /></PermissionGuard>} />
                 <Route path="/inventory/materials" element={<PermissionGuard permKey="inventory"><InventoryMaterialsPage /></PermissionGuard>} />
                 <Route path="/inventory/balances" element={<PermissionGuard permKey="inventory"><InventoryBalancesPage /></PermissionGuard>} />

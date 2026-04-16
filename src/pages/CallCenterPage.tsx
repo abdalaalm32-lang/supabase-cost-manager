@@ -68,8 +68,11 @@ export const CallCenterPage: React.FC = () => {
   const [phoneSearch, setPhoneSearch] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [customerPhone2, setCustomerPhone2] = useState("");
   const [customerAddress, setCustomerAddress] = useState("");
   const [customerId, setCustomerId] = useState<string | null>(null);
+  const [deliveryFee, setDeliveryFee] = useState<number>(0);
+  const [selectedDriverId, setSelectedDriverId] = useState<string>("");
 
   // Cart
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -120,10 +123,27 @@ export const CallCenterPage: React.FC = () => {
     if (foundCustomer) {
       setCustomerName(foundCustomer.name);
       setCustomerPhone(foundCustomer.phone);
+      setCustomerPhone2((foundCustomer as any).phone2 || "");
       setCustomerAddress(foundCustomer.address || "");
       setCustomerId(foundCustomer.id);
     }
   }, [foundCustomer]);
+
+  // Delivery drivers
+  const { data: drivers } = useQuery({
+    queryKey: ["delivery-drivers", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("delivery_drivers")
+        .select("*")
+        .eq("company_id", companyId!)
+        .eq("active", true)
+        .order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
 
   // Branches, categories, items
   const { data: branches } = useQuery({
@@ -314,10 +334,13 @@ export const CallCenterPage: React.FC = () => {
     setCart([]);
     setCustomerName("");
     setCustomerPhone("");
+    setCustomerPhone2("");
     setCustomerAddress("");
     setCustomerId(null);
     setPhoneSearch("");
     setPaymentMethod("كاش");
+    setDeliveryFee(0);
+    setSelectedDriverId("");
   }, []);
 
   // Save/create customer and order
@@ -340,18 +363,18 @@ export const CallCenterPage: React.FC = () => {
 
         if (existingCust) {
           cId = existingCust.id;
-          await supabase.from("customers").update({ name: customerName, address: customerAddress }).eq("id", cId);
+          await supabase.from("customers").update({ name: customerName, address: customerAddress, phone2: customerPhone2 || null } as any).eq("id", cId);
         } else {
           const { data: newCust, error: custErr } = await supabase
             .from("customers")
-            .insert({ company_id: companyId, name: customerName, phone: customerPhone, address: customerAddress })
+            .insert({ company_id: companyId, name: customerName, phone: customerPhone, phone2: customerPhone2 || null, address: customerAddress } as any)
             .select()
             .single();
           if (custErr) throw custErr;
           cId = newCust.id;
         }
       } else {
-        await supabase.from("customers").update({ name: customerName, address: customerAddress }).eq("id", cId);
+        await supabase.from("customers").update({ name: customerName, address: customerAddress, phone2: customerPhone2 || null } as any).eq("id", cId);
       }
 
       const { data: invoiceNum, error: numErr } = await supabase.rpc("generate_invoice_number", { p_company_id: companyId });
@@ -375,6 +398,8 @@ export const CallCenterPage: React.FC = () => {
         customer_name: customerName,
         customer_phone: customerPhone,
         customer_address: customerAddress,
+        delivery_fee: deliveryFee || 0,
+        driver_id: selectedDriverId || null,
         notes: cart.filter(c => c.notes).map(c => `${c.name}: ${c.notes}`).join(" | ") || null,
       } as any).select().single();
       if (saleErr) throw saleErr;
@@ -575,7 +600,7 @@ export const CallCenterPage: React.FC = () => {
                       onChange={e => {
                         setPhoneSearch(e.target.value);
                         setCustomerPhone(e.target.value);
-                        if (!e.target.value) { setCustomerName(""); setCustomerAddress(""); setCustomerId(null); }
+                        if (!e.target.value) { setCustomerName(""); setCustomerPhone2(""); setCustomerAddress(""); setCustomerId(null); }
                       }}
                       className="glass-input pr-8 text-xs h-8"
                     />
@@ -593,6 +618,15 @@ export const CallCenterPage: React.FC = () => {
                     className="glass-input text-xs h-8"
                   />
                   <div className="relative">
+                    <Phone className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground opacity-50" />
+                    <Input
+                      placeholder="رقم تليفون ثاني (اختياري)"
+                      value={customerPhone2}
+                      onChange={e => setCustomerPhone2(e.target.value)}
+                      className="glass-input pr-8 text-xs h-8"
+                    />
+                  </div>
+                  <div className="relative">
                     <MapPin className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                     <Input
                       placeholder="العنوان"
@@ -600,6 +634,28 @@ export const CallCenterPage: React.FC = () => {
                       onChange={e => setCustomerAddress(e.target.value)}
                       className="glass-input pr-8 text-xs h-8"
                     />
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="flex-1 relative">
+                      <Truck className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input
+                        type="number"
+                        placeholder="رسوم التوصيل"
+                        value={deliveryFee || ""}
+                        onChange={e => setDeliveryFee(Number(e.target.value))}
+                        className="glass-input pr-8 text-xs h-8"
+                      />
+                    </div>
+                    <Select value={selectedDriverId} onValueChange={setSelectedDriverId}>
+                      <SelectTrigger className="glass-input h-8 text-xs flex-1">
+                        <SelectValue placeholder="الطيار" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {drivers?.map((d: any) => (
+                          <SelectItem key={d.id} value={d.id} className="text-xs">{d.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
@@ -661,9 +717,16 @@ export const CallCenterPage: React.FC = () => {
                     ))}
                   </div>
 
+                  {deliveryFee > 0 && (
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>رسوم التوصيل</span>
+                      <span>{deliveryFee.toFixed(0)} EGP</span>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between text-sm font-bold">
                     <span>الإجمالي</span>
-                    <span className="text-primary">{total.toFixed(0)} EGP</span>
+                    <span className="text-primary">{(total + deliveryFee).toFixed(0)} EGP</span>
                   </div>
 
                   <Button

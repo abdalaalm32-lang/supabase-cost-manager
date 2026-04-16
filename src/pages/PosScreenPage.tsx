@@ -18,7 +18,7 @@ import {
   Plus, Minus, Trash2, ShoppingCart, CalendarIcon, Store,
   FileText, Printer, AlertCircle, Archive, LayoutGrid, Percent, Tag,
   Search, Maximize, Minimize, Pause, User, Keyboard,
-  UtensilsCrossed, ShoppingBag, Truck, Banknote, CreditCard
+  UtensilsCrossed, ShoppingBag, Truck, Banknote, CreditCard, Bell
 } from "lucide-react";
 import { PosReceiptPrint } from "@/components/pos/PosReceiptPrint";
 import { PosHeldInvoices } from "@/components/pos/PosHeldInvoices";
@@ -81,6 +81,66 @@ export const PosScreenPage: React.FC = () => {
   const [receiptData, setReceiptData] = useState<any>(null);
   const [orderType, setOrderType] = useState<string>(saved?.orderType || "صالة");
   const [paymentMethod, setPaymentMethod] = useState<string>(saved?.paymentMethod || "كاش");
+
+  // Delivery orders notification
+  const [newDeliveryCount, setNewDeliveryCount] = useState(0);
+  const deliveryAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Pending delivery orders query
+  const { data: pendingDeliveryOrders } = useQuery({
+    queryKey: ["pos-pending-delivery", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pos_sales")
+        .select("id, invoice_number, customer_name, customer_phone, customer_address, total_amount, delivery_fee, date, delivery_status")
+        .eq("company_id", companyId!)
+        .eq("order_type", "دليفري")
+        .in("delivery_status", ["جديد", "قيد التحضير"])
+        .order("date", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+    refetchInterval: 30000,
+  });
+
+  // Realtime subscription for new delivery orders
+  useEffect(() => {
+    if (!companyId) return;
+    const channel = supabase
+      .channel("pos-delivery-notifications")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "pos_sales",
+          filter: `company_id=eq.${companyId}`,
+        },
+        (payload: any) => {
+          if (payload.new?.order_type === "دليفري" && payload.new?.delivery_status === "جديد") {
+            setNewDeliveryCount(prev => prev + 1);
+            // Play notification sound
+            try {
+              const audio = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgobm0iFY0LWOlurGJWTc0YaijqJlxUUFUgJeflm1OPU1zi5iaj2dFO01yjZuYjWRDOk5yjpuXi2JCOU9zjpuXi2JCOVBzjpuYjGNCOU9zjpuYjWRDOlB0j5yZjmRDO09zjpuXi2JCOU9zjZqWimFBOE5xjJmViV9AN01wi5eUh15ANkxwipaThV1ANkxviZOQgl1ANktuh5GOgFxANkpthZCMflk/NUlsg46KfFc+NEhrgoyIelU+NEhrgoqGeFQ9NEhrgoqGeFQ9NEhrgoqGeFQ9M0dqgYmFd1M9M0dqgYmFd1M9M0dqgYmFd1M9M0ZpgIiEdVI8MkZpgIiEdVI8MkZpgIiEdVI8");
+              audio.volume = 0.7;
+              audio.play().catch(() => {});
+            } catch {}
+            toast.info(`🚚 أوردر دليفري جديد من ${payload.new?.customer_name || "عميل"}`, {
+              duration: 8000,
+              action: {
+                label: "عرض",
+                onClick: () => {},
+              },
+            });
+            queryClient.invalidateQueries({ queryKey: ["pos-pending-delivery"] });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [companyId, queryClient]);
 
   // Persist draft to sessionStorage
   useEffect(() => {

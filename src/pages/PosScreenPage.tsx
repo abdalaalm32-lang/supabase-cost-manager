@@ -905,6 +905,114 @@ export const PosScreenPage: React.FC = () => {
           @page { size: 80mm auto; margin: 0; }
         }
       `}</style>
+
+      {/* Delivery Management Dialog */}
+      <Dialog open={deliveryDialogOpen} onOpenChange={setDeliveryDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Truck className="h-5 w-5 text-primary" />
+              إدارة أوردرات الدليفري
+              <Badge variant="outline" className="text-xs">{pendingDeliveryOrders?.length ?? 0} أوردر</Badge>
+            </DialogTitle>
+          </DialogHeader>
+
+          {(!pendingDeliveryOrders || pendingDeliveryOrders.length === 0) ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <Truck className="h-12 w-12 mx-auto mb-3 opacity-30" />
+              <p className="text-sm">لا توجد أوردرات دليفري حالياً</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {pendingDeliveryOrders.map((order: any) => {
+                const statusInfo = DELIVERY_STATUSES.find(s => s.value === order.delivery_status);
+                const StatusIcon = statusInfo?.icon || Clock;
+                const nextStatus = (() => {
+                  const idx = DELIVERY_STATUSES.findIndex(s => s.value === order.delivery_status);
+                  return idx < DELIVERY_STATUSES.length - 1 ? DELIVERY_STATUSES[idx + 1] : null;
+                })();
+
+                return (
+                  <div key={order.id} className="p-3 rounded-xl border border-border/50 bg-card/50 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[10px] font-mono">{order.invoice_number}</Badge>
+                        <Badge variant="outline" className={cn("text-[10px] gap-1", statusInfo?.color)}>
+                          <StatusIcon className="h-3 w-3" />
+                          {order.delivery_status}
+                        </Badge>
+                      </div>
+                      <span className="text-[10px] text-muted-foreground">{format(new Date(order.date), "HH:mm")}</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <User className="h-3 w-3 text-muted-foreground" />
+                        <span>{order.customer_name || "—"}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Phone className="h-3 w-3 text-muted-foreground" />
+                        <span dir="ltr">{order.customer_phone || "—"}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 col-span-2">
+                        <MapPin className="h-3 w-3 text-muted-foreground shrink-0" />
+                        <span className="truncate">{order.customer_address || "—"}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-primary">{order.total_amount?.toFixed(0)} EGP</span>
+                      {order.delivery_fee > 0 && (
+                        <Badge variant="outline" className="text-[10px]">توصيل: {order.delivery_fee} EGP</Badge>
+                      )}
+                    </div>
+
+                    {order.notes && (
+                      <p className="text-[10px] text-muted-foreground bg-muted/30 p-1.5 rounded">{order.notes}</p>
+                    )}
+
+                    <div className="flex items-center gap-2 pt-1">
+                      {/* Driver selection */}
+                      <Select
+                        value={order.driver_id || ""}
+                        onValueChange={(driverId) => updateDeliveryOrder.mutate({
+                          saleId: order.id,
+                          updates: { driver_id: driverId || null }
+                        })}
+                      >
+                        <SelectTrigger className="glass-input h-8 text-xs flex-1">
+                          <SelectValue placeholder="اختر الطيار" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {deliveryDrivers?.map((d: any) => (
+                            <SelectItem key={d.id} value={d.id} className="text-xs">{d.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      {/* Next status button */}
+                      {nextStatus && (
+                        <Button
+                          size="sm"
+                          className="gap-1 text-xs h-8"
+                          onClick={() => updateDeliveryOrder.mutate({
+                            saleId: order.id,
+                            updates: { delivery_status: nextStatus.value }
+                          })}
+                          disabled={updateDeliveryOrder.isPending}
+                        >
+                          <nextStatus.icon className="h-3 w-3" />
+                          {nextStatus.label}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

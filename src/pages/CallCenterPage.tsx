@@ -72,7 +72,7 @@ export const CallCenterPage: React.FC = () => {
   const [customerAddress, setCustomerAddress] = useState("");
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [deliveryFee, setDeliveryFee] = useState<number>(0);
-  const [selectedDriverId, setSelectedDriverId] = useState<string>("");
+  // driver selection removed - cashier handles it
 
   // Cart
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -129,21 +129,7 @@ export const CallCenterPage: React.FC = () => {
     }
   }, [foundCustomer]);
 
-  // Delivery drivers
-  const { data: drivers } = useQuery({
-    queryKey: ["delivery-drivers", companyId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("delivery_drivers")
-        .select("*")
-        .eq("company_id", companyId!)
-        .eq("active", true)
-        .order("name");
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!companyId,
-  });
+  // Driver selection removed - handled by cashier in POS
 
   // Branches, categories, items
   const { data: branches } = useQuery({
@@ -340,7 +326,6 @@ export const CallCenterPage: React.FC = () => {
     setPhoneSearch("");
     setPaymentMethod("كاش");
     setDeliveryFee(0);
-    setSelectedDriverId("");
   }, []);
 
   // Save/create customer and order
@@ -399,7 +384,7 @@ export const CallCenterPage: React.FC = () => {
         customer_phone: customerPhone,
         customer_address: customerAddress,
         delivery_fee: deliveryFee || 0,
-        driver_id: selectedDriverId || null,
+        driver_id: null,
         notes: cart.filter(c => c.notes).map(c => `${c.name}: ${c.notes}`).join(" | ") || null,
       } as any).select().single();
       if (saleErr) throw saleErr;

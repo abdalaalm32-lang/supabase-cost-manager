@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { PlayCircle, StopCircle, Clock } from "lucide-react";
+import { PlayCircle, StopCircle, Clock, Lock } from "lucide-react";
 import { format } from "date-fns";
 
 interface PosShiftManagerProps {
@@ -22,7 +22,26 @@ export const PosShiftManager: React.FC<PosShiftManagerProps> = ({ companyId, bra
   const queryClient = useQueryClient();
   const [showOpenDialog, setShowOpenDialog] = useState(false);
   const [showCloseDialog, setShowCloseDialog] = useState(false);
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [passwordAction, setPasswordAction] = useState<"open" | "close">("open");
+  const [posPassword, setPosPassword] = useState("");
   const [openingCash, setOpeningCash] = useState<number>(0);
+
+  // Get current user's profile (for pos_password)
+  const { data: currentProfile } = useQuery({
+    queryKey: ["pos-user-profile", userName],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, pos_password, full_name")
+        .eq("company_id", companyId)
+        .eq("full_name", userName)
+        .limit(1);
+      if (error) throw error;
+      return data?.[0] || null;
+    },
+    enabled: !!companyId && !!userName,
+  });
 
   // Get current open shift
   const { data: currentShift } = useQuery({
@@ -98,13 +117,41 @@ export const PosShiftManager: React.FC<PosShiftManagerProps> = ({ companyId, bra
     enabled: !!currentShift,
   });
 
+  const verifyPassword = (action: "open" | "close") => {
+    const userPosPassword = (currentProfile as any)?.pos_password;
+    if (userPosPassword) {
+      setPasswordAction(action);
+      setPosPassword("");
+      setShowPasswordDialog(true);
+    } else {
+      // No password set, proceed directly
+      if (action === "open") setShowOpenDialog(true);
+      else setShowCloseDialog(true);
+    }
+  };
+
+  const handlePasswordSubmit = () => {
+    const userPosPassword = (currentProfile as any)?.pos_password;
+    if (posPassword === userPosPassword) {
+      setShowPasswordDialog(false);
+      setPosPassword("");
+      if (passwordAction === "open") setShowOpenDialog(true);
+      else setShowCloseDialog(true);
+    } else {
+      toast.error("كلمة المرور غير صحيحة");
+    }
+  };
+
   const openShift = useMutation({
     mutationFn: async () => {
+      // Generate shift number
+      const { data: shiftNumber } = await supabase.rpc("generate_shift_number", { p_company_id: companyId });
       const { error } = await supabase.from("pos_shifts").insert({
         company_id: companyId,
         branch_id: branchId || null,
         opened_by: userName,
         opening_cash: openingCash,
+        shift_number: shiftNumber,
       } as any);
       if (error) throw error;
     },
@@ -147,6 +194,8 @@ export const PosShiftManager: React.FC<PosShiftManagerProps> = ({ companyId, bra
   const printShiftReport = useCallback(() => {
     if (!currentShift || !shiftSales) return;
 
+    const shiftNum = (currentShift as any).shift_number || "—";
+
     // Aggregate items
     const itemMap = new Map<string, { name: string; qty: number; total: number }>();
     shiftSales.forEach((sale) => {
@@ -185,6 +234,7 @@ td:nth-child(2),th:nth-child(2){text-align:center;}
 @media print{@page{size:80mm auto;margin:0}body{width:72mm;}}
 </style></head><body>
 <div class="center"><h2 style="font-size:14px;">تقرير إغلاق الشيفت</h2>
+<p style="font-size:11px;font-weight:bold;margin-top:2px">${shiftNum}</p>
 <p style="font-size:9px;color:#666;">CostControl POS</p></div>
 <div class="sep">
 <p><b>فتح:</b> ${format(new Date(currentShift.opened_at), "yyyy/MM/dd HH:mm")}</p>
@@ -234,19 +284,49 @@ ${totalReturns > 0 ? `<p class="expense-label">- المرتجعات: ${totalRetu
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="gap-1 text-[10px] border-green-500/30 text-green-500">
             <Clock className="h-3 w-3" />
-            شيفت مفتوح منذ {format(new Date(currentShift.opened_at), "HH:mm")}
+            {(currentShift as any).shift_number || "شيفت"} منذ {format(new Date(currentShift.opened_at), "HH:mm")}
           </Badge>
-          <Button variant="destructive" size="sm" className="h-7 text-[10px] gap-1" onClick={() => setShowCloseDialog(true)}>
+          <Button variant="destructive" size="sm" className="h-7 text-[10px] gap-1" onClick={() => verifyPassword("close")}>
             <StopCircle className="h-3 w-3" />
             إغلاق الشيفت
           </Button>
         </div>
       ) : (
-        <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1 border-green-500/30 text-green-500 hover:bg-green-500/10" onClick={() => setShowOpenDialog(true)}>
+        <Button variant="outline" size="sm" className="h-7 text-[10px] gap-1 border-green-500/30 text-green-500 hover:bg-green-500/10" onClick={() => verifyPassword("open")}>
           <PlayCircle className="h-3 w-3" />
           فتح شيفت
         </Button>
       )}
+
+      {/* Password Verification Dialog */}
+      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+        <DialogContent className="max-w-xs" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5 text-primary" />
+              تأكيد الهوية
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">أدخل كلمة مرور نقطة البيع للمتابعة</p>
+            <Input
+              type="password"
+              value={posPassword}
+              onChange={(e) => setPosPassword(e.target.value)}
+              placeholder="كلمة مرور POS"
+              dir="ltr"
+              onKeyDown={(e) => e.key === "Enter" && handlePasswordSubmit()}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button onClick={handlePasswordSubmit} disabled={!posPassword} className="w-full gap-1">
+              <Lock className="h-4 w-4" />
+              تأكيد
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Open Shift Dialog */}
       <Dialog open={showOpenDialog} onOpenChange={setShowOpenDialog}>
@@ -260,6 +340,7 @@ ${totalReturns > 0 ? `<p class="expense-label">- المرتجعات: ${totalRetu
               <Input type="number" value={openingCash || ""} onChange={(e) => setOpeningCash(Number(e.target.value))} placeholder="0.00" />
             </div>
             <p className="text-xs text-muted-foreground">الكاشير: {userName}</p>
+            <p className="text-xs text-muted-foreground">سيتم توليد كود الشيفت تلقائياً</p>
           </div>
           <DialogFooter>
             <Button onClick={() => openShift.mutate()} disabled={openShift.isPending} className="w-full gap-1">
@@ -278,6 +359,7 @@ ${totalReturns > 0 ? `<p class="expense-label">- المرتجعات: ${totalRetu
           </DialogHeader>
           <div className="space-y-3 text-sm">
             <div className="p-3 rounded-lg bg-muted/50 space-y-1">
+              <p><span className="text-muted-foreground">كود الشيفت:</span> <span className="font-bold text-primary">{(currentShift as any)?.shift_number || "—"}</span></p>
               <p><span className="text-muted-foreground">وقت الفتح:</span> {currentShift && format(new Date(currentShift.opened_at), "yyyy/MM/dd HH:mm")}</p>
               <p><span className="text-muted-foreground">الكاشير:</span> {currentShift?.opened_by}</p>
               <p><span className="text-muted-foreground">المبلغ الافتتاحي:</span> {(currentShift?.opening_cash || 0).toFixed(2)} EGP</p>

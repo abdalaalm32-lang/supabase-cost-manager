@@ -717,9 +717,16 @@ export const CallCenterPage: React.FC = () => {
                     ))}
                   </div>
 
+                  {deliveryFee > 0 && (
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>رسوم التوصيل</span>
+                      <span>{deliveryFee.toFixed(0)} EGP</span>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between text-sm font-bold">
                     <span>الإجمالي</span>
-                    <span className="text-primary">{total.toFixed(0)} EGP</span>
+                    <span className="text-primary">{(total + deliveryFee).toFixed(0)} EGP</span>
                   </div>
 
                   <Button

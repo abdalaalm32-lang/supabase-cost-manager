@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
-  Phone, Plus, Minus, Trash2, Search, Truck, User, MapPin,
+  Phone, Plus, Minus, Trash2, Search, Truck, User, MapPin, Store,
   ShoppingCart, LayoutGrid, Banknote, CreditCard, Clock, CheckCircle2,
   ChefHat, PackageCheck, Send, Star, PhoneCall, MessageSquare,
   Users, TrendingUp, FileText, AlertCircle
@@ -60,7 +60,7 @@ const FEEDBACK_STATUSES = [
 export const CallCenterPage: React.FC = () => {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;
-  const branchId = (auth.profile as any)?.branch_id || "";
+  const [selectedBranchId, setSelectedBranchId] = useState<string>("");
   const queryClient = useQueryClient();
   const receiptRef = useRef<HTMLDivElement>(null);
 
@@ -253,8 +253,8 @@ export const CallCenterPage: React.FC = () => {
 
   const filteredItems = useMemo(() => {
     if (!items) return [];
-    let filtered = branchId
-      ? items.filter((i: any) => !i.branch_id || i.branch_id === branchId)
+    let filtered = selectedBranchId
+      ? items.filter((i: any) => !i.branch_id || i.branch_id === selectedBranchId)
       : items;
     if (selectedCategory !== "all") {
       filtered = filtered.filter((i: any) => i.category_id === selectedCategory);
@@ -264,7 +264,7 @@ export const CallCenterPage: React.FC = () => {
       filtered = filtered.filter((i: any) => i.name.toLowerCase().includes(q) || i.code?.toLowerCase().includes(q));
     }
     return filtered.sort((a: any, b: any) => (a.code || "").localeCompare(b.code || ""));
-  }, [items, branchId, selectedCategory, searchQuery]);
+  }, [items, selectedBranchId, selectedCategory, searchQuery]);
 
   const filteredCustomers = useMemo(() => {
     if (!allCustomers) return [];
@@ -332,6 +332,7 @@ export const CallCenterPage: React.FC = () => {
   const saveSale = useMutation({
     mutationFn: async () => {
       if (!companyId) throw new Error("لا يوجد شركة");
+      if (!selectedBranchId) throw new Error("يجب اختيار الفرع");
       if (!customerPhone) throw new Error("رقم التليفون مطلوب");
       if (!customerName) throw new Error("اسم العميل مطلوب");
       if (!customerAddress) throw new Error("العنوان مطلوب");
@@ -367,7 +368,7 @@ export const CallCenterPage: React.FC = () => {
 
       const { data: sale, error: saleErr } = await supabase.from("pos_sales").insert({
         company_id: companyId,
-        branch_id: branchId || null,
+        branch_id: selectedBranchId || null,
         invoice_number: invoiceNum,
         date: new Date().toISOString(),
         total_amount: total,
@@ -402,7 +403,7 @@ export const CallCenterPage: React.FC = () => {
       return sale;
     },
     onSuccess: (sale) => {
-      const branchName = branches?.find(b => b.id === branchId)?.name || "";
+      const branchName = branches?.find(b => b.id === selectedBranchId)?.name || "";
       setReceiptData({
         invoiceNumber: (sale as any).invoice_number,
         branchName,
@@ -575,8 +576,17 @@ export const CallCenterPage: React.FC = () => {
                 <div className="p-3 border-b border-border/50 space-y-2">
                   <div className="flex items-center gap-2 mb-1">
                     <User className="h-3.5 w-3.5 text-primary" />
-                    <span className="text-xs font-bold">بيانات العميل</span>
+                    <span className="text-xs font-bold">بيانات العميل والفرع</span>
                   </div>
+                  <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
+                    <SelectTrigger className={cn("glass-input h-8 text-xs", !selectedBranchId && "border-destructive/50")}>
+                      <Store className="h-3.5 w-3.5 ml-1 text-muted-foreground" />
+                      <SelectValue placeholder="اختر الفرع *" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {branches?.map((b: any) => (<SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
                   <div className="relative">
                     <Phone className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                     <Input
@@ -704,7 +714,7 @@ export const CallCenterPage: React.FC = () => {
 
                   <Button
                     className="w-full gap-1"
-                    disabled={cart.length === 0 || !customerPhone || !customerName || saveSale.isPending}
+                    disabled={cart.length === 0 || !customerPhone || !customerName || !selectedBranchId || saveSale.isPending}
                     onClick={() => saveSale.mutate()}
                   >
                     <Send className="h-4 w-4" />

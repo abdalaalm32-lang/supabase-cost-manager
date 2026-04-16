@@ -84,15 +84,14 @@ export const PosShiftManager: React.FC<PosShiftManagerProps> = ({ companyId, bra
     queryKey: ["pos-shift-returns", currentShift?.id],
     queryFn: async () => {
       if (!currentShift) return null;
-      const { data, error } = await supabase
+      let query = supabase
         .from("pos_returns")
         .select("*")
         .eq("company_id", companyId)
         .gte("date", currentShift.opened_at)
         .lte("date", new Date().toISOString());
-      if (branchId) {
-        // filter client-side since we already have the data
-      }
+      if (branchId) query = query.eq("branch_id", branchId);
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },

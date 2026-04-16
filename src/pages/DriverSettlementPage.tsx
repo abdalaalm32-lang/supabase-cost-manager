@@ -149,7 +149,95 @@ export const DriverSettlementPage: React.FC = () => {
   });
 
   const handlePrint = () => {
-    window.print();
+    const companyName = auth.profile?.company_id ? "" : "";
+    const dateStr = format(selectedDate, "yyyy/MM/dd");
+    const driverLabel = selectedDriverId === "all" ? "كل الطيارين"
+      : selectedDriverId === "unassigned" ? "غير معيّن"
+      : drivers?.find((d: any) => d.id === selectedDriverId)?.name || "";
+
+    const driverStatsRows = driverStats.map(ds => `
+      <tr>
+        <td>${ds.name}</td>
+        <td>${ds.orderCount}</td>
+        <td>${ds.totalSales.toFixed(2)}</td>
+        <td>${ds.totalDeliveryFee.toFixed(2)}</td>
+        <td style="font-weight:bold;color:#2563eb">${(ds.totalSales + ds.totalDeliveryFee).toFixed(2)}</td>
+      </tr>
+    `).join("");
+
+    const orderRows = filteredOrders.map((o: any) => `
+      <tr>
+        <td>${o.invoice_number || "—"}</td>
+        <td>${o.customer_name || "—"}</td>
+        <td>${(o.delivery_drivers as any)?.name || "غير معيّن"}</td>
+        <td>${o.total_amount.toFixed(2)}</td>
+        <td>${(o.delivery_fee || 0).toFixed(2)}</td>
+        <td style="font-weight:bold">${(o.total_amount + (o.delivery_fee || 0)).toFixed(2)}</td>
+        <td>${o.payment_method}</td>
+        <td>${format(new Date(o.date), "HH:mm")}</td>
+      </tr>
+    `).join("");
+
+    const html = `<!DOCTYPE html>
+<html dir="rtl"><head><meta charset="utf-8"/><title>تسوية حسابات الطيارين</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Cairo',sans-serif;direction:rtl;padding:20px;font-size:12px;color:#000;}
+h1{font-size:16px;text-align:center;margin-bottom:4px;}
+.sub{text-align:center;font-size:11px;color:#666;margin-bottom:12px;}
+table{width:100%;border-collapse:collapse;margin-bottom:16px;}
+th,td{border:1px solid #ddd;padding:5px 8px;text-align:right;font-size:11px;}
+th{background:#f5f5f5;font-weight:bold;}
+.section-title{font-size:13px;font-weight:bold;margin:12px 0 6px;border-bottom:2px solid #333;padding-bottom:4px;}
+.stats{display:flex;gap:20px;margin-bottom:12px;justify-content:center;}
+.stat{text-align:center;padding:8px 16px;border:1px solid #ddd;border-radius:6px;}
+.stat-val{font-size:18px;font-weight:bold;}
+.stat-lbl{font-size:10px;color:#666;}
+.total-row{font-weight:bold;background:#f0f7ff;}
+@media print{@page{size:A4;margin:10mm;}}
+</style></head><body>
+<h1>تسوية حسابات الطيارين</h1>
+<p class="sub">التاريخ: ${dateStr} | ${driverLabel}</p>
+<div class="stats">
+  <div class="stat"><div class="stat-val">${totalStats.orders}</div><div class="stat-lbl">عدد الأوردرات</div></div>
+  <div class="stat"><div class="stat-val">${totalStats.sales.toFixed(2)} EGP</div><div class="stat-lbl">إجمالي المبيعات</div></div>
+  <div class="stat"><div class="stat-val">${totalStats.deliveryFees.toFixed(2)} EGP</div><div class="stat-lbl">رسوم التوصيل</div></div>
+</div>
+${driverStats.length > 0 ? `
+<p class="section-title">ملخص الطيارين</p>
+<table>
+  <thead><tr><th>الطيار</th><th>عدد الأوردرات</th><th>إجمالي المبيعات</th><th>رسوم التوصيل</th><th>المطلوب من الطيار</th></tr></thead>
+  <tbody>${driverStatsRows}
+    <tr class="total-row">
+      <td>الإجمالي</td>
+      <td>${driverStats.reduce((s, d) => s + d.orderCount, 0)}</td>
+      <td>${driverStats.reduce((s, d) => s + d.totalSales, 0).toFixed(2)} EGP</td>
+      <td>${driverStats.reduce((s, d) => s + d.totalDeliveryFee, 0).toFixed(2)} EGP</td>
+      <td>${driverStats.reduce((s, d) => s + d.totalSales + d.totalDeliveryFee, 0).toFixed(2)} EGP</td>
+    </tr>
+  </tbody>
+</table>` : ""}
+<p class="section-title">تفاصيل الأوردرات (${filteredOrders.length})</p>
+<table>
+  <thead><tr><th>رقم الفاتورة</th><th>العميل</th><th>الطيار</th><th>المبلغ</th><th>رسوم التوصيل</th><th>الإجمالي</th><th>الدفع</th><th>الوقت</th></tr></thead>
+  <tbody>${orderRows.length > 0 ? orderRows : '<tr><td colspan="8" style="text-align:center;color:#999;">لا توجد أوردرات</td></tr>'}
+    ${filteredOrders.length > 0 ? `<tr class="total-row">
+      <td colspan="3">الإجمالي</td>
+      <td>${totalStats.sales.toFixed(2)} EGP</td>
+      <td>${totalStats.deliveryFees.toFixed(2)} EGP</td>
+      <td>${(totalStats.sales + totalStats.deliveryFees).toFixed(2)} EGP</td>
+      <td colspan="2"></td>
+    </tr>` : ""}
+  </tbody>
+</table>
+</body></html>`;
+
+    const printWindow = window.open("", "_blank", "width=900,height=700");
+    if (!printWindow) { toast.error("يرجى السماح بالنوافذ المنبثقة"); return; }
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.onload = () => { printWindow.focus(); printWindow.print(); };
   };
 
   return (

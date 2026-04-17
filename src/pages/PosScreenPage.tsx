@@ -535,70 +535,39 @@ export const PosScreenPage: React.FC = () => {
     onError: (e: any) => toast.error(e.message || "حدث خطأ"),
   });
 
-  // Silent print using hidden iframe (no new tab)
-  const printViaIframe = useCallback((htmlContent: string) => {
-    const existingFrame = document.getElementById("silent-print-frame");
-    if (existingFrame) existingFrame.remove();
-    const iframe = document.createElement("iframe");
-    iframe.id = "silent-print-frame";
-    iframe.style.cssText = "position:fixed;left:-9999px;top:0;width:0;height:0;border:none;";
-    document.body.appendChild(iframe);
-    const doc = iframe.contentDocument || iframe.contentWindow?.document;
-    if (!doc) { toast.error("تعذر فتح الطباعة"); return; }
-    doc.open();
-    doc.write(htmlContent);
-    doc.close();
-    iframe.onload = () => {
-      try {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
-      } catch (e) { console.error("Print error", e); }
-      setTimeout(() => iframe.remove(), 2000);
-    };
-  }, []);
+  // Last printed receipt — kept so user can reprint kitchen ticket after customer ticket
+  const [lastReceipt, setLastReceipt] = useState<any>(null);
 
-  // Print receipt using hidden iframe - direct HTML approach for reliability
-  const printReceipt = useCallback(() => {
-    if (!receiptData) return;
-    const { invoiceNumber, branchName, customerName: cn2, date, items, subtotal, discountAmount: da, discountLabel: dl, taxAmount: ta, taxRate: tr, total: t, companyName: cName, notes, orderType: ot, paymentMethod: pm, deliveryFee: df } = receiptData;
-    const itemsRows = items.map((item: any) => 
-      `<tr style="border-bottom:1px dotted #ccc"><td style="text-align:right;padding:2px 0;font-size:10px">${item.name}</td><td style="text-align:center;padding:2px 0;font-size:10px">${item.quantity}</td><td style="text-align:center;padding:2px 0;font-size:10px">${item.unit_price.toFixed(2)}</td><td style="text-align:left;padding:2px 0;font-size:10px">${(item.unit_price * item.quantity).toFixed(2)}</td></tr>${item.notes ? `<tr><td colspan="4" style="text-align:right;font-size:9px;color:#666;padding-bottom:2px;padding-right:8px">⤷ ${item.notes}</td></tr>` : ""}`
-    ).join("");
-    const html = `<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"/><title>إيصال</title>
-<style>@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Cairo','Tahoma',sans-serif;direction:rtl;width:72mm;margin:0 auto;padding:4px 6px;font-size:11px;color:#000;line-height:1.4;}table{width:100%;border-collapse:collapse;}@media print{@page{size:80mm auto;margin:0;}body{width:72mm;}}</style></head><body>
-<div style="text-align:center;border-bottom:1px dashed #000;padding-bottom:6px;margin-bottom:6px">
-<div style="font-size:14px;font-weight:bold">${cName || "CostControl"}</div>
-${branchName ? `<div style="font-size:10px">${branchName}</div>` : ""}
-<div style="font-size:10px;margin-top:3px">${date}</div>
-${invoiceNumber ? `<div style="font-size:10px">فاتورة رقم: ${invoiceNumber}</div>` : ""}
-${cn2 ? `<div style="font-size:10px">العميل: ${cn2}</div>` : ""}
-${ot ? `<div style="font-size:10px">نوع الطلب: ${ot}</div>` : ""}
-${pm ? `<div style="font-size:10px">طريقة الدفع: ${pm}</div>` : ""}
-</div>
-<table style="width:100%;border-collapse:collapse;margin-bottom:6px"><thead><tr style="border-bottom:1px dashed #000"><th style="text-align:right;font-size:10px;padding:2px 0">الصنف</th><th style="text-align:center;font-size:10px;padding:2px 0">الكمية</th><th style="text-align:center;font-size:10px;padding:2px 0">السعر</th><th style="text-align:left;font-size:10px;padding:2px 0">المجموع</th></tr></thead><tbody>${itemsRows}</tbody></table>
-<div style="border-top:1px dashed #000;padding-top:6px">
-<div style="display:flex;justify-content:space-between;font-size:10px"><span>الإجمالي الفرعي:</span><span>${subtotal.toFixed(2)}</span></div>
-${da > 0 ? `<div style="display:flex;justify-content:space-between;font-size:10px"><span>خصم ${dl || ""}:</span><span>- ${da.toFixed(2)}</span></div>` : ""}
-${ta > 0 ? `<div style="display:flex;justify-content:space-between;font-size:10px"><span>ضريبة ${tr}%:</span><span>${ta.toFixed(2)}</span></div>` : ""}
-${(df ?? 0) > 0 ? `<div style="display:flex;justify-content:space-between;font-size:10px"><span>رسوم التوصيل:</span><span>${(df ?? 0).toFixed(2)}</span></div>` : ""}
-<div style="display:flex;justify-content:space-between;font-weight:bold;font-size:13px;border-top:1px dashed #000;padding-top:4px;margin-top:4px"><span>الإجمالي:</span><span>${(t + (df ?? 0)).toFixed(2)} EGP</span></div>
-</div>
-${notes ? `<div style="border-top:1px dashed #000;padding-top:6px;margin-top:6px"><div style="font-size:10px"><span style="font-weight:bold">ملاحظات:</span> ${notes}</div></div>` : ""}
-<div style="text-align:center;margin-top:8px;border-top:1px dashed #000;padding-top:6px"><div style="font-size:10px">شكراً لزيارتكم</div><div style="font-size:9px;color:#666;margin-top:3px">CostControl POS System</div></div>
-</body></html>`;
-    printViaIframe(html);
-  }, [receiptData, printViaIframe]);
-
-  // Auto-print receipt
+  // Auto-print customer receipt on completion, then keep it for kitchen reprint
   useEffect(() => {
     if (receiptData) {
+      const data = receiptData;
       const timer = setTimeout(() => {
-        printReceipt();
+        printCustomerReceipt(data);
+        setLastReceipt(data);
         setReceiptData(null);
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [receiptData, printReceipt]);
+  }, [receiptData]);
+
+  const handlePrintKitchen = useCallback(() => {
+    if (!lastReceipt) {
+      toast.error("لا يوجد فاتورة لطباعتها");
+      return;
+    }
+    printKitchenReceipt({
+      invoiceNumber: lastReceipt.invoiceNumber,
+      branchName: lastReceipt.branchName,
+      date: lastReceipt.date,
+      items: lastReceipt.items,
+      orderType: lastReceipt.orderType,
+      customerName: lastReceipt.customerName,
+      companyName: lastReceipt.companyName,
+    });
+    toast.success("تم إرسال إيصال المطبخ للطباعة");
+  }, [lastReceipt]);
+
 
   return (
     <>

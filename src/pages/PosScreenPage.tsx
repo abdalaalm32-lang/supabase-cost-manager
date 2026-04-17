@@ -618,6 +618,18 @@ export const PosScreenPage: React.FC = () => {
             {companyId && (
               <PosHeldInvoices companyId={companyId} branchId={branchId} onResume={handleResumeHeld} />
             )}
+            {lastReceipt && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 text-xs border-amber-500/50 text-amber-600 hover:bg-amber-500/10"
+                onClick={handlePrintKitchen}
+                title="طباعة إيصال المطبخ لآخر فاتورة"
+              >
+                <ChefHat className="h-3.5 w-3.5" />
+                طباعة المطبخ
+              </Button>
+            )}
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleFullscreen}>
               {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
             </Button>

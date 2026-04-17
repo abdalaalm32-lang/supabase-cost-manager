@@ -1,8 +1,9 @@
-import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import React, { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Receipt, DollarSign, TrendingUp, Clock, Layers } from "lucide-react";
+import { Receipt, DollarSign, TrendingUp, Clock, Layers, RotateCcw, Wallet, CreditCard, Package, RefreshCw } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 
 interface PosDailyStatsProps {
@@ -12,6 +13,8 @@ interface PosDailyStatsProps {
 
 export const PosDailyStats: React.FC<PosDailyStatsProps> = ({ companyId, branchId }) => {
   const [viewMode, setViewMode] = useState<string>("current-shift");
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const queryClient = useQueryClient();
 
   // Get today's shifts (open + closed)
   const { data: todayShifts } = useQuery({
@@ -31,6 +34,7 @@ export const PosDailyStats: React.FC<PosDailyStatsProps> = ({ companyId, branchI
       return data || [];
     },
     enabled: !!companyId,
+    refetchInterval: 5000,
   });
 
   const currentShift = todayShifts?.find((s: any) => s.status === "مفتوح") || null;
@@ -38,50 +42,152 @@ export const PosDailyStats: React.FC<PosDailyStatsProps> = ({ companyId, branchI
     : viewMode === "all-day" ? null
     : todayShifts?.find((s: any) => s.id === viewMode) || null;
 
-  const dateFrom = viewMode === "all-day"
-    ? (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.toISOString(); })()
-    : selectedShift?.opened_at || null;
-
   const { data: stats } = useQuery({
-    queryKey: ["pos-daily-stats", companyId, branchId, viewMode, selectedShift?.id, dateFrom],
+    queryKey: ["pos-daily-stats-v2", companyId, branchId, viewMode, selectedShift?.id, selectedShift?.opened_at, selectedShift?.closed_at],
     queryFn: async () => {
-      let query = supabase
+      const empty = { totalSales: 0, invoiceCount: 0, avgInvoice: 0, itemsCount: 0, cashSales: 0, visaSales: 0, returnsCash: 0, returnsVisa: 0, returnsTotal: 0, netSales: 0 };
+
+      // Build sales query
+      let salesQuery = supabase
         .from("pos_sales")
-        .select("total_amount, status, shift_id")
+        .select("id, total_amount, payment_method, status, shift_id, created_at")
         .eq("company_id", companyId)
         .eq("status", "مكتمل");
 
+      let returnsQuery = supabase
+        .from("pos_returns")
+        .select("id, total_amount, payment_method, shift_id, created_at")
+        .eq("company_id", companyId);
+
       if (viewMode === "all-day") {
-        // Use today's date range based on created_at for accuracy
         const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
         const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999);
-        query = query.gte("created_at", todayStart.toISOString()).lte("created_at", todayEnd.toISOString());
+        salesQuery = salesQuery.gte("created_at", todayStart.toISOString()).lte("created_at", todayEnd.toISOString());
+        returnsQuery = returnsQuery.gte("created_at", todayStart.toISOString()).lte("created_at", todayEnd.toISOString());
       } else if (selectedShift?.id) {
-        // Use exact shift_id for 100% accuracy
-        query = query.eq("shift_id", selectedShift.id);
+        // PRIMARY: by shift_id; FALLBACK: by time-range with shift_id IS NULL
+        const shiftStart = selectedShift.opened_at;
+        const shiftEnd = selectedShift.closed_at || new Date().toISOString();
+
+        // Fetch by shift_id
+        const byShift = await supabase
+          .from("pos_sales")
+          .select("id, total_amount, payment_method, status")
+          .eq("company_id", companyId)
+          .eq("status", "مكتمل")
+          .eq("shift_id", selectedShift.id)
+          .then(r => (branchId ? r : r));
+
+        // Fetch fallback (no shift_id, in time range) — for legacy invoices
+        let fbQuery = supabase
+          .from("pos_sales")
+          .select("id, total_amount, payment_method, status")
+          .eq("company_id", companyId)
+          .eq("status", "مكتمل")
+          .is("shift_id", null)
+          .gte("created_at", shiftStart)
+          .lte("created_at", shiftEnd);
+        if (branchId) fbQuery = fbQuery.eq("branch_id", branchId);
+        const fb = await fbQuery;
+
+        const salesData = [...(byShift.data || []), ...(fb.data || [])];
+
+        // Returns by shift_id + fallback
+        const retByShift = await supabase
+          .from("pos_returns")
+          .select("id, total_amount, payment_method")
+          .eq("company_id", companyId)
+          .eq("shift_id", selectedShift.id);
+
+        let retFbQuery = supabase
+          .from("pos_returns")
+          .select("id, total_amount, payment_method")
+          .eq("company_id", companyId)
+          .is("shift_id", null)
+          .gte("created_at", shiftStart)
+          .lte("created_at", shiftEnd);
+        if (branchId) retFbQuery = retFbQuery.eq("branch_id", branchId);
+        const retFb = await retFbQuery;
+
+        const returnsData = [...(retByShift.data || []), ...(retFb.data || [])];
+
+        // Items count
+        const saleIds = salesData.map((s: any) => s.id);
+        let itemsCount = 0;
+        if (saleIds.length > 0) {
+          const { data: items } = await supabase
+            .from("pos_sale_items")
+            .select("quantity")
+            .in("sale_id", saleIds);
+          itemsCount = (items || []).reduce((s: number, r: any) => s + Number(r.quantity || 0), 0);
+        }
+
+        return calcStats(salesData, returnsData, itemsCount);
       } else {
-        return { totalSales: 0, invoiceCount: 0, avgInvoice: 0 };
+        return empty;
       }
 
-      if (branchId) query = query.eq("branch_id", branchId);
-      const { data, error } = await query;
-      if (error) throw error;
+      // For all-day: branch filter + execute
+      if (branchId) {
+        salesQuery = salesQuery.eq("branch_id", branchId);
+        returnsQuery = returnsQuery.eq("branch_id", branchId);
+      }
+      const [salesRes, returnsRes] = await Promise.all([salesQuery, returnsQuery]);
+      if (salesRes.error) throw salesRes.error;
+      if (returnsRes.error) throw returnsRes.error;
 
-      const totalSales = data?.reduce((s, r) => s + Number(r.total_amount || 0), 0) || 0;
-      const invoiceCount = data?.length || 0;
-      const avgInvoice = invoiceCount > 0 ? totalSales / invoiceCount : 0;
-      return { totalSales, invoiceCount, avgInvoice };
+      const saleIds = (salesRes.data || []).map((s: any) => s.id);
+      let itemsCount = 0;
+      if (saleIds.length > 0) {
+        const { data: items } = await supabase
+          .from("pos_sale_items")
+          .select("quantity")
+          .in("sale_id", saleIds);
+        itemsCount = (items || []).reduce((s: number, r: any) => s + Number(r.quantity || 0), 0);
+      }
+
+      return calcStats(salesRes.data || [], returnsRes.data || [], itemsCount);
     },
     enabled: !!companyId,
-    refetchInterval: 10000,
+    refetchInterval: 5000,
   });
+
+  // Realtime subscription
+  useEffect(() => {
+    if (!companyId) return;
+    const channel = supabase
+      .channel(`pos-stats-${companyId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "pos_sales", filter: `company_id=eq.${companyId}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ["pos-daily-stats-v2"] });
+        setLastUpdate(new Date());
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "pos_returns", filter: `company_id=eq.${companyId}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ["pos-daily-stats-v2"] });
+        setLastUpdate(new Date());
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [companyId, queryClient]);
+
+  useEffect(() => { if (stats) setLastUpdate(new Date()); }, [stats]);
 
   const closedShifts = todayShifts?.filter((s: any) => s.status === "مغلق") || [];
 
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ["pos-daily-stats-v2"] });
+    queryClient.invalidateQueries({ queryKey: ["pos-today-shifts"] });
+    setLastUpdate(new Date());
+  };
+
   const items = [
-    { icon: DollarSign, label: viewMode === "all-day" ? "إجمالي اليوم" : "مبيعات الشيفت", value: `${(stats?.totalSales || 0).toFixed(0)} EGP`, color: "text-primary" },
-    { icon: Receipt, label: "عدد الفواتير", value: `${stats?.invoiceCount || 0}`, color: "text-accent" },
+    { icon: DollarSign, label: viewMode === "all-day" ? "إجمالي اليوم" : "إجمالي الشيفت", value: `${(stats?.totalSales || 0).toFixed(0)} EGP`, color: "text-primary" },
+    { icon: RotateCcw, label: "المرتجعات", value: `${(stats?.returnsTotal || 0).toFixed(0)} EGP`, color: "text-destructive" },
+    { icon: TrendingUp, label: "صافي المبيعات", value: `${(stats?.netSales || 0).toFixed(0)} EGP`, color: "text-emerald-500" },
+    { icon: Receipt, label: "الفواتير", value: `${stats?.invoiceCount || 0}`, color: "text-accent" },
+    { icon: Package, label: "الأصناف", value: `${(stats?.itemsCount || 0).toFixed(0)}`, color: "text-purple-400" },
     { icon: TrendingUp, label: "متوسط الفاتورة", value: `${(stats?.avgInvoice || 0).toFixed(0)} EGP`, color: "text-secondary" },
+    { icon: Wallet, label: "كاش", value: `${(stats?.cashSales || 0).toFixed(0)} EGP`, color: "text-emerald-400" },
+    { icon: CreditCard, label: "فيزا", value: `${(stats?.visaSales || 0).toFixed(0)} EGP`, color: "text-blue-400" },
   ];
 
   return (
@@ -112,6 +218,28 @@ export const PosDailyStats: React.FC<PosDailyStatsProps> = ({ companyId, branchI
           <span className="text-xs font-bold text-foreground">{item.value}</span>
         </div>
       ))}
+
+      <div className="flex items-center gap-1 ml-auto">
+        <span className="text-[10px] text-muted-foreground" title={lastUpdate.toLocaleString()}>
+          آخر تحديث: {format(lastUpdate, "HH:mm:ss")}
+        </span>
+        <Button variant="ghost" size="icon" className="h-5 w-5" onClick={handleRefresh} title="تحديث الآن">
+          <RefreshCw className="h-3 w-3" />
+        </Button>
+      </div>
     </div>
   );
 };
+
+function calcStats(sales: any[], returns: any[], itemsCount: number) {
+  const totalSales = sales.reduce((s, r) => s + Number(r.total_amount || 0), 0);
+  const invoiceCount = sales.length;
+  const avgInvoice = invoiceCount > 0 ? totalSales / invoiceCount : 0;
+  const cashSales = sales.filter(s => s.payment_method === "كاش").reduce((s, r) => s + Number(r.total_amount || 0), 0);
+  const visaSales = sales.filter(s => s.payment_method === "فيزا" || s.payment_method === "visa").reduce((s, r) => s + Number(r.total_amount || 0), 0);
+  const returnsCash = returns.filter(r => r.payment_method === "كاش").reduce((s, r) => s + Number(r.total_amount || 0), 0);
+  const returnsVisa = returns.filter(r => r.payment_method === "فيزا" || r.payment_method === "visa").reduce((s, r) => s + Number(r.total_amount || 0), 0);
+  const returnsTotal = returns.reduce((s, r) => s + Number(r.total_amount || 0), 0);
+  const netSales = totalSales - returnsTotal;
+  return { totalSales, invoiceCount, avgInvoice, itemsCount, cashSales, visaSales, returnsCash, returnsVisa, returnsTotal, netSales };
+}

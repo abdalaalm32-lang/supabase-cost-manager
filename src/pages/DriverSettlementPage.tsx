@@ -20,6 +20,8 @@ import {
   Users, Banknote, PackageCheck, TrendingUp, Printer
 } from "lucide-react";
 import { printViaIframe } from "@/lib/posPrintUtils";
+import { ExportButtons } from "@/components/ExportButtons";
+import type { ExportColumn } from "@/lib/exportUtils";
 
 export const DriverSettlementPage: React.FC = () => {
   const { auth } = useAuth();

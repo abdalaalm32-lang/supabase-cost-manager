@@ -625,6 +625,18 @@ export const CallCenterPage: React.FC = () => {
               {activeOrders?.length ?? 0} أوردر نشط
             </Badge>
           </div>
+          {lastReceipt && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-xs border-amber-500/50 text-amber-600 hover:bg-amber-500/10"
+              onClick={handlePrintKitchen}
+              title="طباعة إيصال المطبخ لآخر فاتورة"
+            >
+              <ChefHat className="h-3.5 w-3.5" />
+              طباعة المطبخ
+            </Button>
+          )}
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">

@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
@@ -38,6 +39,19 @@ export const PosInvoicesPage: React.FC = () => {
   const [selectedSale, setSelectedSale] = useState<any>(null);
   const [editItems, setEditItems] = useState<SaleItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
+  const [branchFilter, setBranchFilter] = useState<string>("all");
+
+  // Fetch branches for filter
+  const { data: branchesList } = useQuery({
+    queryKey: ["pos-invoices-branches", companyId],
+    queryFn: async () => {
+      const { data } = await supabase.from("branches").select("id, name").eq("company_id", companyId!).eq("active", true).order("name");
+      return data || [];
+    },
+    enabled: !!companyId,
+  });
 
   // Fetch sales
   const { data: sales } = useQuery({
@@ -76,12 +90,25 @@ export const PosInvoicesPage: React.FC = () => {
     if (!sales) return [];
     let result = sales;
     if (filter !== "الكل") result = result.filter((s) => s.status === filter);
+    if (branchFilter !== "all") result = result.filter((s: any) => s.branch_id === branchFilter);
+    if (dateFrom) {
+      const from = new Date(dateFrom); from.setHours(0, 0, 0, 0);
+      result = result.filter((s: any) => new Date(s.created_at) >= from);
+    }
+    if (dateTo) {
+      const to = new Date(dateTo); to.setHours(23, 59, 59, 999);
+      result = result.filter((s: any) => new Date(s.created_at) <= to);
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
-      result = result.filter((s) => (s.invoice_number || "").toLowerCase().includes(q));
+      result = result.filter((s: any) => {
+        const matchInvoice = (s.invoice_number || "").toLowerCase().includes(q);
+        const matchTotal = String(Number(s.total_amount || 0).toFixed(2)).includes(q) || String(Math.round(Number(s.total_amount || 0))).includes(q);
+        return matchInvoice || matchTotal;
+      });
     }
     return result;
-  }, [sales, filter, searchQuery]);
+  }, [sales, filter, searchQuery, branchFilter, dateFrom, dateTo]);
 
   const updateEditQty = (id: string, delta: number) => {
     setEditItems((prev) =>
@@ -272,29 +299,60 @@ export const PosInvoicesPage: React.FC = () => {
       </div>
 
       {/* Search + Filters */}
-      <div className="flex items-center gap-3">
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="بحث برقم الفاتورة..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="glass-input pr-9"
-          />
-        </div>
-        <div className="flex gap-2">
-          {filters.map((f) => (
-            <Button key={f} variant={filter === f ? "default" : "outline"} size="sm" className="rounded-full" onClick={() => setFilter(f)}>
-              {f}
+      <div className="space-y-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative flex-1 min-w-[240px] max-w-sm">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="بحث برقم الفاتورة أو الإجمالي..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="glass-input pr-9"
+            />
+          </div>
+          <Select value={branchFilter} onValueChange={setBranchFilter}>
+            <SelectTrigger className="w-[180px] glass-input">
+              <SelectValue placeholder="كل الفروع" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">كل الفروع</SelectItem>
+              {(branchesList || []).map((b: any) => (
+                <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">من</span>
+            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="glass-input w-[150px]" />
+            <span className="text-xs text-muted-foreground">إلى</span>
+            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="glass-input w-[150px]" />
+          </div>
+          {(dateFrom || dateTo || branchFilter !== "all" || searchQuery) && (
+            <Button variant="ghost" size="sm" onClick={() => { setDateFrom(""); setDateTo(""); setBranchFilter("all"); setSearchQuery(""); }}>
+              <X className="h-4 w-4 mr-1" /> مسح
             </Button>
-          ))}
+          )}
         </div>
-        <ExportButtons
-          data={(filtered || []).map((sale: any) => ({ invoice: sale.invoice_number || "—", date: format(new Date(sale.date), "yyyy/MM/dd"), branch: (sale.branches as any)?.name || "—", total: Number(sale.total_amount).toFixed(2), status: sale.status }))}
-          columns={[{ key: "invoice", label: "رقم الفاتورة" }, { key: "date", label: "التاريخ" }, { key: "branch", label: "الفرع" }, { key: "total", label: "الإجمالي" }, { key: "status", label: "الحالة" }]}
-          filename="فواتير_نقطة_البيع"
-          title="سجل الفواتير"
-        />
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex gap-2">
+            {filters.map((f) => (
+              <Button key={f} variant={filter === f ? "default" : "outline"} size="sm" className="rounded-full" onClick={() => setFilter(f)}>
+                {f}
+              </Button>
+            ))}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            عدد: <span className="font-bold text-foreground">{filtered.length}</span> | إجمالي: <span className="font-bold text-foreground">{filtered.reduce((s: number, r: any) => s + Number(r.total_amount || 0), 0).toFixed(2)} EGP</span>
+          </div>
+          <div className="ml-auto">
+            <ExportButtons
+              data={(filtered || []).map((sale: any) => ({ invoice: sale.invoice_number || "—", date: format(new Date(sale.date), "yyyy/MM/dd"), branch: (sale.branches as any)?.name || "—", total: Number(sale.total_amount).toFixed(2), status: sale.status }))}
+              columns={[{ key: "invoice", label: "رقم الفاتورة" }, { key: "date", label: "التاريخ" }, { key: "branch", label: "الفرع" }, { key: "total", label: "الإجمالي" }, { key: "status", label: "الحالة" }]}
+              filename="فواتير_نقطة_البيع"
+              title="سجل الفواتير"
+            />
+          </div>
+        </div>
       </div>
 
       {/* Table */}

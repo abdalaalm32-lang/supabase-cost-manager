@@ -43,32 +43,37 @@ export const PosDailyStats: React.FC<PosDailyStatsProps> = ({ companyId, branchI
     : selectedShift?.opened_at || null;
 
   const { data: stats } = useQuery({
-    queryKey: ["pos-daily-stats", companyId, branchId, viewMode, dateFrom],
+    queryKey: ["pos-daily-stats", companyId, branchId, viewMode, selectedShift?.id, dateFrom],
     queryFn: async () => {
-      if (!dateFrom) return { totalSales: 0, invoiceCount: 0, avgInvoice: 0 };
       let query = supabase
         .from("pos_sales")
-        .select("total_amount, status")
+        .select("total_amount, status, shift_id")
         .eq("company_id", companyId)
-        .eq("status", "مكتمل")
-        .gte("date", dateFrom);
+        .eq("status", "مكتمل");
 
-      // If viewing a closed shift, scope to its closed_at
-      if (viewMode !== "all-day" && viewMode !== "current-shift" && selectedShift?.closed_at) {
-        query = query.lte("date", selectedShift.closed_at);
+      if (viewMode === "all-day") {
+        // Use today's date range based on created_at for accuracy
+        const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999);
+        query = query.gte("created_at", todayStart.toISOString()).lte("created_at", todayEnd.toISOString());
+      } else if (selectedShift?.id) {
+        // Use exact shift_id for 100% accuracy
+        query = query.eq("shift_id", selectedShift.id);
+      } else {
+        return { totalSales: 0, invoiceCount: 0, avgInvoice: 0 };
       }
 
       if (branchId) query = query.eq("branch_id", branchId);
       const { data, error } = await query;
       if (error) throw error;
 
-      const totalSales = data?.reduce((s, r) => s + r.total_amount, 0) || 0;
+      const totalSales = data?.reduce((s, r) => s + Number(r.total_amount || 0), 0) || 0;
       const invoiceCount = data?.length || 0;
       const avgInvoice = invoiceCount > 0 ? totalSales / invoiceCount : 0;
       return { totalSales, invoiceCount, avgInvoice };
     },
-    enabled: !!companyId && !!dateFrom,
-    refetchInterval: 30000,
+    enabled: !!companyId,
+    refetchInterval: 10000,
   });
 
   const closedShifts = todayShifts?.filter((s: any) => s.status === "مغلق") || [];

@@ -73,6 +73,7 @@ export const CallCenterPage: React.FC = () => {
   const [customerAddress, setCustomerAddress] = useState("");
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [deliveryFee, setDeliveryFee] = useState<number>(0);
+  const [expectedDeliveryTime, setExpectedDeliveryTime] = useState<string>(""); // HH:mm input
   // driver selection removed - cashier handles it
 
   // Cart
@@ -381,6 +382,7 @@ export const CallCenterPage: React.FC = () => {
     setPhoneSearch("");
     setPaymentMethod("كاش");
     setDeliveryFee(0);
+    setExpectedDeliveryTime("");
   }, []);
 
   // Save/create customer and order
@@ -443,6 +445,16 @@ export const CallCenterPage: React.FC = () => {
         driver_id: null,
         assigned_cashier_id: (selectedCashierId && selectedCashierId !== "none") ? selectedCashierId : null,
         notes: cart.filter(c => c.notes).map(c => `${c.name}: ${c.notes}`).join(" | ") || null,
+        expected_delivery_time: (() => {
+          if (!expectedDeliveryTime) return null;
+          const [hh, mm] = expectedDeliveryTime.split(":").map(Number);
+          if (isNaN(hh) || isNaN(mm)) return null;
+          const d = new Date();
+          d.setHours(hh, mm, 0, 0);
+          // If time already passed today, schedule for tomorrow
+          if (d.getTime() < Date.now() - 60_000) d.setDate(d.getDate() + 1);
+          return d.toISOString();
+        })(),
       } as any).select().single();
       if (saleErr) throw saleErr;
 

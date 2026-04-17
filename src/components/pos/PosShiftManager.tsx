@@ -1,15 +1,16 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import { PlayCircle, StopCircle, Clock, Lock } from "lucide-react";
+import { PlayCircle, StopCircle, Clock, Lock, AlertTriangle, TrendingUp, TrendingDown, CheckCircle2 } from "lucide-react";
 import { format, isValid } from "date-fns";
 
 const safeFormat = (dateVal: any, fmt: string, fallback = "—") => {
@@ -17,6 +18,8 @@ const safeFormat = (dateVal: any, fmt: string, fallback = "—") => {
   const d = new Date(dateVal);
   return isValid(d) ? format(d, fmt) : fallback;
 };
+
+const fmtMoney = (n: number) => (Number.isFinite(n) ? n : 0).toFixed(2);
 
 interface PosShiftManagerProps {
   companyId: string;
@@ -34,6 +37,11 @@ export const PosShiftManager: React.FC<PosShiftManagerProps> = ({ companyId, bra
   const [posPassword, setPosPassword] = useState("");
   const [openingCash, setOpeningCash] = useState<number>(0);
   const [selectedDefId, setSelectedDefId] = useState<string>("");
+
+  // Closing-specific state
+  const [actualCash, setActualCash] = useState<string>("");
+  const [closingNotes, setClosingNotes] = useState<string>("");
+  const [confirmedVariance, setConfirmedVariance] = useState(false);
 
   // Get shift definitions
   const { data: shiftDefinitions } = useQuery({
@@ -86,22 +94,38 @@ export const PosShiftManager: React.FC<PosShiftManagerProps> = ({ companyId, bra
     enabled: !!companyId,
   });
 
-  // Get shift sales for close report
+  // Get shift sales — PRIMARY: by shift_id, FALLBACK: by time-range (for old data)
   const { data: shiftSales } = useQuery({
     queryKey: ["pos-shift-sales", currentShift?.id],
     queryFn: async () => {
       if (!currentShift) return null;
-      let query = supabase
+
+      // Primary query — by shift_id
+      const { data: byShift, error: e1 } = await supabase
         .from("pos_sales")
         .select("*, pos_sale_items(*, pos_items:pos_item_id(name))")
         .eq("company_id", companyId)
         .eq("status", "مكتمل")
-        .gte("date", currentShift.opened_at)
-        .lte("date", currentShift.closed_at || new Date().toISOString());
-      if (branchId) query = query.eq("branch_id", branchId);
-      const { data, error } = await query;
-      if (error) throw error;
-      return data;
+        .eq("shift_id", currentShift.id);
+      if (e1) throw e1;
+
+      // Fallback for sales created before shift_id existed: include sales in time-range without a shift_id
+      let fallback: any[] = [];
+      try {
+        let q = supabase
+          .from("pos_sales")
+          .select("*, pos_sale_items(*, pos_items:pos_item_id(name))")
+          .eq("company_id", companyId)
+          .eq("status", "مكتمل")
+          .is("shift_id", null)
+          .gte("created_at", currentShift.opened_at)
+          .lte("created_at", currentShift.closed_at || new Date().toISOString());
+        if (branchId) q = q.eq("branch_id", branchId);
+        const { data } = await q;
+        fallback = data || [];
+      } catch { /* ignore */ }
+
+      return [...(byShift || []), ...fallback];
     },
     enabled: !!currentShift,
   });
@@ -122,41 +146,105 @@ export const PosShiftManager: React.FC<PosShiftManagerProps> = ({ companyId, bra
     enabled: !!currentShift,
   });
 
-  // Get shift returns
+  // Get shift returns — PRIMARY by shift_id, FALLBACK by time-range
   const { data: shiftReturns } = useQuery({
     queryKey: ["pos-shift-returns", currentShift?.id],
     queryFn: async () => {
       if (!currentShift) return null;
-      let query = supabase
+
+      const { data: byShift, error: e1 } = await supabase
         .from("pos_returns")
         .select("*")
         .eq("company_id", companyId)
-        .gte("date", currentShift.opened_at)
-        .lte("date", new Date().toISOString());
-      if (branchId) query = query.eq("branch_id", branchId);
-      const { data, error } = await query;
-      if (error) throw error;
-      return data;
+        .eq("shift_id", currentShift.id);
+      if (e1) throw e1;
+
+      let fallback: any[] = [];
+      try {
+        let q = supabase
+          .from("pos_returns")
+          .select("*")
+          .eq("company_id", companyId)
+          .is("shift_id", null)
+          .gte("created_at", currentShift.opened_at)
+          .lte("created_at", currentShift.closed_at || new Date().toISOString());
+        if (branchId) q = q.eq("branch_id", branchId);
+        const { data } = await q;
+        fallback = data || [];
+      } catch { /* ignore */ }
+
+      return [...(byShift || []), ...fallback];
     },
     enabled: !!currentShift,
   });
 
+  // ============ COMPUTED TOTALS (Professional reconciliation logic) ============
+  const totals = useMemo(() => {
+    const sales = shiftSales || [];
+    const returns = shiftReturns || [];
+    const expenses = shiftExpenses || [];
+
+    const invoiceCount = sales.length;
+    const totalSales = sales.reduce((s: number, sale: any) => s + (Number(sale.total_amount) || 0), 0);
+    const totalCashSales = sales
+      .filter((s: any) => s.payment_method === "كاش")
+      .reduce((sum: number, sale: any) => sum + (Number(sale.total_amount) || 0), 0);
+    const totalVisaSales = sales
+      .filter((s: any) => s.payment_method === "فيزا")
+      .reduce((sum: number, sale: any) => sum + (Number(sale.total_amount) || 0), 0);
+
+    const totalReturns = returns.reduce((s: number, r: any) => s + (Number(r.total_amount) || 0), 0);
+    const totalReturnsCash = returns
+      .filter((r: any) => (r.payment_method || "كاش") === "كاش")
+      .reduce((s: number, r: any) => s + (Number(r.total_amount) || 0), 0);
+    const totalReturnsVisa = returns
+      .filter((r: any) => r.payment_method === "فيزا")
+      .reduce((s: number, r: any) => s + (Number(r.total_amount) || 0), 0);
+
+    const totalExpenses = expenses.reduce((s: number, e: any) => s + (Number(e.amount) || 0), 0);
+    const openingCashVal = Number(currentShift?.opening_cash) || 0;
+
+    // CORRECT FORMULA: Cash drawer expected
+    // = Opening Cash + Cash Sales - Cash Returns - Expenses
+    const expectedCash = openingCashVal + totalCashSales - totalReturnsCash - totalExpenses;
+
+    // Net shift revenue (excluding opening cash, which is owner's float)
+    const netRevenue = totalSales - totalReturns - totalExpenses;
+
+    return {
+      invoiceCount,
+      totalSales, totalCashSales, totalVisaSales,
+      totalReturns, totalReturnsCash, totalReturnsVisa,
+      totalExpenses, openingCash: openingCashVal,
+      expectedCash, netRevenue,
+    };
+  }, [shiftSales, shiftReturns, shiftExpenses, currentShift]);
+
+  // Variance calculation
+  const actualCashNum = parseFloat(actualCash);
+  const variance = !isNaN(actualCashNum) ? actualCashNum - totals.expectedCash : null;
+  const hasSignificantVariance = variance !== null && Math.abs(variance) >= 1;
+
   const verifyPassword = (action: "open" | "close") => {
     if (action === "open") {
-      // When opening, check if there are definitions with passwords
-      // Password will be verified based on selected definition
       setShowOpenDialog(true);
       return;
     }
-    
     const userPosPassword = (currentProfile as any)?.pos_password;
     if (userPosPassword) {
       setPasswordAction(action);
       setPosPassword("");
       setShowPasswordDialog(true);
     } else {
-      setShowCloseDialog(true);
+      openCloseDialog();
     }
+  };
+
+  const openCloseDialog = () => {
+    setActualCash("");
+    setClosingNotes("");
+    setConfirmedVariance(false);
+    setShowCloseDialog(true);
   };
 
   const handlePasswordSubmit = () => {
@@ -165,14 +253,13 @@ export const PosShiftManager: React.FC<PosShiftManagerProps> = ({ companyId, bra
       setShowPasswordDialog(false);
       setPosPassword("");
       if (passwordAction === "open") setShowOpenDialog(true);
-      else setShowCloseDialog(true);
+      else openCloseDialog();
     } else {
       toast.error("كلمة المرور غير صحيحة");
     }
   };
 
   const handleOpenShiftSubmit = () => {
-    // Check password from selected definition
     if (selectedDefId) {
       const selectedDef = shiftDefinitions?.find((d: any) => d.id === selectedDefId);
       if (selectedDef?.pos_password) {
@@ -213,11 +300,26 @@ export const PosShiftManager: React.FC<PosShiftManagerProps> = ({ companyId, bra
   const closeShift = useMutation({
     mutationFn: async () => {
       if (!currentShift) throw new Error("لا يوجد شيفت مفتوح");
+      const actualCashFinal = !isNaN(actualCashNum) ? actualCashNum : null;
+      const varianceFinal = actualCashFinal !== null ? actualCashFinal - totals.expectedCash : null;
+
       const { error } = await supabase.from("pos_shifts").update({
         closed_at: new Date().toISOString(),
         closed_by: userName,
         status: "مغلق",
-      }).eq("id", currentShift.id);
+        // Snapshot all reconciliation data into the shift row
+        actual_cash: actualCashFinal,
+        expected_cash: totals.expectedCash,
+        variance: varianceFinal,
+        total_sales: totals.totalSales,
+        total_cash_sales: totals.totalCashSales,
+        total_visa_sales: totals.totalVisaSales,
+        total_returns_cash: totals.totalReturnsCash,
+        total_returns_visa: totals.totalReturnsVisa,
+        total_expenses: totals.totalExpenses,
+        invoice_count: totals.invoiceCount,
+        closing_notes: closingNotes.trim() || null,
+      } as any).eq("id", currentShift.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -229,13 +331,13 @@ export const PosShiftManager: React.FC<PosShiftManagerProps> = ({ companyId, bra
     onError: (e: any) => toast.error(e.message),
   });
 
-  const totalSales = shiftSales?.reduce((s, sale) => s + sale.total_amount, 0) ?? 0;
-  const totalCash = shiftSales?.filter((s: any) => s.payment_method === "كاش").reduce((s, sale) => s + sale.total_amount, 0) ?? 0;
-  const totalVisa = shiftSales?.filter((s: any) => s.payment_method === "فيزا").reduce((s, sale) => s + sale.total_amount, 0) ?? 0;
-  const invoiceCount = shiftSales?.length ?? 0;
-  const totalExpenses = shiftExpenses?.reduce((s: number, e: any) => s + (e.amount || 0), 0) ?? 0;
-  const totalReturns = shiftReturns?.reduce((s: number, r: any) => s + (r.total_amount || 0), 0) ?? 0;
-  const netCash = (currentShift?.opening_cash ?? 0) + totalCash - totalExpenses - totalReturns;
+  const handleCloseShiftSubmit = () => {
+    if (hasSignificantVariance && !confirmedVariance) {
+      toast.warning("يوجد فرق في الكاش — يرجى التأكيد للمتابعة");
+      return;
+    }
+    closeShift.mutate();
+  };
 
   const printShiftReport = useCallback(() => {
     if (!currentShift || !shiftSales) return;
@@ -243,74 +345,109 @@ export const PosShiftManager: React.FC<PosShiftManagerProps> = ({ companyId, bra
     const shiftNum = (currentShift as any).shift_number || "—";
 
     const itemMap = new Map<string, { name: string; qty: number; total: number }>();
-    shiftSales.forEach((sale) => {
+    shiftSales.forEach((sale: any) => {
       (sale.pos_sale_items as any[])?.forEach((si: any) => {
         const name = si.pos_items?.name || "صنف";
         const existing = itemMap.get(name);
-        if (existing) { existing.qty += si.quantity; existing.total += si.total; }
-        else { itemMap.set(name, { name, qty: si.quantity, total: si.total }); }
+        if (existing) { existing.qty += Number(si.quantity) || 0; existing.total += Number(si.total) || 0; }
+        else { itemMap.set(name, { name, qty: Number(si.quantity) || 0, total: Number(si.total) || 0 }); }
       });
     });
     const itemsList = Array.from(itemMap.values()).sort((a, b) => b.total - a.total);
 
     const expensesRows = (shiftExpenses || []).map((e: any) =>
-      `<tr><td>${e.description}</td><td style="text-align:left">${e.amount?.toFixed(2)}</td></tr>`
+      `<tr><td>${e.description}</td><td style="text-align:left">${fmtMoney(Number(e.amount))}</td></tr>`
     ).join("");
 
     const returnsRows = (shiftReturns || []).map((r: any) =>
-      `<tr><td>${r.return_number || "—"}</td><td style="text-align:left">${r.total_amount?.toFixed(2)}</td></tr>`
+      `<tr><td>${r.return_number || "—"}</td><td style="text-align:center;font-size:9px">${r.payment_method || "كاش"}</td><td style="text-align:left">${fmtMoney(Number(r.total_amount))}</td></tr>`
     ).join("");
+
+    const varianceVal = !isNaN(actualCashNum) ? actualCashNum - totals.expectedCash : null;
+    const varianceLabel = varianceVal === null ? "" : (varianceVal === 0 ? "✓ مطابق" : (varianceVal > 0 ? "⬆ زيادة" : "⬇ عجز"));
+    const varianceColor = varianceVal === null ? "#000" : (varianceVal === 0 ? "#0a0" : (varianceVal > 0 ? "#0a0" : "#c00"));
 
     const html = `<!DOCTYPE html>
 <html dir="rtl"><head><meta charset="utf-8"/><title>تقرير الشيفت</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:'Cairo',sans-serif;direction:rtl;width:72mm;margin:0 auto;padding:8px;font-size:11px;color:#000;}
+body{font-family:'Cairo',sans-serif;direction:rtl;width:72mm;margin:0 auto;padding:8px;font-size:12px;color:#000;line-height:1.5;}
 table{width:100%;border-collapse:collapse;}
-th,td{padding:3px 0;font-size:10px;text-align:right;}
+th,td{padding:3px 0;font-size:11px;text-align:right;}
 td:last-child,th:last-child{text-align:left;}
-td:nth-child(2),th:nth-child(2){text-align:center;}
 .center{text-align:center;}
 .bold{font-weight:bold;}
 .sep{border-top:1px dashed #999;margin:6px 0;padding-top:6px;}
 .total-row{font-size:14px;font-weight:bold;}
 .expense-label{color:#c00;}
+.box{border:1.5px solid #000;padding:6px;margin:4px 0;border-radius:4px;}
+.row{display:flex;justify-content:space-between;align-items:center;padding:2px 0;}
 @media print{@page{size:80mm auto;margin:0}body{width:72mm;}}
 </style></head><body>
-<div class="center"><h2 style="font-size:14px;">تقرير إغلاق الشيفت</h2>
-<p style="font-size:11px;font-weight:bold;margin-top:2px">${shiftNum}</p>
-${(currentShift as any).shift_name ? `<p style="font-size:10px;margin-top:2px">${(currentShift as any).shift_name}</p>` : ""}
+<div class="center"><h2 style="font-size:15px;">تقرير إغلاق الشيفت</h2>
+<p style="font-size:12px;font-weight:bold;margin-top:2px">${shiftNum}</p>
+${(currentShift as any).shift_name ? `<p style="font-size:11px;margin-top:2px">${(currentShift as any).shift_name}</p>` : ""}
 <p style="font-size:9px;color:#666;">CostControl POS</p></div>
+
 <div class="sep">
 <p><b>فتح:</b> ${safeFormat(currentShift.opened_at, "yyyy/MM/dd HH:mm")}</p>
 <p><b>إغلاق:</b> ${safeFormat(new Date(), "yyyy/MM/dd HH:mm")}</p>
 <p><b>الكاشير:</b> ${currentShift.opened_by || "-"}</p>
-<p><b>المبلغ الافتتاحي:</b> ${(currentShift.opening_cash || 0).toFixed(2)} EGP</p>
 </div>
-<div class="sep"><p class="bold">ملخص المبيعات</p>
-<p>عدد الفواتير: ${invoiceCount}</p>
-<p>إجمالي المبيعات: ${totalSales.toFixed(2)} EGP</p>
-<p>كاش: ${totalCash.toFixed(2)} EGP</p>
-<p>فيزا: ${totalVisa.toFixed(2)} EGP</p>
+
+<div class="sep box">
+<p class="bold center" style="margin-bottom:4px">💰 ملخص الكاش</p>
+<div class="row"><span>الرصيد الافتتاحي:</span><b>${fmtMoney(totals.openingCash)} EGP</b></div>
+<div class="row"><span>+ مبيعات كاش:</span><b style="color:#080">${fmtMoney(totals.totalCashSales)}</b></div>
+<div class="row"><span>- مرتجعات كاش:</span><b style="color:#c00">${fmtMoney(totals.totalReturnsCash)}</b></div>
+<div class="row"><span>- مصروفات:</span><b style="color:#c00">${fmtMoney(totals.totalExpenses)}</b></div>
+<div class="row" style="border-top:1px dashed #000;padding-top:3px;margin-top:3px">
+  <span class="bold">المتوقع في الدرج:</span><b class="total-row">${fmtMoney(totals.expectedCash)}</b>
 </div>
-<div class="sep"><p class="bold">الأصناف المباعة</p>
-<table><thead><tr><th>الصنف</th><th>الكمية</th><th>الإجمالي</th></tr></thead><tbody>
-${itemsList.map(i => `<tr><td>${i.name}</td><td style="text-align:center">${i.qty}</td><td style="text-align:left">${i.total.toFixed(2)}</td></tr>`).join("")}
-</tbody></table></div>
-${totalExpenses > 0 ? `<div class="sep"><p class="bold expense-label">المصروفات (${(shiftExpenses || []).length})</p>
+${!isNaN(actualCashNum) ? `
+<div class="row" style="margin-top:3px">
+  <span class="bold">الفعلي المعدود:</span><b>${fmtMoney(actualCashNum)} EGP</b>
+</div>
+<div class="row" style="border-top:1.5px solid #000;padding-top:3px;margin-top:3px">
+  <span class="bold">الفرق:</span>
+  <b class="total-row" style="color:${varianceColor}">${fmtMoney(varianceVal!)} ${varianceLabel}</b>
+</div>` : ""}
+</div>
+
+<div class="sep">
+<p class="bold">📊 ملخص المبيعات</p>
+<p>عدد الفواتير: <b>${totals.invoiceCount}</b></p>
+<p>إجمالي المبيعات: <b>${fmtMoney(totals.totalSales)} EGP</b></p>
+<p>كاش: ${fmtMoney(totals.totalCashSales)} EGP</p>
+<p>فيزا: ${fmtMoney(totals.totalVisaSales)} EGP</p>
+</div>
+
+${itemsList.length > 0 ? `<div class="sep"><p class="bold">🍽 الأصناف المباعة</p>
+<table><thead><tr><th>الصنف</th><th style="text-align:center">الكمية</th><th>الإجمالي</th></tr></thead><tbody>
+${itemsList.map(i => `<tr><td>${i.name}</td><td style="text-align:center">${i.qty}</td><td style="text-align:left">${fmtMoney(i.total)}</td></tr>`).join("")}
+</tbody></table>
+<p class="bold" style="margin-top:4px;text-align:left">الإجمالي: ${fmtMoney(itemsList.reduce((s, i) => s + i.total, 0))} EGP</p>
+</div>` : ""}
+
+${totals.totalExpenses > 0 ? `<div class="sep"><p class="bold expense-label">المصروفات (${(shiftExpenses || []).length})</p>
 <table><thead><tr><th>الوصف</th><th>المبلغ</th></tr></thead><tbody>${expensesRows}</tbody></table>
-<p class="bold" style="margin-top:4px">إجمالي المصروفات: ${totalExpenses.toFixed(2)} EGP</p></div>` : ""}
-${totalReturns > 0 ? `<div class="sep"><p class="bold expense-label">المرتجعات (${(shiftReturns || []).length})</p>
-<table><thead><tr><th>رقم المرتجع</th><th>المبلغ</th></tr></thead><tbody>${returnsRows}</tbody></table>
-<p class="bold" style="margin-top:4px">إجمالي المرتجعات: ${totalReturns.toFixed(2)} EGP</p></div>` : ""}
-<div class="sep center">
-<p>إجمالي المبيعات: ${totalSales.toFixed(2)} EGP</p>
-${totalExpenses > 0 ? `<p class="expense-label">- المصروفات: ${totalExpenses.toFixed(2)} EGP</p>` : ""}
-${totalReturns > 0 ? `<p class="expense-label">- المرتجعات: ${totalReturns.toFixed(2)} EGP</p>` : ""}
-<p class="total-row" style="margin-top:6px">صافي الشيفت: ${(totalSales - totalExpenses - totalReturns).toFixed(2)} EGP</p>
-<p style="font-size:11px;margin-top:4px">المتوقع في الدرج (كاش): ${netCash.toFixed(2)} EGP</p>
+<p class="bold" style="margin-top:4px">إجمالي: ${fmtMoney(totals.totalExpenses)} EGP</p></div>` : ""}
+
+${totals.totalReturns > 0 ? `<div class="sep"><p class="bold expense-label">المرتجعات (${(shiftReturns || []).length})</p>
+<table><thead><tr><th>رقم</th><th style="text-align:center">طريقة</th><th>المبلغ</th></tr></thead><tbody>${returnsRows}</tbody></table>
+<p class="bold" style="margin-top:4px">إجمالي: ${fmtMoney(totals.totalReturns)} EGP (كاش ${fmtMoney(totals.totalReturnsCash)} | فيزا ${fmtMoney(totals.totalReturnsVisa)})</p></div>` : ""}
+
+<div class="sep center box">
+<p>إجمالي المبيعات: ${fmtMoney(totals.totalSales)} EGP</p>
+${totals.totalReturns > 0 ? `<p class="expense-label">- مرتجعات: ${fmtMoney(totals.totalReturns)} EGP</p>` : ""}
+${totals.totalExpenses > 0 ? `<p class="expense-label">- مصروفات: ${fmtMoney(totals.totalExpenses)} EGP</p>` : ""}
+<p class="total-row" style="margin-top:6px">صافي إيراد الشيفت: ${fmtMoney(totals.netRevenue)} EGP</p>
 </div>
+
+${closingNotes.trim() ? `<div class="sep"><p class="bold">📝 ملاحظات:</p><p style="font-size:10px">${closingNotes.trim()}</p></div>` : ""}
+
+<p class="center" style="margin-top:8px;font-size:9px;color:#666">أُغلق بواسطة: ${userName}</p>
 </body></html>`;
 
     if (printViaIframe) {
@@ -322,7 +459,7 @@ ${totalReturns > 0 ? `<p class="expense-label">- المرتجعات: ${totalRetu
       printWindow.document.close();
       printWindow.onload = () => { printWindow.focus(); printWindow.print(); printWindow.close(); };
     }
-  }, [currentShift, shiftSales, shiftExpenses, shiftReturns, totalSales, totalCash, totalVisa, invoiceCount, totalExpenses, totalReturns, netCash, printViaIframe]);
+  }, [currentShift, shiftSales, shiftExpenses, shiftReturns, totals, actualCashNum, closingNotes, userName, printViaIframe]);
 
   const selectedDef = shiftDefinitions?.find((d: any) => d.id === selectedDefId);
 
@@ -383,7 +520,6 @@ ${totalReturns > 0 ? `<p class="expense-label">- المرتجعات: ${totalRetu
             <DialogTitle>فتح شيفت جديد</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            {/* Shift Definition selector */}
             {shiftDefinitions && shiftDefinitions.length > 0 && (
               <div>
                 <label className="text-sm text-muted-foreground mb-1 block">اختر الشيفت *</label>
@@ -399,7 +535,6 @@ ${totalReturns > 0 ? `<p class="expense-label">- المرتجعات: ${totalRetu
                 </Select>
               </div>
             )}
-            {/* Password if definition has one */}
             {selectedDef?.pos_password && (
               <div>
                 <label className="text-sm text-muted-foreground mb-1 block">كلمة مرور الشيفت</label>
@@ -432,51 +567,141 @@ ${totalReturns > 0 ? `<p class="expense-label">- المرتجعات: ${totalRetu
         </DialogContent>
       </Dialog>
 
-      {/* Close Shift Dialog */}
+      {/* Close Shift Dialog — Professional reconciliation */}
       <Dialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
-        <DialogContent className="max-w-md" dir="rtl">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" dir="rtl">
           <DialogHeader>
-            <DialogTitle>إغلاق الشيفت</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <StopCircle className="h-5 w-5 text-destructive" />
+              إغلاق الشيفت وتسوية الحسابات
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 text-sm">
-            <div className="p-3 rounded-lg bg-muted/50 space-y-1">
+            {/* Shift Info */}
+            <div className="p-3 rounded-lg bg-muted/50 space-y-1 text-xs">
               <p><span className="text-muted-foreground">كود الشيفت:</span> <span className="font-bold text-primary">{(currentShift as any)?.shift_number || "—"}</span></p>
               {(currentShift as any)?.shift_name && <p><span className="text-muted-foreground">اسم الشيفت:</span> <span className="font-bold">{(currentShift as any)?.shift_name}</span></p>}
               <p><span className="text-muted-foreground">وقت الفتح:</span> {safeFormat(currentShift?.opened_at, "yyyy/MM/dd HH:mm")}</p>
               <p><span className="text-muted-foreground">الكاشير:</span> {currentShift?.opened_by}</p>
-              <p><span className="text-muted-foreground">المبلغ الافتتاحي:</span> {(currentShift?.opening_cash || 0).toFixed(2)} EGP</p>
             </div>
-            <div className="p-3 rounded-lg bg-primary/5 space-y-1">
-              <p><span className="text-muted-foreground">عدد الفواتير:</span> <span className="font-bold">{invoiceCount}</span></p>
-              <p><span className="text-muted-foreground">إجمالي المبيعات:</span> <span className="font-bold text-primary">{totalSales.toFixed(2)} EGP</span></p>
-              <p><span className="text-muted-foreground">كاش:</span> <span className="font-bold">{totalCash.toFixed(2)} EGP</span></p>
-              <p><span className="text-muted-foreground">فيزا:</span> <span className="font-bold">{totalVisa.toFixed(2)} EGP</span></p>
+
+            {/* Sales Summary */}
+            <div className="p-3 rounded-lg bg-primary/5 space-y-1.5">
+              <p className="font-bold text-xs text-primary mb-1">📊 ملخص المبيعات</p>
+              <div className="flex justify-between"><span className="text-muted-foreground">عدد الفواتير:</span> <span className="font-bold">{totals.invoiceCount}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">إجمالي المبيعات:</span> <span className="font-bold text-primary">{fmtMoney(totals.totalSales)} EGP</span></div>
+              <div className="flex justify-between text-xs"><span className="text-muted-foreground">— كاش:</span> <span>{fmtMoney(totals.totalCashSales)} EGP</span></div>
+              <div className="flex justify-between text-xs"><span className="text-muted-foreground">— فيزا:</span> <span>{fmtMoney(totals.totalVisaSales)} EGP</span></div>
             </div>
-            {totalExpenses > 0 && (
+
+            {/* Returns */}
+            {totals.totalReturns > 0 && (
               <div className="p-3 rounded-lg bg-destructive/5 border border-destructive/10 space-y-1">
-                <p className="font-bold text-destructive text-xs">المصروفات ({(shiftExpenses || []).length})</p>
-                {(shiftExpenses || []).map((e: any) => (
-                  <p key={e.id} className="text-xs"><span className="text-muted-foreground">{e.description}:</span> <span className="font-bold">{e.amount?.toFixed(2)} EGP</span></p>
+                <p className="font-bold text-destructive text-xs mb-1">↩ المرتجعات ({(shiftReturns || []).length})</p>
+                <div className="flex justify-between text-xs"><span className="text-muted-foreground">كاش:</span> <span className="font-bold">{fmtMoney(totals.totalReturnsCash)} EGP</span></div>
+                <div className="flex justify-between text-xs"><span className="text-muted-foreground">فيزا:</span> <span className="font-bold">{fmtMoney(totals.totalReturnsVisa)} EGP</span></div>
+                <div className="flex justify-between text-xs border-t border-destructive/10 pt-1 mt-1"><span>إجمالي:</span> <span className="font-bold">{fmtMoney(totals.totalReturns)} EGP</span></div>
+              </div>
+            )}
+
+            {/* Expenses */}
+            {totals.totalExpenses > 0 && (
+              <div className="p-3 rounded-lg bg-destructive/5 border border-destructive/10 space-y-1">
+                <p className="font-bold text-destructive text-xs mb-1">💸 المصروفات ({(shiftExpenses || []).length})</p>
+                {(shiftExpenses || []).slice(0, 5).map((e: any) => (
+                  <p key={e.id} className="text-xs flex justify-between"><span className="text-muted-foreground truncate max-w-[60%]">{e.description}</span> <span className="font-bold">{fmtMoney(Number(e.amount))} EGP</span></p>
                 ))}
-                <p className="text-xs font-bold border-t border-destructive/10 pt-1 mt-1">إجمالي: {totalExpenses.toFixed(2)} EGP</p>
+                {(shiftExpenses || []).length > 5 && <p className="text-[10px] text-muted-foreground">و{(shiftExpenses || []).length - 5} أخرى...</p>}
+                <div className="flex justify-between text-xs border-t border-destructive/10 pt-1 mt-1"><span>إجمالي:</span> <span className="font-bold">{fmtMoney(totals.totalExpenses)} EGP</span></div>
               </div>
             )}
-            {totalReturns > 0 && (
-              <div className="p-3 rounded-lg bg-destructive/5 border border-destructive/10 space-y-1">
-                <p className="font-bold text-destructive text-xs">المرتجعات ({(shiftReturns || []).length})</p>
-                <p className="text-xs font-bold">إجمالي: {totalReturns.toFixed(2)} EGP</p>
+
+            {/* Cash Drawer Reconciliation - THE KEY SECTION */}
+            <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 space-y-2">
+              <p className="font-bold text-xs flex items-center gap-1">💰 تسوية درج الكاش</p>
+              <div className="space-y-1 text-xs">
+                <div className="flex justify-between"><span className="text-muted-foreground">الرصيد الافتتاحي:</span> <span>{fmtMoney(totals.openingCash)} EGP</span></div>
+                <div className="flex justify-between text-green-600"><span>+ مبيعات كاش:</span> <span>{fmtMoney(totals.totalCashSales)}</span></div>
+                <div className="flex justify-between text-destructive"><span>- مرتجعات كاش:</span> <span>{fmtMoney(totals.totalReturnsCash)}</span></div>
+                <div className="flex justify-between text-destructive"><span>- مصروفات:</span> <span>{fmtMoney(totals.totalExpenses)}</span></div>
+                <div className="flex justify-between border-t border-amber-500/30 pt-1.5 mt-1.5">
+                  <span className="font-bold">المتوقع في الدرج:</span>
+                  <span className="font-bold text-base text-amber-600">{fmtMoney(totals.expectedCash)} EGP</span>
+                </div>
               </div>
-            )}
-            <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 space-y-1">
-              <p><span className="text-muted-foreground">صافي الشيفت:</span> <span className="font-bold text-primary text-lg">{(totalSales - totalExpenses - totalReturns).toFixed(2)} EGP</span></p>
-              <p className="text-xs"><span className="text-muted-foreground">المتوقع في الدرج (كاش):</span> <span className="font-bold">{netCash.toFixed(2)} EGP</span></p>
             </div>
-            <p className="text-xs text-muted-foreground">سيتم طباعة تقرير الشيفت تلقائياً عند الإغلاق</p>
+
+            {/* Actual Cash Input */}
+            <div className="p-3 rounded-lg bg-card border-2 border-primary/30 space-y-2">
+              <label className="text-xs font-bold text-primary block">💵 الرصيد الفعلي المعدود (اختياري)</label>
+              <Input
+                type="number"
+                step="0.01"
+                value={actualCash}
+                onChange={(e) => { setActualCash(e.target.value); setConfirmedVariance(false); }}
+                placeholder="عُد الكاش الموجود فعلاً في الدرج"
+                className="text-base font-bold text-center"
+                dir="ltr"
+              />
+              {variance !== null && (
+                <div className={`p-2 rounded-md text-xs flex items-center justify-between ${variance === 0 ? "bg-green-500/10 text-green-700 dark:text-green-400" : variance > 0 ? "bg-blue-500/10 text-blue-700 dark:text-blue-400" : "bg-destructive/10 text-destructive"}`}>
+                  <span className="flex items-center gap-1 font-bold">
+                    {variance === 0 ? <><CheckCircle2 className="h-4 w-4" /> مطابق تماماً</> : variance > 0 ? <><TrendingUp className="h-4 w-4" /> زيادة</> : <><TrendingDown className="h-4 w-4" /> عجز</>}
+                  </span>
+                  <span className="font-bold text-base">{fmtMoney(Math.abs(variance))} EGP</span>
+                </div>
+              )}
+            </div>
+
+            {/* Notes */}
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">📝 ملاحظات الإغلاق (اختياري)</label>
+              <Textarea
+                value={closingNotes}
+                onChange={(e) => setClosingNotes(e.target.value)}
+                placeholder="مثال: سبب العجز، ملاحظات للإدارة..."
+                rows={2}
+                className="text-xs"
+              />
+            </div>
+
+            {/* Net Revenue */}
+            <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-muted-foreground">صافي إيراد الشيفت:</span>
+                <span className="font-bold text-primary text-lg">{fmtMoney(totals.netRevenue)} EGP</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1">= المبيعات - المرتجعات - المصروفات</p>
+            </div>
+
+            {/* Variance Warning */}
+            {hasSignificantVariance && (
+              <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
+                  <div className="flex-1 text-xs">
+                    <p className="font-bold text-destructive mb-1">يوجد فرق في الكاش!</p>
+                    <p className="text-muted-foreground mb-2">يُفضّل مراجعة العمليات قبل الإغلاق. اضغط للتأكيد إذا كان مقصوداً.</p>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={confirmedVariance} onChange={(e) => setConfirmedVariance(e.target.checked)} className="w-3.5 h-3.5" />
+                      <span className="font-bold">أؤكد الإغلاق رغم وجود الفرق</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <p className="text-[10px] text-muted-foreground text-center">سيتم طباعة تقرير الشيفت تلقائياً عند الإغلاق</p>
           </div>
           <DialogFooter>
-            <Button variant="destructive" onClick={() => closeShift.mutate()} disabled={closeShift.isPending} className="w-full gap-1">
+            <Button
+              variant="destructive"
+              onClick={handleCloseShiftSubmit}
+              disabled={closeShift.isPending || (hasSignificantVariance && !confirmedVariance)}
+              className="w-full gap-1"
+            >
               <StopCircle className="h-4 w-4" />
-              إغلاق وطباعة التقرير
+              إغلاق الشيفت وطباعة التقرير
             </Button>
           </DialogFooter>
         </DialogContent>

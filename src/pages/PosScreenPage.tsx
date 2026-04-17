@@ -491,7 +491,7 @@ export const PosScreenPage: React.FC = () => {
       if (numErr) throw numErr;
 
       const { data: sale, error: saleErr } = await supabase.from("pos_sales").insert({
-        company_id: companyId, invoice_number: invoiceNum, ...salePayload,
+        company_id: companyId, invoice_number: invoiceNum, shift_id: currentShiftForExpenses?.id || null, ...salePayload,
       } as any).select().single();
       if (saleErr) throw saleErr;
 

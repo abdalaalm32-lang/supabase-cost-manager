@@ -424,9 +424,19 @@ export const CallCenterPage: React.FC = () => {
       const { data: invoiceNum, error: numErr } = await supabase.rpc("generate_invoice_number", { p_company_id: companyId });
       if (numErr) throw numErr;
 
+      // Find the open shift for this branch (if any) to link the sale
+      let openShiftId: string | null = null;
+      try {
+        let shiftQ = supabase.from("pos_shifts").select("id").eq("company_id", companyId).eq("status", "مفتوح").order("opened_at", { ascending: false }).limit(1);
+        if (selectedBranchId) shiftQ = shiftQ.eq("branch_id", selectedBranchId);
+        const { data: openShift } = await shiftQ;
+        openShiftId = openShift?.[0]?.id || null;
+      } catch { /* ignore */ }
+
       const { data: sale, error: saleErr } = await supabase.from("pos_sales").insert({
         company_id: companyId,
         branch_id: selectedBranchId || null,
+        shift_id: openShiftId,
         invoice_number: invoiceNum,
         date: new Date().toISOString(),
         total_amount: total,

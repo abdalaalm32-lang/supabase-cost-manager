@@ -94,13 +94,24 @@ export const PosReturnsManager: React.FC<PosReturnsManagerProps> = ({
       // Generate return number
       const { data: retNum } = await supabase.rpc("generate_return_number", { p_company_id: companyId });
 
-      // Create return record
+      // Find open shift to link the return (if any)
+      let openShiftId: string | null = null;
+      try {
+        let shiftQ = supabase.from("pos_shifts").select("id").eq("company_id", companyId).eq("status", "مفتوح").order("opened_at", { ascending: false }).limit(1);
+        if (branchId) shiftQ = shiftQ.eq("branch_id", branchId);
+        const { data: openShift } = await shiftQ;
+        openShiftId = openShift?.[0]?.id || null;
+      } catch { /* ignore */ }
+
+      // Create return record (payment method follows the original sale)
       const { data: returnRecord, error: retErr } = await supabase.from("pos_returns").insert({
         company_id: companyId,
         branch_id: branchId || null,
+        shift_id: openShiftId,
         sale_id: selectedSale.id,
         return_number: retNum,
         total_amount: returnTotal,
+        payment_method: selectedSale?.payment_method || "كاش",
         reason: returnReason.trim(),
         created_by: userName,
       } as any).select().single();

@@ -21,6 +21,7 @@ import {
   Users, TrendingUp, FileText, AlertCircle
 } from "lucide-react";
 import { printCustomerReceipt, printKitchenReceipt } from "@/lib/posPrintUtils";
+import { CallCenterReprintDialog } from "@/components/pos/CallCenterReprintDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -650,18 +651,28 @@ export const CallCenterPage: React.FC = () => {
               {activeOrders?.length ?? 0} أوردر نشط
             </Badge>
           </div>
-          {lastReceipt && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1.5 text-xs border-amber-500/50 text-amber-600 hover:bg-amber-500/10"
-              onClick={handlePrintKitchen}
-              title="طباعة إيصال المطبخ لآخر فاتورة"
-            >
-              <ChefHat className="h-3.5 w-3.5" />
-              طباعة المطبخ
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {companyId && (
+              <CallCenterReprintDialog
+                companyId={companyId}
+                branchId={selectedBranchId}
+                branchName={branches?.find(b => b.id === selectedBranchId)?.name}
+                companyName={company?.name}
+              />
+            )}
+            {lastReceipt && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 text-xs border-amber-500/50 text-amber-600 hover:bg-amber-500/10"
+                onClick={handlePrintKitchen}
+                title="طباعة إيصال المطبخ لآخر فاتورة"
+              >
+                <ChefHat className="h-3.5 w-3.5" />
+                طباعة المطبخ
+              </Button>
+            )}
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">

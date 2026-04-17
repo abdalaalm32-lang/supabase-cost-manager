@@ -17,6 +17,7 @@ const PosGroupsPage = lazy(() => import("@/pages/PosGroupsPage").then((m) => ({ 
 const PosItemsPage = lazy(() => import("@/pages/PosItemsPage").then((m) => ({ default: m.PosItemsPage })));
 const PosScreenPage = lazy(() => import("@/pages/PosScreenPage").then((m) => ({ default: m.PosScreenPage })));
 const PosInvoicesPage = lazy(() => import("@/pages/PosInvoicesPage").then((m) => ({ default: m.PosInvoicesPage })));
+const PosItemSalesPage = lazy(() => import("@/pages/PosItemSalesPage").then((m) => ({ default: m.PosItemSalesPage })));
 const PosAnalyticsPage = lazy(() => import("@/pages/PosAnalyticsPage").then((m) => ({ default: m.PosAnalyticsPage })));
 const SettingsUsersPage = lazy(() => import("@/pages/SettingsUsersPage").then((m) => ({ default: m.SettingsUsersPage })));
 const AdminCompaniesPage = lazy(() => import("@/pages/AdminCompaniesPage").then((m) => ({ default: m.AdminCompaniesPage })));
@@ -394,6 +395,7 @@ const AppRoutes = () => {
                   <Route path="/pos/screen" element={<PermissionGuard permKey="pos"><PosScreenPage /></PermissionGuard>} />
                   <Route path="/sales" element={<Navigate to="/pos/invoices" replace />} />
                   <Route path="/pos/invoices" element={<PermissionGuard permKey="sales_management"><PosInvoicesPage /></PermissionGuard>} />
+                  <Route path="/pos/item-sales" element={<PermissionGuard permKey="sales_management"><PosItemSalesPage /></PermissionGuard>} />
                   <Route path="/pos/analytics" element={<PermissionGuard permKey="sales_management"><PosAnalyticsPage /></PermissionGuard>} />
                   <Route path="/pos/groups" element={<PermissionGuard permKey="sales_management"><PosGroupsPage /></PermissionGuard>} />
                   <Route path="/pos/items" element={<PermissionGuard permKey="sales_management"><PosItemsPage /></PermissionGuard>} />

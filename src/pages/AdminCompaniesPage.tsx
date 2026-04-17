@@ -945,14 +945,16 @@ export const AdminCompaniesPage: React.FC = () => {
                 <Label className="font-bold">صلاحيات الوصول</Label>
                 <div className="space-y-2">
                   {ALL_PERMISSIONS.map((perm) => (
-                    <div
+                    <button
                       key={perm.key}
-                      className="flex items-center gap-3 p-3 rounded-xl border border-border/50 bg-muted/30 cursor-pointer hover:border-primary/30 transition-colors"
+                      type="button"
+                      className="flex w-full items-center gap-3 rounded-xl border border-border/50 bg-muted/30 p-3 text-right transition-colors hover:border-primary/30"
                       onClick={() => togglePermission(perm.key)}
+                      aria-pressed={editFormPermissions.includes(perm.key)}
                     >
-                      <Checkbox checked={editFormPermissions.includes(perm.key)} onClick={(e) => e.stopPropagation()} onCheckedChange={() => togglePermission(perm.key)} />
+                      <Checkbox checked={editFormPermissions.includes(perm.key)} className="pointer-events-none" />
                       <span className="text-sm font-medium">{perm.label}</span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>

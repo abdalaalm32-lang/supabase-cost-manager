@@ -615,8 +615,6 @@ export const CallCenterPage: React.FC = () => {
 
   return (
     <>
-      {receiptData && <PosReceiptPrint ref={receiptRef} {...receiptData} />}
-
       <div className="flex flex-col h-[calc(100vh-4rem)]" dir="rtl">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-card/50">

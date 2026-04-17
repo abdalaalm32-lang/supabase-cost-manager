@@ -990,9 +990,11 @@ export type Database = {
           created_by: string | null
           date: string
           id: string
+          payment_method: string | null
           reason: string | null
           return_number: string | null
           sale_id: string
+          shift_id: string | null
           total_amount: number
         }
         Insert: {
@@ -1002,9 +1004,11 @@ export type Database = {
           created_by?: string | null
           date?: string
           id?: string
+          payment_method?: string | null
           reason?: string | null
           return_number?: string | null
           sale_id: string
+          shift_id?: string | null
           total_amount?: number
         }
         Update: {
@@ -1014,9 +1018,11 @@ export type Database = {
           created_by?: string | null
           date?: string
           id?: string
+          payment_method?: string | null
           reason?: string | null
           return_number?: string | null
           sale_id?: string
+          shift_id?: string | null
           total_amount?: number
         }
         Relationships: [
@@ -1039,6 +1045,13 @@ export type Database = {
             columns: ["sale_id"]
             isOneToOne: false
             referencedRelation: "pos_sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_returns_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "pos_shifts"
             referencedColumns: ["id"]
           },
         ]
@@ -1107,6 +1120,7 @@ export type Database = {
           notes: string | null
           order_type: string
           payment_method: string
+          shift_id: string | null
           status: string
           tax_amount: number
           tax_enabled: boolean
@@ -1134,6 +1148,7 @@ export type Database = {
           notes?: string | null
           order_type?: string
           payment_method?: string
+          shift_id?: string | null
           status?: string
           tax_amount?: number
           tax_enabled?: boolean
@@ -1161,6 +1176,7 @@ export type Database = {
           notes?: string | null
           order_type?: string
           payment_method?: string
+          shift_id?: string | null
           status?: string
           tax_amount?: number
           tax_enabled?: boolean
@@ -1201,6 +1217,13 @@ export type Database = {
             columns: ["driver_id"]
             isOneToOne: false
             referencedRelation: "delivery_drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_sales_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "pos_shifts"
             referencedColumns: ["id"]
           },
         ]
@@ -1293,46 +1316,79 @@ export type Database = {
       }
       pos_shifts: {
         Row: {
+          actual_cash: number | null
           branch_id: string | null
           closed_at: string | null
           closed_by: string | null
+          closing_notes: string | null
           company_id: string
           created_at: string
+          expected_cash: number | null
           id: string
+          invoice_count: number | null
           opened_at: string
           opened_by: string | null
           opening_cash: number
           shift_name: string | null
           shift_number: string | null
           status: string
+          total_cash_sales: number | null
+          total_expenses: number | null
+          total_returns_cash: number | null
+          total_returns_visa: number | null
+          total_sales: number | null
+          total_visa_sales: number | null
+          variance: number | null
         }
         Insert: {
+          actual_cash?: number | null
           branch_id?: string | null
           closed_at?: string | null
           closed_by?: string | null
+          closing_notes?: string | null
           company_id: string
           created_at?: string
+          expected_cash?: number | null
           id?: string
+          invoice_count?: number | null
           opened_at?: string
           opened_by?: string | null
           opening_cash?: number
           shift_name?: string | null
           shift_number?: string | null
           status?: string
+          total_cash_sales?: number | null
+          total_expenses?: number | null
+          total_returns_cash?: number | null
+          total_returns_visa?: number | null
+          total_sales?: number | null
+          total_visa_sales?: number | null
+          variance?: number | null
         }
         Update: {
+          actual_cash?: number | null
           branch_id?: string | null
           closed_at?: string | null
           closed_by?: string | null
+          closing_notes?: string | null
           company_id?: string
           created_at?: string
+          expected_cash?: number | null
           id?: string
+          invoice_count?: number | null
           opened_at?: string
           opened_by?: string | null
           opening_cash?: number
           shift_name?: string | null
           shift_number?: string | null
           status?: string
+          total_cash_sales?: number | null
+          total_expenses?: number | null
+          total_returns_cash?: number | null
+          total_returns_visa?: number | null
+          total_sales?: number | null
+          total_visa_sales?: number | null
+          variance?: number | null
         }
         Relationships: [
           {

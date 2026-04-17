@@ -19,6 +19,7 @@ import {
   Truck, Plus, Trash2, Edit2, Phone, CalendarIcon,
   Users, Banknote, PackageCheck, TrendingUp, Printer
 } from "lucide-react";
+import { printViaIframe } from "@/lib/posPrintUtils";
 
 export const DriverSettlementPage: React.FC = () => {
   const { auth } = useAuth();

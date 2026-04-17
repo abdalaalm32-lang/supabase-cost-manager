@@ -116,9 +116,9 @@ export const DriverSettlementPage: React.FC = () => {
     { key: "invoice_number", label: "رقم الفاتورة" },
     { key: "customer_name", label: "العميل" },
     { key: "driver_name", label: "الطيار" },
-    { key: "total_amount", label: "المبلغ", format: "number" },
-    { key: "delivery_fee", label: "رسوم التوصيل", format: "number" },
-    { key: "grand_total", label: "الإجمالي", format: "number" },
+    { key: "total_amount", label: "المبلغ" },
+    { key: "delivery_fee", label: "رسوم التوصيل" },
+    { key: "grand_total", label: "الإجمالي" },
     { key: "payment_method", label: "الدفع" },
     { key: "time", label: "الوقت" },
   ];

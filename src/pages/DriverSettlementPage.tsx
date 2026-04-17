@@ -150,95 +150,98 @@ export const DriverSettlementPage: React.FC = () => {
   });
 
   const handlePrint = () => {
-    const companyName = auth.profile?.company_id ? "" : "";
     const dateStr = format(selectedDate, "yyyy/MM/dd");
     const driverLabel = selectedDriverId === "all" ? "كل الطيارين"
       : selectedDriverId === "unassigned" ? "غير معيّن"
       : drivers?.find((d: any) => d.id === selectedDriverId)?.name || "";
 
-    const driverStatsRows = driverStats.map(ds => `
-      <tr>
-        <td>${ds.name}</td>
-        <td>${ds.orderCount}</td>
-        <td>${ds.totalSales.toFixed(2)}</td>
-        <td>${ds.totalDeliveryFee.toFixed(2)}</td>
-        <td style="font-weight:bold;color:#2563eb">${(ds.totalSales + ds.totalDeliveryFee).toFixed(2)}</td>
-      </tr>
-    `).join("");
+    if (filteredOrders.length === 0) {
+      toast.error("لا توجد أوردرات للطباعة");
+      return;
+    }
 
-    const orderRows = filteredOrders.map((o: any) => `
-      <tr>
-        <td>${o.invoice_number || "—"}</td>
-        <td>${o.customer_name || "—"}</td>
-        <td>${(o.delivery_drivers as any)?.name || "غير معيّن"}</td>
-        <td>${o.total_amount.toFixed(2)}</td>
-        <td>${(o.delivery_fee || 0).toFixed(2)}</td>
-        <td style="font-weight:bold">${(o.total_amount + (o.delivery_fee || 0)).toFixed(2)}</td>
-        <td>${o.payment_method}</td>
-        <td>${format(new Date(o.date), "HH:mm")}</td>
-      </tr>
-    `).join("");
+    // Group orders by driver for thermal receipt
+    const groupedByDriver = new Map<string, { name: string; orders: any[] }>();
+    filteredOrders.forEach((o: any) => {
+      const key = o.driver_id || "unassigned";
+      const name = (o.delivery_drivers as any)?.name || "غير معيّن";
+      if (!groupedByDriver.has(key)) groupedByDriver.set(key, { name, orders: [] });
+      groupedByDriver.get(key)!.orders.push(o);
+    });
 
-    const html = `<!DOCTYPE html>
-<html dir="rtl"><head><meta charset="utf-8"/><title>تسوية حسابات الطيارين</title>
+    let driverSections = "";
+    let grandSales = 0;
+    let grandFees = 0;
+
+    groupedByDriver.forEach(({ name, orders }) => {
+      const driverSales = orders.reduce((s, o) => s + o.total_amount, 0);
+      const driverFees = orders.reduce((s, o) => s + (o.delivery_fee || 0), 0);
+      grandSales += driverSales;
+      grandFees += driverFees;
+
+      const rows = orders.map((o) =>
+        `<tr style="border-bottom:1px dotted #ccc">
+          <td style="text-align:right;padding:3px 0;font-size:12px">${o.invoice_number || "—"}</td>
+          <td style="text-align:center;padding:3px 0;font-size:12px">${o.total_amount.toFixed(2)}</td>
+          <td style="text-align:left;padding:3px 0;font-size:12px">${(o.delivery_fee || 0).toFixed(2)}</td>
+        </tr>`
+      ).join("");
+
+      driverSections += `
+        <div style="border:1px solid #000;padding:6px;margin-top:8px">
+          <div style="text-align:center;font-weight:bold;font-size:14px;border-bottom:1px dashed #000;padding-bottom:4px;margin-bottom:4px">
+            🛵 ${name}
+          </div>
+          <div style="font-size:11px;text-align:center;margin-bottom:4px">عدد الأوردرات: ${orders.length}</div>
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr style="border-bottom:1px dashed #000">
+                <th style="text-align:right;font-size:11px;padding:3px 0">رقم الفاتورة</th>
+                <th style="text-align:center;font-size:11px;padding:3px 0">المبيعات</th>
+                <th style="text-align:left;font-size:11px;padding:3px 0">التوصيل</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <div style="border-top:1px dashed #000;padding-top:4px;margin-top:4px">
+            <div style="display:flex;justify-content:space-between;font-size:12px"><span>إجمالي المبيعات:</span><span>${driverSales.toFixed(2)}</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:12px"><span>إجمالي التوصيل:</span><span>${driverFees.toFixed(2)}</span></div>
+            <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:13px;border-top:1px dashed #000;padding-top:3px;margin-top:3px"><span>المطلوب من الطيار:</span><span>${(driverSales + driverFees).toFixed(2)} EGP</span></div>
+          </div>
+        </div>
+      `;
+    });
+
+    const showGrandTotal = groupedByDriver.size > 1;
+
+    const html = `<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"/><title>تسوية الطيارين</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
-*{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:'Cairo',sans-serif;direction:rtl;padding:20px;font-size:12px;color:#000;}
-h1{font-size:16px;text-align:center;margin-bottom:4px;}
-.sub{text-align:center;font-size:11px;color:#666;margin-bottom:12px;}
-table{width:100%;border-collapse:collapse;margin-bottom:16px;}
-th,td{border:1px solid #ddd;padding:5px 8px;text-align:right;font-size:11px;}
-th{background:#f5f5f5;font-weight:bold;}
-.section-title{font-size:13px;font-weight:bold;margin:12px 0 6px;border-bottom:2px solid #333;padding-bottom:4px;}
-.stats{display:flex;gap:20px;margin-bottom:12px;justify-content:center;}
-.stat{text-align:center;padding:8px 16px;border:1px solid #ddd;border-radius:6px;}
-.stat-val{font-size:18px;font-weight:bold;}
-.stat-lbl{font-size:10px;color:#666;}
-.total-row{font-weight:bold;background:#f0f7ff;}
-@media print{@page{size:A4;margin:10mm;}}
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Cairo','Tahoma',sans-serif;direction:rtl;width:72mm;margin:0 auto;padding:4px 6px;font-size:12px;color:#000;line-height:1.5;font-weight:500;}
+  table{width:100%;border-collapse:collapse;}
+  @media print{@page{size:80mm auto;margin:0;}body{width:72mm;}}
 </style></head><body>
-<h1>تسوية حسابات الطيارين</h1>
-<p class="sub">التاريخ: ${dateStr} | ${driverLabel}</p>
-<div class="stats">
-  <div class="stat"><div class="stat-val">${totalStats.orders}</div><div class="stat-lbl">عدد الأوردرات</div></div>
-  <div class="stat"><div class="stat-val">${totalStats.sales.toFixed(2)} EGP</div><div class="stat-lbl">إجمالي المبيعات</div></div>
-  <div class="stat"><div class="stat-val">${totalStats.deliveryFees.toFixed(2)} EGP</div><div class="stat-lbl">رسوم التوصيل</div></div>
+<div style="text-align:center;border-bottom:1px dashed #000;padding-bottom:6px;margin-bottom:6px">
+  <div style="font-size:15px;font-weight:bold">🚚 تسوية الطيارين</div>
+  <div style="font-size:11px;margin-top:3px">التاريخ: ${dateStr}</div>
+  <div style="font-size:11px">${driverLabel}</div>
 </div>
-${driverStats.length > 0 ? `
-<p class="section-title">ملخص الطيارين</p>
-<table>
-  <thead><tr><th>الطيار</th><th>عدد الأوردرات</th><th>إجمالي المبيعات</th><th>رسوم التوصيل</th><th>المطلوب من الطيار</th></tr></thead>
-  <tbody>${driverStatsRows}
-    <tr class="total-row">
-      <td>الإجمالي</td>
-      <td>${driverStats.reduce((s, d) => s + d.orderCount, 0)}</td>
-      <td>${driverStats.reduce((s, d) => s + d.totalSales, 0).toFixed(2)} EGP</td>
-      <td>${driverStats.reduce((s, d) => s + d.totalDeliveryFee, 0).toFixed(2)} EGP</td>
-      <td>${driverStats.reduce((s, d) => s + d.totalSales + d.totalDeliveryFee, 0).toFixed(2)} EGP</td>
-    </tr>
-  </tbody>
-</table>` : ""}
-<p class="section-title">تفاصيل الأوردرات (${filteredOrders.length})</p>
-<table>
-  <thead><tr><th>رقم الفاتورة</th><th>العميل</th><th>الطيار</th><th>المبلغ</th><th>رسوم التوصيل</th><th>الإجمالي</th><th>الدفع</th><th>الوقت</th></tr></thead>
-  <tbody>${orderRows.length > 0 ? orderRows : '<tr><td colspan="8" style="text-align:center;color:#999;">لا توجد أوردرات</td></tr>'}
-    ${filteredOrders.length > 0 ? `<tr class="total-row">
-      <td colspan="3">الإجمالي</td>
-      <td>${totalStats.sales.toFixed(2)} EGP</td>
-      <td>${totalStats.deliveryFees.toFixed(2)} EGP</td>
-      <td>${(totalStats.sales + totalStats.deliveryFees).toFixed(2)} EGP</td>
-      <td colspan="2"></td>
-    </tr>` : ""}
-  </tbody>
-</table>
+${driverSections}
+${showGrandTotal ? `
+<div style="border:2px solid #000;padding:6px;margin-top:8px;background:#f8f8f8">
+  <div style="text-align:center;font-weight:bold;font-size:13px;margin-bottom:4px">📊 الإجمالي العام</div>
+  <div style="display:flex;justify-content:space-between;font-size:12px"><span>إجمالي الأوردرات:</span><span>${filteredOrders.length}</span></div>
+  <div style="display:flex;justify-content:space-between;font-size:12px"><span>إجمالي المبيعات:</span><span>${grandSales.toFixed(2)}</span></div>
+  <div style="display:flex;justify-content:space-between;font-size:12px"><span>إجمالي التوصيل:</span><span>${grandFees.toFixed(2)}</span></div>
+  <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:14px;border-top:1px dashed #000;padding-top:4px;margin-top:4px"><span>الإجمالي الكلي:</span><span>${(grandSales + grandFees).toFixed(2)} EGP</span></div>
+</div>` : ""}
+<div style="text-align:center;margin-top:10px;border-top:1px dashed #000;padding-top:6px;font-size:10px;color:#666">
+  CostControl POS System
+</div>
 </body></html>`;
 
-    const printWindow = window.open("", "_blank", "width=900,height=700");
-    if (!printWindow) { toast.error("يرجى السماح بالنوافذ المنبثقة"); return; }
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.onload = () => { printWindow.focus(); printWindow.print(); };
+    printViaIframe(html);
   };
 
   return (

@@ -302,6 +302,12 @@ ${showGrandTotal ? `
           <h1 className="text-lg font-bold">تسوية حسابات الطيارين</h1>
         </div>
         <div className="flex items-center gap-2">
+          <ExportButtons
+            data={exportData}
+            columns={exportColumns}
+            filename={`driver-settlement-${format(selectedDate, "yyyy-MM-dd")}`}
+            title={exportTitle}
+          />
           <Button size="sm" variant="outline" className="gap-1" onClick={handlePrint}>
             <Printer className="h-3.5 w-3.5" /> طباعة
           </Button>

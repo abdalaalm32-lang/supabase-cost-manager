@@ -745,7 +745,7 @@ export const CompanySettingsPage: React.FC = () => {
                 <div className="space-y-2">
                   {ALL_PERMISSIONS.map((perm) => (
                     <div key={perm.key} className="flex items-center gap-3 p-3 rounded-xl border border-border/50 bg-muted/30 cursor-pointer hover:border-primary/30 transition-colors" onClick={() => togglePermission(perm.key)}>
-                      <Checkbox checked={formPermissions.includes(perm.key)} onCheckedChange={() => togglePermission(perm.key)} />
+                      <Checkbox checked={formPermissions.includes(perm.key)} onClick={(e) => e.stopPropagation()} onCheckedChange={() => togglePermission(perm.key)} />
                       <span className="text-sm font-medium">{perm.label}</span>
                     </div>
                   ))}

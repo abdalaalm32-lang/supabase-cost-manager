@@ -29,6 +29,7 @@ import { PosDailyStats } from "@/components/pos/PosDailyStats";
 import { PosShiftManager } from "@/components/pos/PosShiftManager";
 import { PosShiftExpenses } from "@/components/pos/PosShiftExpenses";
 import { PosReturnsManager } from "@/components/pos/PosReturnsManager";
+import { PosShiftSalesReprint } from "@/components/pos/PosShiftSalesReprint";
 
 interface CartItem {
   id: string;
@@ -617,6 +618,14 @@ export const PosScreenPage: React.FC = () => {
             </div>
             {companyId && (
               <PosHeldInvoices companyId={companyId} branchId={branchId} onResume={handleResumeHeld} />
+            )}
+            {companyId && currentShiftForExpenses && (
+              <PosShiftSalesReprint
+                companyId={companyId}
+                shiftId={currentShiftForExpenses.id}
+                branchName={branches?.find(b => b.id === branchId)?.name}
+                companyName={company?.name}
+              />
             )}
             {lastReceipt && (
               <Button

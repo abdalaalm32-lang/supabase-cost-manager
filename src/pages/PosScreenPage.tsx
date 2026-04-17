@@ -23,7 +23,7 @@ import {
   UtensilsCrossed, ShoppingBag, Truck, Banknote, CreditCard, Bell,
   ChefHat, CheckCircle2, Clock, MapPin, Phone, PlayCircle
 } from "lucide-react";
-import { PosReceiptPrint } from "@/components/pos/PosReceiptPrint";
+import { printCustomerReceipt, printKitchenReceipt } from "@/lib/posPrintUtils";
 import { PosHeldInvoices } from "@/components/pos/PosHeldInvoices";
 import { PosDailyStats } from "@/components/pos/PosDailyStats";
 import { PosShiftManager } from "@/components/pos/PosShiftManager";

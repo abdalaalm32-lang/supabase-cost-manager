@@ -20,7 +20,7 @@ import {
   ChefHat, PackageCheck, Send, Star, PhoneCall, MessageSquare,
   Users, TrendingUp, FileText, AlertCircle
 } from "lucide-react";
-import { PosReceiptPrint } from "@/components/pos/PosReceiptPrint";
+import { printCustomerReceipt, printKitchenReceipt } from "@/lib/posPrintUtils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -558,24 +558,38 @@ export const CallCenterPage: React.FC = () => {
     onError: (e: any) => toast.error(e.message),
   });
 
-  // Print receipt
-  const printReceipt = useCallback(() => {
-    if (!receiptRef.current) return;
-    const printContent = receiptRef.current.innerHTML;
-    const printWindow = window.open("", "_blank", "width=320,height=600");
-    if (!printWindow) { toast.error("يرجى السماح بالنوافذ المنبثقة"); return; }
-    printWindow.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"/><title>إيصال</title>
-<style>@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Cairo',monospace;direction:rtl;width:80mm;margin:0 auto;padding:8px;font-size:12px;color:#000;}table{width:100%;border-collapse:collapse;}th,td{padding:2px 0;font-size:10px;}.text-center{text-align:center;}.font-bold{font-weight:bold;}.border-dashed{border-style:dashed;}.border-b{border-bottom-width:1px;}.border-t{border-top-width:1px;}.border-gray-400{border-color:#9ca3af;}.pb-2{padding-bottom:8px;}.pt-2{padding-top:8px;}.mb-2{margin-bottom:8px;}.mt-2{margin-top:8px;}.flex{display:flex;}.justify-between{justify-content:space-between;}.text-gray-500{color:#6b7280;}@media print{body{width:80mm;}}</style></head><body>${printContent}</body></html>`);
-    printWindow.document.close();
-    printWindow.onload = () => { printWindow.focus(); printWindow.print(); printWindow.close(); };
-  }, []);
+  // Last printed receipt — kept so cashier can reprint kitchen ticket after customer ticket
+  const [lastReceipt, setLastReceipt] = useState<any>(null);
 
+  // Auto-print customer receipt when sale is created
   useEffect(() => {
     if (receiptData) {
-      const timer = setTimeout(() => { printReceipt(); setReceiptData(null); }, 400);
+      const data = receiptData;
+      const timer = setTimeout(() => {
+        printCustomerReceipt(data);
+        setLastReceipt(data);
+        setReceiptData(null);
+      }, 300);
       return () => clearTimeout(timer);
     }
-  }, [receiptData, printReceipt]);
+  }, [receiptData]);
+
+  const handlePrintKitchen = useCallback(() => {
+    if (!lastReceipt) {
+      toast.error("لا يوجد فاتورة لطباعتها");
+      return;
+    }
+    printKitchenReceipt({
+      invoiceNumber: lastReceipt.invoiceNumber,
+      branchName: lastReceipt.branchName,
+      date: lastReceipt.date,
+      items: lastReceipt.items,
+      orderType: lastReceipt.orderType,
+      customerName: lastReceipt.customerName,
+      companyName: lastReceipt.companyName,
+    });
+    toast.success("تم إرسال إيصال المطبخ للطباعة");
+  }, [lastReceipt]);
 
   const getNextStatus = (current: string) => {
     const idx = DELIVERY_STATUSES.findIndex(s => s.value === current);
@@ -601,8 +615,6 @@ export const CallCenterPage: React.FC = () => {
 
   return (
     <>
-      {receiptData && <PosReceiptPrint ref={receiptRef} {...receiptData} />}
-
       <div className="flex flex-col h-[calc(100vh-4rem)]" dir="rtl">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-card/50">
@@ -613,6 +625,18 @@ export const CallCenterPage: React.FC = () => {
               {activeOrders?.length ?? 0} أوردر نشط
             </Badge>
           </div>
+          {lastReceipt && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-xs border-amber-500/50 text-amber-600 hover:bg-amber-500/10"
+              onClick={handlePrintKitchen}
+              title="طباعة إيصال المطبخ لآخر فاتورة"
+            >
+              <ChefHat className="h-3.5 w-3.5" />
+              طباعة المطبخ
+            </Button>
+          )}
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">

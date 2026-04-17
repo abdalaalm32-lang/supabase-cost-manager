@@ -38,6 +38,7 @@ const mainNavItems: NavItem[] = [
     id: "sales_management", path: "/sales", label: "إدارة المبيعات", icon: Store,
     children: [
       { id: "sales-invoices", path: "/pos/invoices", label: "سجل الفواتير", icon: Receipt },
+      { id: "sales-item-sales", path: "/pos/item-sales", label: "مبيعات حسب الأصناف", icon: BarChart3 },
       { id: "sales-analytics", path: "/pos/analytics", label: "ذكاء المبيعات", icon: BrainCircuit },
       { id: "sales-groups", path: "/pos/groups", label: "المجموعات", icon: FolderOpen },
       { id: "sales-items", path: "/pos/items", label: "الأصناف", icon: UtensilsCrossed },

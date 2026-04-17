@@ -11,11 +11,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { ar } from "date-fns/locale";
 import {
   Eye, X, Printer, Save, FileText, Plus, Minus, Trash2,
-  AlertCircle, Store, CalendarDays, Search, Archive, RotateCcw, Tag
+  AlertCircle, Store, CalendarDays, Search, Archive, RotateCcw, Tag, CalendarIcon
 } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
 
@@ -39,8 +42,8 @@ export const PosInvoicesPage: React.FC = () => {
   const [selectedSale, setSelectedSale] = useState<any>(null);
   const [editItems, setEditItems] = useState<SaleItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [dateFrom, setDateFrom] = useState<string>("");
-  const [dateTo, setDateTo] = useState<string>("");
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [branchFilter, setBranchFilter] = useState<string>("all");
 
   // Fetch branches for filter
@@ -99,6 +102,7 @@ export const PosInvoicesPage: React.FC = () => {
       const to = new Date(dateTo); to.setHours(23, 59, 59, 999);
       result = result.filter((s: any) => new Date(s.created_at) <= to);
     }
+    return result;
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       result = result.filter((s: any) => {
@@ -323,12 +327,32 @@ export const PosInvoicesPage: React.FC = () => {
           </Select>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">من</span>
-            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="glass-input w-[150px]" />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("glass-input w-[160px] justify-start text-right font-normal", !dateFrom && "text-muted-foreground")}>
+                  <CalendarIcon className="ml-2 h-4 w-4" />
+                  {dateFrom ? format(dateFrom, "yyyy/MM/dd", { locale: ar }) : "اختر التاريخ"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} initialFocus className={cn("p-3 pointer-events-auto")} />
+              </PopoverContent>
+            </Popover>
             <span className="text-xs text-muted-foreground">إلى</span>
-            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="glass-input w-[150px]" />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("glass-input w-[160px] justify-start text-right font-normal", !dateTo && "text-muted-foreground")}>
+                  <CalendarIcon className="ml-2 h-4 w-4" />
+                  {dateTo ? format(dateTo, "yyyy/MM/dd", { locale: ar }) : "اختر التاريخ"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={dateTo} onSelect={setDateTo} initialFocus className={cn("p-3 pointer-events-auto")} />
+              </PopoverContent>
+            </Popover>
           </div>
           {(dateFrom || dateTo || branchFilter !== "all" || searchQuery) && (
-            <Button variant="ghost" size="sm" onClick={() => { setDateFrom(""); setDateTo(""); setBranchFilter("all"); setSearchQuery(""); }}>
+            <Button variant="ghost" size="sm" onClick={() => { setDateFrom(undefined); setDateTo(undefined); setBranchFilter("all"); setSearchQuery(""); }}>
               <X className="h-4 w-4 mr-1" /> مسح
             </Button>
           )}

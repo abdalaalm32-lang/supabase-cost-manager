@@ -30,6 +30,7 @@ export interface CustomerReceiptData {
   customerPhone?: string;
   customerPhone2?: string;
   customerAddress?: string;
+  expectedReadyTime?: string; // وقت الجاهزية للتيك أواي / التسليم المتوقع للدليفري
 }
 
 export interface KitchenReceiptData {
@@ -40,6 +41,8 @@ export interface KitchenReceiptData {
   orderType?: string;
   customerName?: string;
   companyName?: string;
+  orderTime?: string;            // وقت ضرب الأوردر
+  expectedDeliveryTime?: string; // وقت التسليم المتوقع (للكول سنتر فقط)
 }
 
 // Silent print using hidden iframe
@@ -75,8 +78,11 @@ export const buildCustomerReceiptHTML = (data: CustomerReceiptData): string => {
     invoiceNumber, branchName, customerName, date, items,
     subtotal, discountAmount, discountLabel, taxAmount, taxRate, total,
     companyName, notes, orderType, paymentMethod, deliveryFee,
-    customerPhone, customerPhone2, customerAddress,
+    customerPhone, customerPhone2, customerAddress, expectedReadyTime,
   } = data;
+
+  const isTakeaway = orderType === "تيك أواي";
+  const isDelivery = orderType === "دليفري";
 
   const itemsRows = items.map((item) =>
     `<tr style="border-bottom:1px dotted #ccc">
@@ -87,9 +93,18 @@ export const buildCustomerReceiptHTML = (data: CustomerReceiptData): string => {
     </tr>${item.notes ? `<tr><td colspan="4" style="text-align:right;font-size:11px;color:#444;padding-bottom:3px;padding-right:8px">⤷ ${item.notes}</td></tr>` : ""}`
   ).join("");
 
+  // Big order number badge for takeaway/delivery
+  const bigOrderBadge = (isTakeaway || isDelivery) && invoiceNumber ? `
+    <div style="text-align:center;margin:6px 0;border:2px solid #000;padding:8px 4px;background:#f8f8f8">
+      <div style="font-size:10px;font-weight:600">${isTakeaway ? "🛍️ رقم الطلب" : "🚚 رقم الطلب"}</div>
+      <div style="font-size:24px;font-weight:900;letter-spacing:2px;margin-top:2px">${invoiceNumber}</div>
+      ${expectedReadyTime ? `<div style="font-size:11px;font-weight:bold;margin-top:4px;border-top:1px dashed #000;padding-top:4px">⏰ ${isTakeaway ? "وقت الجاهزية" : "وقت التسليم المتوقع"}: ${expectedReadyTime}</div>` : ""}
+    </div>
+  ` : "";
+
   return `<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"/><title>إيصال العميل</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap');
   *{margin:0;padding:0;box-sizing:border-box;}
   body{font-family:'Cairo','Tahoma',sans-serif;direction:rtl;width:72mm;margin:0 auto;padding:4px 6px;font-size:12px;color:#000;line-height:1.5;font-weight:500;}
   table{width:100%;border-collapse:collapse;}
@@ -99,13 +114,14 @@ export const buildCustomerReceiptHTML = (data: CustomerReceiptData): string => {
   <div style="font-size:16px;font-weight:bold">${companyName || "CostControl"}</div>
   ${branchName ? `<div style="font-size:12px">${branchName}</div>` : ""}
   <div style="font-size:12px;margin-top:3px">${date}</div>
-  ${invoiceNumber ? `<div style="font-size:12px">فاتورة رقم: ${invoiceNumber}</div>` : ""}
+  ${invoiceNumber && !(isTakeaway || isDelivery) ? `<div style="font-size:12px">فاتورة رقم: ${invoiceNumber}</div>` : ""}
   ${customerName ? `<div style="font-size:12px">العميل: ${customerName}</div>` : ""}
   ${customerPhone ? `<div style="font-size:12px" dir="ltr">${customerPhone}${customerPhone2 ? ` / ${customerPhone2}` : ""}</div>` : ""}
   ${customerAddress ? `<div style="font-size:12px">العنوان: ${customerAddress}</div>` : ""}
   ${orderType ? `<div style="font-size:12px">نوع الطلب: ${orderType}</div>` : ""}
   ${paymentMethod ? `<div style="font-size:12px">طريقة الدفع: ${paymentMethod}</div>` : ""}
 </div>
+${bigOrderBadge}
 <table style="margin-bottom:6px">
   <thead>
     <tr style="border-bottom:1px dashed #000">
@@ -134,7 +150,7 @@ ${notes ? `<div style="border-top:1px dashed #000;padding-top:6px;margin-top:6px
 
 // Build kitchen receipt HTML — only items, quantities, notes (no prices)
 export const buildKitchenReceiptHTML = (data: KitchenReceiptData): string => {
-  const { invoiceNumber, branchName, date, items, orderType, customerName, companyName } = data;
+  const { invoiceNumber, branchName, date, items, orderType, customerName, companyName, orderTime, expectedDeliveryTime } = data;
 
   const itemsRows = items.map((item) =>
     `<tr style="border-bottom:1px dashed #555">
@@ -142,6 +158,14 @@ export const buildKitchenReceiptHTML = (data: KitchenReceiptData): string => {
       <td style="text-align:center;padding:6px 0;font-size:16px;font-weight:bold">× ${item.quantity}</td>
     </tr>${item.notes ? `<tr><td colspan="2" style="text-align:right;font-size:13px;color:#000;padding:2px 0 6px 8px;font-weight:600;background:#f5f5f5">⤷ ${item.notes}</td></tr>` : ""}`
   ).join("");
+
+  // Time block (highlighted) — shown when orderTime / expectedDeliveryTime provided (call center)
+  const timeBlock = (orderTime || expectedDeliveryTime) ? `
+    <div style="border:2px dashed #000;padding:6px;margin:6px 0;background:#fafafa">
+      ${orderTime ? `<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:bold"><span>⏱️ وقت الطلب:</span><span>${orderTime}</span></div>` : ""}
+      ${expectedDeliveryTime ? `<div style="display:flex;justify-content:space-between;font-size:14px;font-weight:900;color:#000;margin-top:3px;border-top:1px dashed #555;padding-top:4px"><span>🚚 التسليم المتوقع:</span><span>${expectedDeliveryTime}</span></div>` : ""}
+    </div>
+  ` : "";
 
   return `<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"/><title>إيصال المطبخ</title>
 <style>
@@ -157,11 +181,12 @@ export const buildKitchenReceiptHTML = (data: KitchenReceiptData): string => {
   ${branchName ? `<div style="font-size:12px">${branchName}</div>` : ""}
 </div>
 <div style="text-align:center;margin-bottom:6px;font-size:13px;border-bottom:1px dashed #000;padding-bottom:6px">
-  ${invoiceNumber ? `<div style="font-weight:bold">فاتورة: ${invoiceNumber}</div>` : ""}
+  ${invoiceNumber ? `<div style="font-weight:bold;font-size:16px">فاتورة: ${invoiceNumber}</div>` : ""}
   <div>${date}</div>
   ${orderType ? `<div style="font-weight:bold;margin-top:3px;font-size:14px">${orderType}</div>` : ""}
   ${customerName ? `<div>العميل: ${customerName}</div>` : ""}
 </div>
+${timeBlock}
 <table>
   <thead>
     <tr style="border-bottom:2px solid #000">

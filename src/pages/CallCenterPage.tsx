@@ -21,6 +21,7 @@ import {
   Users, TrendingUp, FileText, AlertCircle
 } from "lucide-react";
 import { printCustomerReceipt, printKitchenReceipt } from "@/lib/posPrintUtils";
+import { CallCenterReprintDialog } from "@/components/pos/CallCenterReprintDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -73,6 +74,7 @@ export const CallCenterPage: React.FC = () => {
   const [customerAddress, setCustomerAddress] = useState("");
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [deliveryFee, setDeliveryFee] = useState<number>(0);
+  const [expectedDeliveryTime, setExpectedDeliveryTime] = useState<string>(""); // HH:mm input
   // driver selection removed - cashier handles it
 
   // Cart
@@ -381,6 +383,7 @@ export const CallCenterPage: React.FC = () => {
     setPhoneSearch("");
     setPaymentMethod("كاش");
     setDeliveryFee(0);
+    setExpectedDeliveryTime("");
   }, []);
 
   // Save/create customer and order
@@ -443,6 +446,16 @@ export const CallCenterPage: React.FC = () => {
         driver_id: null,
         assigned_cashier_id: (selectedCashierId && selectedCashierId !== "none") ? selectedCashierId : null,
         notes: cart.filter(c => c.notes).map(c => `${c.name}: ${c.notes}`).join(" | ") || null,
+        expected_delivery_time: (() => {
+          if (!expectedDeliveryTime) return null;
+          const [hh, mm] = expectedDeliveryTime.split(":").map(Number);
+          if (isNaN(hh) || isNaN(mm)) return null;
+          const d = new Date();
+          d.setHours(hh, mm, 0, 0);
+          // If time already passed today, schedule for tomorrow
+          if (d.getTime() < Date.now() - 60_000) d.setDate(d.getDate() + 1);
+          return d.toISOString();
+        })(),
       } as any).select().single();
       if (saleErr) throw saleErr;
 
@@ -460,10 +473,16 @@ export const CallCenterPage: React.FC = () => {
     },
     onSuccess: (sale) => {
       const branchName = branches?.find(b => b.id === selectedBranchId)?.name || "";
+      const expectedReady = (sale as any).expected_delivery_time
+        ? format(new Date((sale as any).expected_delivery_time), "yyyy/MM/dd HH:mm")
+        : undefined;
       setReceiptData({
         invoiceNumber: (sale as any).invoice_number,
         branchName,
         customerName,
+        customerPhone,
+        customerPhone2,
+        customerAddress,
         date: format(new Date(), "yyyy/MM/dd HH:mm"),
         items: cart.map(c => ({ name: c.name, quantity: c.quantity, unit_price: c.unit_price, notes: c.notes })),
         subtotal, discountAmount: 0, discountLabel: "",
@@ -471,6 +490,11 @@ export const CallCenterPage: React.FC = () => {
         companyName: company?.name,
         orderType: "دليفري",
         paymentMethod,
+        deliveryFee,
+        expectedReadyTime: expectedReady,
+        // extra fields used by kitchen print
+        _orderTime: format(new Date(), "HH:mm"),
+        _expectedDeliveryTime: expectedReady,
       });
       toast.success("تم إنشاء أوردر الدليفري بنجاح");
       clearAll();
@@ -587,6 +611,8 @@ export const CallCenterPage: React.FC = () => {
       orderType: lastReceipt.orderType,
       customerName: lastReceipt.customerName,
       companyName: lastReceipt.companyName,
+      orderTime: lastReceipt._orderTime,
+      expectedDeliveryTime: lastReceipt._expectedDeliveryTime,
     });
     toast.success("تم إرسال إيصال المطبخ للطباعة");
   }, [lastReceipt]);
@@ -625,18 +651,28 @@ export const CallCenterPage: React.FC = () => {
               {activeOrders?.length ?? 0} أوردر نشط
             </Badge>
           </div>
-          {lastReceipt && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1.5 text-xs border-amber-500/50 text-amber-600 hover:bg-amber-500/10"
-              onClick={handlePrintKitchen}
-              title="طباعة إيصال المطبخ لآخر فاتورة"
-            >
-              <ChefHat className="h-3.5 w-3.5" />
-              طباعة المطبخ
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {companyId && (
+              <CallCenterReprintDialog
+                companyId={companyId}
+                branchId={selectedBranchId}
+                branchName={branches?.find(b => b.id === selectedBranchId)?.name}
+                companyName={company?.name}
+              />
+            )}
+            {lastReceipt && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 text-xs border-amber-500/50 text-amber-600 hover:bg-amber-500/10"
+                onClick={handlePrintKitchen}
+                title="طباعة إيصال المطبخ لآخر فاتورة"
+              >
+                <ChefHat className="h-3.5 w-3.5" />
+                طباعة المطبخ
+              </Button>
+            )}
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
@@ -720,15 +756,28 @@ export const CallCenterPage: React.FC = () => {
                       className="glass-input pr-8 text-xs h-8"
                     />
                   </div>
-                  <div className="relative">
-                    <Truck className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input
-                      type="number"
-                      placeholder="رسوم التوصيل"
-                      value={deliveryFee || ""}
-                      onChange={e => setDeliveryFee(Number(e.target.value))}
-                      className="glass-input pr-8 text-xs h-8"
-                    />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="relative">
+                      <Truck className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input
+                        type="number"
+                        placeholder="رسوم التوصيل"
+                        value={deliveryFee || ""}
+                        onChange={e => setDeliveryFee(Number(e.target.value))}
+                        className="glass-input pr-8 text-xs h-8"
+                      />
+                    </div>
+                    <div className="relative">
+                      <Clock className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input
+                        type="time"
+                        placeholder="وقت التسليم"
+                        value={expectedDeliveryTime}
+                        onChange={e => setExpectedDeliveryTime(e.target.value)}
+                        className="glass-input pr-8 text-xs h-8"
+                        title="وقت التسليم المتوقع"
+                      />
+                    </div>
                   </div>
                 </div>
 

@@ -1101,6 +1101,7 @@ export type Database = {
           delivery_status: string | null
           discount_amount: number
           driver_id: string | null
+          expected_delivery_time: string | null
           id: string
           invoice_number: string | null
           notes: string | null
@@ -1127,6 +1128,7 @@ export type Database = {
           delivery_status?: string | null
           discount_amount?: number
           driver_id?: string | null
+          expected_delivery_time?: string | null
           id?: string
           invoice_number?: string | null
           notes?: string | null
@@ -1153,6 +1155,7 @@ export type Database = {
           delivery_status?: string | null
           discount_amount?: number
           driver_id?: string | null
+          expected_delivery_time?: string | null
           id?: string
           invoice_number?: string | null
           notes?: string | null

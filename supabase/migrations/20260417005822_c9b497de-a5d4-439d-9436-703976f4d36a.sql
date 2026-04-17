@@ -1,0 +1,1 @@
+ALTER TABLE public.pos_sales ADD COLUMN IF NOT EXISTS expected_delivery_time timestamp with time zone;

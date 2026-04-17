@@ -39,6 +39,19 @@ export const PosInvoicesPage: React.FC = () => {
   const [selectedSale, setSelectedSale] = useState<any>(null);
   const [editItems, setEditItems] = useState<SaleItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
+  const [branchFilter, setBranchFilter] = useState<string>("all");
+
+  // Fetch branches for filter
+  const { data: branchesList } = useQuery({
+    queryKey: ["pos-invoices-branches", companyId],
+    queryFn: async () => {
+      const { data } = await supabase.from("branches").select("id, name").eq("company_id", companyId!).eq("active", true).order("name");
+      return data || [];
+    },
+    enabled: !!companyId,
+  });
 
   // Fetch sales
   const { data: sales } = useQuery({
@@ -77,12 +90,25 @@ export const PosInvoicesPage: React.FC = () => {
     if (!sales) return [];
     let result = sales;
     if (filter !== "الكل") result = result.filter((s) => s.status === filter);
+    if (branchFilter !== "all") result = result.filter((s: any) => s.branch_id === branchFilter);
+    if (dateFrom) {
+      const from = new Date(dateFrom); from.setHours(0, 0, 0, 0);
+      result = result.filter((s: any) => new Date(s.created_at) >= from);
+    }
+    if (dateTo) {
+      const to = new Date(dateTo); to.setHours(23, 59, 59, 999);
+      result = result.filter((s: any) => new Date(s.created_at) <= to);
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
-      result = result.filter((s) => (s.invoice_number || "").toLowerCase().includes(q));
+      result = result.filter((s: any) => {
+        const matchInvoice = (s.invoice_number || "").toLowerCase().includes(q);
+        const matchTotal = String(Number(s.total_amount || 0).toFixed(2)).includes(q) || String(Math.round(Number(s.total_amount || 0))).includes(q);
+        return matchInvoice || matchTotal;
+      });
     }
     return result;
-  }, [sales, filter, searchQuery]);
+  }, [sales, filter, searchQuery, branchFilter, dateFrom, dateTo]);
 
   const updateEditQty = (id: string, delta: number) => {
     setEditItems((prev) =>

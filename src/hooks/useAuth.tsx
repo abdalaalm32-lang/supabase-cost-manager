@@ -302,8 +302,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (auth.isOwner && key === "settings") return true;
     if (!auth.profile) return false;
     const perms = auth.profile.permissions ?? [];
-    // sales_management inherits from pos permission for backward compatibility
-    if (key === "sales_management" && perms.includes("pos")) return true;
     return perms.includes(key);
   }, [auth.profile, auth.isAdmin, auth.isOwner]);
 

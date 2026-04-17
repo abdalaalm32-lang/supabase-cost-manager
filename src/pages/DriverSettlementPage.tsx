@@ -20,6 +20,8 @@ import {
   Users, Banknote, PackageCheck, TrendingUp, Printer
 } from "lucide-react";
 import { printViaIframe } from "@/lib/posPrintUtils";
+import { ExportButtons } from "@/components/ExportButtons";
+import type { ExportColumn } from "@/lib/exportUtils";
 
 export const DriverSettlementPage: React.FC = () => {
   const { auth } = useAuth();
@@ -108,6 +110,53 @@ export const DriverSettlementPage: React.FC = () => {
       deliveryFees: filteredOrders.reduce((s: number, o: any) => s + (o.delivery_fee || 0), 0),
     };
   }, [filteredOrders]);
+
+  // Export data (orders + totals row)
+  const exportColumns: ExportColumn[] = [
+    { key: "invoice_number", label: "رقم الفاتورة" },
+    { key: "customer_name", label: "العميل" },
+    { key: "driver_name", label: "الطيار" },
+    { key: "total_amount", label: "المبلغ" },
+    { key: "delivery_fee", label: "رسوم التوصيل" },
+    { key: "grand_total", label: "الإجمالي" },
+    { key: "payment_method", label: "الدفع" },
+    { key: "time", label: "الوقت" },
+  ];
+
+  const exportData = useMemo(() => {
+    const rows = filteredOrders.map((o: any) => ({
+      invoice_number: o.invoice_number || "—",
+      customer_name: o.customer_name || "—",
+      driver_name: (o.delivery_drivers as any)?.name || "غير معيّن",
+      total_amount: o.total_amount,
+      delivery_fee: o.delivery_fee || 0,
+      grand_total: o.total_amount + (o.delivery_fee || 0),
+      payment_method: o.payment_method,
+      time: format(new Date(o.date), "HH:mm"),
+    }));
+    if (rows.length > 0) {
+      rows.push({
+        invoice_number: "الإجمالي",
+        customer_name: "",
+        driver_name: "",
+        total_amount: totalStats.sales,
+        delivery_fee: totalStats.deliveryFees,
+        grand_total: totalStats.sales + totalStats.deliveryFees,
+        payment_method: "",
+        time: "",
+        __rowType: "grand-total",
+      } as any);
+    }
+    return rows;
+  }, [filteredOrders, totalStats]);
+
+  const exportTitle = useMemo(() => {
+    const driverLabel = selectedDriverId === "all" ? "كل الطيارين"
+      : selectedDriverId === "unassigned" ? "غير معيّن"
+      : drivers?.find((d: any) => d.id === selectedDriverId)?.name || "";
+    return `تسوية الطيارين - ${format(selectedDate, "yyyy/MM/dd")} - ${driverLabel}`;
+  }, [selectedDriverId, selectedDate, drivers]);
+
 
   // Save driver
   const saveDriver = useMutation({
@@ -253,6 +302,12 @@ ${showGrandTotal ? `
           <h1 className="text-lg font-bold">تسوية حسابات الطيارين</h1>
         </div>
         <div className="flex items-center gap-2">
+          <ExportButtons
+            data={exportData}
+            columns={exportColumns}
+            filename={`driver-settlement-${format(selectedDate, "yyyy-MM-dd")}`}
+            title={exportTitle}
+          />
           <Button size="sm" variant="outline" className="gap-1" onClick={handlePrint}>
             <Printer className="h-3.5 w-3.5" /> طباعة
           </Button>

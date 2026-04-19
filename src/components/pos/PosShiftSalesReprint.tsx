@@ -88,6 +88,7 @@ export const PosShiftSalesReprint: React.FC<Props> = ({ companyId, shiftId, bran
       name: it.pos_items?.name || "صنف",
       quantity: Number(it.quantity || 0),
       unit_price: Number(it.unit_price || 0),
+      notes: it.notes || undefined,
     }));
     const total = Number(sale.total_amount || 0);
     const taxAmount = Number(sale.tax_amount || 0);

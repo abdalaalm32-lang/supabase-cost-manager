@@ -218,8 +218,13 @@ export const NotificationBell: React.FC = () => {
           <div className="absolute left-0 top-full mt-2 w-[340px] max-w-[92vw] z-50 bg-popover border border-border rounded-xl shadow-2xl overflow-hidden" dir="rtl" style={{ backgroundColor: "hsl(var(--popover))" }}>
             <div className="p-3 border-b border-border flex items-center justify-between">
               <p className="font-bold text-sm text-foreground">الإشعارات</p>
-              <button onClick={() => setIsOpen(false)} className="text-muted-foreground hover:text-foreground">
-                <X size={14} />
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setIsOpen(false); }}
+                aria-label="إغلاق الإشعارات"
+                className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <X size={16} />
               </button>
             </div>
             <ScrollArea className="max-h-[350px]">

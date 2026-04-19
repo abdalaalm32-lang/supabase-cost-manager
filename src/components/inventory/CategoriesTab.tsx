@@ -321,6 +321,17 @@ export const CategoriesTab: React.FC = () => {
             <Button key={s} variant={filter === s ? "default" : "outline"} size="sm" onClick={() => setFilter(s)}>{s}</Button>
           ))}
         </div>
+        <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+          <SelectTrigger className="w-[180px] glass-input">
+            <SelectValue placeholder="فلتر القسم" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">كل الأقسام</SelectItem>
+            {departments.map((d: any) => (
+              <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <ExportButtons
           data={filtered.map((c: any) => ({ code: c.code || "—", name: c.name, department: getDeptNames(c), storageType: c.storage_type || "—", status: c.active ? "نشط" : "غير نشط" }))}
           columns={[{ key: "code", label: "الكود" }, { key: "name", label: "اسم المجموعة" }, { key: "department", label: "الأقسام التابعة" }, { key: "storageType", label: "نوع التخزين" }, { key: "status", label: "الحالة" }]}

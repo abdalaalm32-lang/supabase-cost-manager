@@ -229,33 +229,33 @@ export const DriverSettlementPage: React.FC = () => {
       grandFees += driverFees;
 
       const rows = orders.map((o) =>
-        `<tr style="border-bottom:1px dotted #ccc">
-          <td style="text-align:right;padding:3px 0;font-size:12px">${o.invoice_number || "—"}</td>
-          <td style="text-align:center;padding:3px 0;font-size:12px">${o.total_amount.toFixed(2)}</td>
-          <td style="text-align:left;padding:3px 0;font-size:12px">${(o.delivery_fee || 0).toFixed(2)}</td>
+        `<tr style="border-bottom:1px solid #000">
+          <td style="text-align:right;padding:4px 0;font-size:13px;font-weight:700;color:#000">${o.invoice_number || "—"}</td>
+          <td style="text-align:center;padding:4px 0;font-size:13px;font-weight:700;color:#000">${o.total_amount.toFixed(2)}</td>
+          <td style="text-align:left;padding:4px 0;font-size:13px;font-weight:700;color:#000">${(o.delivery_fee || 0).toFixed(2)}</td>
         </tr>`
       ).join("");
 
       driverSections += `
-        <div style="border:1px solid #000;padding:6px;margin-top:8px">
-          <div style="text-align:center;font-weight:bold;font-size:14px;border-bottom:1px dashed #000;padding-bottom:4px;margin-bottom:4px">
+        <div style="border:2px solid #000;padding:6px;margin-top:8px">
+          <div style="text-align:center;font-weight:900;font-size:16px;border-bottom:2px solid #000;padding-bottom:4px;margin-bottom:4px;color:#000">
             🛵 ${name}
           </div>
-          <div style="font-size:11px;text-align:center;margin-bottom:4px">عدد الأوردرات: ${orders.length}</div>
+          <div style="font-size:13px;text-align:center;margin-bottom:4px;font-weight:700;color:#000">عدد الأوردرات: ${orders.length}</div>
           <table style="width:100%;border-collapse:collapse">
             <thead>
-              <tr style="border-bottom:1px dashed #000">
-                <th style="text-align:right;font-size:11px;padding:3px 0">رقم الفاتورة</th>
-                <th style="text-align:center;font-size:11px;padding:3px 0">المبيعات</th>
-                <th style="text-align:left;font-size:11px;padding:3px 0">التوصيل</th>
+              <tr style="border-bottom:2px solid #000">
+                <th style="text-align:right;font-size:13px;padding:4px 0;font-weight:900;color:#000">رقم الفاتورة</th>
+                <th style="text-align:center;font-size:13px;padding:4px 0;font-weight:900;color:#000">المبيعات</th>
+                <th style="text-align:left;font-size:13px;padding:4px 0;font-weight:900;color:#000">التوصيل</th>
               </tr>
             </thead>
             <tbody>${rows}</tbody>
           </table>
-          <div style="border-top:1px dashed #000;padding-top:4px;margin-top:4px">
-            <div style="display:flex;justify-content:space-between;font-size:12px"><span>إجمالي المبيعات:</span><span>${driverSales.toFixed(2)}</span></div>
-            <div style="display:flex;justify-content:space-between;font-size:12px"><span>إجمالي التوصيل:</span><span>${driverFees.toFixed(2)}</span></div>
-            <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:13px;border-top:1px dashed #000;padding-top:3px;margin-top:3px"><span>المطلوب من الطيار:</span><span>${(driverSales + driverFees).toFixed(2)} EGP</span></div>
+          <div style="border-top:2px solid #000;padding-top:5px;margin-top:5px">
+            <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:#000"><span>إجمالي المبيعات:</span><span>${driverSales.toFixed(2)}</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:#000"><span>إجمالي التوصيل:</span><span>${driverFees.toFixed(2)}</span></div>
+            <div style="display:flex;justify-content:space-between;font-weight:900;font-size:15px;border-top:2px solid #000;padding-top:4px;margin-top:4px;color:#000"><span>المطلوب من الطيار:</span><span>${(driverSales + driverFees).toFixed(2)} EGP</span></div>
           </div>
         </div>
       `;
@@ -265,27 +265,27 @@ export const DriverSettlementPage: React.FC = () => {
 
     const html = `<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"/><title>تسوية الطيارين</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap');
-  *{margin:0;padding:0;box-sizing:border-box;}
-  body{font-family:'Cairo','Tahoma',sans-serif;direction:rtl;width:72mm;margin:0 auto;padding:4px 6px;font-size:12px;color:#000;line-height:1.5;font-weight:500;}
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  body{font-family:'Cairo','Tahoma',sans-serif;direction:rtl;width:72mm;margin:0 auto;padding:4px 6px;font-size:13px;color:#000;line-height:1.5;font-weight:700;}
   table{width:100%;border-collapse:collapse;}
   @media print{@page{size:80mm auto;margin:0;}body{width:72mm;}}
 </style></head><body>
-<div style="text-align:center;border-bottom:1px dashed #000;padding-bottom:6px;margin-bottom:6px">
-  <div style="font-size:15px;font-weight:bold">🚚 تسوية الطيارين</div>
-  <div style="font-size:11px;margin-top:3px">التاريخ: ${dateStr}</div>
-  <div style="font-size:11px">${driverLabel}</div>
+<div style="text-align:center;border-bottom:2px solid #000;padding-bottom:6px;margin-bottom:6px">
+  <div style="font-size:18px;font-weight:900;color:#000">🚚 تسوية الطيارين</div>
+  <div style="font-size:13px;margin-top:3px;font-weight:700;color:#000">التاريخ: ${dateStr}</div>
+  <div style="font-size:13px;font-weight:700;color:#000">${driverLabel}</div>
 </div>
 ${driverSections}
 ${showGrandTotal ? `
-<div style="border:2px solid #000;padding:6px;margin-top:8px;background:#f8f8f8">
-  <div style="text-align:center;font-weight:bold;font-size:13px;margin-bottom:4px">📊 الإجمالي العام</div>
-  <div style="display:flex;justify-content:space-between;font-size:12px"><span>إجمالي الأوردرات:</span><span>${filteredOrders.length}</span></div>
-  <div style="display:flex;justify-content:space-between;font-size:12px"><span>إجمالي المبيعات:</span><span>${grandSales.toFixed(2)}</span></div>
-  <div style="display:flex;justify-content:space-between;font-size:12px"><span>إجمالي التوصيل:</span><span>${grandFees.toFixed(2)}</span></div>
-  <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:14px;border-top:1px dashed #000;padding-top:4px;margin-top:4px"><span>الإجمالي الكلي:</span><span>${(grandSales + grandFees).toFixed(2)} EGP</span></div>
+<div style="border:3px solid #000;padding:6px;margin-top:8px;background:#eee">
+  <div style="text-align:center;font-weight:900;font-size:15px;margin-bottom:4px;color:#000">📊 الإجمالي العام</div>
+  <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:#000"><span>إجمالي الأوردرات:</span><span>${filteredOrders.length}</span></div>
+  <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:#000"><span>إجمالي المبيعات:</span><span>${grandSales.toFixed(2)}</span></div>
+  <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:#000"><span>إجمالي التوصيل:</span><span>${grandFees.toFixed(2)}</span></div>
+  <div style="display:flex;justify-content:space-between;font-weight:900;font-size:16px;border-top:2px solid #000;padding-top:4px;margin-top:4px;color:#000"><span>الإجمالي الكلي:</span><span>${(grandSales + grandFees).toFixed(2)} EGP</span></div>
 </div>` : ""}
-<div style="text-align:center;margin-top:10px;border-top:1px dashed #000;padding-top:6px;font-size:10px;color:#666">
+<div style="text-align:center;margin-top:10px;border-top:2px solid #000;padding-top:6px;font-size:11px;color:#000;font-weight:700">
   CostControl POS System
 </div>
 </body></html>`;

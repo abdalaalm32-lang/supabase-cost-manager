@@ -62,6 +62,8 @@ export const EditPurchaseInvoicePage: React.FC = () => {
       return data;
     },
     enabled: !!id,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const { data: existingItems = [], isFetched: itemsFetched } = useQuery({
@@ -72,6 +74,8 @@ export const EditPurchaseInvoicePage: React.FC = () => {
       return data;
     },
     enabled: !!id,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   

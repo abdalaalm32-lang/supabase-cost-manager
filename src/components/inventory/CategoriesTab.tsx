@@ -42,6 +42,7 @@ export const CategoriesTab: React.FC = () => {
   const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
   const [identifierCode, setIdentifierCode] = useState("");
   const [filter, setFilter] = useState<FilterStatus>("نشط");
+  const [departmentFilter, setDepartmentFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -275,6 +276,15 @@ export const CategoriesTab: React.FC = () => {
       if (filter === "غير نشط") return !c.active;
       return true;
     });
+    if (departmentFilter !== "all") {
+      result = result.filter((c: any) => {
+        const deptIds = categoryDepartments
+          .filter((cd: any) => cd.category_id === c.id)
+          .map((cd: any) => cd.department_id);
+        const ids = deptIds.length > 0 ? deptIds : (c.department_id ? [c.department_id] : []);
+        return ids.includes(departmentFilter);
+      });
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       result = result.filter(
@@ -285,7 +295,7 @@ export const CategoriesTab: React.FC = () => {
       );
     }
     return result;
-  }, [categories, filter, searchQuery]);
+  }, [categories, filter, searchQuery, departmentFilter, categoryDepartments]);
 
   return (
     <div className="space-y-4 mt-4">
@@ -311,6 +321,17 @@ export const CategoriesTab: React.FC = () => {
             <Button key={s} variant={filter === s ? "default" : "outline"} size="sm" onClick={() => setFilter(s)}>{s}</Button>
           ))}
         </div>
+        <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+          <SelectTrigger className="w-[180px] glass-input">
+            <SelectValue placeholder="فلتر القسم" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">كل الأقسام</SelectItem>
+            {departments.map((d: any) => (
+              <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <ExportButtons
           data={filtered.map((c: any) => ({ code: c.code || "—", name: c.name, department: getDeptNames(c), storageType: c.storage_type || "—", status: c.active ? "نشط" : "غير نشط" }))}
           columns={[{ key: "code", label: "الكود" }, { key: "name", label: "اسم المجموعة" }, { key: "department", label: "الأقسام التابعة" }, { key: "storageType", label: "نوع التخزين" }, { key: "status", label: "الحالة" }]}

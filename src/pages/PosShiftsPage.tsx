@@ -239,6 +239,7 @@ export const PosShiftsPage: React.FC = () => {
     "وقت الفتح": format(new Date(s.opened_at), "yyyy/MM/dd HH:mm"),
     "وقت الإغلاق": s.closed_at ? format(new Date(s.closed_at), "yyyy/MM/dd HH:mm") : "—",
     "المبلغ الافتتاحي": (s.opening_cash || 0).toFixed(2),
+    "مبلغ الإغلاق": s.actual_cash != null ? Number(s.actual_cash).toFixed(2) : "—",
   }));
 
   return (

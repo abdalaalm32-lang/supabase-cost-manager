@@ -192,9 +192,16 @@ export const PosShiftsPage: React.FC = () => {
 
   const handlePrintShift = (shift: any) => {
     const html = `<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"><title>شيفت ${shift.shift_number || ""}</title>
-    <style>body{font-family:Arial,sans-serif;padding:20px;font-size:14px}h2{text-align:center;margin-bottom:20px}
-    .row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dotted #ccc}
-    .label{color:#666}.value{font-weight:bold}.section{margin:12px 0;padding:8px;background:#f5f5f5;border-radius:6px}
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&display=swap');
+      *{margin:0;padding:0;box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+      body{font-family:'Cairo','Tahoma',sans-serif;direction:rtl;padding:16px;font-size:14px;color:#000;font-weight:700;line-height:1.6}
+      h2{text-align:center;margin-bottom:16px;font-size:20px;font-weight:900;color:#000;border-bottom:3px solid #000;padding-bottom:8px}
+      .row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:2px solid #000;font-size:14px}
+      .label{color:#000;font-weight:800}
+      .value{font-weight:900;color:#000}
+      .section{margin:10px 0;padding:10px;background:#f0f0f0;border:2px solid #000;border-radius:4px}
+      @media print{@page{margin:10mm}}
     </style></head><body>
     <h2>تقرير الشيفت ${shift.shift_number || ""}</h2>
     <div class="section">
@@ -207,8 +214,8 @@ export const PosShiftsPage: React.FC = () => {
       <div class="row"><span class="label">وقت الإغلاق:</span><span class="value">${shift.closed_at ? format(new Date(shift.closed_at), "yyyy/MM/dd HH:mm") : "مفتوح"}</span></div>
       <div class="row"><span class="label">المبلغ الافتتاحي:</span><span class="value">${(shift.opening_cash || 0).toFixed(2)} EGP</span></div>
     </div></body></html>`;
-    const w = window.open("", "_blank", "width=400,height=600");
-    if (w) { w.document.write(html); w.document.close(); w.print(); }
+    const w = window.open("", "_blank", "width=500,height=700");
+    if (w) { w.document.write(html); w.document.close(); setTimeout(() => w.print(), 300); }
   };
 
   // ---- Computed ----

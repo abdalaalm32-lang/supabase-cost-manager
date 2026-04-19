@@ -214,11 +214,31 @@ export const PosScreenPage: React.FC = () => {
             // Only notify if the order is for the selected branch
             if (branchId && payload.new?.branch_id !== branchId) return;
             setNewDeliveryCount(prev => prev + 1);
-            // Play notification sound
+            // Play pleasant musical notification (3-note chime: C5 → E5 → G5)
             try {
-              const audio = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgobm0iFY0LWOlurGJWTc0YaijqJlxUUFUgJeflm1OPU1zi5iaj2dFO01yjZuYjWRDOk5yjpuXi2JCOU9zjpuXi2JCOVBzjpuYjGNCOU9zjpuYjWRDOlB0j5yZjmRDO09zjpuXi2JCOU9zjZqWimFBOE5xjJmViV9AN01wi5eUh15ANkxwipaThV1ANkxviZOQgl1ANktuh5GOgFxANkpthZCMflk/NUlsg46KfFc+NEhrgoyIelU+NEhrgoqGeFQ9NEhrgoqGeFQ9NEhrgoqGeFQ9M0dqgYmFd1M9M0dqgYmFd1M9M0dqgYmFd1M9M0ZpgIiEdVI8MkZpgIiEdVI8MkZpgIiEdVI8");
-              audio.volume = 0.7;
-              audio.play().catch(() => {});
+              const AudioCtx = (window as any).AudioContext || (window as any).webkitAudioContext;
+              const ctx: AudioContext = new AudioCtx();
+              const playNote = (freq: number, startAt: number, duration: number) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = "sine";
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(0, ctx.currentTime + startAt);
+                gain.gain.linearRampToValueAtTime(0.35, ctx.currentTime + startAt + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startAt + duration);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(ctx.currentTime + startAt);
+                osc.stop(ctx.currentTime + startAt + duration);
+              };
+              // Cheerful 3-note arpeggio chime (repeated twice)
+              playNote(523.25, 0,    0.25); // C5
+              playNote(659.25, 0.18, 0.25); // E5
+              playNote(783.99, 0.36, 0.45); // G5
+              playNote(523.25, 0.85, 0.22); // C5
+              playNote(659.25, 1.03, 0.22); // E5
+              playNote(783.99, 1.21, 0.50); // G5
+              setTimeout(() => ctx.close().catch(() => {}), 2200);
             } catch {}
             toast.info(`🚚 أوردر دليفري جديد من ${payload.new?.customer_name || "عميل"}`, {
               duration: 8000,

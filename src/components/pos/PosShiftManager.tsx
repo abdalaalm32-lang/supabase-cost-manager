@@ -326,11 +326,26 @@ export const PosShiftManager: React.FC<PosShiftManagerProps> = ({ companyId, bra
       } as any).eq("id", currentShift.id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      printShiftReport();
-      toast.success("تم إغلاق الشيفت بنجاح");
+    onSuccess: async () => {
+      // 1) Close UI immediately so user sees the shift as closed
       setShowCloseDialog(false);
-      queryClient.invalidateQueries({ queryKey: ["pos-current-shift"] });
+      setActualCash("");
+      setClosingNotes("");
+      setConfirmedVariance(false);
+
+      // 2) Print the report (uses snapshot data already in state)
+      try { printShiftReport(); } catch (e) { console.error("Print failed", e); }
+
+      // 3) Refresh all related queries so the shift disappears from UI
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["pos-current-shift"] }),
+        queryClient.invalidateQueries({ queryKey: ["pos-shift-sales"] }),
+        queryClient.invalidateQueries({ queryKey: ["pos-shift-expenses"] }),
+        queryClient.invalidateQueries({ queryKey: ["pos-shift-returns"] }),
+        queryClient.refetchQueries({ queryKey: ["pos-current-shift"] }),
+      ]);
+
+      toast.success("تم إغلاق الشيفت بنجاح");
     },
     onError: (e: any) => toast.error(e.message),
   });

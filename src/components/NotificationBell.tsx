@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Bell, MessageSquare, X, Clock, CheckCheck } from "lucide-react";
@@ -11,6 +12,7 @@ import { toast } from "sonner";
 export const NotificationBell: React.FC = () => {
   const { auth } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   // Start at -1 so initial load doesn't fire the sound; first real fetch sets baseline
   const prevCountRef = useRef<number>(-1);
@@ -244,6 +246,12 @@ export const NotificationBell: React.FC = () => {
                         onClick={() => {
                           if (auth.isOwner && !auth.isAdmin && !n.is_reply_read) {
                             markReplyRead.mutate(n.id);
+                          }
+                          setIsOpen(false);
+                          if (auth.isAdmin) {
+                            navigate("/admin/messages");
+                          } else {
+                            navigate("/support");
                           }
                         }}
                       >

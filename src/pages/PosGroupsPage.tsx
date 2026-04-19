@@ -16,9 +16,13 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Archive, RotateCcw, Search, Pencil } from "lucide-react";
+import { Plus, Archive, RotateCcw, Search, Pencil, Trash2 } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
 import { toast } from "sonner";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type FilterStatus = "نشط" | "مؤرشف" | "الكل";
 
@@ -158,6 +162,63 @@ export const PosGroupsPage: React.FC = () => {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["pos-categories"] }); toast.success("تم تحديث الحالة"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  // Delete state
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [soldItems, setSoldItems] = useState<string[]>([]);
+  const [linkedItemsCount, setLinkedItemsCount] = useState(0);
+
+  const handleDeleteClick = async (cat: any) => {
+    // Find all pos_items linked to this category
+    const { data: linkedItems, error: itemsError } = await supabase
+      .from("pos_items")
+      .select("id, name")
+      .eq("category_id", cat.id);
+    if (itemsError) { toast.error(itemsError.message); return; }
+
+    const itemIds = (linkedItems || []).map((i: any) => i.id);
+    setLinkedItemsCount(itemIds.length);
+
+    if (itemIds.length > 0) {
+      // Check if any of these items have sales
+      const { data: salesData, error: salesError } = await supabase
+        .from("pos_sale_items")
+        .select("pos_item_id")
+        .in("pos_item_id", itemIds);
+      if (salesError) { toast.error(salesError.message); return; }
+
+      const soldIds = new Set((salesData || []).map((s: any) => s.pos_item_id));
+      const sold = (linkedItems || []).filter((i: any) => soldIds.has(i.id)).map((i: any) => i.name);
+      setSoldItems(sold);
+    } else {
+      setSoldItems([]);
+    }
+
+    setDeleteTarget(cat);
+    setDeleteOpen(true);
+  };
+
+  const deleteMutation = useMutation({
+    mutationFn: async (catId: string) => {
+      // Unlink items (set category_id = null)
+      const { error: unlinkError } = await supabase
+        .from("pos_items")
+        .update({ category_id: null, category: null })
+        .eq("category_id", catId);
+      if (unlinkError) throw unlinkError;
+      // Delete the category
+      const { error } = await supabase.from("categories").delete().eq("id", catId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pos-categories"] });
+      qc.invalidateQueries({ queryKey: ["pos-items"] });
+      toast.success("تم حذف المجموعة بنجاح");
+      setDeleteOpen(false); setDeleteTarget(null); setSoldItems([]); setLinkedItemsCount(0);
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -426,6 +487,16 @@ export const PosGroupsPage: React.FC = () => {
                       <Button variant="ghost" size="sm" onClick={() => archiveMutation.mutate({ id: cat.id, active: cat.active })}>
                         {cat.active ? (<><Archive size={16} className="ml-1" /> أرشفة</>) : (<><RotateCcw size={16} className="ml-1" /> تفعيل</>)}
                       </Button>
+                      {!cat.active && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => handleDeleteClick(cat)}
+                        >
+                          <Trash2 size={16} className="ml-1" /> حذف
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -434,6 +505,45 @@ export const PosGroupsPage: React.FC = () => {
           </TableBody>
         </Table>
       </div>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {soldItems.length > 0 ? "لا يمكن حذف هذه المجموعة" : "تأكيد حذف المجموعة"}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-right">
+                {soldItems.length > 0 ? (
+                  <>
+                    <p>المجموعة <strong>{deleteTarget?.name}</strong> تحتوي على أصناف عليها مبيعات سابقة، ولا يمكن حذفها للحفاظ على سجلات المبيعات.</p>
+                    <p className="text-sm font-medium">الأصناف التي عليها مبيع:</p>
+                    <ul className="list-disc pr-5 text-sm max-h-40 overflow-y-auto bg-muted/30 rounded p-2">
+                      {soldItems.map((n, i) => (<li key={i}>{n}</li>))}
+                    </ul>
+                  </>
+                ) : linkedItemsCount > 0 ? (
+                  <p>المجموعة <strong>{deleteTarget?.name}</strong> مرتبطة بـ <strong>{linkedItemsCount}</strong> صنف بدون مبيعات. سيتم فك ربط هذه الأصناف ثم حذف المجموعة. هل أنت متأكد؟</p>
+                ) : (
+                  <p>هل أنت متأكد من حذف المجموعة <strong>{deleteTarget?.name}</strong>؟ لا يمكن التراجع عن هذا الإجراء.</p>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            {soldItems.length === 0 && (
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+              >
+                {deleteMutation.isPending ? "جاري الحذف..." : "حذف"}
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

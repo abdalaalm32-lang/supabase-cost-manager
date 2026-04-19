@@ -16,9 +16,13 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Archive, RotateCcw, Search, Pencil } from "lucide-react";
+import { Plus, Archive, RotateCcw, Search, Pencil, Trash2 } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
 import { toast } from "sonner";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type FilterStatus = "نشط" | "مؤرشف" | "الكل";
 
@@ -218,6 +222,43 @@ export const PosItemsPage: React.FC = () => {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["pos-items"] }); toast.success("تم تحديث الحالة"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  // Delete state
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [hasSales, setHasSales] = useState(false);
+
+  const handleDeleteClick = async (item: any) => {
+    const { data: salesData, error } = await supabase
+      .from("pos_sale_items")
+      .select("id")
+      .eq("pos_item_id", item.id)
+      .limit(1);
+    if (error) { toast.error(error.message); return; }
+    setHasSales((salesData || []).length > 0);
+    setDeleteTarget(item);
+    setDeleteOpen(true);
+  };
+
+  const deleteMutation = useMutation({
+    mutationFn: async (itemId: string) => {
+      // Delete recipes/cost settings first to avoid FK issues
+      await supabase.from("recipe_ingredients").delete().in(
+        "recipe_id",
+        ((await supabase.from("recipes").select("id").eq("menu_item_id", itemId)).data || []).map((r: any) => r.id)
+      );
+      await supabase.from("recipes").delete().eq("menu_item_id", itemId);
+      await supabase.from("pos_item_cost_settings").delete().eq("pos_item_id", itemId);
+      const { error } = await supabase.from("pos_items").delete().eq("id", itemId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pos-items"] });
+      toast.success("تم حذف الصنف بنجاح");
+      setDeleteOpen(false); setDeleteTarget(null); setHasSales(false);
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -505,6 +546,16 @@ export const PosItemsPage: React.FC = () => {
                       <Button variant="ghost" size="sm" onClick={() => archiveMutation.mutate({ id: item.id, active: item.active })}>
                         {item.active ? (<><Archive size={16} className="ml-1" /> أرشفة</>) : (<><RotateCcw size={16} className="ml-1" /> تفعيل</>)}
                       </Button>
+                      {!item.active && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => handleDeleteClick(item)}
+                        >
+                          <Trash2 size={16} className="ml-1" /> حذف
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -513,6 +564,37 @@ export const PosItemsPage: React.FC = () => {
           </TableBody>
         </Table>
       </div>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {hasSales ? "لا يمكن حذف هذا الصنف" : "تأكيد حذف الصنف"}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-right">
+                {hasSales ? (
+                  <p>الصنف <strong>{deleteTarget?.name}</strong> عليه مبيعات سابقة، ولا يمكن حذفه للحفاظ على سجلات المبيعات. يمكنك إبقاؤه مؤرشفاً.</p>
+                ) : (
+                  <p>هل أنت متأكد من حذف الصنف <strong>{deleteTarget?.name}</strong>؟ سيتم حذف الوصفة المرتبطة وإعدادات التكلفة. لا يمكن التراجع عن هذا الإجراء.</p>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            {!hasSales && (
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+              >
+                {deleteMutation.isPending ? "جاري الحذف..." : "حذف"}
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

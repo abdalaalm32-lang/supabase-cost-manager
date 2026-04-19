@@ -21,7 +21,7 @@ interface Props {
 export const PosShiftSalesReprint: React.FC<Props> = ({ companyId, shiftId, branchName, companyName }) => {
   const [open, setOpen] = useState(false);
 
-  // Fetch shift sales (only when dialog is open AND shift is active)
+  // Fetch shift opened_at as fallback for sales not linked via shift_id
   const { data: shiftInfo } = useQuery({
     queryKey: ["pos-shift-info-reprint", shiftId],
     queryFn: async () => {
@@ -39,27 +39,48 @@ export const PosShiftSalesReprint: React.FC<Props> = ({ companyId, shiftId, bran
   const { data: sales, isLoading } = useQuery({
     queryKey: ["pos-shift-sales-reprint", companyId, shiftId, shiftInfo?.opened_at],
     queryFn: async () => {
-      if (!companyId || !shiftId || !shiftInfo?.opened_at) return [];
-      const startTime = shiftInfo.opened_at;
-      const endTime = shiftInfo.closed_at || new Date().toISOString();
+      if (!companyId || !shiftId) return [];
 
-      const { data, error } = await supabase
+      const baseSelect = `
+        id, invoice_number, date, total_amount, tax_amount, tax_rate, discount_amount,
+        order_type, payment_method, customer_name, customer_phone, customer_address,
+        delivery_fee, notes, expected_delivery_time, branch_id, shift_id,
+        pos_sale_items (id, quantity, unit_price, pos_items (name))
+      `;
+
+      // 1) Primary: fetch by shift_id
+      const { data: byShift, error: errShift } = await supabase
         .from("pos_sales")
-        .select(`
-          id, invoice_number, date, total_amount, tax_amount, tax_rate, discount_amount,
-          order_type, payment_method, customer_name, customer_phone, customer_address,
-          delivery_fee, notes, expected_delivery_time, branch_id,
-          pos_sale_items (id, quantity, unit_price, pos_items (name))
-        `)
+        .select(baseSelect)
         .eq("company_id", companyId)
-        .eq("status", "مكتمل")
-        .gte("date", startTime)
-        .lte("date", endTime)
+        .eq("shift_id", shiftId)
         .order("date", { ascending: false });
-      if (error) throw error;
-      return data || [];
+      if (errShift) throw errShift;
+
+      const results = byShift || [];
+
+      // 2) Fallback: include sales within shift time window that have NO shift_id (legacy)
+      if (shiftInfo?.opened_at) {
+        const startTime = shiftInfo.opened_at;
+        const endTime = shiftInfo.closed_at || new Date().toISOString();
+        const { data: byTime } = await supabase
+          .from("pos_sales")
+          .select(baseSelect)
+          .eq("company_id", companyId)
+          .is("shift_id", null)
+          .gte("date", startTime)
+          .lte("date", endTime)
+          .order("date", { ascending: false });
+
+        if (byTime && byTime.length) {
+          const existingIds = new Set(results.map((r: any) => r.id));
+          for (const s of byTime) if (!existingIds.has(s.id)) results.push(s);
+        }
+      }
+
+      return results;
     },
-    enabled: open && !!shiftId && !!shiftInfo,
+    enabled: open && !!shiftId,
   });
 
   const buildReceiptDataFromSale = (sale: any) => {

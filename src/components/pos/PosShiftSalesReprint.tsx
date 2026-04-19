@@ -45,7 +45,7 @@ export const PosShiftSalesReprint: React.FC<Props> = ({ companyId, shiftId, bran
         id, invoice_number, date, total_amount, tax_amount, tax_rate, discount_amount,
         order_type, payment_method, customer_name, customer_phone, customer_address,
         delivery_fee, notes, expected_delivery_time, branch_id, shift_id,
-        pos_sale_items (id, quantity, unit_price, pos_items (name))
+        pos_sale_items (id, quantity, unit_price, notes, pos_items (name))
       `;
 
       // 1) Primary: fetch by shift_id

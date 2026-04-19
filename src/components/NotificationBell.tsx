@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Bell, MessageSquare, X, Clock, CheckCheck } from "lucide-react";

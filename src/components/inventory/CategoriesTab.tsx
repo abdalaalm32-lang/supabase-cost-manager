@@ -42,6 +42,7 @@ export const CategoriesTab: React.FC = () => {
   const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
   const [identifierCode, setIdentifierCode] = useState("");
   const [filter, setFilter] = useState<FilterStatus>("نشط");
+  const [departmentFilter, setDepartmentFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [submitted, setSubmitted] = useState(false);

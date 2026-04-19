@@ -476,7 +476,9 @@ export const CallCenterPage: React.FC = () => {
         unit_price: c.unit_price,
         total: c.unit_price * c.quantity,
       }));
-      const { error: itemsErr } = await supabase.from("pos_sale_items").insert(saleItems);
+      // Attach notes per item (column added to pos_sale_items)
+      const saleItemsWithNotes = saleItems.map((si: any, idx: number) => ({ ...si, notes: cart[idx]?.notes || null }));
+      const { error: itemsErr } = await supabase.from("pos_sale_items").insert(saleItemsWithNotes);
       if (itemsErr) throw itemsErr;
 
       return sale;

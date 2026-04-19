@@ -34,7 +34,7 @@ export const CallCenterReprintDialog: React.FC<Props> = ({ companyId, branchId, 
           id, invoice_number, date, total_amount, delivery_fee, customer_name,
           customer_phone, customer_address, order_type, payment_method,
           notes, expected_delivery_time, branch_id,
-          pos_sale_items (id, quantity, unit_price, pos_items (name))
+          pos_sale_items (id, quantity, unit_price, notes, pos_items (name))
         `)
         .eq("company_id", companyId)
         .eq("order_type", "دليفري")
@@ -54,6 +54,7 @@ export const CallCenterReprintDialog: React.FC<Props> = ({ companyId, branchId, 
       name: it.pos_items?.name || "صنف",
       quantity: Number(it.quantity || 0),
       unit_price: Number(it.unit_price || 0),
+      notes: it.notes || undefined,
     }));
     const total = Number(sale.total_amount || 0);
     const subtotal = total;
@@ -101,6 +102,7 @@ export const CallCenterReprintDialog: React.FC<Props> = ({ companyId, branchId, 
         name: it.pos_items?.name || "صنف",
         quantity: Number(it.quantity || 0),
         unit_price: Number(it.unit_price || 0),
+        notes: it.notes || undefined,
       })),
       orderType: sale.order_type,
       orderTime: format(new Date(sale.date), "HH:mm"),

@@ -1,0 +1,1 @@
+ALTER TABLE public.pos_sale_items ADD COLUMN IF NOT EXISTS notes text;

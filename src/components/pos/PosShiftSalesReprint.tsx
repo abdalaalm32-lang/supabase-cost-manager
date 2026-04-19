@@ -45,7 +45,7 @@ export const PosShiftSalesReprint: React.FC<Props> = ({ companyId, shiftId, bran
         id, invoice_number, date, total_amount, tax_amount, tax_rate, discount_amount,
         order_type, payment_method, customer_name, customer_phone, customer_address,
         delivery_fee, notes, expected_delivery_time, branch_id, shift_id,
-        pos_sale_items (id, quantity, unit_price, pos_items (name))
+        pos_sale_items (id, quantity, unit_price, notes, pos_items (name))
       `;
 
       // 1) Primary: fetch by shift_id
@@ -88,6 +88,7 @@ export const PosShiftSalesReprint: React.FC<Props> = ({ companyId, shiftId, bran
       name: it.pos_items?.name || "صنف",
       quantity: Number(it.quantity || 0),
       unit_price: Number(it.unit_price || 0),
+      notes: it.notes || undefined,
     }));
     const total = Number(sale.total_amount || 0);
     const taxAmount = Number(sale.tax_amount || 0);
@@ -137,6 +138,7 @@ export const PosShiftSalesReprint: React.FC<Props> = ({ companyId, shiftId, bran
         name: it.pos_items?.name || "صنف",
         quantity: Number(it.quantity || 0),
         unit_price: Number(it.unit_price || 0),
+        notes: it.notes || undefined,
       })),
       orderType: sale.order_type,
       orderTime: format(new Date(sale.date), "HH:mm"),

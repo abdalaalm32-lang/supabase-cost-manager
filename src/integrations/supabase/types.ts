@@ -1059,6 +1059,7 @@ export type Database = {
       pos_sale_items: {
         Row: {
           id: string
+          notes: string | null
           pos_item_id: string | null
           quantity: number
           sale_id: string
@@ -1067,6 +1068,7 @@ export type Database = {
         }
         Insert: {
           id?: string
+          notes?: string | null
           pos_item_id?: string | null
           quantity?: number
           sale_id: string
@@ -1075,6 +1077,7 @@ export type Database = {
         }
         Update: {
           id?: string
+          notes?: string | null
           pos_item_id?: string | null
           quantity?: number
           sale_id?: string

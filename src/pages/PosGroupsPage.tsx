@@ -165,6 +165,63 @@ export const PosGroupsPage: React.FC = () => {
     onError: (e: any) => toast.error(e.message),
   });
 
+  // Delete state
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [soldItems, setSoldItems] = useState<string[]>([]);
+  const [linkedItemsCount, setLinkedItemsCount] = useState(0);
+
+  const handleDeleteClick = async (cat: any) => {
+    // Find all pos_items linked to this category
+    const { data: linkedItems, error: itemsError } = await supabase
+      .from("pos_items")
+      .select("id, name")
+      .eq("category_id", cat.id);
+    if (itemsError) { toast.error(itemsError.message); return; }
+
+    const itemIds = (linkedItems || []).map((i: any) => i.id);
+    setLinkedItemsCount(itemIds.length);
+
+    if (itemIds.length > 0) {
+      // Check if any of these items have sales
+      const { data: salesData, error: salesError } = await supabase
+        .from("pos_sale_items")
+        .select("pos_item_id")
+        .in("pos_item_id", itemIds);
+      if (salesError) { toast.error(salesError.message); return; }
+
+      const soldIds = new Set((salesData || []).map((s: any) => s.pos_item_id));
+      const sold = (linkedItems || []).filter((i: any) => soldIds.has(i.id)).map((i: any) => i.name);
+      setSoldItems(sold);
+    } else {
+      setSoldItems([]);
+    }
+
+    setDeleteTarget(cat);
+    setDeleteOpen(true);
+  };
+
+  const deleteMutation = useMutation({
+    mutationFn: async (catId: string) => {
+      // Unlink items (set category_id = null)
+      const { error: unlinkError } = await supabase
+        .from("pos_items")
+        .update({ category_id: null, category: null })
+        .eq("category_id", catId);
+      if (unlinkError) throw unlinkError;
+      // Delete the category
+      const { error } = await supabase.from("categories").delete().eq("id", catId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pos-categories"] });
+      qc.invalidateQueries({ queryKey: ["pos-items"] });
+      toast.success("تم حذف المجموعة بنجاح");
+      setDeleteOpen(false); setDeleteTarget(null); setSoldItems([]); setLinkedItemsCount(0);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const openEdit = (cat: any) => {
     setEditId(cat.id);
     setEditName(cat.name);

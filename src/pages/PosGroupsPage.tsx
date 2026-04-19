@@ -487,6 +487,16 @@ export const PosGroupsPage: React.FC = () => {
                       <Button variant="ghost" size="sm" onClick={() => archiveMutation.mutate({ id: cat.id, active: cat.active })}>
                         {cat.active ? (<><Archive size={16} className="ml-1" /> أرشفة</>) : (<><RotateCcw size={16} className="ml-1" /> تفعيل</>)}
                       </Button>
+                      {!cat.active && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => handleDeleteClick(cat)}
+                        >
+                          <Trash2 size={16} className="ml-1" /> حذف
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

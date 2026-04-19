@@ -276,6 +276,15 @@ export const CategoriesTab: React.FC = () => {
       if (filter === "غير نشط") return !c.active;
       return true;
     });
+    if (departmentFilter !== "all") {
+      result = result.filter((c: any) => {
+        const deptIds = categoryDepartments
+          .filter((cd: any) => cd.category_id === c.id)
+          .map((cd: any) => cd.department_id);
+        const ids = deptIds.length > 0 ? deptIds : (c.department_id ? [c.department_id] : []);
+        return ids.includes(departmentFilter);
+      });
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       result = result.filter(
@@ -286,7 +295,7 @@ export const CategoriesTab: React.FC = () => {
       );
     }
     return result;
-  }, [categories, filter, searchQuery]);
+  }, [categories, filter, searchQuery, departmentFilter, categoryDepartments]);
 
   return (
     <div className="space-y-4 mt-4">

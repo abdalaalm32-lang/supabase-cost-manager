@@ -386,12 +386,12 @@ export const PosShiftsPage: React.FC = () => {
               <Table>
                 <TableHeader>
                   <TableRow className="border-border/50">
-                    <TableHead className="text-right">كود الشيفت</TableHead>
-                    <TableHead className="text-right">اسم الشيفت</TableHead>
-                    <TableHead className="text-right">الكاشير المسؤول</TableHead>
-                    <TableHead className="text-center">الباسورد</TableHead>
-                    <TableHead className="text-center">الحالة</TableHead>
-                    <TableHead className="text-center">إجراءات</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">كود الشيفت</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">اسم الشيفت</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">الكاشير المسؤول</TableHead>
+                    <TableHead className="text-center whitespace-nowrap">الباسورد</TableHead>
+                    <TableHead className="text-center whitespace-nowrap">الحالة</TableHead>
+                    <TableHead className="text-center whitespace-nowrap">إجراءات</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -400,28 +400,28 @@ export const PosShiftsPage: React.FC = () => {
                   ) : (
                     definitions.map((def: any) => (
                       <TableRow key={def.id} className="border-border/30 hover:bg-muted/30">
-                        <TableCell className="font-mono text-xs font-bold text-primary py-3">{def.definition_code || "—"}</TableCell>
-                        <TableCell className="text-sm font-medium py-3">{def.shift_name}</TableCell>
-                        <TableCell className="text-sm py-3">
+                        <TableCell className="font-mono text-xs font-bold text-primary py-3 whitespace-nowrap">{def.definition_code || "—"}</TableCell>
+                        <TableCell className="text-sm font-medium py-3 whitespace-nowrap">{def.shift_name}</TableCell>
+                        <TableCell className="text-sm py-3 whitespace-nowrap">
                           {def.profiles ? (
                             <span>{def.profiles.full_name} <span className="text-xs text-muted-foreground">({def.profiles.user_code || "—"})</span></span>
                           ) : (
                             <span className="text-muted-foreground">—</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-center py-3">
+                        <TableCell className="text-center py-3 whitespace-nowrap">
                           {def.pos_password ? (
                             <Badge className="bg-green-500/20 text-green-500 border-green-500/30 text-[10px]"><Check className="h-3 w-3 ml-1" /> مُعيّن</Badge>
                           ) : (
                             <Badge variant="secondary" className="text-[10px]"><X className="h-3 w-3 ml-1" /> غير مُعيّن</Badge>
                           )}
                         </TableCell>
-                        <TableCell className="text-center py-3">
+                        <TableCell className="text-center py-3 whitespace-nowrap">
                           <Badge variant={def.active ? "default" : "secondary"} className={cn("text-[10px]", def.active && "bg-green-500/20 text-green-500 border-green-500/30")}>
                             {def.active ? "نشط" : "غير نشط"}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-center py-3">
+                        <TableCell className="text-center py-3 whitespace-nowrap">
                           <div className="flex items-center justify-center gap-1">
                             <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => openEditDef(def)} title="تعديل"><Edit2 className="h-4 w-4" /></Button>
                             <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => setDeleteDef(def)} title="حذف"><Trash2 className="h-4 w-4" /></Button>

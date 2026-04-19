@@ -505,6 +505,45 @@ export const PosGroupsPage: React.FC = () => {
           </TableBody>
         </Table>
       </div>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {soldItems.length > 0 ? "لا يمكن حذف هذه المجموعة" : "تأكيد حذف المجموعة"}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-right">
+                {soldItems.length > 0 ? (
+                  <>
+                    <p>المجموعة <strong>{deleteTarget?.name}</strong> تحتوي على أصناف عليها مبيعات سابقة، ولا يمكن حذفها للحفاظ على سجلات المبيعات.</p>
+                    <p className="text-sm font-medium">الأصناف التي عليها مبيع:</p>
+                    <ul className="list-disc pr-5 text-sm max-h-40 overflow-y-auto bg-muted/30 rounded p-2">
+                      {soldItems.map((n, i) => (<li key={i}>{n}</li>))}
+                    </ul>
+                  </>
+                ) : linkedItemsCount > 0 ? (
+                  <p>المجموعة <strong>{deleteTarget?.name}</strong> مرتبطة بـ <strong>{linkedItemsCount}</strong> صنف بدون مبيعات. سيتم فك ربط هذه الأصناف ثم حذف المجموعة. هل أنت متأكد؟</p>
+                ) : (
+                  <p>هل أنت متأكد من حذف المجموعة <strong>{deleteTarget?.name}</strong>؟ لا يمكن التراجع عن هذا الإجراء.</p>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            {soldItems.length === 0 && (
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+              >
+                {deleteMutation.isPending ? "جاري الحذف..." : "حذف"}
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

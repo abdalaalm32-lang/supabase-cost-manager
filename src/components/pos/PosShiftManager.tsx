@@ -389,25 +389,26 @@ export const PosShiftManager: React.FC<PosShiftManagerProps> = ({ companyId, bra
     const html = `<!DOCTYPE html>
 <html dir="rtl"><head><meta charset="utf-8"/><title>تقرير الشيفت</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap');
-*{margin:0;padding:0;box-sizing:border-box;}
-body{font-family:'Cairo',sans-serif;direction:rtl;width:72mm;margin:0 auto;padding:8px;font-size:12px;color:#000;line-height:1.5;}
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+body{font-family:'Cairo','Tahoma',sans-serif;direction:rtl;width:72mm;margin:0 auto;padding:8px;font-size:13px;color:#000;line-height:1.5;font-weight:700;}
 table{width:100%;border-collapse:collapse;}
-th,td{padding:3px 0;font-size:11px;text-align:right;}
+th,td{padding:4px 0;font-size:13px;text-align:right;font-weight:700;color:#000;}
+th{font-weight:900;}
 td:last-child,th:last-child{text-align:left;}
 .center{text-align:center;}
-.bold{font-weight:bold;}
-.sep{border-top:1px dashed #999;margin:6px 0;padding-top:6px;}
-.total-row{font-size:14px;font-weight:bold;}
-.expense-label{color:#c00;}
-.box{border:1.5px solid #000;padding:6px;margin:4px 0;border-radius:4px;}
-.row{display:flex;justify-content:space-between;align-items:center;padding:2px 0;}
+.bold{font-weight:900;}
+.sep{border-top:2px solid #000;margin:6px 0;padding-top:6px;}
+.total-row{font-size:15px;font-weight:900;}
+.expense-label{color:#000;font-weight:900;}
+.box{border:2px solid #000;padding:6px;margin:4px 0;border-radius:4px;}
+.row{display:flex;justify-content:space-between;align-items:center;padding:2px 0;font-weight:700;}
 @media print{@page{size:80mm auto;margin:0}body{width:72mm;}}
 </style></head><body>
-<div class="center"><h2 style="font-size:15px;">تقرير إغلاق الشيفت</h2>
-<p style="font-size:12px;font-weight:bold;margin-top:2px">${shiftNum}</p>
-${(currentShift as any).shift_name ? `<p style="font-size:11px;margin-top:2px">${(currentShift as any).shift_name}</p>` : ""}
-<p style="font-size:9px;color:#666;">CostControl POS</p></div>
+<div class="center"><h2 style="font-size:17px;font-weight:900;color:#000;">تقرير إغلاق الشيفت</h2>
+<p style="font-size:13px;font-weight:900;margin-top:2px;color:#000;">${shiftNum}</p>
+${(currentShift as any).shift_name ? `<p style="font-size:12px;font-weight:700;margin-top:2px;color:#000;">${(currentShift as any).shift_name}</p>` : ""}
+<p style="font-size:11px;color:#000;font-weight:700;">CostControl POS</p></div>
 
 <div class="sep">
 <p><b>فتح:</b> ${safeFormat(currentShift.opened_at, "yyyy/MM/dd HH:mm")}</p>
@@ -464,9 +465,9 @@ ${totals.totalExpenses > 0 ? `<p class="expense-label">- مصروفات: ${fmtMo
 <p class="total-row" style="margin-top:6px">صافي إيراد الشيفت: ${fmtMoney(totals.netRevenue)} EGP</p>
 </div>
 
-${closingNotes.trim() ? `<div class="sep"><p class="bold">📝 ملاحظات:</p><p style="font-size:10px">${closingNotes.trim()}</p></div>` : ""}
+${closingNotes.trim() ? `<div class="sep"><p class="bold">📝 ملاحظات:</p><p style="font-size:12px;font-weight:700;color:#000;">${closingNotes.trim()}</p></div>` : ""}
 
-<p class="center" style="margin-top:8px;font-size:9px;color:#666">أُغلق بواسطة: ${userName}</p>
+<p class="center" style="margin-top:8px;font-size:11px;color:#000;font-weight:700;">أُغلق بواسطة: ${userName}</p>
 </body></html>`;
 
     if (printViaIframe) {

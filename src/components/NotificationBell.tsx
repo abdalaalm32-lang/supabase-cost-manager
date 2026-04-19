@@ -6,23 +6,42 @@ import { Bell, MessageSquare, X, Clock, CheckCheck } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 
-const NOTIFICATION_SOUND_URL = "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2JkJONh3x0bnZ/i5GRjIF2bGVqc4CMk5GJfnNpZGhxfomRk4+FenBnaHF8h5GUj4V6cGlqc3+JkpOPhntyaWlxfYiRko+GfHJpanJ+iZKSjoZ8c2lqcn6IkZGOhnxzamtzf4qTk46Ge3FoanF9iJKTj4d8c2prcn+JkZKOhXtyaWpzf4mSkY2FfHNranOAipKSjoZ8c2prc3+JkZGNhXxzamtzf4qSkY2FfHNra3OAipKRjYV8c2trc4CKkpGNhXxzamtzgIqSkY2FfHNra3OAipGRjYV8c2trc4CKkZGNhXxzamtzgIqRkY2FfHNra3SAipGRjYV8c2tsc4CKkZGNhXxza2xzgIqRkY2FfHNrbHSAipGRjYZ8c2tsc4CKkZCMhXxza2xzgIqRkIyFfHNrbHOAipGQjIV8c2tsc4CKkJCMhXxza2x0gYqQkIyFfHNrbHSBipCQjIV8c2tsc4CKkJCMhXxza2xzgIqQkIyFfHNrbHOAio+QjIV8c2tsc4CKj4+MhXxza2xzgIqPj4yFfXRsbHOAio+PjIV9dGtsc4CKj4+MhX10bGxzgIqPj4yFfXRsbHOAio+PjIV9dGxsc4CLj4+MhX10bGxzgIuPj4yFfXRsbHOAi4+PjIV9dGxsc4CLj4+MhX10bGxzgIuPjoyFfXRsbHOAi46OjIV9dGxsc4CLjo6MhX10bGxzgIuOjoyFfXRsbHOAi46OjIV9dGxsc4CLjo6MhX10bGxzgIuOjoyFfXRsbHOAi46OjIV9dGxsc4CLjo6MhX50bGxzgIuOjoyF";
+// Notification chime generated via Web Audio API for crisp, audible alerts
 
 export const NotificationBell: React.FC = () => {
   const { auth } = useAuth();
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
-  const prevCountRef = useRef(0);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Start at -1 so initial load doesn't fire the sound; first real fetch sets baseline
+  const prevCountRef = useRef<number>(-1);
 
   const playSound = useCallback(() => {
     try {
-      if (!audioRef.current) {
-        audioRef.current = new Audio(NOTIFICATION_SOUND_URL);
-        audioRef.current.volume = 0.5;
-      }
-      audioRef.current.currentTime = 0;
-      audioRef.current.play().catch(() => {});
+      const Ctx = (window.AudioContext || (window as any).webkitAudioContext);
+      if (!Ctx) return;
+      const ctx = new Ctx();
+      const playNote = (freq: number, startAt: number, duration: number) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = "sine";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, ctx.currentTime + startAt);
+        gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + startAt + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + startAt + duration);
+        osc.start(ctx.currentTime + startAt);
+        osc.stop(ctx.currentTime + startAt + duration + 0.05);
+      };
+      // Pleasant 3-note ascending chime: E5 -> G5 -> C6
+      playNote(659.25, 0, 0.18);
+      playNote(783.99, 0.16, 0.18);
+      playNote(1046.5, 0.32, 0.35);
+      // Repeat once after a short gap for emphasis
+      playNote(659.25, 0.85, 0.18);
+      playNote(783.99, 1.01, 0.18);
+      playNote(1046.5, 1.17, 0.35);
+      setTimeout(() => { try { ctx.close(); } catch {} }, 1800);
     } catch {}
   }, []);
 

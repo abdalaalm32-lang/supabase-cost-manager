@@ -306,6 +306,13 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   const companyDeactivated = !auth.isAdmin && companyStatus && !companyStatus.active;
   const userSuspended = !!(auth.profile && auth.profile.status !== "نشط");
 
+  // Company subscription expiration check
+  const companySubscriptionExpired = !auth.isAdmin && !!companyStatus
+    && companyStatus.subscription_type
+    && companyStatus.subscription_type !== "unlimited"
+    && !!companyStatus.subscription_end
+    && new Date(companyStatus.subscription_end) < new Date();
+
   useEffect(() => {
     if (companyDeactivated) {
       supabase.auth.signOut();
@@ -318,11 +325,54 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     }
   }, [userSuspended]);
 
+  // Notify admin once when company subscription expires (auto-create support ticket)
+  useEffect(() => {
+    if (!companySubscriptionExpired || !auth.profile?.company_id) return;
+    const flagKey = `subscription_expired_notified_${auth.profile.company_id}_${companyStatus?.subscription_end}`;
+    if (sessionStorage.getItem(flagKey)) return;
+    (async () => {
+      try {
+        const { data: existing } = await supabase
+          .from("support_tickets")
+          .select("id")
+          .eq("company_id", auth.profile!.company_id)
+          .eq("subject", "انتهاء اشتراك الشركة")
+          .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+          .limit(1)
+          .maybeSingle();
+        if (existing) {
+          sessionStorage.setItem(flagKey, "1");
+          return;
+        }
+        const { data: company } = await supabase
+          .from("companies")
+          .select("name, code")
+          .eq("id", auth.profile!.company_id)
+          .single();
+        await supabase.from("support_tickets").insert({
+          company_id: auth.profile!.company_id,
+          company_name: company?.name || "",
+          company_code: company?.code || "",
+          sender_id: auth.user!.id,
+          sender_name: auth.profile!.full_name,
+          subject: "انتهاء اشتراك الشركة",
+          message: `انتهى اشتراك الشركة "${company?.name}" (${company?.code}) بتاريخ ${new Date(companyStatus!.subscription_end!).toLocaleString("ar-EG")}. الرجاء التجديد.`,
+        });
+        sessionStorage.setItem(flagKey, "1");
+      } catch {}
+    })();
+  }, [companySubscriptionExpired, auth.profile?.company_id, auth.user?.id, companyStatus?.subscription_end]);
+
   if (!auth.isReady) return <AppLoadingScreen message="جاري تجهيز الجلسة..." />;
   if (companyDeactivated) return <Navigate to="/login?reason=company_deactivated" replace />;
   if (userSuspended) return <Navigate to="/login?reason=user_suspended" replace />;
   if (!auth.session) return <Navigate to="/login" replace />;
   if (!auth.profile && !auth.isAdmin && !auth.isOwner) return <MissingProfileScreen onLogout={logout} />;
+
+  // Block company-wide access when subscription expired (applies to both owner and users)
+  if (companySubscriptionExpired) {
+    return <SubscriptionExpiredOverlay type="company" />;
+  }
 
   if (!auth.isAdmin && !auth.isOwner && auth.profile) {
     const p = auth.profile as any;

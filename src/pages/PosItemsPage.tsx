@@ -564,6 +564,37 @@ export const PosItemsPage: React.FC = () => {
           </TableBody>
         </Table>
       </div>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {hasSales ? "لا يمكن حذف هذا الصنف" : "تأكيد حذف الصنف"}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-right">
+                {hasSales ? (
+                  <p>الصنف <strong>{deleteTarget?.name}</strong> عليه مبيعات سابقة، ولا يمكن حذفه للحفاظ على سجلات المبيعات. يمكنك إبقاؤه مؤرشفاً.</p>
+                ) : (
+                  <p>هل أنت متأكد من حذف الصنف <strong>{deleteTarget?.name}</strong>؟ سيتم حذف الوصفة المرتبطة وإعدادات التكلفة. لا يمكن التراجع عن هذا الإجراء.</p>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            {!hasSales && (
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+              >
+                {deleteMutation.isPending ? "جاري الحذف..." : "حذف"}
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

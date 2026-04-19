@@ -75,21 +75,25 @@ export const PosShiftManager: React.FC<PosShiftManagerProps> = ({ companyId, bra
     enabled: !!companyId && !!userName,
   });
 
-  // Get current open shift
+  // Get current open shift — match selected branch, or shift opened without branch, or any open shift
   const { data: currentShift } = useQuery({
     queryKey: ["pos-current-shift", companyId, branchId],
     queryFn: async () => {
-      let query = supabase
+      const { data, error } = await supabase
         .from("pos_shifts")
         .select("*")
         .eq("company_id", companyId)
         .eq("status", "مفتوح")
-        .order("opened_at", { ascending: false })
-        .limit(1);
-      if (branchId) query = query.eq("branch_id", branchId);
-      const { data, error } = await query;
+        .order("opened_at", { ascending: false });
       if (error) throw error;
-      return data?.[0] || null;
+      const shifts = data || [];
+      if (branchId) {
+        const exact = shifts.find((s: any) => s.branch_id === branchId);
+        if (exact) return exact;
+        const noBranch = shifts.find((s: any) => !s.branch_id);
+        if (noBranch) return noBranch;
+      }
+      return shifts[0] || null;
     },
     enabled: !!companyId,
   });

@@ -225,6 +225,43 @@ export const PosItemsPage: React.FC = () => {
     onError: (e: any) => toast.error(e.message),
   });
 
+  // Delete state
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [hasSales, setHasSales] = useState(false);
+
+  const handleDeleteClick = async (item: any) => {
+    const { data: salesData, error } = await supabase
+      .from("pos_sale_items")
+      .select("id")
+      .eq("pos_item_id", item.id)
+      .limit(1);
+    if (error) { toast.error(error.message); return; }
+    setHasSales((salesData || []).length > 0);
+    setDeleteTarget(item);
+    setDeleteOpen(true);
+  };
+
+  const deleteMutation = useMutation({
+    mutationFn: async (itemId: string) => {
+      // Delete recipes/cost settings first to avoid FK issues
+      await supabase.from("recipe_ingredients").delete().in(
+        "recipe_id",
+        ((await supabase.from("recipes").select("id").eq("menu_item_id", itemId)).data || []).map((r: any) => r.id)
+      );
+      await supabase.from("recipes").delete().eq("menu_item_id", itemId);
+      await supabase.from("pos_item_cost_settings").delete().eq("pos_item_id", itemId);
+      const { error } = await supabase.from("pos_items").delete().eq("id", itemId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["pos-items"] });
+      toast.success("تم حذف الصنف بنجاح");
+      setDeleteOpen(false); setDeleteTarget(null); setHasSales(false);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const openEdit = (item: any) => {
     setEditId(item.id);
     setEditName(item.name);

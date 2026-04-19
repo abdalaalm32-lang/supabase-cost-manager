@@ -85,12 +85,12 @@ export const buildCustomerReceiptHTML = (data: CustomerReceiptData): string => {
   const isDelivery = orderType === "دليفري";
 
   const itemsRows = items.map((item) =>
-    `<tr style="border-bottom:1px dotted #ccc">
-      <td style="text-align:right;padding:3px 0;font-size:12px">${item.name}</td>
-      <td style="text-align:center;padding:3px 0;font-size:12px">${item.quantity}</td>
-      <td style="text-align:center;padding:3px 0;font-size:12px">${item.unit_price.toFixed(2)}</td>
-      <td style="text-align:left;padding:3px 0;font-size:12px">${(item.unit_price * item.quantity).toFixed(2)}</td>
-    </tr>${item.notes ? `<tr><td colspan="4" style="text-align:right;font-size:11px;color:#444;padding-bottom:3px;padding-right:8px">⤷ ${item.notes}</td></tr>` : ""}`
+    `<tr style="border-bottom:1px solid #000">
+      <td style="text-align:right;padding:3px 0;font-size:12px;font-weight:700;color:#000">${item.name}</td>
+      <td style="text-align:center;padding:3px 0;font-size:12px;font-weight:700;color:#000">${item.quantity}</td>
+      <td style="text-align:center;padding:3px 0;font-size:12px;font-weight:700;color:#000">${item.unit_price.toFixed(2)}</td>
+      <td style="text-align:left;padding:3px 0;font-size:12px;font-weight:700;color:#000">${(item.unit_price * item.quantity).toFixed(2)}</td>
+    </tr>${item.notes ? `<tr><td colspan="4" style="text-align:right;font-size:12px;color:#000;padding:3px 8px 5px 8px;font-weight:700;background:#eee;border-bottom:1px solid #000">⤷ ملاحظة: ${item.notes}</td></tr>` : ""}`
   ).join("");
 
   // Big order number badge for takeaway/delivery
@@ -104,46 +104,46 @@ export const buildCustomerReceiptHTML = (data: CustomerReceiptData): string => {
 
   return `<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"/><title>إيصال العميل</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap');
-  *{margin:0;padding:0;box-sizing:border-box;}
-  body{font-family:'Cairo','Tahoma',sans-serif;direction:rtl;width:72mm;margin:0 auto;padding:4px 6px;font-size:12px;color:#000;line-height:1.5;font-weight:500;}
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  body{font-family:'Cairo','Tahoma',sans-serif;direction:rtl;width:72mm;margin:0 auto;padding:4px 6px;font-size:13px;color:#000;line-height:1.5;font-weight:700;}
   table{width:100%;border-collapse:collapse;}
   @media print{@page{size:80mm auto;margin:0;}body{width:72mm;}}
 </style></head><body>
-<div style="text-align:center;border-bottom:1px dashed #000;padding-bottom:6px;margin-bottom:6px">
-  <div style="font-size:16px;font-weight:bold">${companyName || "CostControl"}</div>
-  ${branchName ? `<div style="font-size:12px">${branchName}</div>` : ""}
-  <div style="font-size:12px;margin-top:3px">${date}</div>
-  ${invoiceNumber && !(isTakeaway || isDelivery) ? `<div style="font-size:12px">فاتورة رقم: ${invoiceNumber}</div>` : ""}
-  ${customerName ? `<div style="font-size:12px">العميل: ${customerName}</div>` : ""}
-  ${customerPhone ? `<div style="font-size:12px" dir="ltr">${customerPhone}${customerPhone2 ? ` / ${customerPhone2}` : ""}</div>` : ""}
-  ${customerAddress ? `<div style="font-size:12px">العنوان: ${customerAddress}</div>` : ""}
-  ${orderType ? `<div style="font-size:12px">نوع الطلب: ${orderType}</div>` : ""}
-  ${paymentMethod ? `<div style="font-size:12px">طريقة الدفع: ${paymentMethod}</div>` : ""}
+<div style="text-align:center;border-bottom:2px solid #000;padding-bottom:6px;margin-bottom:6px">
+  <div style="font-size:18px;font-weight:900;color:#000">${companyName || "CostControl"}</div>
+  ${branchName ? `<div style="font-size:13px;font-weight:700;color:#000">${branchName}</div>` : ""}
+  <div style="font-size:13px;margin-top:3px;font-weight:700;color:#000">${date}</div>
+  ${invoiceNumber && !(isTakeaway || isDelivery) ? `<div style="font-size:13px;font-weight:700;color:#000">فاتورة رقم: ${invoiceNumber}</div>` : ""}
+  ${customerName ? `<div style="font-size:13px;font-weight:700;color:#000">العميل: ${customerName}</div>` : ""}
+  ${customerPhone ? `<div style="font-size:13px;font-weight:700;color:#000" dir="ltr">${customerPhone}${customerPhone2 ? ` / ${customerPhone2}` : ""}</div>` : ""}
+  ${customerAddress ? `<div style="font-size:13px;font-weight:700;color:#000">العنوان: ${customerAddress}</div>` : ""}
+  ${orderType ? `<div style="font-size:13px;font-weight:700;color:#000">نوع الطلب: ${orderType}</div>` : ""}
+  ${paymentMethod ? `<div style="font-size:13px;font-weight:700;color:#000">طريقة الدفع: ${paymentMethod}</div>` : ""}
 </div>
 ${bigOrderBadge}
 <table style="margin-bottom:6px">
   <thead>
-    <tr style="border-bottom:1px dashed #000">
-      <th style="text-align:right;font-size:12px;padding:3px 0">الصنف</th>
-      <th style="text-align:center;font-size:12px;padding:3px 0">الكمية</th>
-      <th style="text-align:center;font-size:12px;padding:3px 0">السعر</th>
-      <th style="text-align:left;font-size:12px;padding:3px 0">المجموع</th>
+    <tr style="border-bottom:2px solid #000">
+      <th style="text-align:right;font-size:13px;padding:4px 0;font-weight:900;color:#000">الصنف</th>
+      <th style="text-align:center;font-size:13px;padding:4px 0;font-weight:900;color:#000">الكمية</th>
+      <th style="text-align:center;font-size:13px;padding:4px 0;font-weight:900;color:#000">السعر</th>
+      <th style="text-align:left;font-size:13px;padding:4px 0;font-weight:900;color:#000">المجموع</th>
     </tr>
   </thead>
   <tbody>${itemsRows}</tbody>
 </table>
-<div style="border-top:1px dashed #000;padding-top:6px">
-  <div style="display:flex;justify-content:space-between;font-size:12px"><span>الإجمالي الفرعي:</span><span>${subtotal.toFixed(2)}</span></div>
-  ${discountAmount > 0 ? `<div style="display:flex;justify-content:space-between;font-size:12px"><span>خصم ${discountLabel || ""}:</span><span>- ${discountAmount.toFixed(2)}</span></div>` : ""}
-  ${taxAmount > 0 ? `<div style="display:flex;justify-content:space-between;font-size:12px"><span>ضريبة ${taxRate}%:</span><span>${taxAmount.toFixed(2)}</span></div>` : ""}
-  ${(deliveryFee ?? 0) > 0 ? `<div style="display:flex;justify-content:space-between;font-size:12px"><span>رسوم التوصيل:</span><span>${(deliveryFee ?? 0).toFixed(2)}</span></div>` : ""}
-  <div style="display:flex;justify-content:space-between;font-weight:bold;font-size:15px;border-top:1px dashed #000;padding-top:5px;margin-top:5px"><span>الإجمالي:</span><span>${(total + (deliveryFee ?? 0)).toFixed(2)} EGP</span></div>
+<div style="border-top:2px solid #000;padding-top:6px">
+  <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:#000"><span>الإجمالي الفرعي:</span><span>${subtotal.toFixed(2)}</span></div>
+  ${discountAmount > 0 ? `<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:#000"><span>خصم ${discountLabel || ""}:</span><span>- ${discountAmount.toFixed(2)}</span></div>` : ""}
+  ${taxAmount > 0 ? `<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:#000"><span>ضريبة ${taxRate}%:</span><span>${taxAmount.toFixed(2)}</span></div>` : ""}
+  ${(deliveryFee ?? 0) > 0 ? `<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:#000"><span>رسوم التوصيل:</span><span>${(deliveryFee ?? 0).toFixed(2)}</span></div>` : ""}
+  <div style="display:flex;justify-content:space-between;font-weight:900;font-size:16px;border-top:2px solid #000;padding-top:5px;margin-top:5px;color:#000"><span>الإجمالي:</span><span>${(total + (deliveryFee ?? 0)).toFixed(2)} EGP</span></div>
 </div>
-${notes ? `<div style="border-top:1px dashed #000;padding-top:6px;margin-top:6px"><div style="font-size:12px"><span style="font-weight:bold">ملاحظات:</span> ${notes}</div></div>` : ""}
-<div style="text-align:center;margin-top:8px;border-top:1px dashed #000;padding-top:6px">
-  <div style="font-size:12px">شكراً لزيارتكم</div>
-  <div style="font-size:10px;color:#666;margin-top:3px">CostControl POS System</div>
+${notes ? `<div style="border:2px solid #000;padding:6px;margin-top:6px;background:#eee"><div style="font-size:13px;color:#000;font-weight:700"><span style="font-weight:900">ملاحظات:</span> ${notes}</div></div>` : ""}
+<div style="text-align:center;margin-top:8px;border-top:2px solid #000;padding-top:6px">
+  <div style="font-size:13px;font-weight:700;color:#000">شكراً لزيارتكم</div>
+  <div style="font-size:11px;color:#000;margin-top:3px;font-weight:700">CostControl POS System</div>
 </div>
 </body></html>`;
 };
@@ -153,10 +153,10 @@ export const buildKitchenReceiptHTML = (data: KitchenReceiptData): string => {
   const { invoiceNumber, branchName, date, items, orderType, customerName, companyName, orderTime, expectedDeliveryTime } = data;
 
   const itemsRows = items.map((item) =>
-    `<tr style="border-bottom:1px dashed #555">
-      <td style="text-align:right;padding:6px 0;font-size:14px;font-weight:600">${item.name}</td>
-      <td style="text-align:center;padding:6px 0;font-size:16px;font-weight:bold">× ${item.quantity}</td>
-    </tr>${item.notes ? `<tr><td colspan="2" style="text-align:right;font-size:13px;color:#000;padding:2px 0 6px 8px;font-weight:600;background:#f5f5f5">⤷ ${item.notes}</td></tr>` : ""}`
+    `<tr style="border-bottom:2px solid #000">
+      <td style="text-align:right;padding:7px 0;font-size:15px;font-weight:900;color:#000">${item.name}</td>
+      <td style="text-align:center;padding:7px 0;font-size:18px;font-weight:900;color:#000">× ${item.quantity}</td>
+    </tr>${item.notes ? `<tr><td colspan="2" style="text-align:right;font-size:14px;color:#000;padding:5px 8px 7px 8px;font-weight:900;background:#ddd;border-bottom:2px solid #000">⤷ ملاحظة: ${item.notes}</td></tr>` : ""}`
   ).join("");
 
   // Time block (highlighted) — shown when orderTime / expectedDeliveryTime provided (call center)
@@ -169,34 +169,34 @@ export const buildKitchenReceiptHTML = (data: KitchenReceiptData): string => {
 
   return `<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"/><title>إيصال المطبخ</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap');
-  *{margin:0;padding:0;box-sizing:border-box;}
-  body{font-family:'Cairo','Tahoma',sans-serif;direction:rtl;width:72mm;margin:0 auto;padding:4px 6px;font-size:14px;color:#000;line-height:1.5;font-weight:500;}
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  body{font-family:'Cairo','Tahoma',sans-serif;direction:rtl;width:72mm;margin:0 auto;padding:4px 6px;font-size:15px;color:#000;line-height:1.5;font-weight:700;}
   table{width:100%;border-collapse:collapse;}
   @media print{@page{size:80mm auto;margin:0;}body{width:72mm;}}
 </style></head><body>
-<div style="text-align:center;border:2px solid #000;padding:6px;margin-bottom:8px">
-  <div style="font-size:18px;font-weight:900">🍳 طلب مطبخ</div>
-  ${companyName ? `<div style="font-size:12px;margin-top:2px">${companyName}</div>` : ""}
-  ${branchName ? `<div style="font-size:12px">${branchName}</div>` : ""}
+<div style="text-align:center;border:3px solid #000;padding:6px;margin-bottom:8px">
+  <div style="font-size:20px;font-weight:900;color:#000">🍳 طلب مطبخ</div>
+  ${companyName ? `<div style="font-size:13px;margin-top:2px;font-weight:700;color:#000">${companyName}</div>` : ""}
+  ${branchName ? `<div style="font-size:13px;font-weight:700;color:#000">${branchName}</div>` : ""}
 </div>
-<div style="text-align:center;margin-bottom:6px;font-size:13px;border-bottom:1px dashed #000;padding-bottom:6px">
-  ${invoiceNumber ? `<div style="font-weight:bold;font-size:16px">فاتورة: ${invoiceNumber}</div>` : ""}
-  <div>${date}</div>
-  ${orderType ? `<div style="font-weight:bold;margin-top:3px;font-size:14px">${orderType}</div>` : ""}
-  ${customerName ? `<div>العميل: ${customerName}</div>` : ""}
+<div style="text-align:center;margin-bottom:6px;font-size:14px;border-bottom:2px solid #000;padding-bottom:6px;font-weight:700;color:#000">
+  ${invoiceNumber ? `<div style="font-weight:900;font-size:17px;color:#000">فاتورة: ${invoiceNumber}</div>` : ""}
+  <div style="font-weight:700;color:#000">${date}</div>
+  ${orderType ? `<div style="font-weight:900;margin-top:3px;font-size:15px;color:#000">${orderType}</div>` : ""}
+  ${customerName ? `<div style="font-weight:700;color:#000">العميل: ${customerName}</div>` : ""}
 </div>
 ${timeBlock}
 <table>
   <thead>
-    <tr style="border-bottom:2px solid #000">
-      <th style="text-align:right;font-size:13px;padding:6px 0">الصنف</th>
-      <th style="text-align:center;font-size:13px;padding:6px 0">الكمية</th>
+    <tr style="border-bottom:3px solid #000">
+      <th style="text-align:right;font-size:14px;padding:6px 0;font-weight:900;color:#000">الصنف</th>
+      <th style="text-align:center;font-size:14px;padding:6px 0;font-weight:900;color:#000">الكمية</th>
     </tr>
   </thead>
   <tbody>${itemsRows}</tbody>
 </table>
-<div style="text-align:center;margin-top:10px;border-top:2px solid #000;padding-top:6px;font-size:11px;color:#444">
+<div style="text-align:center;margin-top:10px;border-top:3px solid #000;padding-top:6px;font-size:13px;color:#000;font-weight:700">
   - إيصال مطبخ -
 </div>
 </body></html>`;

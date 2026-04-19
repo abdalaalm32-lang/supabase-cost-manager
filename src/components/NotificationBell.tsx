@@ -76,14 +76,18 @@ export const NotificationBell: React.FC = () => {
     refetchInterval: 30000,
   });
 
-  // Play sound when count increases
+  // Play sound + toast when count increases (skip the very first fetch)
   React.useEffect(() => {
     const count = notifications?.length || 0;
-    if (count > prevCountRef.current && prevCountRef.current >= 0) {
+    if (prevCountRef.current >= 0 && count > prevCountRef.current) {
       playSound();
+      toast.info("🔔 إشعار جديد", {
+        description: auth.isAdmin ? "وصلتك رسالة دعم جديدة" : "وصلك رد جديد من الإدارة",
+        duration: 5000,
+      });
     }
     prevCountRef.current = count;
-  }, [notifications?.length, playSound]);
+  }, [notifications?.length, playSound, auth.isAdmin]);
 
   const markReplyRead = useMutation({
     mutationFn: async (ticketId: string) => {

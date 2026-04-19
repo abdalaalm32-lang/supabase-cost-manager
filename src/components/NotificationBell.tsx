@@ -247,6 +247,12 @@ export const NotificationBell: React.FC = () => {
                           if (auth.isOwner && !auth.isAdmin && !n.is_reply_read) {
                             markReplyRead.mutate(n.id);
                           }
+                          setIsOpen(false);
+                          if (auth.isAdmin) {
+                            navigate("/admin/messages");
+                          } else {
+                            navigate("/support");
+                          }
                         }}
                       >
                         <div className="flex items-start gap-2">

@@ -12,6 +12,7 @@ import { toast } from "sonner";
 export const NotificationBell: React.FC = () => {
   const { auth } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   // Start at -1 so initial load doesn't fire the sound; first real fetch sets baseline
   const prevCountRef = useRef<number>(-1);

@@ -137,6 +137,7 @@ export const PosShiftSalesReprint: React.FC<Props> = ({ companyId, shiftId, bran
         name: it.pos_items?.name || "صنف",
         quantity: Number(it.quantity || 0),
         unit_price: Number(it.unit_price || 0),
+        notes: it.notes || undefined,
       })),
       orderType: sale.order_type,
       orderTime: format(new Date(sale.date), "HH:mm"),

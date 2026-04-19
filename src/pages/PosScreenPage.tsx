@@ -483,7 +483,7 @@ export const PosScreenPage: React.FC = () => {
           const { error: saleErr } = await supabase.from("pos_sales").update(salePayload as any).eq("id", editingSaleId);
           if (saleErr) throw saleErr;
 
-          const saleItems = cart.map((c) => ({ sale_id: editingSaleId, pos_item_id: c.pos_item_id, quantity: c.quantity, unit_price: c.unit_price, total: c.unit_price * c.quantity }));
+          const saleItems = cart.map((c) => ({ sale_id: editingSaleId, pos_item_id: c.pos_item_id, quantity: c.quantity, unit_price: c.unit_price, total: c.unit_price * c.quantity, notes: c.notes || null }));
           const { error: itemsErr } = await supabase.from("pos_sale_items").insert(saleItems);
           if (itemsErr) throw itemsErr;
 
@@ -501,7 +501,7 @@ export const PosScreenPage: React.FC = () => {
       } as any).select().single();
       if (saleErr) throw saleErr;
 
-      const saleItems = cart.map((c) => ({ sale_id: sale.id, pos_item_id: c.pos_item_id, quantity: c.quantity, unit_price: c.unit_price, total: c.unit_price * c.quantity }));
+      const saleItems = cart.map((c) => ({ sale_id: sale.id, pos_item_id: c.pos_item_id, quantity: c.quantity, unit_price: c.unit_price, total: c.unit_price * c.quantity, notes: c.notes || null }));
       const { error: itemsErr } = await supabase.from("pos_sale_items").insert(saleItems);
       if (itemsErr) throw itemsErr;
       return sale;

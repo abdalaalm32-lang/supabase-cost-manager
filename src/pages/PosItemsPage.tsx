@@ -42,6 +42,7 @@ export const PosItemsPage: React.FC = () => {
   const [filter, setFilter] = useState<FilterStatus>("نشط");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterBranchId, setFilterBranchId] = useState("all");
+  const [filterClass, setFilterClass] = useState<string>("all");
 
   // Edit state
   const [editOpen, setEditOpen] = useState(false);
@@ -283,6 +284,9 @@ export const PosItemsPage: React.FC = () => {
     if (filterBranchId && filterBranchId !== "all") {
       result = result.filter((item: any) => item.branch_id === filterBranchId);
     }
+    if (filterClass && filterClass !== "all") {
+      result = result.filter((item: any) => (item.menu_engineering_class || "") === filterClass);
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       result = result.filter((item: any) =>
@@ -293,7 +297,7 @@ export const PosItemsPage: React.FC = () => {
       );
     }
     return result;
-  }, [items, filter, searchQuery, filterBranchId]);
+  }, [items, filter, searchQuery, filterBranchId, filterClass]);
 
   const BranchLinkSection = ({ 
     currentBranchId, isLinked, onLinkChange, selectedIds, onSelectedChange, idPrefix 
@@ -481,6 +485,17 @@ export const PosItemsPage: React.FC = () => {
             {branches.map((b: any) => (
               <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
             ))}
+          </SelectContent>
+        </Select>
+        <Select value={filterClass} onValueChange={setFilterClass}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder="كل التصنيفات" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">كل التصنيفات</SelectItem>
+            <SelectItem value="kitchen">Kitchen</SelectItem>
+            <SelectItem value="bar">Bar</SelectItem>
+            <SelectItem value="none">بدون تصنيف</SelectItem>
           </SelectContent>
         </Select>
         <div className="flex gap-2">

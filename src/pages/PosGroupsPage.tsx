@@ -53,6 +53,7 @@ export const PosGroupsPage: React.FC = () => {
   const [filter, setFilter] = useState<FilterStatus>("نشط");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterBranchId, setFilterBranchId] = useState("all");
+  const [filterClass, setFilterClass] = useState<string>("all");
 
   // Edit state
   const [editOpen, setEditOpen] = useState(false);
@@ -241,6 +242,9 @@ export const PosGroupsPage: React.FC = () => {
     if (filterBranchId && filterBranchId !== "all") {
       result = result.filter((c: any) => c.branch_id === filterBranchId);
     }
+    if (filterClass && filterClass !== "all") {
+      result = result.filter((c: any) => (c.menu_engineering_class || "") === filterClass);
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       result = result.filter((c: any) =>
@@ -249,7 +253,7 @@ export const PosGroupsPage: React.FC = () => {
       );
     }
     return result;
-  }, [categories, filter, searchQuery, filterBranchId]);
+  }, [categories, filter, searchQuery, filterBranchId, filterClass]);
 
   return (
     <div className="space-y-6 animate-fade-in-up">
@@ -428,6 +432,17 @@ export const PosGroupsPage: React.FC = () => {
             {branches.map((b: any) => (
               <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
             ))}
+          </SelectContent>
+        </Select>
+        <Select value={filterClass} onValueChange={setFilterClass}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder="كل التصنيفات" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">كل التصنيفات</SelectItem>
+            <SelectItem value="kitchen">Kitchen</SelectItem>
+            <SelectItem value="bar">Bar</SelectItem>
+            <SelectItem value="none">بدون تصنيف</SelectItem>
           </SelectContent>
         </Select>
         <div className="flex gap-2">

@@ -427,16 +427,49 @@ ${showGrandTotal ? `
                 <TableHead className="text-xs text-right">إجمالي المبيعات</TableHead>
                 <TableHead className="text-xs text-right">رسوم التوصيل</TableHead>
                 <TableHead className="text-xs text-right">المطلوب من الطيار</TableHead>
+                <TableHead className="text-xs text-right">حالة التحصيل</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {driverStats.map((ds) => (
                 <TableRow key={ds.id}>
-                  <TableCell className="text-xs text-right font-medium">{ds.name}</TableCell>
+                  <TableCell className="text-xs text-right font-medium">
+                    <div className="flex items-center gap-2">
+                      <span>{ds.name}</span>
+                      {ds.allSettled && (
+                        <Badge className="text-[9px] gap-1 bg-emerald-500/15 text-emerald-600 border border-emerald-500/30 hover:bg-emerald-500/20">
+                          <CheckCircle2 className="h-3 w-3" /> تم التحصيل
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-xs text-right">{ds.orderCount}</TableCell>
                   <TableCell className="text-xs text-right">{ds.totalSales.toFixed(0)} EGP</TableCell>
                   <TableCell className="text-xs text-right">{ds.totalDeliveryFee.toFixed(0)} EGP</TableCell>
                   <TableCell className="text-xs text-right font-bold text-primary">{(ds.totalSales + ds.totalDeliveryFee).toFixed(0)} EGP</TableCell>
+                  <TableCell className="text-xs text-right">
+                    {ds.allSettled ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-[10px] gap-1 text-muted-foreground hover:text-destructive"
+                        onClick={() => settleDriver.mutate({ orderIds: ds.orderIds, settled: false })}
+                        disabled={settleDriver.isPending}
+                      >
+                        <RotateCcw className="h-3 w-3" /> إلغاء التحصيل
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        className="h-7 text-[10px] gap-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                        onClick={() => settleDriver.mutate({ orderIds: ds.orderIds, settled: true })}
+                        disabled={settleDriver.isPending}
+                      >
+                        <CheckCircle2 className="h-3 w-3" />
+                        {ds.settledCount > 0 ? `تحصيل المتبقي (${ds.orderCount - ds.settledCount})` : "تأكيد التحصيل"}
+                      </Button>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

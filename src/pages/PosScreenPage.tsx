@@ -551,6 +551,8 @@ export const PosScreenPage: React.FC = () => {
           orderType,
           paymentMethod,
           deliveryFee: orderType === "دليفري" ? deliveryFee : 0,
+          customerPhone: orderType === "دليفري" ? customerPhone : undefined,
+          customerAddress: orderType === "دليفري" ? customerAddress : undefined,
         });
         toast.success("تم تنفيذ الفاتورة بنجاح");
       } else if (status === "معلق") {

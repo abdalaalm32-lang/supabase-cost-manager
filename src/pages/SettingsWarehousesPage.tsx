@@ -160,7 +160,7 @@ export const SettingsWarehousesPage: React.FC = () => {
   };
 
   const openAdd = () => {
-    if (totalWarehouses >= maxWarehouses && !auth.isAdmin) {
+    if (totalWarehouses >= maxWarehouses) {
       setIsLimitDialogOpen(true);
       return;
     }
@@ -198,8 +198,8 @@ export const SettingsWarehousesPage: React.FC = () => {
         warehouseId = editWarehouse.id;
         await supabase.from("warehouse_branches").delete().eq("warehouse_id", warehouseId);
       } else {
-        // Hard limit guard (skip only for system admins)
-        if (!auth.isAdmin) {
+        // Hard limit guard (applies to everyone including system admins)
+        {
           const { count: liveCount } = await supabase
             .from("warehouses")
             .select("id", { count: "exact", head: true })
@@ -211,7 +211,7 @@ export const SettingsWarehousesPage: React.FC = () => {
             .single();
           const liveMax = (liveCompany as any)?.max_warehouses ?? 999;
           if ((liveCount ?? 0) >= liveMax) {
-            throw new Error(`لقد وصلت للحد الأقصى المسموح به للمخازن (${liveMax}). يرجى طلب ترقية الحساب.`);
+            throw new Error(`لقد وصلت للحد الأقصى المسموح به للمخازن (${liveMax}). يرجى رفع الحد من إدارة الشركات أولاً.`);
           }
         }
         const { data: code } = await supabase.rpc("generate_warehouse_code", { p_company_id: companyId! });

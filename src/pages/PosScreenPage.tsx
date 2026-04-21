@@ -838,20 +838,46 @@ export const PosScreenPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Delivery fee input */}
+              {/* Delivery extra fields */}
               {orderType === "دليفري" && (
-                <div className="mb-2">
-                  <div className="relative">
-                    <Truck className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input
-                      type="number"
-                      placeholder="رسوم التوصيل (EGP)"
-                      value={deliveryFee || ""}
-                      onChange={(e) => setDeliveryFee(Number(e.target.value))}
-                      className="glass-input h-8 text-xs pr-8"
-                    />
+                <>
+                  <div className="mb-2">
+                    <div className="relative">
+                      <Phone className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input
+                        type="tel"
+                        placeholder="رقم تليفون العميل"
+                        value={customerPhone}
+                        onChange={(e) => setCustomerPhone(e.target.value)}
+                        className="glass-input h-8 text-xs pr-8"
+                        dir="ltr"
+                      />
+                    </div>
                   </div>
-                </div>
+                  <div className="mb-2">
+                    <div className="relative">
+                      <MapPin className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input
+                        placeholder="عنوان العميل"
+                        value={customerAddress}
+                        onChange={(e) => setCustomerAddress(e.target.value)}
+                        className="glass-input h-8 text-xs pr-8"
+                      />
+                    </div>
+                  </div>
+                  <div className="mb-2">
+                    <div className="relative">
+                      <Truck className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input
+                        type="number"
+                        placeholder="رسوم التوصيل (EGP)"
+                        value={deliveryFee || ""}
+                        onChange={(e) => setDeliveryFee(Number(e.target.value))}
+                        className="glass-input h-8 text-xs pr-8"
+                      />
+                    </div>
+                  </div>
+                </>
               )}
 
 

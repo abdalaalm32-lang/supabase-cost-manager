@@ -146,6 +146,22 @@ export const SettingsBranchesPage: React.FC = () => {
         }).eq("id", editBranch.id);
         if (error) throw error;
       } else {
+        // Hard limit guard (skip only for system admins)
+        if (!auth.isAdmin) {
+          const { count: liveCount } = await supabase
+            .from("branches")
+            .select("id", { count: "exact", head: true })
+            .eq("company_id", companyId!);
+          const { data: liveCompany } = await supabase
+            .from("companies")
+            .select("max_branches")
+            .eq("id", companyId!)
+            .single();
+          const liveMax = (liveCompany as any)?.max_branches ?? 999;
+          if ((liveCount ?? 0) >= liveMax) {
+            throw new Error(`لقد وصلت للحد الأقصى المسموح به للفروع (${liveMax}). يرجى طلب ترقية الحساب.`);
+          }
+        }
         const { data: code } = await supabase.rpc("generate_branch_code", { p_company_id: companyId! });
         const { error } = await supabase.from("branches").insert({
           name: formName, address: formAddress || null,

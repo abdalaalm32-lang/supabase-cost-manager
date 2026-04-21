@@ -234,8 +234,8 @@ export const SettingsUsersPage: React.FC = () => {
     mutationFn: async () => {
       if (!formName || !formEmail || !formPassword) throw new Error("الاسم والبريد وكلمة المرور مطلوبين");
 
-      // Hard limit guard (skip only for system admins)
-      if (!auth.isAdmin) {
+      // Hard limit guard (applies to everyone including system admins)
+      {
         const { count: liveCount } = await supabase
           .from("profiles")
           .select("id", { count: "exact", head: true })
@@ -247,7 +247,7 @@ export const SettingsUsersPage: React.FC = () => {
           .single();
         const liveMax = (liveCompany as any)?.max_users ?? 5;
         if ((liveCount ?? 0) >= liveMax) {
-          throw new Error(`لقد وصلت للحد الأقصى المسموح به للمستخدمين (${liveMax}). يرجى طلب ترقية الحساب.`);
+          throw new Error(`لقد وصلت للحد الأقصى المسموح به للمستخدمين (${liveMax}). يرجى رفع الحد من إدارة الشركات أولاً.`);
         }
       }
 

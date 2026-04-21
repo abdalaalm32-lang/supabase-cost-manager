@@ -461,7 +461,7 @@ export const SettingsUsersPage: React.FC = () => {
                     <TableCell className="font-mono text-xs">{user.user_code || "—"}</TableCell>
                     <TableCell className="font-semibold">{user.full_name}</TableCell>
                     <TableCell className="text-xs text-muted-foreground" dir="ltr">{user.email}</TableCell>
-                    <TableCell>{(user.job_roles as any)?.name || "—"}</TableCell>
+                    <TableCell>{getRoleLabel(user)}</TableCell>
                     <TableCell>{(user.branches as any)?.name || "—"}</TableCell>
                     <TableCell>
                       <Badge variant={user.status === "نشط" ? "default" : "destructive"} className="text-xs">

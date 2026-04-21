@@ -112,6 +112,28 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Server-side hard limit enforcement (applies to EVERYONE including system admins)
+    const { count: currentUserCount } = await supabaseAdmin
+      .from("profiles")
+      .select("id", { count: "exact", head: true })
+      .eq("company_id", company_id);
+
+    const { data: companyLimits } = await supabaseAdmin
+      .from("companies")
+      .select("max_users")
+      .eq("id", company_id)
+      .single();
+
+    const maxAllowed = (companyLimits as any)?.max_users ?? 5;
+    if ((currentUserCount ?? 0) >= maxAllowed) {
+      return new Response(
+        JSON.stringify({
+          error: `لقد وصلت للحد الأقصى المسموح به للمستخدمين (${maxAllowed}). العدد الحالي ${currentUserCount}. يرجى رفع الحد من إدارة الشركات أولاً.`,
+        }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Check if user already exists in auth
     const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
     const existing = existingUsers?.users?.find((u) => u.email === email);

@@ -433,6 +433,8 @@ export const PosScreenPage: React.FC = () => {
     setTaxRate(0);
     setTaxInputVisible(false);
     setCustomerName("");
+    setCustomerPhone("");
+    setCustomerAddress("");
     setDeliveryFee(0);
     
     if (!keepOrderType) {

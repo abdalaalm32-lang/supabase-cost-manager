@@ -198,6 +198,22 @@ export const SettingsWarehousesPage: React.FC = () => {
         warehouseId = editWarehouse.id;
         await supabase.from("warehouse_branches").delete().eq("warehouse_id", warehouseId);
       } else {
+        // Hard limit guard (skip only for system admins)
+        if (!auth.isAdmin) {
+          const { count: liveCount } = await supabase
+            .from("warehouses")
+            .select("id", { count: "exact", head: true })
+            .eq("company_id", companyId!);
+          const { data: liveCompany } = await supabase
+            .from("companies")
+            .select("max_warehouses")
+            .eq("id", companyId!)
+            .single();
+          const liveMax = (liveCompany as any)?.max_warehouses ?? 999;
+          if ((liveCount ?? 0) >= liveMax) {
+            throw new Error(`لقد وصلت للحد الأقصى المسموح به للمخازن (${liveMax}). يرجى طلب ترقية الحساب.`);
+          }
+        }
         const { data: code } = await supabase.rpc("generate_warehouse_code", { p_company_id: companyId! });
         const { data, error } = await supabase.from("warehouses").insert({
           name: formName, classification: formClassification,

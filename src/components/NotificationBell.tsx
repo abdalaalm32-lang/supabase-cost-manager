@@ -201,18 +201,33 @@ export const NotificationBell: React.FC = () => {
   }, [auth.isOwner, auth.isAdmin, auth.profile?.company_id, playSuccessSound, queryClient]);
 
   const count = notifications?.length || 0;
+  // Unread = items newer than the last time the user opened the bell
+  const unreadCount = (notifications || []).filter((n: any) => {
+    const ts = new Date(auth.isAdmin ? n.created_at : n.admin_reply_at).getTime();
+    return ts > lastSeenAt;
+  }).length;
   if (!auth.isAdmin && !auth.isOwner) return null;
+
+  const handleToggle = () => {
+    const next = !isOpen;
+    setIsOpen(next);
+    if (next) {
+      const now = Date.now();
+      try { localStorage.setItem(seenKey, String(now)); } catch {}
+      setLastSeenAt(now);
+    }
+  };
 
   return (
     <div className="relative">
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleToggle}
         className="relative p-2 rounded-xl hover:bg-sidebar-accent text-sidebar-foreground transition-colors"
       >
         <Bell size={18} />
-        {count > 0 && (
+        {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center animate-pulse">
-            {count > 9 ? "9+" : count}
+            {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
       </button>

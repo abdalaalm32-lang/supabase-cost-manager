@@ -203,6 +203,22 @@ export const DriverSettlementPage: React.FC = () => {
     onError: (e: any) => toast.error(e.message),
   });
 
+  // Mark driver orders as settled (collected) or revert
+  const settleDriver = useMutation({
+    mutationFn: async ({ orderIds, settled }: { orderIds: string[]; settled: boolean }) => {
+      const { error } = await supabase
+        .from("pos_sales")
+        .update({ driver_settled: settled, driver_settled_at: settled ? new Date().toISOString() : null })
+        .in("id", orderIds);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      toast.success(vars.settled ? "تم تأكيد التحصيل" : "تم إلغاء التحصيل");
+      queryClient.invalidateQueries({ queryKey: ["driver-settlement-orders"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const handlePrint = () => {
     const dateStr = format(selectedDate, "yyyy/MM/dd");
     const driverLabel = selectedDriverId === "all" ? "كل الطيارين"

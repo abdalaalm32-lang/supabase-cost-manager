@@ -17,7 +17,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format, startOfDay, endOfDay } from "date-fns";
 import {
   Truck, Plus, Trash2, Edit2, Phone, CalendarIcon,
-  Users, Banknote, PackageCheck, TrendingUp, Printer
+  Users, Banknote, PackageCheck, TrendingUp, Printer,
+  CheckCircle2, RotateCcw
 } from "lucide-react";
 import { printViaIframe } from "@/lib/posPrintUtils";
 import { ExportButtons } from "@/components/ExportButtons";

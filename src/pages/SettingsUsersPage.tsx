@@ -272,7 +272,24 @@ export const SettingsUsersPage: React.FC = () => {
         },
       });
 
-      if (res.error) throw new Error(res.error.message || "حدث خطأ");
+      // قراءة body الخطأ لو السيرفر رجّع non-2xx (مثل 403 لتجاوز الحد)
+      if (res.error) {
+        let errorMsg = res.error.message || "حدث خطأ";
+        try {
+          const ctx: any = (res.error as any).context;
+          if (ctx && typeof ctx.json === "function") {
+            const body = await ctx.json();
+            if (body?.error) errorMsg = body.error;
+          } else if (ctx && typeof ctx.text === "function") {
+            const txt = await ctx.text();
+            try {
+              const parsed = JSON.parse(txt);
+              if (parsed?.error) errorMsg = parsed.error;
+            } catch { /* ignore parse error */ }
+          }
+        } catch { /* ignore extraction error */ }
+        throw new Error(errorMsg);
+      }
       if (res.data?.error) throw new Error(res.data.error);
       return res.data;
     },

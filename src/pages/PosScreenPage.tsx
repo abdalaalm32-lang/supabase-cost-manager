@@ -101,6 +101,8 @@ export const PosScreenPage: React.FC = () => {
   const deliveryAudioRef = useRef<HTMLAudioElement | null>(null);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [deliveryFee, setDeliveryFee] = useState<number>(saved?.deliveryFee || 0);
+  const [customerPhone, setCustomerPhone] = useState<string>(saved?.customerPhone || "");
+  const [customerAddress, setCustomerAddress] = useState<string>(saved?.customerAddress || "");
 
   // Current shift query for expenses — find any open shift for the company
   // (matches branch if set on shift, OR shifts without a branch, OR same branch)

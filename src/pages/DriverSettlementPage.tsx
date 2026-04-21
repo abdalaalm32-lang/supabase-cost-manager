@@ -79,12 +79,12 @@ export const DriverSettlementPage: React.FC = () => {
     return deliveredOrders.filter((o: any) => o.driver_id === selectedDriverId);
   }, [deliveredOrders, selectedDriverId]);
 
-  // Stats per driver
+  // Stats per driver (linked to filter)
   const driverStats = useMemo(() => {
-    if (!deliveredOrders) return [];
+    if (!filteredOrders) return [];
     const map = new Map<string, { name: string; orderCount: number; totalSales: number; totalDeliveryFee: number; settledCount: number; orderIds: string[] }>();
     
-    deliveredOrders.forEach((o: any) => {
+    filteredOrders.forEach((o: any) => {
       const driverName = (o.delivery_drivers as any)?.name || "غير معيّن";
       const key = o.driver_id || "unassigned";
       const existing = map.get(key);
@@ -106,7 +106,7 @@ export const DriverSettlementPage: React.FC = () => {
       }
     });
     return Array.from(map.entries()).map(([id, stats]) => ({ id, ...stats, allSettled: stats.settledCount === stats.orderCount }));
-  }, [deliveredOrders]);
+  }, [filteredOrders]);
 
   const totalStats = useMemo(() => {
     return {

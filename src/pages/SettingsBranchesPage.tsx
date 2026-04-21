@@ -146,8 +146,8 @@ export const SettingsBranchesPage: React.FC = () => {
         }).eq("id", editBranch.id);
         if (error) throw error;
       } else {
-        // Hard limit guard (skip only for system admins)
-        if (!auth.isAdmin) {
+        // Hard limit guard (applies to everyone including system admins)
+        {
           const { count: liveCount } = await supabase
             .from("branches")
             .select("id", { count: "exact", head: true })
@@ -159,7 +159,7 @@ export const SettingsBranchesPage: React.FC = () => {
             .single();
           const liveMax = (liveCompany as any)?.max_branches ?? 999;
           if ((liveCount ?? 0) >= liveMax) {
-            throw new Error(`لقد وصلت للحد الأقصى المسموح به للفروع (${liveMax}). يرجى طلب ترقية الحساب.`);
+            throw new Error(`لقد وصلت للحد الأقصى المسموح به للفروع (${liveMax}). يرجى رفع الحد من إدارة الشركات أولاً.`);
           }
         }
         const { data: code } = await supabase.rpc("generate_branch_code", { p_company_id: companyId! });

@@ -160,7 +160,7 @@ export const SettingsWarehousesPage: React.FC = () => {
   };
 
   const openAdd = () => {
-    if (totalWarehouses >= maxWarehouses && !auth.isAdmin) {
+    if (totalWarehouses >= maxWarehouses) {
       setIsLimitDialogOpen(true);
       return;
     }

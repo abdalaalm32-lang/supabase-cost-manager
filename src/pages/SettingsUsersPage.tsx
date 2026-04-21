@@ -92,10 +92,34 @@ export const SettingsUsersPage: React.FC = () => {
         .eq("company_id", companyId!)
         .order("created_at", { ascending: true });
       if (error) throw error;
-      return data;
+
+      // Fetch system roles (owner/admin) for all users to merge into display
+      const userIds = (data || []).map((p: any) => p.user_id).filter(Boolean);
+      const rolesMap: Record<string, string[]> = {};
+      if (userIds.length > 0) {
+        const { data: rolesData } = await supabase
+          .from("user_roles")
+          .select("user_id, role")
+          .in("user_id", userIds);
+        (rolesData || []).forEach((r: any) => {
+          if (!rolesMap[r.user_id]) rolesMap[r.user_id] = [];
+          rolesMap[r.user_id].push(r.role);
+        });
+      }
+
+      return (data || []).map((p: any) => ({ ...p, _system_roles: rolesMap[p.user_id] || [] }));
     },
     enabled: !!companyId,
   });
+
+  // Helper: display role label (Owner/Admin take precedence over job role)
+  const getRoleLabel = (user: any) => {
+    const sysRoles: string[] = user._system_roles || [];
+    const jobRoleName = (user.job_roles as any)?.name;
+    if (sysRoles.includes("owner")) return "Owner";
+    if (sysRoles.includes("admin")) return "مدير نظام";
+    return jobRoleName || "—";
+  };
 
   const { data: branches } = useQuery({
     queryKey: ["branches", companyId],

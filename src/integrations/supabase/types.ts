@@ -1117,6 +1117,8 @@ export type Database = {
           delivery_status: string | null
           discount_amount: number
           driver_id: string | null
+          driver_settled: boolean
+          driver_settled_at: string | null
           expected_delivery_time: string | null
           id: string
           invoice_number: string | null
@@ -1145,6 +1147,8 @@ export type Database = {
           delivery_status?: string | null
           discount_amount?: number
           driver_id?: string | null
+          driver_settled?: boolean
+          driver_settled_at?: string | null
           expected_delivery_time?: string | null
           id?: string
           invoice_number?: string | null
@@ -1173,6 +1177,8 @@ export type Database = {
           delivery_status?: string | null
           discount_amount?: number
           driver_id?: string | null
+          driver_settled?: boolean
+          driver_settled_at?: string | null
           expected_delivery_time?: string | null
           id?: string
           invoice_number?: string | null

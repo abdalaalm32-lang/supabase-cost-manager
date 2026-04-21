@@ -17,7 +17,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format, startOfDay, endOfDay } from "date-fns";
 import {
   Truck, Plus, Trash2, Edit2, Phone, CalendarIcon,
-  Users, Banknote, PackageCheck, TrendingUp, Printer
+  Users, Banknote, PackageCheck, TrendingUp, Printer,
+  CheckCircle2, RotateCcw
 } from "lucide-react";
 import { printViaIframe } from "@/lib/posPrintUtils";
 import { ExportButtons } from "@/components/ExportButtons";
@@ -81,7 +82,7 @@ export const DriverSettlementPage: React.FC = () => {
   // Stats per driver
   const driverStats = useMemo(() => {
     if (!deliveredOrders) return [];
-    const map = new Map<string, { name: string; orderCount: number; totalSales: number; totalDeliveryFee: number }>();
+    const map = new Map<string, { name: string; orderCount: number; totalSales: number; totalDeliveryFee: number; settledCount: number; orderIds: string[] }>();
     
     deliveredOrders.forEach((o: any) => {
       const driverName = (o.delivery_drivers as any)?.name || "غير معيّن";
@@ -91,16 +92,20 @@ export const DriverSettlementPage: React.FC = () => {
         existing.orderCount++;
         existing.totalSales += o.total_amount;
         existing.totalDeliveryFee += o.delivery_fee || 0;
+        if (o.driver_settled) existing.settledCount++;
+        existing.orderIds.push(o.id);
       } else {
         map.set(key, {
           name: driverName,
           orderCount: 1,
           totalSales: o.total_amount,
           totalDeliveryFee: o.delivery_fee || 0,
+          settledCount: o.driver_settled ? 1 : 0,
+          orderIds: [o.id],
         });
       }
     });
-    return Array.from(map.entries()).map(([id, stats]) => ({ id, ...stats }));
+    return Array.from(map.entries()).map(([id, stats]) => ({ id, ...stats, allSettled: stats.settledCount === stats.orderCount }));
   }, [deliveredOrders]);
 
   const totalStats = useMemo(() => {
@@ -194,6 +199,22 @@ export const DriverSettlementPage: React.FC = () => {
     onSuccess: () => {
       toast.success("تم حذف الطيار");
       queryClient.invalidateQueries({ queryKey: ["delivery-drivers"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  // Mark driver orders as settled (collected) or revert
+  const settleDriver = useMutation({
+    mutationFn: async ({ orderIds, settled }: { orderIds: string[]; settled: boolean }) => {
+      const { error } = await supabase
+        .from("pos_sales")
+        .update({ driver_settled: settled, driver_settled_at: settled ? new Date().toISOString() : null })
+        .in("id", orderIds);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      toast.success(vars.settled ? "تم تأكيد التحصيل" : "تم إلغاء التحصيل");
+      queryClient.invalidateQueries({ queryKey: ["driver-settlement-orders"] });
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -406,16 +427,49 @@ ${showGrandTotal ? `
                 <TableHead className="text-xs text-right">إجمالي المبيعات</TableHead>
                 <TableHead className="text-xs text-right">رسوم التوصيل</TableHead>
                 <TableHead className="text-xs text-right">المطلوب من الطيار</TableHead>
+                <TableHead className="text-xs text-right">حالة التحصيل</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {driverStats.map((ds) => (
                 <TableRow key={ds.id}>
-                  <TableCell className="text-xs text-right font-medium">{ds.name}</TableCell>
+                  <TableCell className="text-xs text-right font-medium">
+                    <div className="flex items-center gap-2">
+                      <span>{ds.name}</span>
+                      {ds.allSettled && (
+                        <Badge className="text-[9px] gap-1 bg-emerald-500/15 text-emerald-600 border border-emerald-500/30 hover:bg-emerald-500/20">
+                          <CheckCircle2 className="h-3 w-3" /> تم التحصيل
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-xs text-right">{ds.orderCount}</TableCell>
                   <TableCell className="text-xs text-right">{ds.totalSales.toFixed(0)} EGP</TableCell>
                   <TableCell className="text-xs text-right">{ds.totalDeliveryFee.toFixed(0)} EGP</TableCell>
                   <TableCell className="text-xs text-right font-bold text-primary">{(ds.totalSales + ds.totalDeliveryFee).toFixed(0)} EGP</TableCell>
+                  <TableCell className="text-xs text-right">
+                    {ds.allSettled ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-[10px] gap-1 text-muted-foreground hover:text-destructive"
+                        onClick={() => settleDriver.mutate({ orderIds: ds.orderIds, settled: false })}
+                        disabled={settleDriver.isPending}
+                      >
+                        <RotateCcw className="h-3 w-3" /> إلغاء التحصيل
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        className="h-7 text-[10px] gap-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                        onClick={() => settleDriver.mutate({ orderIds: ds.orderIds, settled: true })}
+                        disabled={settleDriver.isPending}
+                      >
+                        <CheckCircle2 className="h-3 w-3" />
+                        {ds.settledCount > 0 ? `تحصيل المتبقي (${ds.orderCount - ds.settledCount})` : "تأكيد التحصيل"}
+                      </Button>
+                    )}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -450,7 +504,16 @@ ${showGrandTotal ? `
                 <TableRow key={order.id}>
                   <TableCell className="text-xs text-right font-mono">{order.invoice_number}</TableCell>
                   <TableCell className="text-xs text-right">{order.customer_name || "—"}</TableCell>
-                  <TableCell className="text-xs text-right">{(order.delivery_drivers as any)?.name || "غير معيّن"}</TableCell>
+                  <TableCell className="text-xs text-right">
+                    <div className="flex items-center gap-1.5">
+                      <span>{(order.delivery_drivers as any)?.name || "غير معيّن"}</span>
+                      {order.driver_settled && (
+                        <Badge className="text-[9px] gap-0.5 bg-emerald-500/15 text-emerald-600 border border-emerald-500/30 hover:bg-emerald-500/20">
+                          <CheckCircle2 className="h-2.5 w-2.5" /> تم التحصيل
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-xs text-right">{order.total_amount.toFixed(0)} EGP</TableCell>
                   <TableCell className="text-xs text-right">{(order.delivery_fee || 0).toFixed(0)} EGP</TableCell>
                   <TableCell className="text-xs text-right font-bold text-primary">{(order.total_amount + (order.delivery_fee || 0)).toFixed(0)} EGP</TableCell>

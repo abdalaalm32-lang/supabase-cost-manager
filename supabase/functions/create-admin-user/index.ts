@@ -126,11 +126,15 @@ Deno.serve(async (req) => {
 
     const maxAllowed = (companyLimits as any)?.max_users ?? 5;
     if ((currentUserCount ?? 0) >= maxAllowed) {
+      // status 200 عشان الـ frontend يقدر يقرأ body الرسالة بسهولة
       return new Response(
         JSON.stringify({
           error: `لقد وصلت للحد الأقصى المسموح به للمستخدمين (${maxAllowed}). العدد الحالي ${currentUserCount}. يرجى رفع الحد من إدارة الشركات أولاً.`,
+          code: "USER_LIMIT_REACHED",
+          max_users: maxAllowed,
+          current_count: currentUserCount,
         }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

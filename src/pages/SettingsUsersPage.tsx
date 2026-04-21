@@ -210,6 +210,23 @@ export const SettingsUsersPage: React.FC = () => {
     mutationFn: async () => {
       if (!formName || !formEmail || !formPassword) throw new Error("الاسم والبريد وكلمة المرور مطلوبين");
 
+      // Hard limit guard (skip only for system admins)
+      if (!auth.isAdmin) {
+        const { count: liveCount } = await supabase
+          .from("profiles")
+          .select("id", { count: "exact", head: true })
+          .eq("company_id", companyId!);
+        const { data: liveCompany } = await supabase
+          .from("companies")
+          .select("max_users")
+          .eq("id", companyId!)
+          .single();
+        const liveMax = (liveCompany as any)?.max_users ?? 5;
+        if ((liveCount ?? 0) >= liveMax) {
+          throw new Error(`لقد وصلت للحد الأقصى المسموح به للمستخدمين (${liveMax}). يرجى طلب ترقية الحساب.`);
+        }
+      }
+
       const { data: userCode } = await supabase.rpc("generate_user_code", { p_company_id: companyId! });
 
       const res = await supabase.functions.invoke("create-admin-user", {

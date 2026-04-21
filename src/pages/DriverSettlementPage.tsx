@@ -82,7 +82,7 @@ export const DriverSettlementPage: React.FC = () => {
   // Stats per driver
   const driverStats = useMemo(() => {
     if (!deliveredOrders) return [];
-    const map = new Map<string, { name: string; orderCount: number; totalSales: number; totalDeliveryFee: number }>();
+    const map = new Map<string, { name: string; orderCount: number; totalSales: number; totalDeliveryFee: number; settledCount: number; orderIds: string[] }>();
     
     deliveredOrders.forEach((o: any) => {
       const driverName = (o.delivery_drivers as any)?.name || "غير معيّن";
@@ -92,16 +92,20 @@ export const DriverSettlementPage: React.FC = () => {
         existing.orderCount++;
         existing.totalSales += o.total_amount;
         existing.totalDeliveryFee += o.delivery_fee || 0;
+        if (o.driver_settled) existing.settledCount++;
+        existing.orderIds.push(o.id);
       } else {
         map.set(key, {
           name: driverName,
           orderCount: 1,
           totalSales: o.total_amount,
           totalDeliveryFee: o.delivery_fee || 0,
+          settledCount: o.driver_settled ? 1 : 0,
+          orderIds: [o.id],
         });
       }
     });
-    return Array.from(map.entries()).map(([id, stats]) => ({ id, ...stats }));
+    return Array.from(map.entries()).map(([id, stats]) => ({ id, ...stats, allSettled: stats.settledCount === stats.orderCount }));
   }, [deliveredOrders]);
 
   const totalStats = useMemo(() => {

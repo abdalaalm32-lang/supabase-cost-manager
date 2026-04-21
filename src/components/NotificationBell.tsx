@@ -14,6 +14,10 @@ export const NotificationBell: React.FC = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
+  const seenKey = `notifications-last-seen-${auth.profile?.user_id || "anon"}`;
+  const [lastSeenAt, setLastSeenAt] = useState<number>(() => {
+    try { return parseInt(localStorage.getItem(seenKey) || "0", 10) || 0; } catch { return 0; }
+  });
   // Start at -1 so initial load doesn't fire the sound; first real fetch sets baseline
   const prevCountRef = useRef<number>(-1);
 

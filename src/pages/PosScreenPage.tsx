@@ -494,6 +494,9 @@ export const PosScreenPage: React.FC = () => {
         order_type: orderType,
         payment_method: paymentMethod,
         delivery_fee: orderType === "دليفري" ? deliveryFee : 0,
+        customer_name: customerName || null,
+        customer_phone: orderType === "دليفري" ? (customerPhone || null) : null,
+        customer_address: orderType === "دليفري" ? (customerAddress || null) : null,
         notes: cart.filter(c => c.notes).map(c => `${c.name}: ${c.notes}`).join(" | ") || null,
       };
 

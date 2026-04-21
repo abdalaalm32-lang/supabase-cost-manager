@@ -282,7 +282,18 @@ export const SettingsUsersPage: React.FC = () => {
       resetForm();
       queryClient.invalidateQueries({ queryKey: ["settings-users"] });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any) => {
+      const msg = e?.message || "حدث خطأ";
+      // إذا كان الخطأ متعلق بحد المستخدمين، اعرض الـ Dialog المنبثق بدل الـ toast
+      if (msg.includes("الحد الأقصى") || msg.includes("max_users")) {
+        setIsDialogOpen(false);
+        setIsLimitDialogOpen(true);
+        queryClient.invalidateQueries({ queryKey: ["settings-users"] });
+        queryClient.invalidateQueries({ queryKey: ["company"] });
+      } else {
+        toast.error(msg);
+      }
+    },
   });
 
   const updateUser = useMutation({

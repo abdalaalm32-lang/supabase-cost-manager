@@ -504,7 +504,16 @@ ${showGrandTotal ? `
                 <TableRow key={order.id}>
                   <TableCell className="text-xs text-right font-mono">{order.invoice_number}</TableCell>
                   <TableCell className="text-xs text-right">{order.customer_name || "—"}</TableCell>
-                  <TableCell className="text-xs text-right">{(order.delivery_drivers as any)?.name || "غير معيّن"}</TableCell>
+                  <TableCell className="text-xs text-right">
+                    <div className="flex items-center gap-1.5">
+                      <span>{(order.delivery_drivers as any)?.name || "غير معيّن"}</span>
+                      {order.driver_settled && (
+                        <Badge className="text-[9px] gap-0.5 bg-emerald-500/15 text-emerald-600 border border-emerald-500/30 hover:bg-emerald-500/20">
+                          <CheckCircle2 className="h-2.5 w-2.5" /> تم التحصيل
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-xs text-right">{order.total_amount.toFixed(0)} EGP</TableCell>
                   <TableCell className="text-xs text-right">{(order.delivery_fee || 0).toFixed(0)} EGP</TableCell>
                   <TableCell className="text-xs text-right font-bold text-primary">{(order.total_amount + (order.delivery_fee || 0)).toFixed(0)} EGP</TableCell>

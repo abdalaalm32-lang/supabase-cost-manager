@@ -199,7 +199,7 @@ export const SettingsUsersPage: React.FC = () => {
   };
 
   const openAddDialog = () => {
-    if (totalUsers >= maxUsers && !auth.isAdmin) {
+    if (totalUsers >= maxUsers) {
       setIsLimitDialogOpen(true);
       return;
     }

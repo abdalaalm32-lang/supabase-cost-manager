@@ -1,0 +1,3 @@
+ALTER TABLE public.pos_sales 
+ADD COLUMN IF NOT EXISTS driver_settled BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN IF NOT EXISTS driver_settled_at TIMESTAMPTZ;

@@ -417,7 +417,7 @@ ${showGrandTotal ? `
       </div>
 
       {/* Per-driver summary */}
-      {driverStats.length > 0 && selectedDriverId === "all" && (
+      {driverStats.length > 0 && (
         <div className="rounded-lg border border-border/30 overflow-hidden">
           <Table>
             <TableHeader>

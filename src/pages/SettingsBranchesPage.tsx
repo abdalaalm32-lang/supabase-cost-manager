@@ -96,7 +96,7 @@ export const SettingsBranchesPage: React.FC = () => {
   };
 
   const openAdd = () => {
-    if (totalBranches >= maxBranches && !auth.isAdmin) {
+    if (totalBranches >= maxBranches) {
       setIsLimitDialogOpen(true);
       return;
     }

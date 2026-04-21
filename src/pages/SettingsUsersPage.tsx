@@ -92,10 +92,34 @@ export const SettingsUsersPage: React.FC = () => {
         .eq("company_id", companyId!)
         .order("created_at", { ascending: true });
       if (error) throw error;
-      return data;
+
+      // Fetch system roles (owner/admin) for all users to merge into display
+      const userIds = (data || []).map((p: any) => p.user_id).filter(Boolean);
+      const rolesMap: Record<string, string[]> = {};
+      if (userIds.length > 0) {
+        const { data: rolesData } = await supabase
+          .from("user_roles")
+          .select("user_id, role")
+          .in("user_id", userIds);
+        (rolesData || []).forEach((r: any) => {
+          if (!rolesMap[r.user_id]) rolesMap[r.user_id] = [];
+          rolesMap[r.user_id].push(r.role);
+        });
+      }
+
+      return (data || []).map((p: any) => ({ ...p, _system_roles: rolesMap[p.user_id] || [] }));
     },
     enabled: !!companyId,
   });
+
+  // Helper: display role label (Owner/Admin take precedence over job role)
+  const getRoleLabel = (user: any) => {
+    const sysRoles: string[] = user._system_roles || [];
+    const jobRoleName = (user.job_roles as any)?.name;
+    if (sysRoles.includes("owner")) return "Owner";
+    if (sysRoles.includes("admin")) return "مدير نظام";
+    return jobRoleName || "—";
+  };
 
   const { data: branches } = useQuery({
     queryKey: ["branches", companyId],
@@ -402,7 +426,7 @@ export const SettingsUsersPage: React.FC = () => {
       {/* Users Table */}
       <div className="flex justify-end mb-2">
         <ExportButtons
-          data={(profiles || []).map((u: any) => ({ code: u.user_code || "—", name: u.full_name, email: u.email, role: (u.job_roles as any)?.name || "—", branch: (u.branches as any)?.name || "—", status: u.status }))}
+          data={(profiles || []).map((u: any) => ({ code: u.user_code || "—", name: u.full_name, email: u.email, role: getRoleLabel(u), branch: (u.branches as any)?.name || "—", status: u.status }))}
           columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الاسم" }, { key: "email", label: "البريد الإلكتروني" }, { key: "role", label: "الدور الوظيفي" }, { key: "branch", label: "الفرع" }, { key: "status", label: "الحالة" }]}
           filename="المستخدمين"
           title="المستخدمين"
@@ -437,7 +461,7 @@ export const SettingsUsersPage: React.FC = () => {
                     <TableCell className="font-mono text-xs">{user.user_code || "—"}</TableCell>
                     <TableCell className="font-semibold">{user.full_name}</TableCell>
                     <TableCell className="text-xs text-muted-foreground" dir="ltr">{user.email}</TableCell>
-                    <TableCell>{(user.job_roles as any)?.name || "—"}</TableCell>
+                    <TableCell>{getRoleLabel(user)}</TableCell>
                     <TableCell>{(user.branches as any)?.name || "—"}</TableCell>
                     <TableCell>
                       <Badge variant={user.status === "نشط" ? "default" : "destructive"} className="text-xs">

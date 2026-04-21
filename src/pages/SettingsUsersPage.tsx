@@ -426,7 +426,7 @@ export const SettingsUsersPage: React.FC = () => {
       {/* Users Table */}
       <div className="flex justify-end mb-2">
         <ExportButtons
-          data={(profiles || []).map((u: any) => ({ code: u.user_code || "—", name: u.full_name, email: u.email, role: (u.job_roles as any)?.name || "—", branch: (u.branches as any)?.name || "—", status: u.status }))}
+          data={(profiles || []).map((u: any) => ({ code: u.user_code || "—", name: u.full_name, email: u.email, role: getRoleLabel(u), branch: (u.branches as any)?.name || "—", status: u.status }))}
           columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الاسم" }, { key: "email", label: "البريد الإلكتروني" }, { key: "role", label: "الدور الوظيفي" }, { key: "branch", label: "الفرع" }, { key: "status", label: "الحالة" }]}
           filename="المستخدمين"
           title="المستخدمين"

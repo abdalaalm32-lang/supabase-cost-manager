@@ -101,6 +101,8 @@ export const PosScreenPage: React.FC = () => {
   const deliveryAudioRef = useRef<HTMLAudioElement | null>(null);
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [deliveryFee, setDeliveryFee] = useState<number>(saved?.deliveryFee || 0);
+  const [customerPhone, setCustomerPhone] = useState<string>(saved?.customerPhone || "");
+  const [customerAddress, setCustomerAddress] = useState<string>(saved?.customerAddress || "");
 
   // Current shift query for expenses — find any open shift for the company
   // (matches branch if set on shift, OR shifts without a branch, OR same branch)
@@ -270,9 +272,9 @@ export const PosScreenPage: React.FC = () => {
   });
 
   useEffect(() => {
-    const draft = { cart, branchId, saleDate: saleDate.toISOString(), taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId, customerName, orderType, paymentMethod, deliveryFee };
+    const draft = { cart, branchId, saleDate: saleDate.toISOString(), taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId, customerName, orderType, paymentMethod, deliveryFee, customerPhone, customerAddress };
     sessionStorage.setItem("pos_draft", JSON.stringify(draft));
-  }, [cart, branchId, saleDate, taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId, customerName, orderType, paymentMethod, deliveryFee]);
+  }, [cart, branchId, saleDate, taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId, customerName, orderType, paymentMethod, deliveryFee, customerPhone, customerAddress]);
 
   // Load archived sale from navigation state
   useEffect(() => {
@@ -431,6 +433,8 @@ export const PosScreenPage: React.FC = () => {
     setTaxRate(0);
     setTaxInputVisible(false);
     setCustomerName("");
+    setCustomerPhone("");
+    setCustomerAddress("");
     setDeliveryFee(0);
     
     if (!keepOrderType) {
@@ -490,6 +494,9 @@ export const PosScreenPage: React.FC = () => {
         order_type: orderType,
         payment_method: paymentMethod,
         delivery_fee: orderType === "دليفري" ? deliveryFee : 0,
+        customer_name: customerName || null,
+        customer_phone: orderType === "دليفري" ? (customerPhone || null) : null,
+        customer_address: orderType === "دليفري" ? (customerAddress || null) : null,
         notes: cart.filter(c => c.notes).map(c => `${c.name}: ${c.notes}`).join(" | ") || null,
       };
 
@@ -544,6 +551,8 @@ export const PosScreenPage: React.FC = () => {
           orderType,
           paymentMethod,
           deliveryFee: orderType === "دليفري" ? deliveryFee : 0,
+          customerPhone: orderType === "دليفري" ? customerPhone : undefined,
+          customerAddress: orderType === "دليفري" ? customerAddress : undefined,
         });
         toast.success("تم تنفيذ الفاتورة بنجاح");
       } else if (status === "معلق") {
@@ -831,20 +840,46 @@ export const PosScreenPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Delivery fee input */}
+              {/* Delivery extra fields */}
               {orderType === "دليفري" && (
-                <div className="mb-2">
-                  <div className="relative">
-                    <Truck className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input
-                      type="number"
-                      placeholder="رسوم التوصيل (EGP)"
-                      value={deliveryFee || ""}
-                      onChange={(e) => setDeliveryFee(Number(e.target.value))}
-                      className="glass-input h-8 text-xs pr-8"
-                    />
+                <>
+                  <div className="mb-2">
+                    <div className="relative">
+                      <Phone className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input
+                        type="tel"
+                        placeholder="رقم تليفون العميل"
+                        value={customerPhone}
+                        onChange={(e) => setCustomerPhone(e.target.value)}
+                        className="glass-input h-8 text-xs pr-8"
+                        dir="ltr"
+                      />
+                    </div>
                   </div>
-                </div>
+                  <div className="mb-2">
+                    <div className="relative">
+                      <MapPin className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input
+                        placeholder="عنوان العميل"
+                        value={customerAddress}
+                        onChange={(e) => setCustomerAddress(e.target.value)}
+                        className="glass-input h-8 text-xs pr-8"
+                      />
+                    </div>
+                  </div>
+                  <div className="mb-2">
+                    <div className="relative">
+                      <Truck className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <Input
+                        type="number"
+                        placeholder="رسوم التوصيل (EGP)"
+                        value={deliveryFee || ""}
+                        onChange={(e) => setDeliveryFee(Number(e.target.value))}
+                        className="glass-input h-8 text-xs pr-8"
+                      />
+                    </div>
+                  </div>
+                </>
               )}
 
 

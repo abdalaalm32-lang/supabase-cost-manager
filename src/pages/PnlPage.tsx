@@ -605,16 +605,16 @@ export const PnlPage: React.FC = () => {
                   <th className="text-right p-3 font-semibold text-foreground w-1/2">البند</th>
                   <th className="text-left p-3 font-semibold text-foreground">
                     المبلغ (ج.م)
-                    {showComparison && compareBranchId && (
-                      <span className="block text-xs font-normal text-muted-foreground">{getBranchName(branchId)}</span>
+                    {comparisonActive && (
+                      <span className="block text-xs font-normal text-muted-foreground">{mainLabel}</span>
                     )}
                   </th>
                   <th className="text-left p-3 font-semibold text-foreground w-24">النسبة</th>
-                  {showComparison && compareBranchId && (
+                  {comparisonActive && (
                     <>
                       <th className="text-left p-3 font-semibold text-foreground border-r">
                         المبلغ (ج.م)
-                        <span className="block text-xs font-normal text-muted-foreground">{getBranchName(compareBranchId)}</span>
+                        <span className="block text-xs font-normal text-muted-foreground">{compareLabel}</span>
                       </th>
                       <th className="text-left p-3 font-semibold text-foreground w-24">النسبة</th>
                       <th className="text-left p-3 font-semibold text-foreground w-28">الفرق</th>

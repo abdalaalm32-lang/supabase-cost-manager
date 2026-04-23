@@ -140,19 +140,30 @@ export const PnlPage: React.FC = () => {
     enabled: !!companyId,
   });
 
-  // P&L data
+  // P&L data (main)
   const pnl = usePnlData(dateFromStr, dateToStr, branchId, manualExpenses, deletedAutoExpenses, autoExpenseOverrides);
-  // Comparison: either a different branch (same period) OR same branch (different period)
-  const pnlCompare = usePnlData(
+
+  // Comparison: period mode uses single hook call (same branch, different period)
+  const pnlComparePeriod = usePnlData(
     compareMode === "period" ? compareDateFromStr : dateFromStr,
     compareMode === "period" ? compareDateToStr : dateToStr,
-    compareMode === "period" ? branchId : (compareBranchId || "___none___"),
+    compareMode === "period" ? branchId : "___none___",
     manualExpensesCompare
+  );
+
+  // Branch mode: results collected from child loaders, keyed by branchId
+  const [branchCompareData, setBranchCompareData] = useState<Record<string, ReturnType<typeof usePnlData>>>({});
+  const handleBranchCompareData = React.useCallback(
+    (id: string, data: ReturnType<typeof usePnlData>) => {
+      setBranchCompareData((prev) => ({ ...prev, [id]: data }));
+    },
+    []
   );
 
   // Should comparison columns render?
   const comparisonActive =
-    showComparison && (compareMode === "period" || (compareMode === "branch" && !!compareBranchId));
+    showComparison &&
+    (compareMode === "period" || (compareMode === "branch" && compareBranchIds.length > 0));
 
   const addManualExpense = () => {
     if (!newExpName.trim() || !Number(newExpAmount)) return;

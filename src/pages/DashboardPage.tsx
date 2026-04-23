@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useLocationStock } from "@/hooks/useLocationStock";
 import { useBranchCosts } from "@/hooks/useBranchCosts";
+import { CostAlertsCard } from "@/components/CostAlertsCard";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -237,6 +238,9 @@ export const DashboardPage: React.FC = () => {
           </button>
         )}
       </div>
+
+      {/* Cost alerts (compact) */}
+      <CostAlertsCard threshold={15} compact maxItems={3} />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <KPICard title="إجمالي المبيعات" value={fmtCurrency(d.totalSales)} icon={DollarSign} gradient="bg-primary text-primary" subtitle={`${d.salesCount} فاتورة`} />

@@ -64,6 +64,12 @@ export const PnlPage: React.FC = () => {
   const [branchId, setBranchId] = useState("all");
   const [compareBranchId, setCompareBranchId] = useState<string>("");
   const [showComparison, setShowComparison] = useState(false);
+  // Comparison mode: branch vs branch  OR period vs period (same branch)
+  const [compareMode, setCompareMode] = useState<"branch" | "period">("branch");
+  // Period comparison (when compareMode === "period")
+  const [comparePreset, setComparePreset] = useState<Preset>("lastMonth");
+  const [compareCustomFrom, setCompareCustomFrom] = useState<Date>(startOfMonth(subMonths(new Date(), 1)));
+  const [compareCustomTo, setCompareCustomTo] = useState<Date>(endOfMonth(subMonths(new Date(), 1)));
 
   // Manual expenses
   const [manualExpenses, setManualExpenses] = useState<IndirectExpenseItem[]>([]);
@@ -84,8 +90,15 @@ export const PnlPage: React.FC = () => {
     return getPresetDates(preset);
   }, [preset, customFrom, customTo]);
 
+  const [compareDateFrom, compareDateTo] = useMemo(() => {
+    if (comparePreset === "custom") return [compareCustomFrom, compareCustomTo];
+    return getPresetDates(comparePreset);
+  }, [comparePreset, compareCustomFrom, compareCustomTo]);
+
   const dateFromStr = format(dateFrom, "yyyy-MM-dd");
   const dateToStr = format(dateTo, "yyyy-MM-dd");
+  const compareDateFromStr = format(compareDateFrom, "yyyy-MM-dd");
+  const compareDateToStr = format(compareDateTo, "yyyy-MM-dd");
 
   // Branches
   const { data: branches } = useQuery({
@@ -103,12 +116,17 @@ export const PnlPage: React.FC = () => {
 
   // P&L data
   const pnl = usePnlData(dateFromStr, dateToStr, branchId, manualExpenses, deletedAutoExpenses, autoExpenseOverrides);
+  // Comparison: either a different branch (same period) OR same branch (different period)
   const pnlCompare = usePnlData(
-    dateFromStr,
-    dateToStr,
-    compareBranchId || "___none___",
+    compareMode === "period" ? compareDateFromStr : dateFromStr,
+    compareMode === "period" ? compareDateToStr : dateToStr,
+    compareMode === "period" ? branchId : (compareBranchId || "___none___"),
     manualExpensesCompare
   );
+
+  // Should comparison columns render?
+  const comparisonActive =
+    showComparison && (compareMode === "period" || (compareMode === "branch" && !!compareBranchId));
 
   const addManualExpense = () => {
     if (!newExpName.trim() || !Number(newExpAmount)) return;
@@ -165,10 +183,17 @@ export const PnlPage: React.FC = () => {
   };
 
   const rows = buildRows(pnl);
-  const compareRows = showComparison && compareBranchId ? buildRows(pnlCompare) : [];
+  const compareRows = comparisonActive ? buildRows(pnlCompare) : [];
 
   const getBranchName = (id: string) =>
     id === "all" ? "جميع الفروع" : branches?.find((b) => b.id === id)?.name || "";
+
+  const compareLabel = compareMode === "period"
+    ? `${format(compareDateFrom, "yyyy/MM/dd")} - ${format(compareDateTo, "yyyy/MM/dd")}`
+    : compareBranchId ? getBranchName(compareBranchId) : "";
+  const mainLabel = compareMode === "period"
+    ? `${format(dateFrom, "yyyy/MM/dd")} - ${format(dateTo, "yyyy/MM/dd")}`
+    : getBranchName(branchId);
 
   // Export
   const handlePrint = () => {
@@ -441,26 +466,104 @@ export const PnlPage: React.FC = () => {
                 onClick={() => setShowComparison(!showComparison)}
               >
                 <GitCompare className="h-3.5 w-3.5 ml-1" />
-                مقارنة فروع
+                {showComparison ? "إيقاف المقارنة" : "تفعيل المقارنة"}
               </Button>
             </div>
 
             {showComparison && (
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">فرع المقارنة</label>
-                <Select value={compareBranchId} onValueChange={setCompareBranchId}>
-                  <SelectTrigger className="w-40 h-8 text-xs">
-                    <SelectValue placeholder="اختر فرع" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(branches || [])
-                      .filter((b) => b.id !== branchId)
-                      .map((b) => (
-                        <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+              <>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">نوع المقارنة</label>
+                  <div className="flex items-center rounded-lg border border-border/40 overflow-hidden">
+                    <Button
+                      size="sm"
+                      variant={compareMode === "branch" ? "default" : "ghost"}
+                      className="h-8 text-xs rounded-none px-3"
+                      onClick={() => setCompareMode("branch")}
+                    >
+                      <Building2 className="h-3 w-3 ml-1" />
+                      فرع
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={compareMode === "period" ? "default" : "ghost"}
+                      className="h-8 text-xs rounded-none px-3"
+                      onClick={() => setCompareMode("period")}
+                    >
+                      <CalendarIcon className="h-3 w-3 ml-1" />
+                      فترة
+                    </Button>
+                  </div>
+                </div>
+
+                {compareMode === "branch" ? (
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground">فرع المقارنة</label>
+                    <Select value={compareBranchId} onValueChange={setCompareBranchId}>
+                      <SelectTrigger className="w-40 h-8 text-xs">
+                        <SelectValue placeholder="اختر فرع" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(branches || [])
+                          .filter((b) => b.id !== branchId)
+                          .map((b) => (
+                            <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-muted-foreground">فترة المقارنة</label>
+                    <div className="flex gap-1 flex-wrap">
+                      {(Object.keys(presetLabels) as Preset[]).map((p) => (
+                        <Button
+                          key={p}
+                          size="sm"
+                          variant={comparePreset === p ? "default" : "outline"}
+                          className="text-xs h-8"
+                          onClick={() => setComparePreset(p)}
+                        >
+                          {presetLabels[p]}
+                        </Button>
                       ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                    </div>
+                  </div>
+                )}
+
+                {compareMode === "period" && comparePreset === "custom" && (
+                  <>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">من (مقارنة)</label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" size="sm" className="w-36 justify-start text-xs">
+                            <CalendarIcon className="h-3.5 w-3.5 ml-1" />
+                            {format(compareCustomFrom, "yyyy/MM/dd")}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar mode="single" selected={compareCustomFrom} onSelect={(d) => d && setCompareCustomFrom(d)} />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">إلى (مقارنة)</label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" size="sm" className="w-36 justify-start text-xs">
+                            <CalendarIcon className="h-3.5 w-3.5 ml-1" />
+                            {format(compareCustomTo, "yyyy/MM/dd")}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar mode="single" selected={compareCustomTo} onSelect={(d) => d && setCompareCustomTo(d)} />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </>
+                )}
+              </>
             )}
           </div>
         </CardContent>
@@ -502,16 +605,16 @@ export const PnlPage: React.FC = () => {
                   <th className="text-right p-3 font-semibold text-foreground w-1/2">البند</th>
                   <th className="text-left p-3 font-semibold text-foreground">
                     المبلغ (ج.م)
-                    {showComparison && compareBranchId && (
-                      <span className="block text-xs font-normal text-muted-foreground">{getBranchName(branchId)}</span>
+                    {comparisonActive && (
+                      <span className="block text-xs font-normal text-muted-foreground">{mainLabel}</span>
                     )}
                   </th>
                   <th className="text-left p-3 font-semibold text-foreground w-24">النسبة</th>
-                  {showComparison && compareBranchId && (
+                  {comparisonActive && (
                     <>
                       <th className="text-left p-3 font-semibold text-foreground border-r">
                         المبلغ (ج.م)
-                        <span className="block text-xs font-normal text-muted-foreground">{getBranchName(compareBranchId)}</span>
+                        <span className="block text-xs font-normal text-muted-foreground">{compareLabel}</span>
                       </th>
                       <th className="text-left p-3 font-semibold text-foreground w-24">النسبة</th>
                       <th className="text-left p-3 font-semibold text-foreground w-28">الفرق</th>

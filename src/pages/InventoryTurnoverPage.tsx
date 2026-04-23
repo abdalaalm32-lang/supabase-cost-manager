@@ -5,6 +5,7 @@ import { PrintButton } from "@/components/PrintButton";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useBranchCosts } from "@/hooks/useBranchCosts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -93,6 +94,10 @@ export const InventoryTurnoverPage: React.FC = () => {
 
   const branchFilter = locationType === "branch" ? locationFilter : "all";
   const warehouseFilter = locationType === "warehouse" ? locationFilter : "all";
+
+  // Per-location cost overrides (with global fallback)
+  const activeLocationId = locationFilter !== "all" ? locationFilter : null;
+  const { getCost: getBranchCost } = useBranchCosts(activeLocationId);
 
   // --- Data queries ---
   const { data: branches } = useQuery({

@@ -682,7 +682,7 @@ export const PnlPage: React.FC = () => {
                       <td className="p-3 text-left text-muted-foreground text-xs">
                         {row.pctVal}
                       </td>
-                      {showComparison && compareBranchId && compareRow && (
+                      {comparisonActive && compareRow && (
                         <>
                           <td className={`p-3 text-left tabular-nums border-r ${isTotal && compareRow.amount < 0 ? "text-destructive" : ""}`}>
                             {compareRow.type === "header" ? "" : fmt(compareRow.amount)}

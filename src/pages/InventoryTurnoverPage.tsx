@@ -415,7 +415,7 @@ export const InventoryTurnoverPage: React.FC = () => {
       const itemData = itemMap.get(si.id);
       if (!itemData) continue;
 
-      const avgCost = Number(si.avg_cost) || 0;
+      const avgCost = getBranchCost(si.id, si.avg_cost);
       const currentStock = Number(si.current_stock) || 0;
       const currentInventoryValue = currentStock * avgCost;
       const catName = (si as any).inventory_categories?.name || "بدون مجموعة";
@@ -499,7 +499,7 @@ export const InventoryTurnoverPage: React.FC = () => {
 
     results.sort((a, b) => a.turnoverRate - b.turnoverRate);
     return results;
-  }, [stockItems, stockItemLocations, purchaseData, productionIngData, productionRecords, wasteData, transferData, posSaleItems, recipeIngredients, dateFrom, dateTo, branchFilter, warehouseFilter, locationItemIds, periodDays]);
+  }, [stockItems, stockItemLocations, purchaseData, productionIngData, productionRecords, wasteData, transferData, posSaleItems, recipeIngredients, dateFrom, dateTo, branchFilter, warehouseFilter, locationItemIds, periodDays, getBranchCost]);
 
   // Filtering
   const filteredData = useMemo(() => {

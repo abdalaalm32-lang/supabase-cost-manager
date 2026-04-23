@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { CalendarIcon, Store, Printer, FileSpreadsheet, Layers, Building2, Download, FileText, BarChart3, TrendingUp, TrendingDown, Minus, Warehouse } from "lucide-react";
 import { exportToExcel, exportToPDF } from "@/lib/exportUtils";
+import { useBranchCosts } from "@/hooks/useBranchCosts";
 import { toast } from "sonner";
 import {
   Table, TableHeader, TableBody, TableFooter, TableHead, TableRow, TableCell,
@@ -69,6 +70,11 @@ export const CostAnalysisPage: React.FC = () => {
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [showCharts, setShowCharts] = useState(false);
+
+  // Per-branch / per-warehouse costs (fallback to global avg_cost)
+  const activeLocationId =
+    branchFilter !== "all" ? branchFilter : warehouseFilter !== "all" ? warehouseFilter : null;
+  const { getCost } = useBranchCosts(activeLocationId);
 
   // Charts dialog state
   const [chartCategoryFilter, setChartCategoryFilter] = useState<string>("all");
@@ -263,7 +269,7 @@ export const CostAnalysisPage: React.FC = () => {
         code: si.code,
         name: si.name,
         unit: si.stock_unit,
-        avgCost: Number(si.avg_cost) || 0,
+        avgCost: getCost(si.id, si.avg_cost),
         openQty: 0, inQty: 0, outQty: 0, bookQty: 0, countQty: 0, varQty: 0,
         openVal: 0, inVal: 0, outVal: 0, bookVal: 0, countVal: 0, varVal: 0,
       });
@@ -460,7 +466,7 @@ export const CostAnalysisPage: React.FC = () => {
     }
 
     return map;
-  }, [stockItems, stocktakeData, purchaseData, productionIngData, productionRecords, wasteData, transferData, posSaleItems, recipeIngredients, dateFrom, dateTo, branchFilter, warehouseFilter, categoryFilter, departmentFilter]);
+  }, [stockItems, stocktakeData, purchaseData, productionIngData, productionRecords, wasteData, transferData, posSaleItems, recipeIngredients, dateFrom, dateTo, branchFilter, warehouseFilter, categoryFilter, departmentFilter, getCost]);
 
   // Grouped data by category
   const grouped = useMemo(() => {

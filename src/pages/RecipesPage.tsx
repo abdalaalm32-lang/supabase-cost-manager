@@ -620,13 +620,13 @@ export const RecipesPage: React.FC = () => {
           productName: product?.name || "—",
           qty: Number(ri?.qty || 0),
           unit: si.recipe_unit || si.stock_unit || "كجم",
-          avgCost: Number(si.avg_cost || 0),
+          avgCost: getCost(si.id, si.avg_cost),
           conversionFactor: Number(si.conversion_factor || 1),
         };
       });
       return { ...si, usedInCount: usedIn.length, usageDetails };
     });
-  }, [globalSearch, allStockItems, recipes, posItems]);
+  }, [globalSearch, allStockItems, recipes, posItems, getCost]);
 
   const isLocked = recipeStatus === "ready" && !isEditing;
 
@@ -651,14 +651,14 @@ export const RecipesPage: React.FC = () => {
         const si = allStockItems.find((s: any) => s.id === ri.stock_item_id);
         const qty = Number(ri.qty);
         const cf = Number(si?.conversion_factor || 1);
-        const avgCost = Number(si?.avg_cost || 0);
+        const avgCost = getCost(ri.stock_item_id, si?.avg_cost);
         const cost = (qty / cf) * avgCost;
         return { name: si?.name || "—", code: si?.code || "—", unit: si?.recipe_unit || si?.stock_unit || "كجم", qty, avgCost, cost };
       });
       const totalCost = ings.reduce((s: number, i: any) => s + i.cost, 0);
       return { product: p, ingredients: ings, totalCost };
     });
-  }, [filteredProducts, recipeMap, allStockItems, selectedBranch, selectedPrintCategory, posCategories]);
+  }, [filteredProducts, recipeMap, allStockItems, selectedBranch, selectedPrintCategory, posCategories, getCost]);
 
   const handlePrintAllRecipes = (withCost: boolean) => {
     if (allRecipesData.length === 0) return;

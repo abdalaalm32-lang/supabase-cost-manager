@@ -116,12 +116,17 @@ export const PnlPage: React.FC = () => {
 
   // P&L data
   const pnl = usePnlData(dateFromStr, dateToStr, branchId, manualExpenses, deletedAutoExpenses, autoExpenseOverrides);
+  // Comparison: either a different branch (same period) OR same branch (different period)
   const pnlCompare = usePnlData(
-    dateFromStr,
-    dateToStr,
-    compareBranchId || "___none___",
+    compareMode === "period" ? compareDateFromStr : dateFromStr,
+    compareMode === "period" ? compareDateToStr : dateToStr,
+    compareMode === "period" ? branchId : (compareBranchId || "___none___"),
     manualExpensesCompare
   );
+
+  // Should comparison columns render?
+  const comparisonActive =
+    showComparison && (compareMode === "period" || (compareMode === "branch" && !!compareBranchId));
 
   const addManualExpense = () => {
     if (!newExpName.trim() || !Number(newExpAmount)) return;

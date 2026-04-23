@@ -139,6 +139,22 @@ export function usePnlData(
     enabled: !!companyId,
   });
 
+  // 6b. Per-branch costs (fallback to global avg_cost when branch not selected or row missing)
+  const branchCostFilter = branchId && branchId !== "all" ? branchId : null;
+  const { data: branchCosts = [] } = useQuery({
+    queryKey: ["pnl-branch-costs", companyId, branchCostFilter],
+    queryFn: async () => {
+      if (!branchCostFilter) return [];
+      const { data } = await supabase
+        .from("stock_item_branch_costs")
+        .select("stock_item_id, avg_cost")
+        .eq("company_id", companyId!)
+        .eq("branch_id", branchCostFilter);
+      return (data as { stock_item_id: string; avg_cost: number }[]) || [];
+    },
+    enabled: !!companyId && !!branchCostFilter,
+  });
+
   // 7. Costing periods (for indirect expenses)
   const { data: costingPeriods } = useQuery({
     queryKey: ["pnl-costing", companyId, branchId],

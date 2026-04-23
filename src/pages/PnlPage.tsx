@@ -588,6 +588,50 @@ export const PnlPage: React.FC = () => {
         ))}
       </div>
 
+      {/* Comparison summary banner */}
+      {comparisonActive && (
+        <Card className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border-primary/20 print:hidden">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-2">
+                <GitCompare className="h-5 w-5 text-primary" />
+                <div>
+                  <div className="text-sm font-bold text-foreground">
+                    {compareMode === "period" ? "مقارنة فترات" : "مقارنة فروع"}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground">{mainLabel}</span>
+                    <span className="mx-2">مقابل</span>
+                    <span className="font-medium text-foreground">{compareLabel}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 flex-wrap">
+                {[
+                  { label: "صافي المبيعات", a: pnl.netSales, b: pnlCompare.netSales },
+                  { label: "إجمالي الربح", a: pnl.grossProfit, b: pnlCompare.grossProfit },
+                  { label: "صافي الربح", a: pnl.netProfit, b: pnlCompare.netProfit },
+                ].map((m, i) => {
+                  const diff = m.a - m.b;
+                  const pctDiff = m.b !== 0 ? (diff / Math.abs(m.b)) * 100 : 0;
+                  const positive = diff >= 0;
+                  return (
+                    <div key={i} className="text-center">
+                      <div className="text-[10px] text-muted-foreground">{m.label}</div>
+                      <div className={`text-sm font-bold flex items-center gap-1 ${positive ? "text-emerald-600" : "text-red-600"}`}>
+                        {positive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                        {positive ? "+" : ""}{fmt(diff)}
+                        <span className="text-xs font-normal">({positive ? "+" : ""}{pctDiff.toFixed(1)}%)</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* P&L Statement Table */}
       <Card>
         <CardContent className="p-0">
@@ -682,7 +726,7 @@ export const PnlPage: React.FC = () => {
                       <td className="p-3 text-left text-muted-foreground text-xs">
                         {row.pctVal}
                       </td>
-                      {showComparison && compareBranchId && compareRow && (
+                      {comparisonActive && compareRow && (
                         <>
                           <td className={`p-3 text-left tabular-nums border-r ${isTotal && compareRow.amount < 0 ? "text-destructive" : ""}`}>
                             {compareRow.type === "header" ? "" : fmt(compareRow.amount)}

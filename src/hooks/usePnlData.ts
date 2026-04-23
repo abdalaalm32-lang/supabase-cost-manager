@@ -219,6 +219,19 @@ export function usePnlData(
   const stockMap = new Map<string, any>();
   (stockItems || []).forEach((si) => stockMap.set(si.id, si));
 
+  // Build per-branch cost map (only used when a specific branch is selected)
+  const branchCostMap = new Map<string, number>();
+  branchCosts.forEach((bc) => {
+    if (bc.stock_item_id && bc.avg_cost != null) {
+      branchCostMap.set(bc.stock_item_id, Number(bc.avg_cost));
+    }
+  });
+  const resolveCost = (stockItemId: string, globalCost: number): number => {
+    if (!branchCostFilter) return globalCost;
+    const bc = branchCostMap.get(stockItemId);
+    return bc != null ? bc : globalCost;
+  };
+
   // COGS by category
   const cogsByCat: Record<string, { cost: number; sales: number }> = {};
   (saleItems || []).forEach((si) => {
@@ -235,7 +248,8 @@ export function usePnlData(
         const stock = stockMap.get(ing.stock_item_id);
         if (stock) {
           const conv = Number(stock.conversion_factor) || 1;
-          recipeCost += (Number(ing.qty) / conv) * Number(stock.avg_cost || 0);
+          const unitCost = resolveCost(ing.stock_item_id, Number(stock.avg_cost || 0));
+          recipeCost += (Number(ing.qty) / conv) * unitCost;
         }
       });
       cogsByCat[cat].cost += recipeCost * Number(si.quantity);

@@ -239,6 +239,9 @@ export const DashboardPage: React.FC = () => {
         )}
       </div>
 
+      {/* Cost alerts (compact) */}
+      <CostAlertsCard threshold={15} compact maxItems={3} />
+
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <KPICard title="إجمالي المبيعات" value={fmtCurrency(d.totalSales)} icon={DollarSign} gradient="bg-primary text-primary" subtitle={`${d.salesCount} فاتورة`} />
         <KPICard title="إجمالي المشتريات" value={fmtCurrency(d.totalPurchases)} icon={ShoppingCart} gradient="bg-warning text-warning" subtitle={`${d.purchasesCount} فاتورة`} />

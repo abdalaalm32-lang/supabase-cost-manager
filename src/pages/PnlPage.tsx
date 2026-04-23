@@ -738,36 +738,36 @@ export const PnlPage: React.FC = () => {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-muted/50 border-b">
-                  <th className="text-right p-3 font-semibold text-foreground w-1/2">البند</th>
+                  <th className="text-right p-3 font-semibold text-foreground min-w-[220px]">البند</th>
                   <th className="text-left p-3 font-semibold text-foreground">
                     المبلغ (ج.م)
                     {comparisonActive && (
                       <span className="block text-xs font-normal text-muted-foreground">{mainLabel}</span>
                     )}
                   </th>
-                  <th className="text-left p-3 font-semibold text-foreground w-24">النسبة</th>
-                  {comparisonActive && (
-                    <>
+                  <th className="text-left p-3 font-semibold text-foreground w-20">النسبة</th>
+                  {comparisonActive && compareColumns.map((col) => (
+                    <React.Fragment key={col.key}>
                       <th className="text-left p-3 font-semibold text-foreground border-r">
                         المبلغ (ج.م)
-                        <span className="block text-xs font-normal text-muted-foreground">{compareLabel}</span>
+                        <span className="block text-xs font-normal text-muted-foreground">{col.label}</span>
                       </th>
-                      <th className="text-left p-3 font-semibold text-foreground w-24">النسبة</th>
-                      <th className="text-left p-3 font-semibold text-foreground w-28">الفرق</th>
-                    </>
-                  )}
+                      <th className="text-left p-3 font-semibold text-foreground w-20">النسبة</th>
+                      <th className="text-left p-3 font-semibold text-foreground w-24">الفرق</th>
+                    </React.Fragment>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row, i) => {
+                  const totalCols = 3 + (comparisonActive ? compareColumns.length * 3 : 0);
                   if (row.type === "separator") {
-                    return <tr key={i}><td colSpan={6} className="h-1 bg-muted/30"></td></tr>;
+                    return <tr key={i}><td colSpan={totalCols} className="h-1 bg-muted/30"></td></tr>;
                   }
 
                   const isTotal = row.type === "total";
                   const isSubtotal = row.type === "subtotal";
                   const isHeader = row.type === "header";
-                  const compareRow = compareRows[i];
 
                   return (
                     <tr
@@ -818,23 +818,36 @@ export const PnlPage: React.FC = () => {
                       <td className="p-3 text-left text-muted-foreground text-xs">
                         {row.pctVal}
                       </td>
-                      {comparisonActive && compareRow && (
-                        <>
-                          <td className={`p-3 text-left tabular-nums border-r ${isTotal && compareRow.amount < 0 ? "text-destructive" : ""}`}>
-                            {compareRow.type === "header" ? "" : fmt(compareRow.amount)}
-                          </td>
-                          <td className="p-3 text-left text-muted-foreground text-xs">
-                            {compareRow.pctVal}
-                          </td>
-                          <td className={`p-3 text-left tabular-nums text-xs font-medium ${
-                            row.amount - compareRow.amount > 0 ? "text-emerald-600" : row.amount - compareRow.amount < 0 ? "text-red-600" : ""
-                          }`}>
-                            {compareRow.type === "header" || row.type === "header"
-                              ? ""
-                              : (row.amount - compareRow.amount > 0 ? "+" : "") + fmt(row.amount - compareRow.amount)}
-                          </td>
-                        </>
-                      )}
+                      {comparisonActive && compareColumns.map((col) => {
+                        const compareRow = col.rows[i];
+                        if (!compareRow) {
+                          return (
+                            <React.Fragment key={col.key}>
+                              <td className="p-3 border-r" />
+                              <td className="p-3" />
+                              <td className="p-3" />
+                            </React.Fragment>
+                          );
+                        }
+                        const diff = row.amount - compareRow.amount;
+                        return (
+                          <React.Fragment key={col.key}>
+                            <td className={`p-3 text-left tabular-nums border-r ${isTotal && compareRow.amount < 0 ? "text-destructive" : ""}`}>
+                              {compareRow.type === "header" ? "" : fmt(compareRow.amount)}
+                            </td>
+                            <td className="p-3 text-left text-muted-foreground text-xs">
+                              {compareRow.pctVal}
+                            </td>
+                            <td className={`p-3 text-left tabular-nums text-xs font-medium ${
+                              diff > 0 ? "text-emerald-600" : diff < 0 ? "text-red-600" : ""
+                            }`}>
+                              {compareRow.type === "header" || row.type === "header"
+                                ? ""
+                                : (diff > 0 ? "+" : "") + fmt(diff)}
+                            </td>
+                          </React.Fragment>
+                        );
+                      })}
                     </tr>
                   );
                 })}

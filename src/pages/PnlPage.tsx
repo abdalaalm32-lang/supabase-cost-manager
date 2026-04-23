@@ -64,6 +64,12 @@ export const PnlPage: React.FC = () => {
   const [branchId, setBranchId] = useState("all");
   const [compareBranchId, setCompareBranchId] = useState<string>("");
   const [showComparison, setShowComparison] = useState(false);
+  // Comparison mode: branch vs branch  OR period vs period (same branch)
+  const [compareMode, setCompareMode] = useState<"branch" | "period">("branch");
+  // Period comparison (when compareMode === "period")
+  const [comparePreset, setComparePreset] = useState<Preset>("lastMonth");
+  const [compareCustomFrom, setCompareCustomFrom] = useState<Date>(startOfMonth(subMonths(new Date(), 1)));
+  const [compareCustomTo, setCompareCustomTo] = useState<Date>(endOfMonth(subMonths(new Date(), 1)));
 
   // Manual expenses
   const [manualExpenses, setManualExpenses] = useState<IndirectExpenseItem[]>([]);
@@ -84,8 +90,15 @@ export const PnlPage: React.FC = () => {
     return getPresetDates(preset);
   }, [preset, customFrom, customTo]);
 
+  const [compareDateFrom, compareDateTo] = useMemo(() => {
+    if (comparePreset === "custom") return [compareCustomFrom, compareCustomTo];
+    return getPresetDates(comparePreset);
+  }, [comparePreset, compareCustomFrom, compareCustomTo]);
+
   const dateFromStr = format(dateFrom, "yyyy-MM-dd");
   const dateToStr = format(dateTo, "yyyy-MM-dd");
+  const compareDateFromStr = format(compareDateFrom, "yyyy-MM-dd");
+  const compareDateToStr = format(compareDateTo, "yyyy-MM-dd");
 
   // Branches
   const { data: branches } = useQuery({

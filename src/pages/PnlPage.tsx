@@ -686,7 +686,9 @@ export const PnlPage: React.FC = () => {
             <div className="flex items-center gap-2">
               <GitCompare className="h-5 w-5 text-primary" />
               <div className="text-sm font-bold text-foreground">
-                {compareMode === "period" ? "مقارنة فترات" : `مقارنة ${compareColumns.length + 1} فروع`}
+                {compareMode === "period"
+                  ? "مقارنة فترات"
+                  : `مقارنة ${compareColumns.length} ${compareColumns.length === 1 ? "فرع" : "فروع"} مع الأساس`}
               </div>
               <Badge variant="outline" className="text-xs">الأساس: {mainLabel}</Badge>
             </div>

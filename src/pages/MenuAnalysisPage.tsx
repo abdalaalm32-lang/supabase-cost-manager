@@ -165,13 +165,17 @@ export const MenuAnalysisPage: React.FC = () => {
 
   const fetchAll = async () => {
     setLoading(true);
-    const [periodsRes, itemsRes, recipesRes, overridesRes, branchesRes, companyRes] = await Promise.all([
+    const branchFilter = selectedBranchId && selectedBranchId !== "all" ? selectedBranchId : null;
+    const [periodsRes, itemsRes, recipesRes, overridesRes, branchesRes, companyRes, branchCostsRes] = await Promise.all([
       supabase.from("menu_costing_periods").select("*").eq("company_id", companyId!).order("created_at", { ascending: false }),
       supabase.from("pos_items").select("*, categories:category_id(name, code, menu_engineering_class)").eq("company_id", companyId!).eq("active", true),
       supabase.from("recipes").select("id, menu_item_id, recipe_ingredients(stock_item_id, qty, stock_items:stock_item_id(avg_cost, conversion_factor, recipe_unit, stock_unit))").eq("company_id", companyId!),
       supabase.from("pos_item_cost_settings").select("*").eq("company_id", companyId!),
       supabase.from("branches").select("id, name").eq("company_id", companyId!).eq("active", true),
       supabase.from("companies").select("name").eq("id", companyId!).single(),
+      branchFilter
+        ? supabase.from("stock_item_branch_costs").select("stock_item_id, avg_cost").eq("company_id", companyId!).eq("branch_id", branchFilter)
+        : Promise.resolve({ data: [] as any[] }),
     ]);
     if (companyRes.data) setCompanyName(companyRes.data.name);
 
@@ -189,6 +193,19 @@ export const MenuAnalysisPage: React.FC = () => {
     }
     if (branchesRes.data) setBranches(branchesRes.data as Branch[]);
 
+    // Build per-branch cost map (fallback to global avg_cost)
+    const branchCostMap = new Map<string, number>();
+    ((branchCostsRes as any).data || []).forEach((bc: any) => {
+      if (bc.stock_item_id && bc.avg_cost != null) {
+        branchCostMap.set(bc.stock_item_id, Number(bc.avg_cost));
+      }
+    });
+    const resolveCost = (stockItemId: string, globalCost: number): number => {
+      if (!branchFilter) return globalCost;
+      const bc = branchCostMap.get(stockItemId);
+      return bc != null ? bc : globalCost;
+    };
+
     const recipeCostMap = new Map<string, number>();
     if (recipesRes.data) {
       for (const recipe of recipesRes.data as any[]) {
@@ -197,7 +214,8 @@ export const MenuAnalysisPage: React.FC = () => {
           const stockItem = ing.stock_items;
           if (stockItem) {
             const convFactor = stockItem.conversion_factor || 1;
-            const costPerRecipeUnit = stockItem.avg_cost / convFactor;
+            const unitCost = resolveCost(ing.stock_item_id, Number(stockItem.avg_cost || 0));
+            const costPerRecipeUnit = unitCost / convFactor;
             totalCost += ing.qty * costPerRecipeUnit;
           }
         }

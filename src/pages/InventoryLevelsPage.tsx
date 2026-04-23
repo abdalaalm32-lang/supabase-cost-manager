@@ -10,6 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { useBranchCosts } from "@/hooks/useBranchCosts";
+import { useLocationStock } from "@/hooks/useLocationStock";
 import {
   Search, Store, Warehouse, Package, AlertTriangle, CheckCircle2,
   ShoppingCart, TrendingDown, FileSpreadsheet, FileText, BarChart3, Layers
@@ -135,6 +137,13 @@ export const InventoryLevelsPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  // Branch/warehouse cost overrides (with global fallback)
+  const activeLocationId = locationFilter !== "all" ? locationFilter : null;
+  const { getCost: getBranchCost } = useBranchCosts(activeLocationId);
+
+  // Per-location stock map (only when a specific location is selected)
+  const { stockMap: locationStockMap } = useLocationStock(activeLocationId, locationType);
+
   const processedItems = useMemo(() => {
     let result = [...items];
 
@@ -158,7 +167,10 @@ export const InventoryLevelsPage: React.FC = () => {
 
     // Add status
     const enriched = result.map((item: any) => {
-      const current = Number(item.current_stock);
+      // When a specific location is selected, use location-specific stock; otherwise global
+      const current = activeLocationId
+        ? Math.max(locationStockMap.get(item.id) || 0, 0)
+        : Number(item.current_stock);
       const min = Number(item.min_level);
       const reorder = Number(item.reorder_level);
       const max = Number(item.max_level);
@@ -166,7 +178,8 @@ export const InventoryLevelsPage: React.FC = () => {
       const catName = (item as any).inventory_categories?.name || "بدون مجموعة";
       const levelPercent = getLevelPercent(current, min, reorder, max);
       const levelColor = getLevelColor(current, min, reorder, max);
-      const totalValue = current * Number(item.avg_cost);
+      const branchCost = getBranchCost(item.id, item.avg_cost);
+      const totalValue = current * branchCost;
 
       return {
         ...item,
@@ -175,6 +188,7 @@ export const InventoryLevelsPage: React.FC = () => {
         levelPercent,
         levelColor,
         totalValue,
+        branchCost,
         currentStock: current,
         minLevel: min,
         reorderLevel: reorder,
@@ -198,7 +212,7 @@ export const InventoryLevelsPage: React.FC = () => {
     }
 
     return filtered;
-  }, [items, locationFilter, locationType, categoryFilter, statusFilter, searchQuery, itemLocations]);
+  }, [items, locationFilter, locationType, categoryFilter, statusFilter, searchQuery, itemLocations, activeLocationId, locationStockMap, getBranchCost]);
 
   // Stats
   const stats = useMemo(() => {
@@ -235,7 +249,7 @@ export const InventoryLevelsPage: React.FC = () => {
     const headers = ["الكود", "اسم الصنف", "المجموعة", "الرصيد الحالي", "الوحدة", "متوسط التكلفة", "إجمالي القيمة", "الحد الأدنى", "إعادة الطلب", "الحد الأقصى", "الحالة"];
     const rows = processedItems.map(i => [
       i.code || "", i.name, i.catName, i.currentStock.toFixed(2), i.stock_unit,
-      Number(i.avg_cost).toFixed(2), i.totalValue.toFixed(2),
+      Number(i.branchCost ?? i.avg_cost).toFixed(2), i.totalValue.toFixed(2),
       i.minLevel, i.reorderLevel, i.maxLevel, i.status,
     ]);
     const bom = "\uFEFF";
@@ -519,7 +533,7 @@ export const InventoryLevelsPage: React.FC = () => {
                           {fmt(item.currentStock)}
                         </TableCell>
                         <TableCell className="text-center text-xs">{item.stock_unit}</TableCell>
-                        <TableCell className="text-center text-xs">{fmt(Number(item.avg_cost))}</TableCell>
+                        <TableCell className="text-center text-xs">{fmt(Number(item.branchCost ?? item.avg_cost))}</TableCell>
                         <TableCell className="text-center text-xs font-bold">{fmt(item.totalValue)}</TableCell>
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-1" title={`${item.levelPercent.toFixed(0)}% - أدنى: ${item.minLevel} | طلب: ${item.reorderLevel} | أقصى: ${item.maxLevel}`}>

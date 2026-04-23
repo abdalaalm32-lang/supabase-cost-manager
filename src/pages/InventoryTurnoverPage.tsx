@@ -5,6 +5,7 @@ import { PrintButton } from "@/components/PrintButton";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useBranchCosts } from "@/hooks/useBranchCosts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -93,6 +94,10 @@ export const InventoryTurnoverPage: React.FC = () => {
 
   const branchFilter = locationType === "branch" ? locationFilter : "all";
   const warehouseFilter = locationType === "warehouse" ? locationFilter : "all";
+
+  // Per-location cost overrides (with global fallback)
+  const activeLocationId = locationFilter !== "all" ? locationFilter : null;
+  const { getCost: getBranchCost } = useBranchCosts(activeLocationId);
 
   // --- Data queries ---
   const { data: branches } = useQuery({
@@ -410,7 +415,7 @@ export const InventoryTurnoverPage: React.FC = () => {
       const itemData = itemMap.get(si.id);
       if (!itemData) continue;
 
-      const avgCost = Number(si.avg_cost) || 0;
+      const avgCost = getBranchCost(si.id, si.avg_cost);
       const currentStock = Number(si.current_stock) || 0;
       const currentInventoryValue = currentStock * avgCost;
       const catName = (si as any).inventory_categories?.name || "بدون مجموعة";
@@ -494,7 +499,7 @@ export const InventoryTurnoverPage: React.FC = () => {
 
     results.sort((a, b) => a.turnoverRate - b.turnoverRate);
     return results;
-  }, [stockItems, stockItemLocations, purchaseData, productionIngData, productionRecords, wasteData, transferData, posSaleItems, recipeIngredients, dateFrom, dateTo, branchFilter, warehouseFilter, locationItemIds, periodDays]);
+  }, [stockItems, stockItemLocations, purchaseData, productionIngData, productionRecords, wasteData, transferData, posSaleItems, recipeIngredients, dateFrom, dateTo, branchFilter, warehouseFilter, locationItemIds, periodDays, getBranchCost]);
 
   // Filtering
   const filteredData = useMemo(() => {

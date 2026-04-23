@@ -4,6 +4,7 @@ import { PrintButton } from "@/components/PrintButton";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useBranchCosts } from "@/hooks/useBranchCosts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -71,6 +72,10 @@ export const InventoryMovementPage: React.FC = () => {
 
   const branchFilter = locationType === "branch" ? locationFilter : "all";
   const warehouseFilter = locationType === "warehouse" ? locationFilter : "all";
+
+  // Per-location cost overrides (with global fallback)
+  const activeLocationId = locationFilter !== "all" ? locationFilter : null;
+  const { getCost: getBranchCost } = useBranchCosts(activeLocationId);
 
   // --- Data queries ---
   const { data: branches } = useQuery({
@@ -261,7 +266,7 @@ export const InventoryMovementPage: React.FC = () => {
         code: si.code,
         name: si.name,
         unit: si.stock_unit,
-        avgCost: Number(si.avg_cost) || 0,
+        avgCost: getBranchCost(si.id, si.avg_cost),
         inPurchases: 0, inProduction: 0, inReceipts: 0,
         outTransfers: 0, outConsumption: 0, outWaste: 0,
         totalIn: 0, totalOut: 0,
@@ -436,7 +441,7 @@ export const InventoryMovementPage: React.FC = () => {
     }
 
     return Array.from(map.values());
-  }, [stockItems, stockItemLocations, stocktakeData, purchaseData, productionIngData, productionRecords, wasteData, transferData, posSaleItems, recipeIngredients, dateFrom, dateTo, branchFilter, warehouseFilter, locationItemIds]);
+  }, [stockItems, stockItemLocations, stocktakeData, purchaseData, productionIngData, productionRecords, wasteData, transferData, posSaleItems, recipeIngredients, dateFrom, dateTo, branchFilter, warehouseFilter, locationItemIds, getBranchCost]);
 
   // Search + category filter
   const filteredData = useMemo(() => {

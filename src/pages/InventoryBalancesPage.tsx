@@ -11,6 +11,7 @@ import { PrintButton } from "@/components/PrintButton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLocationStock } from "@/hooks/useLocationStock";
+import { useBranchCosts } from "@/hooks/useBranchCosts";
 
 export const InventoryBalancesPage: React.FC = () => {
   const { auth } = useAuth();
@@ -107,6 +108,11 @@ export const InventoryBalancesPage: React.FC = () => {
     activeDeptFilter
   );
 
+  // Per-branch/warehouse cost (with global fallback)
+  const { getCost: getBranchCost } = useBranchCosts(
+    isLocationFiltered ? locationFilter : null,
+  );
+
   const getCatName = (id: string | null) => {
     if (!id) return "—";
     return categories.find((c: any) => c.id === id)?.name || "—";
@@ -188,9 +194,10 @@ export const InventoryBalancesPage: React.FC = () => {
     return filtered.reduce((sum: number, item: any) => {
       const stock = getDisplayStock(item);
       if (stock <= 0) return sum;
-      return sum + stock * Number(item.avg_cost);
+      const cost = getBranchCost(item.id, item.avg_cost);
+      return sum + stock * cost;
     }, 0);
-  }, [filtered, locationStockMap, isLocationFiltered]);
+  }, [filtered, locationStockMap, isLocationFiltered, getBranchCost]);
 
   return (
     <div className="space-y-6 animate-fade-in-up">
@@ -198,12 +205,12 @@ export const InventoryBalancesPage: React.FC = () => {
         <h1 className="text-2xl font-bold">أرصدة المخزون</h1>
         <div className="flex items-center gap-2">
           <PrintButton
-            data={filtered.map((item: any) => ({ code: item.code || "—", name: item.name, category: getCatName(item.category_id), unit: item.stock_unit, locations: getLocationNames(item.id), stock: getDisplayStock(item).toFixed(2), avgCost: Number(item.avg_cost).toFixed(2), value: (getDisplayStock(item) * Number(item.avg_cost)).toFixed(2) }))}
+            data={filtered.map((item: any) => { const s = getDisplayStock(item); const c = getBranchCost(item.id, item.avg_cost); return { code: item.code || "—", name: item.name, category: getCatName(item.category_id), unit: item.stock_unit, locations: getLocationNames(item.id), stock: s.toFixed(2), avgCost: c.toFixed(2), value: (s * c).toFixed(2) }; })}
             columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الصنف" }, { key: "category", label: "المجموعة" }, { key: "unit", label: "الوحدة" }, { key: "locations", label: "المواقع" }, { key: "stock", label: "الرصيد" }, { key: "avgCost", label: "متوسط التكلفة" }, { key: "value", label: "قيمة المخزون" }]}
             title="أرصدة المخزون"
           />
           <ExportButtons
-            data={filtered.map((item: any) => ({ code: item.code || "—", name: item.name, category: getCatName(item.category_id), unit: item.stock_unit, locations: getLocationNames(item.id), stock: getDisplayStock(item).toFixed(2), avgCost: Number(item.avg_cost).toFixed(2), value: (getDisplayStock(item) * Number(item.avg_cost)).toFixed(2) }))}
+            data={filtered.map((item: any) => { const s = getDisplayStock(item); const c = getBranchCost(item.id, item.avg_cost); return { code: item.code || "—", name: item.name, category: getCatName(item.category_id), unit: item.stock_unit, locations: getLocationNames(item.id), stock: s.toFixed(2), avgCost: c.toFixed(2), value: (s * c).toFixed(2) }; })}
             columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الصنف" }, { key: "category", label: "المجموعة" }, { key: "unit", label: "الوحدة" }, { key: "locations", label: "المواقع" }, { key: "stock", label: "الرصيد" }, { key: "avgCost", label: "متوسط التكلفة" }, { key: "value", label: "قيمة المخزون" }]}
             filename="أرصدة_المخزون"
             title="أرصدة المخزون"
@@ -333,8 +340,9 @@ export const InventoryBalancesPage: React.FC = () => {
                 <>
                   {filtered.map((item: any) => {
                     const stock = getDisplayStock(item);
-                    const displayAvgCost = stock <= 0 ? 0 : Number(item.avg_cost);
-                    const inventoryValue = stock <= 0 ? 0 : stock * Number(item.avg_cost);
+                    const branchCost = getBranchCost(item.id, item.avg_cost);
+                    const displayAvgCost = stock <= 0 ? 0 : branchCost;
+                    const inventoryValue = stock <= 0 ? 0 : stock * branchCost;
                     return (
                       <TableRow key={item.id}>
                         <TableCell className="font-mono text-xs">{item.code || "—"}</TableCell>

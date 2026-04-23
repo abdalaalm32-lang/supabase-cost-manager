@@ -441,7 +441,7 @@ export const InventoryMovementPage: React.FC = () => {
     }
 
     return Array.from(map.values());
-  }, [stockItems, stockItemLocations, stocktakeData, purchaseData, productionIngData, productionRecords, wasteData, transferData, posSaleItems, recipeIngredients, dateFrom, dateTo, branchFilter, warehouseFilter, locationItemIds]);
+  }, [stockItems, stockItemLocations, stocktakeData, purchaseData, productionIngData, productionRecords, wasteData, transferData, posSaleItems, recipeIngredients, dateFrom, dateTo, branchFilter, warehouseFilter, locationItemIds, getBranchCost]);
 
   // Search + category filter
   const filteredData = useMemo(() => {

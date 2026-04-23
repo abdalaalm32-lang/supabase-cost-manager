@@ -103,6 +103,7 @@ const mainNavItems: NavItem[] = [
       { id: "reports-cost-adjustments", path: "/reports/cost-adjustments", label: "تقارير تعديل التكاليف", icon: Calculator },
       { id: "reports-inventory-turnover", path: "/reports/inventory-turnover", label: "تحليل حركة المخزون", icon: BarChart3 },
       { id: "reports-menu-engineering", path: "/menu-engineering", label: "هندسة المنيو", icon: BarChart3 },
+      { id: "reports-branch-comparison", path: "/reports/branch-comparison", label: "مقارنة الفروع", icon: GitBranch },
     ],
   },
   {

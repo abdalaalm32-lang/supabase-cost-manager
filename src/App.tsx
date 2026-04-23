@@ -59,6 +59,7 @@ const SystemLayout = lazy(() => import("@/components/SystemLayout").then((m) => 
 const AdminMessagesPage = lazy(() => import("@/pages/AdminMessagesPage").then((m) => ({ default: m.AdminMessagesPage })));
 const AdminSubscriptionLogPage = lazy(() => import("@/pages/AdminSubscriptionLogPage").then((m) => ({ default: m.AdminSubscriptionLogPage })));
 const PnlPage = lazy(() => import("@/pages/PnlPage").then((m) => ({ default: m.PnlPage })));
+const BranchComparisonPage = lazy(() => import("@/pages/BranchComparisonPage").then((m) => ({ default: m.BranchComparisonPage })));
 const CallCenterPage = lazy(() => import("@/pages/CallCenterPage").then((m) => ({ default: m.CallCenterPage })));
 const DriverSettlementPage = lazy(() => import("@/pages/DriverSettlementPage").then((m) => ({ default: m.DriverSettlementPage })));
 const PosShiftsPage = lazy(() => import("@/pages/PosShiftsPage").then((m) => ({ default: m.PosShiftsPage })));
@@ -498,6 +499,7 @@ const AppRoutes = () => {
                   <Route path="/reports/transfers" element={<PermissionGuard permKey="reports"><TransferReportsPage /></PermissionGuard>} />
                   <Route path="/reports/cost-adjustments" element={<PermissionGuard permKey="reports"><CostAdjustmentReportsPage /></PermissionGuard>} />
                   <Route path="/reports/inventory-turnover" element={<PermissionGuard permKey="reports"><InventoryTurnoverPage /></PermissionGuard>} />
+                  <Route path="/reports/branch-comparison" element={<PermissionGuard permKey="reports"><BranchComparisonPage /></PermissionGuard>} />
                   <Route path="/settings" element={<AdminGuard><Navigate to="/settings/companies" replace /></AdminGuard>} />
                   <Route path="/settings/companies" element={<AdminGuard><AdminCompaniesPage /></AdminGuard>} />
                   <Route path="/settings/messages" element={<AdminGuard><AdminMessagesPage /></AdminGuard>} />

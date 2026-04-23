@@ -73,7 +73,8 @@ export const MenuFinalReportPage: React.FC = () => {
 
   const companyId = auth.profile?.company_id;
 
-  useEffect(() => { if (companyId) fetchAll(); }, [companyId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (companyId) fetchAll(); }, [companyId, selectedBranchId]);
   useEffect(() => {
     if (companyId && selectedPeriodId) { fetchPackingItems(); fetchSideCostItems(); }
   }, [selectedPeriodId, companyId]);

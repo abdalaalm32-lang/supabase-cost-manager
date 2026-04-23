@@ -134,7 +134,8 @@ export const MenuAnalysisPage: React.FC = () => {
   useEffect(() => {
     if (!companyId) return;
     fetchAll();
-  }, [companyId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companyId, selectedBranchId]);
 
   useEffect(() => {
     if (companyId && selectedPeriodId) {

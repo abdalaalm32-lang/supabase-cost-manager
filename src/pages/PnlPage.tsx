@@ -183,10 +183,17 @@ export const PnlPage: React.FC = () => {
   };
 
   const rows = buildRows(pnl);
-  const compareRows = showComparison && compareBranchId ? buildRows(pnlCompare) : [];
+  const compareRows = comparisonActive ? buildRows(pnlCompare) : [];
 
   const getBranchName = (id: string) =>
     id === "all" ? "جميع الفروع" : branches?.find((b) => b.id === id)?.name || "";
+
+  const compareLabel = compareMode === "period"
+    ? `${format(compareDateFrom, "yyyy/MM/dd")} - ${format(compareDateTo, "yyyy/MM/dd")}`
+    : compareBranchId ? getBranchName(compareBranchId) : "";
+  const mainLabel = compareMode === "period"
+    ? `${format(dateFrom, "yyyy/MM/dd")} - ${format(dateTo, "yyyy/MM/dd")}`
+    : getBranchName(branchId);
 
   // Export
   const handlePrint = () => {

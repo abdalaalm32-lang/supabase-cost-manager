@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { applyBranchCostIn } from "@/lib/branchCostUtils";
 
 interface InvoiceItem {
   stock_item_id: string;
@@ -221,6 +222,10 @@ export const AddPurchaseInvoicePage: React.FC = () => {
 
       // Update avg_cost and current_stock for each item when status is مكتمل
       if (status === "مكتمل") {
+        // Determine the receiving branch (only branches get per-branch costs;
+        // warehouse purchases keep global behavior only)
+        const receivingBranchId = destinationType === "branch" ? destinationId : null;
+
         for (const item of items) {
           if (item.stock_item_id) {
             // Get current avg_cost from stock_items
@@ -242,8 +247,7 @@ export const AddPurchaseInvoicePage: React.FC = () => {
               const oldAvgCost = Number(currentItem.avg_cost) || 0;
               const newUnitCost = Number(item.unit_cost) || 0;
               
-              // If actual stock is 0, use last purchase price directly
-              // Otherwise use weighted average
+              // GLOBAL avg cost (kept as fallback - reports still read this)
               const totalStock = oldStock + newQty;
               const newAvgCost = oldStock === 0
                 ? newUnitCost
@@ -253,6 +257,21 @@ export const AddPurchaseInvoicePage: React.FC = () => {
                 current_stock: (Number(currentItem.current_stock) || 0) + newQty,
                 avg_cost: newAvgCost,
               }).eq("id", item.stock_item_id);
+
+              // PER-BRANCH avg cost (new logic - only when receiving into a branch)
+              if (receivingBranchId) {
+                try {
+                  await applyBranchCostIn({
+                    companyId: companyId!,
+                    stockItemId: item.stock_item_id,
+                    branchId: receivingBranchId,
+                    incomingQty: newQty,
+                    incomingUnitCost: newUnitCost,
+                  });
+                } catch (e) {
+                  console.error("Failed to update per-branch cost (purchases)", e);
+                }
+              }
             }
           }
         }

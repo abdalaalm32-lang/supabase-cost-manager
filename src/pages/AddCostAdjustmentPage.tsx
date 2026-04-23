@@ -19,6 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowRight, Plus, Search, Trash2, Save, Archive } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { setBranchCost } from "@/lib/branchCostUtils";
 
 interface AdjustmentItem {
   stock_item_id: string;
@@ -279,9 +280,23 @@ export const AddCostAdjustmentPage: React.FC = () => {
 
         // Update stock_items standard_cost if status is مكتمل
         if (status === "مكتمل") {
+          const targetBranchId = destinationType === "branch" && destinationId ? destinationId : null;
           for (const item of items) {
             if (item.stock_item_id && item.new_cost > 0) {
               await supabase.from("stock_items").update({ standard_cost: item.new_cost, avg_cost: item.new_cost }).eq("id", item.stock_item_id);
+              // PER-BRANCH cost
+              if (targetBranchId) {
+                try {
+                  await setBranchCost({
+                    companyId: companyId!,
+                    stockItemId: item.stock_item_id,
+                    branchId: targetBranchId,
+                    newAvgCost: Number(item.new_cost),
+                  });
+                } catch (e) {
+                  console.error("Failed to set per-branch cost (cost adjustment edit)", e);
+                }
+              }
             }
           }
         }
@@ -309,9 +324,23 @@ export const AddCostAdjustmentPage: React.FC = () => {
         }
 
         if (status === "مكتمل") {
+          const targetBranchId = destinationType === "branch" && destinationId ? destinationId : null;
           for (const item of items) {
             if (item.stock_item_id && item.new_cost > 0) {
               await supabase.from("stock_items").update({ standard_cost: item.new_cost, avg_cost: item.new_cost }).eq("id", item.stock_item_id);
+              // PER-BRANCH cost
+              if (targetBranchId) {
+                try {
+                  await setBranchCost({
+                    companyId: companyId!,
+                    stockItemId: item.stock_item_id,
+                    branchId: targetBranchId,
+                    newAvgCost: Number(item.new_cost),
+                  });
+                } catch (e) {
+                  console.error("Failed to set per-branch cost (cost adjustment new)", e);
+                }
+              }
             }
           }
         }

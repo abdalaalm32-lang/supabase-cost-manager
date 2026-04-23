@@ -24,6 +24,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { applyBranchCostIn } from "@/lib/branchCostUtils";
 
 interface LocalIngredient {
   id?: string;
@@ -416,6 +417,21 @@ export const ProductionDetailPage: React.FC = () => {
                 current_stock: totalStock,
                 avg_cost: newAvg,
               }).eq("id", selectedProductId);
+            }
+          }
+
+          // PER-BRANCH cost: only when producing at a branch location
+          if (locationType === "branch" && locationId && selectedProductId && producedQtyNum > 0) {
+            try {
+              await applyBranchCostIn({
+                companyId: companyId!,
+                stockItemId: selectedProductId,
+                branchId: locationId,
+                incomingQty: producedQtyNum,
+                incomingUnitCost: unitCost,
+              });
+            } catch (e) {
+              console.error("Failed to update per-branch cost (production)", e);
             }
           }
         }

@@ -19,6 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowRight, Plus, Search, Trash2, Save, Archive } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { applyBranchCostIn } from "@/lib/branchCostUtils";
 
 interface InvoiceItem {
   id?: string;
@@ -242,6 +243,8 @@ export const EditPurchaseInvoicePage: React.FC = () => {
 
       // Update avg_cost and current_stock for each item when status is مكتمل
       if (status === "مكتمل") {
+        const receivingBranchId = destinationType === "branch" ? destinationId : null;
+
         for (const item of items) {
           if (item.stock_item_id) {
             const { data: currentItem } = await supabase
@@ -262,7 +265,7 @@ export const EditPurchaseInvoicePage: React.FC = () => {
               const oldAvgCost = Number(currentItem.avg_cost) || 0;
               const newUnitCost = Number(item.unit_cost) || 0;
               
-              // If actual stock is 0, use last purchase price directly
+              // GLOBAL avg cost (kept as fallback)
               const totalStock = oldStock + newQty;
               const newAvgCost = oldStock === 0
                 ? newUnitCost
@@ -272,6 +275,21 @@ export const EditPurchaseInvoicePage: React.FC = () => {
                 current_stock: (Number(currentItem.current_stock) || 0) + newQty,
                 avg_cost: newAvgCost,
               }).eq("id", item.stock_item_id);
+
+              // PER-BRANCH avg cost
+              if (receivingBranchId) {
+                try {
+                  await applyBranchCostIn({
+                    companyId: companyId!,
+                    stockItemId: item.stock_item_id,
+                    branchId: receivingBranchId,
+                    incomingQty: newQty,
+                    incomingUnitCost: newUnitCost,
+                  });
+                } catch (e) {
+                  console.error("Failed to update per-branch cost (purchases edit)", e);
+                }
+              }
             }
           }
         }

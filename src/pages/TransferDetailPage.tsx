@@ -23,6 +23,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useLocationStock } from "@/hooks/useLocationStock";
+import { applyBranchCostIn, getBranchCost } from "@/lib/branchCostUtils";
 
 interface LocalTransferItem {
   id?: string;
@@ -427,6 +428,28 @@ export const TransferDetailPage: React.FC = () => {
         }
 
         // Note: Transfers move stock between locations but don't change global current_stock
+        // PER-BRANCH cost: option 1 → destination branch absorbs source branch cost
+        if (finalStatus === "مكتمل" && destLocationType === "branch" && destinationId) {
+          for (const item of items) {
+            if (!item.stock_item_id || !item.quantity || item.quantity <= 0) continue;
+            try {
+              // Source unit cost: if source is a branch use its branch cost, otherwise use item.avg_cost
+              let sourceUnitCost = Number(item.avg_cost) || 0;
+              if (sourceLocationType === "branch" && sourceId) {
+                sourceUnitCost = await getBranchCost(item.stock_item_id, sourceId);
+              }
+              await applyBranchCostIn({
+                companyId: companyId!,
+                stockItemId: item.stock_item_id,
+                branchId: destinationId,
+                incomingQty: Number(item.quantity),
+                incomingUnitCost: sourceUnitCost,
+              });
+            } catch (e) {
+              console.error("Failed to update per-branch cost (transfer)", e);
+            }
+          }
+        }
 
         toast({ title: "تم حفظ إذن التحويل بنجاح" });
       } else {

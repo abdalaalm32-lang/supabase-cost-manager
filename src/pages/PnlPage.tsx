@@ -53,6 +53,31 @@ function getPresetDates(preset: Preset): [Date, Date] {
   }
 }
 
+// Child component: fetches P&L for a single compare branch and reports up
+const CompareBranchLoader: React.FC<{
+  branchId: string;
+  dateFrom: string;
+  dateTo: string;
+  manualExpenses: IndirectExpenseItem[];
+  onData: (branchId: string, data: ReturnType<typeof usePnlData>) => void;
+}> = ({ branchId, dateFrom, dateTo, manualExpenses, onData }) => {
+  const data = usePnlData(dateFrom, dateTo, branchId, manualExpenses);
+  React.useEffect(() => {
+    onData(branchId, data);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    branchId,
+    data.netSales,
+    data.totalCogs,
+    data.netProfit,
+    data.grossProfit,
+    data.totalIndirectExpenses,
+    data.wasteCost,
+    data.isLoading,
+  ]);
+  return null;
+};
+
 export const PnlPage: React.FC = () => {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;
@@ -62,7 +87,8 @@ export const PnlPage: React.FC = () => {
   const [customFrom, setCustomFrom] = useState<Date>(startOfMonth(new Date()));
   const [customTo, setCustomTo] = useState<Date>(endOfMonth(new Date()));
   const [branchId, setBranchId] = useState("all");
-  const [compareBranchId, setCompareBranchId] = useState<string>("");
+  // Multiple compare branches (replaces single compareBranchId)
+  const [compareBranchIds, setCompareBranchIds] = useState<string[]>([]);
   const [showComparison, setShowComparison] = useState(false);
   // Comparison mode: branch vs branch  OR period vs period (same branch)
   const [compareMode, setCompareMode] = useState<"branch" | "period">("branch");
@@ -114,19 +140,30 @@ export const PnlPage: React.FC = () => {
     enabled: !!companyId,
   });
 
-  // P&L data
+  // P&L data (main)
   const pnl = usePnlData(dateFromStr, dateToStr, branchId, manualExpenses, deletedAutoExpenses, autoExpenseOverrides);
-  // Comparison: either a different branch (same period) OR same branch (different period)
-  const pnlCompare = usePnlData(
+
+  // Comparison: period mode uses single hook call (same branch, different period)
+  const pnlComparePeriod = usePnlData(
     compareMode === "period" ? compareDateFromStr : dateFromStr,
     compareMode === "period" ? compareDateToStr : dateToStr,
-    compareMode === "period" ? branchId : (compareBranchId || "___none___"),
+    compareMode === "period" ? branchId : "___none___",
     manualExpensesCompare
+  );
+
+  // Branch mode: results collected from child loaders, keyed by branchId
+  const [branchCompareData, setBranchCompareData] = useState<Record<string, ReturnType<typeof usePnlData>>>({});
+  const handleBranchCompareData = React.useCallback(
+    (id: string, data: ReturnType<typeof usePnlData>) => {
+      setBranchCompareData((prev) => ({ ...prev, [id]: data }));
+    },
+    []
   );
 
   // Should comparison columns render?
   const comparisonActive =
-    showComparison && (compareMode === "period" || (compareMode === "branch" && !!compareBranchId));
+    showComparison &&
+    (compareMode === "period" || (compareMode === "branch" && compareBranchIds.length > 0));
 
   const addManualExpense = () => {
     if (!newExpName.trim() || !Number(newExpAmount)) return;
@@ -183,14 +220,31 @@ export const PnlPage: React.FC = () => {
   };
 
   const rows = buildRows(pnl);
-  const compareRows = comparisonActive ? buildRows(pnlCompare) : [];
 
   const getBranchName = (id: string) =>
     id === "all" ? "جميع الفروع" : branches?.find((b) => b.id === id)?.name || "";
 
-  const compareLabel = compareMode === "period"
-    ? `${format(compareDateFrom, "yyyy/MM/dd")} - ${format(compareDateTo, "yyyy/MM/dd")}`
-    : compareBranchId ? getBranchName(compareBranchId) : "";
+  // Build the unified list of comparison columns (1 entry for period mode, N for branch mode)
+  const compareColumns = useMemo(() => {
+    if (!comparisonActive) return [] as { key: string; label: string; data: typeof pnl; rows: ReturnType<typeof buildRows> }[];
+    if (compareMode === "period") {
+      return [{
+        key: "period",
+        label: `${format(compareDateFrom, "yyyy/MM/dd")} - ${format(compareDateTo, "yyyy/MM/dd")}`,
+        data: pnlComparePeriod,
+        rows: buildRows(pnlComparePeriod),
+      }];
+    }
+    return compareBranchIds
+      .map((id) => {
+        const data = branchCompareData[id];
+        if (!data) return null;
+        return { key: id, label: getBranchName(id), data, rows: buildRows(data) };
+      })
+      .filter(Boolean) as { key: string; label: string; data: typeof pnl; rows: ReturnType<typeof buildRows> }[];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [comparisonActive, compareMode, compareDateFrom, compareDateTo, pnlComparePeriod, compareBranchIds, branchCompareData, branches]);
+
   const mainLabel = compareMode === "period"
     ? `${format(dateFrom, "yyyy/MM/dd")} - ${format(dateTo, "yyyy/MM/dd")}`
     : getBranchName(branchId);
@@ -498,19 +552,44 @@ export const PnlPage: React.FC = () => {
 
                 {compareMode === "branch" ? (
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">فرع المقارنة</label>
-                    <Select value={compareBranchId} onValueChange={setCompareBranchId}>
-                      <SelectTrigger className="w-40 h-8 text-xs">
-                        <SelectValue placeholder="اختر فرع" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(branches || [])
-                          .filter((b) => b.id !== branchId)
-                          .map((b) => (
-                            <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
+                    <label className="text-xs font-medium text-muted-foreground">
+                      فروع المقارنة ({compareBranchIds.length})
+                    </label>
+                    <div className="flex flex-wrap gap-1 items-center max-w-xl">
+                      {(branches || [])
+                        .filter((b) => b.id !== branchId)
+                        .map((b) => {
+                          const selected = compareBranchIds.includes(b.id);
+                          return (
+                            <Button
+                              key={b.id}
+                              type="button"
+                              size="sm"
+                              variant={selected ? "default" : "outline"}
+                              className="h-8 text-xs"
+                              onClick={() =>
+                                setCompareBranchIds((prev) =>
+                                  selected ? prev.filter((id) => id !== b.id) : [...prev, b.id]
+                                )
+                              }
+                            >
+                              {selected && <span className="ml-1">✓</span>}
+                              {b.name}
+                            </Button>
+                          );
+                        })}
+                      {compareBranchIds.length > 0 && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 text-xs text-muted-foreground"
+                          onClick={() => setCompareBranchIds([])}
+                        >
+                          مسح الكل
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="space-y-1">
@@ -588,45 +667,58 @@ export const PnlPage: React.FC = () => {
         ))}
       </div>
 
+      {/* Hidden child loaders: one per compare branch (branch mode only) */}
+      {showComparison && compareMode === "branch" && compareBranchIds.map((id) => (
+        <CompareBranchLoader
+          key={id}
+          branchId={id}
+          dateFrom={dateFromStr}
+          dateTo={dateToStr}
+          manualExpenses={manualExpensesCompare}
+          onData={handleBranchCompareData}
+        />
+      ))}
+
       {/* Comparison summary banner */}
-      {comparisonActive && (
+      {comparisonActive && compareColumns.length > 0 && (
         <Card className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border-primary/20 print:hidden">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div className="flex items-center gap-2">
-                <GitCompare className="h-5 w-5 text-primary" />
-                <div>
-                  <div className="text-sm font-bold text-foreground">
-                    {compareMode === "period" ? "مقارنة فترات" : "مقارنة فروع"}
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <GitCompare className="h-5 w-5 text-primary" />
+              <div className="text-sm font-bold text-foreground">
+                {compareMode === "period" ? "مقارنة فترات" : `مقارنة ${compareColumns.length + 1} فروع`}
+              </div>
+              <Badge variant="outline" className="text-xs">الأساس: {mainLabel}</Badge>
+            </div>
+            <div className="space-y-2">
+              {compareColumns.map((col) => (
+                <div key={col.key} className="flex items-center justify-between flex-wrap gap-3 border-t border-border/40 pt-2">
+                  <div className="text-xs font-medium text-foreground min-w-32">
+                    مقابل: <span className="text-primary">{col.label}</span>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground">{mainLabel}</span>
-                    <span className="mx-2">مقابل</span>
-                    <span className="font-medium text-foreground">{compareLabel}</span>
+                  <div className="flex items-center gap-4 flex-wrap">
+                    {[
+                      { label: "صافي المبيعات", a: pnl.netSales, b: col.data.netSales },
+                      { label: "إجمالي الربح", a: pnl.grossProfit, b: col.data.grossProfit },
+                      { label: "صافي الربح", a: pnl.netProfit, b: col.data.netProfit },
+                    ].map((m, i) => {
+                      const diff = m.a - m.b;
+                      const pctDiff = m.b !== 0 ? (diff / Math.abs(m.b)) * 100 : 0;
+                      const positive = diff >= 0;
+                      return (
+                        <div key={i} className="text-center">
+                          <div className="text-[10px] text-muted-foreground">{m.label}</div>
+                          <div className={`text-sm font-bold flex items-center gap-1 ${positive ? "text-emerald-600" : "text-red-600"}`}>
+                            {positive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                            {positive ? "+" : ""}{fmt(diff)}
+                            <span className="text-xs font-normal">({positive ? "+" : ""}{pctDiff.toFixed(1)}%)</span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-4 flex-wrap">
-                {[
-                  { label: "صافي المبيعات", a: pnl.netSales, b: pnlCompare.netSales },
-                  { label: "إجمالي الربح", a: pnl.grossProfit, b: pnlCompare.grossProfit },
-                  { label: "صافي الربح", a: pnl.netProfit, b: pnlCompare.netProfit },
-                ].map((m, i) => {
-                  const diff = m.a - m.b;
-                  const pctDiff = m.b !== 0 ? (diff / Math.abs(m.b)) * 100 : 0;
-                  const positive = diff >= 0;
-                  return (
-                    <div key={i} className="text-center">
-                      <div className="text-[10px] text-muted-foreground">{m.label}</div>
-                      <div className={`text-sm font-bold flex items-center gap-1 ${positive ? "text-emerald-600" : "text-red-600"}`}>
-                        {positive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                        {positive ? "+" : ""}{fmt(diff)}
-                        <span className="text-xs font-normal">({positive ? "+" : ""}{pctDiff.toFixed(1)}%)</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              ))}
             </div>
           </CardContent>
         </Card>
@@ -646,36 +738,36 @@ export const PnlPage: React.FC = () => {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-muted/50 border-b">
-                  <th className="text-right p-3 font-semibold text-foreground w-1/2">البند</th>
+                  <th className="text-right p-3 font-semibold text-foreground min-w-[220px]">البند</th>
                   <th className="text-left p-3 font-semibold text-foreground">
                     المبلغ (ج.م)
                     {comparisonActive && (
                       <span className="block text-xs font-normal text-muted-foreground">{mainLabel}</span>
                     )}
                   </th>
-                  <th className="text-left p-3 font-semibold text-foreground w-24">النسبة</th>
-                  {comparisonActive && (
-                    <>
+                  <th className="text-left p-3 font-semibold text-foreground w-20">النسبة</th>
+                  {comparisonActive && compareColumns.map((col) => (
+                    <React.Fragment key={col.key}>
                       <th className="text-left p-3 font-semibold text-foreground border-r">
                         المبلغ (ج.م)
-                        <span className="block text-xs font-normal text-muted-foreground">{compareLabel}</span>
+                        <span className="block text-xs font-normal text-muted-foreground">{col.label}</span>
                       </th>
-                      <th className="text-left p-3 font-semibold text-foreground w-24">النسبة</th>
-                      <th className="text-left p-3 font-semibold text-foreground w-28">الفرق</th>
-                    </>
-                  )}
+                      <th className="text-left p-3 font-semibold text-foreground w-20">النسبة</th>
+                      <th className="text-left p-3 font-semibold text-foreground w-24">الفرق</th>
+                    </React.Fragment>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row, i) => {
+                  const totalCols = 3 + (comparisonActive ? compareColumns.length * 3 : 0);
                   if (row.type === "separator") {
-                    return <tr key={i}><td colSpan={6} className="h-1 bg-muted/30"></td></tr>;
+                    return <tr key={i}><td colSpan={totalCols} className="h-1 bg-muted/30"></td></tr>;
                   }
 
                   const isTotal = row.type === "total";
                   const isSubtotal = row.type === "subtotal";
                   const isHeader = row.type === "header";
-                  const compareRow = compareRows[i];
 
                   return (
                     <tr
@@ -726,23 +818,36 @@ export const PnlPage: React.FC = () => {
                       <td className="p-3 text-left text-muted-foreground text-xs">
                         {row.pctVal}
                       </td>
-                      {comparisonActive && compareRow && (
-                        <>
-                          <td className={`p-3 text-left tabular-nums border-r ${isTotal && compareRow.amount < 0 ? "text-destructive" : ""}`}>
-                            {compareRow.type === "header" ? "" : fmt(compareRow.amount)}
-                          </td>
-                          <td className="p-3 text-left text-muted-foreground text-xs">
-                            {compareRow.pctVal}
-                          </td>
-                          <td className={`p-3 text-left tabular-nums text-xs font-medium ${
-                            row.amount - compareRow.amount > 0 ? "text-emerald-600" : row.amount - compareRow.amount < 0 ? "text-red-600" : ""
-                          }`}>
-                            {compareRow.type === "header" || row.type === "header"
-                              ? ""
-                              : (row.amount - compareRow.amount > 0 ? "+" : "") + fmt(row.amount - compareRow.amount)}
-                          </td>
-                        </>
-                      )}
+                      {comparisonActive && compareColumns.map((col) => {
+                        const compareRow = col.rows[i];
+                        if (!compareRow) {
+                          return (
+                            <React.Fragment key={col.key}>
+                              <td className="p-3 border-r" />
+                              <td className="p-3" />
+                              <td className="p-3" />
+                            </React.Fragment>
+                          );
+                        }
+                        const diff = row.amount - compareRow.amount;
+                        return (
+                          <React.Fragment key={col.key}>
+                            <td className={`p-3 text-left tabular-nums border-r ${isTotal && compareRow.amount < 0 ? "text-destructive" : ""}`}>
+                              {compareRow.type === "header" ? "" : fmt(compareRow.amount)}
+                            </td>
+                            <td className="p-3 text-left text-muted-foreground text-xs">
+                              {compareRow.pctVal}
+                            </td>
+                            <td className={`p-3 text-left tabular-nums text-xs font-medium ${
+                              diff > 0 ? "text-emerald-600" : diff < 0 ? "text-red-600" : ""
+                            }`}>
+                              {compareRow.type === "header" || row.type === "header"
+                                ? ""
+                                : (diff > 0 ? "+" : "") + fmt(diff)}
+                            </td>
+                          </React.Fragment>
+                        );
+                      })}
                     </tr>
                   );
                 })}

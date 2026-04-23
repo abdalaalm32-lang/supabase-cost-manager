@@ -466,7 +466,7 @@ export const CostAnalysisPage: React.FC = () => {
     }
 
     return map;
-  }, [stockItems, stocktakeData, purchaseData, productionIngData, productionRecords, wasteData, transferData, posSaleItems, recipeIngredients, dateFrom, dateTo, branchFilter, warehouseFilter, categoryFilter, departmentFilter]);
+  }, [stockItems, stocktakeData, purchaseData, productionIngData, productionRecords, wasteData, transferData, posSaleItems, recipeIngredients, dateFrom, dateTo, branchFilter, warehouseFilter, categoryFilter, departmentFilter, getCost]);
 
   // Grouped data by category
   const grouped = useMemo(() => {

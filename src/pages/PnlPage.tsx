@@ -53,6 +53,31 @@ function getPresetDates(preset: Preset): [Date, Date] {
   }
 }
 
+// Child component: fetches P&L for a single compare branch and reports up
+const CompareBranchLoader: React.FC<{
+  branchId: string;
+  dateFrom: string;
+  dateTo: string;
+  manualExpenses: IndirectExpenseItem[];
+  onData: (branchId: string, data: ReturnType<typeof usePnlData>) => void;
+}> = ({ branchId, dateFrom, dateTo, manualExpenses, onData }) => {
+  const data = usePnlData(dateFrom, dateTo, branchId, manualExpenses);
+  React.useEffect(() => {
+    onData(branchId, data);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    branchId,
+    data.netSales,
+    data.totalCogs,
+    data.netProfit,
+    data.grossProfit,
+    data.totalIndirectExpenses,
+    data.wasteCost,
+    data.isLoading,
+  ]);
+  return null;
+};
+
 export const PnlPage: React.FC = () => {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;
@@ -62,7 +87,8 @@ export const PnlPage: React.FC = () => {
   const [customFrom, setCustomFrom] = useState<Date>(startOfMonth(new Date()));
   const [customTo, setCustomTo] = useState<Date>(endOfMonth(new Date()));
   const [branchId, setBranchId] = useState("all");
-  const [compareBranchId, setCompareBranchId] = useState<string>("");
+  // Multiple compare branches (replaces single compareBranchId)
+  const [compareBranchIds, setCompareBranchIds] = useState<string[]>([]);
   const [showComparison, setShowComparison] = useState(false);
   // Comparison mode: branch vs branch  OR period vs period (same branch)
   const [compareMode, setCompareMode] = useState<"branch" | "period">("branch");

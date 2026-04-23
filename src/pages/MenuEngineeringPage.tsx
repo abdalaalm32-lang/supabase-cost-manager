@@ -166,8 +166,37 @@ export const MenuEngineeringPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  // Per-branch costs (only when a specific branch is selected)
+  const branchFilter = selectedBranch && selectedBranch !== "all" ? selectedBranch : null;
+  const { data: branchCosts = [] } = useQuery({
+    queryKey: ["eng-branch-costs", companyId, branchFilter],
+    queryFn: async () => {
+      if (!branchFilter) return [];
+      const { data, error } = await supabase
+        .from("stock_item_branch_costs")
+        .select("stock_item_id, avg_cost")
+        .eq("company_id", companyId!)
+        .eq("branch_id", branchFilter);
+      if (error) throw error;
+      return (data as { stock_item_id: string; avg_cost: number }[]) || [];
+    },
+    enabled: !!companyId && !!branchFilter,
+  });
+
   // Build recipe cost map: posItemId -> direct cost
   const recipeCostMap = useMemo(() => {
+    const branchCostMap = new Map<string, number>();
+    (branchCosts as any[]).forEach((bc) => {
+      if (bc.stock_item_id && bc.avg_cost != null) {
+        branchCostMap.set(bc.stock_item_id, Number(bc.avg_cost));
+      }
+    });
+    const resolveCost = (stockItemId: string, globalCost: number): number => {
+      if (!branchFilter) return globalCost;
+      const bc = branchCostMap.get(stockItemId);
+      return bc != null ? bc : globalCost;
+    };
+
     const map: Record<string, number> = {};
     recipes.forEach((r: any) => {
       let totalCost = 0;
@@ -175,13 +204,14 @@ export const MenuEngineeringPage: React.FC = () => {
         const si = ri.stock_items || stockItems.find((s: any) => s.id === ri.stock_item_id);
         if (si) {
           const qtyInStockUnit = Number(ri.qty) / (Number(si.conversion_factor) || 1);
-          totalCost += qtyInStockUnit * Number(si.avg_cost || 0);
+          const unitCost = resolveCost(ri.stock_item_id, Number(si.avg_cost || 0));
+          totalCost += qtyInStockUnit * unitCost;
         }
       });
       map[r.menu_item_id] = totalCost;
     });
     return map;
-  }, [recipes, stockItems]);
+  }, [recipes, stockItems, branchCosts, branchFilter]);
 
   // Build recipe net profit map: posItemId -> net profit
   const recipeNetProfitMap = useMemo(() => {

@@ -269,7 +269,7 @@ export const CostAnalysisPage: React.FC = () => {
         code: si.code,
         name: si.name,
         unit: si.stock_unit,
-        avgCost: Number(si.avg_cost) || 0,
+        avgCost: getCost(si.id, si.avg_cost),
         openQty: 0, inQty: 0, outQty: 0, bookQty: 0, countQty: 0, varQty: 0,
         openVal: 0, inVal: 0, outVal: 0, bookVal: 0, countVal: 0, varVal: 0,
       });

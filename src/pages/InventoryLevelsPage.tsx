@@ -249,7 +249,7 @@ export const InventoryLevelsPage: React.FC = () => {
     const headers = ["الكود", "اسم الصنف", "المجموعة", "الرصيد الحالي", "الوحدة", "متوسط التكلفة", "إجمالي القيمة", "الحد الأدنى", "إعادة الطلب", "الحد الأقصى", "الحالة"];
     const rows = processedItems.map(i => [
       i.code || "", i.name, i.catName, i.currentStock.toFixed(2), i.stock_unit,
-      Number(i.avg_cost).toFixed(2), i.totalValue.toFixed(2),
+      Number(i.branchCost ?? i.avg_cost).toFixed(2), i.totalValue.toFixed(2),
       i.minLevel, i.reorderLevel, i.maxLevel, i.status,
     ]);
     const bom = "\uFEFF";
@@ -533,7 +533,7 @@ export const InventoryLevelsPage: React.FC = () => {
                           {fmt(item.currentStock)}
                         </TableCell>
                         <TableCell className="text-center text-xs">{item.stock_unit}</TableCell>
-                        <TableCell className="text-center text-xs">{fmt(Number(item.avg_cost))}</TableCell>
+                        <TableCell className="text-center text-xs">{fmt(Number(item.branchCost ?? item.avg_cost))}</TableCell>
                         <TableCell className="text-center text-xs font-bold">{fmt(item.totalValue)}</TableCell>
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-1" title={`${item.levelPercent.toFixed(0)}% - أدنى: ${item.minLevel} | طلب: ${item.reorderLevel} | أقصى: ${item.maxLevel}`}>

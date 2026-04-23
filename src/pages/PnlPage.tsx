@@ -220,14 +220,31 @@ export const PnlPage: React.FC = () => {
   };
 
   const rows = buildRows(pnl);
-  const compareRows = comparisonActive ? buildRows(pnlCompare) : [];
 
   const getBranchName = (id: string) =>
     id === "all" ? "جميع الفروع" : branches?.find((b) => b.id === id)?.name || "";
 
-  const compareLabel = compareMode === "period"
-    ? `${format(compareDateFrom, "yyyy/MM/dd")} - ${format(compareDateTo, "yyyy/MM/dd")}`
-    : compareBranchId ? getBranchName(compareBranchId) : "";
+  // Build the unified list of comparison columns (1 entry for period mode, N for branch mode)
+  const compareColumns = useMemo(() => {
+    if (!comparisonActive) return [] as { key: string; label: string; data: typeof pnl; rows: ReturnType<typeof buildRows> }[];
+    if (compareMode === "period") {
+      return [{
+        key: "period",
+        label: `${format(compareDateFrom, "yyyy/MM/dd")} - ${format(compareDateTo, "yyyy/MM/dd")}`,
+        data: pnlComparePeriod,
+        rows: buildRows(pnlComparePeriod),
+      }];
+    }
+    return compareBranchIds
+      .map((id) => {
+        const data = branchCompareData[id];
+        if (!data) return null;
+        return { key: id, label: getBranchName(id), data, rows: buildRows(data) };
+      })
+      .filter(Boolean) as { key: string; label: string; data: typeof pnl; rows: ReturnType<typeof buildRows> }[];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [comparisonActive, compareMode, compareDateFrom, compareDateTo, pnlComparePeriod, compareBranchIds, branchCompareData, branches]);
+
   const mainLabel = compareMode === "period"
     ? `${format(dateFrom, "yyyy/MM/dd")} - ${format(dateTo, "yyyy/MM/dd")}`
     : getBranchName(branchId);

@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useBranchCosts } from "@/hooks/useBranchCosts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -98,6 +99,10 @@ export const RecipesPage: React.FC = () => {
 
   // Global raw material search
   const [globalSearch, setGlobalSearch] = useState("");
+
+  // Per-branch cost resolver (falls back to global avg_cost when branch = "all")
+  const branchFilter = selectedBranch && selectedBranch !== "all" ? selectedBranch : null;
+  const { getCost } = useBranchCosts(branchFilter);
   const [showGlobalResults, setShowGlobalResults] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
 
@@ -281,7 +286,7 @@ export const RecipesPage: React.FC = () => {
             stock_unit: si?.stock_unit || "كجم",
             conversion_factor: Number(si?.conversion_factor) || 1,
             qty: Number(ri.qty),
-            avg_cost: Number(si?.avg_cost || 0),
+            avg_cost: getCost(ri.stock_item_id, si?.avg_cost),
           };
         });
         setIngredients(ings);
@@ -292,7 +297,7 @@ export const RecipesPage: React.FC = () => {
         setIngredients([]);
       }
     },
-    [recipeMap, allStockItems],
+    [recipeMap, allStockItems, getCost],
   );
 
   const handleSelectProduct = (productId: string) => {
@@ -334,7 +339,7 @@ export const RecipesPage: React.FC = () => {
         stock_unit: si.stock_unit || "كجم",
         conversion_factor: Number(si.conversion_factor) || 1,
         qty: 0,
-        avg_cost: Number(si.avg_cost) || 0,
+        avg_cost: getCost(siId, si.avg_cost),
       };
     });
     setIngredients((prev) => [...prev, ...newIngs]);
@@ -384,7 +389,7 @@ export const RecipesPage: React.FC = () => {
               recipe_unit: newStockItem.recipe_unit || newStockItem.stock_unit || "كجم",
               stock_unit: newStockItem.stock_unit || "كجم",
               conversion_factor: Number(newStockItem.conversion_factor) || 1,
-              avg_cost: Number(newStockItem.avg_cost) || 0,
+              avg_cost: getCost(newStockItem.id, newStockItem.avg_cost),
             }
           : ing
       )
@@ -393,6 +398,18 @@ export const RecipesPage: React.FC = () => {
     setReplaceIdx(null);
     toast({ title: "تم استبدال الخامة بنجاح" });
   };
+
+  // Re-sync ingredient costs when branch changes (without changing qty or saved data)
+  useEffect(() => {
+    if (ingredients.length === 0) return;
+    setIngredients((prev) =>
+      prev.map((ing) => ({
+        ...ing,
+        avg_cost: getCost(ing.stock_item_id, ing.avg_cost),
+      }))
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBranch]);
 
   // Cost calculations - convert qty from recipe_unit to stock_unit before calculating cost
   const totalIngredientsCost = useMemo(() => {
@@ -603,13 +620,13 @@ export const RecipesPage: React.FC = () => {
           productName: product?.name || "—",
           qty: Number(ri?.qty || 0),
           unit: si.recipe_unit || si.stock_unit || "كجم",
-          avgCost: Number(si.avg_cost || 0),
+          avgCost: getCost(si.id, si.avg_cost),
           conversionFactor: Number(si.conversion_factor || 1),
         };
       });
       return { ...si, usedInCount: usedIn.length, usageDetails };
     });
-  }, [globalSearch, allStockItems, recipes, posItems]);
+  }, [globalSearch, allStockItems, recipes, posItems, getCost]);
 
   const isLocked = recipeStatus === "ready" && !isEditing;
 
@@ -634,14 +651,14 @@ export const RecipesPage: React.FC = () => {
         const si = allStockItems.find((s: any) => s.id === ri.stock_item_id);
         const qty = Number(ri.qty);
         const cf = Number(si?.conversion_factor || 1);
-        const avgCost = Number(si?.avg_cost || 0);
+        const avgCost = getCost(ri.stock_item_id, si?.avg_cost);
         const cost = (qty / cf) * avgCost;
         return { name: si?.name || "—", code: si?.code || "—", unit: si?.recipe_unit || si?.stock_unit || "كجم", qty, avgCost, cost };
       });
       const totalCost = ings.reduce((s: number, i: any) => s + i.cost, 0);
       return { product: p, ingredients: ings, totalCost };
     });
-  }, [filteredProducts, recipeMap, allStockItems, selectedBranch, selectedPrintCategory, posCategories]);
+  }, [filteredProducts, recipeMap, allStockItems, selectedBranch, selectedPrintCategory, posCategories, getCost]);
 
   const handlePrintAllRecipes = (withCost: boolean) => {
     if (allRecipesData.length === 0) return;

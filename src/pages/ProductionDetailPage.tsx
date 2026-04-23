@@ -419,6 +419,21 @@ export const ProductionDetailPage: React.FC = () => {
               }).eq("id", selectedProductId);
             }
           }
+
+          // PER-BRANCH cost: only when producing at a branch location
+          if (locationType === "branch" && locationId && selectedProductId && producedQtyNum > 0) {
+            try {
+              await applyBranchCostIn({
+                companyId: companyId!,
+                stockItemId: selectedProductId,
+                branchId: locationId,
+                incomingQty: producedQtyNum,
+                incomingUnitCost: unitCost,
+              });
+            } catch (e) {
+              console.error("Failed to update per-branch cost (production)", e);
+            }
+          }
         }
 
         toast({ title: "تم حفظ عملية الإنتاج بنجاح" });

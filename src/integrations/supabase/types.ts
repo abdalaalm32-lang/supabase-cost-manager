@@ -1991,6 +1991,39 @@ export type Database = {
           },
         ]
       }
+      stock_item_branch_costs: {
+        Row: {
+          avg_cost: number
+          branch_id: string
+          company_id: string
+          created_at: string
+          current_stock: number
+          id: string
+          stock_item_id: string
+          updated_at: string
+        }
+        Insert: {
+          avg_cost?: number
+          branch_id: string
+          company_id: string
+          created_at?: string
+          current_stock?: number
+          id?: string
+          stock_item_id: string
+          updated_at?: string
+        }
+        Update: {
+          avg_cost?: number
+          branch_id?: string
+          company_id?: string
+          created_at?: string
+          current_stock?: number
+          id?: string
+          stock_item_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       stock_item_departments: {
         Row: {
           company_id: string

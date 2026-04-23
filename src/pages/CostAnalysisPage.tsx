@@ -71,6 +71,11 @@ export const CostAnalysisPage: React.FC = () => {
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [showCharts, setShowCharts] = useState(false);
 
+  // Per-branch / per-warehouse costs (fallback to global avg_cost)
+  const activeLocationId =
+    branchFilter !== "all" ? branchFilter : warehouseFilter !== "all" ? warehouseFilter : null;
+  const { getCost } = useBranchCosts(activeLocationId);
+
   // Charts dialog state
   const [chartCategoryFilter, setChartCategoryFilter] = useState<string>("all");
   const [chartItemFilter, setChartItemFilter] = useState<string>("all");

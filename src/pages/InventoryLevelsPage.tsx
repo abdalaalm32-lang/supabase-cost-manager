@@ -10,6 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { useBranchCosts } from "@/hooks/useBranchCosts";
+import { useLocationStock } from "@/hooks/useLocationStock";
 import {
   Search, Store, Warehouse, Package, AlertTriangle, CheckCircle2,
   ShoppingCart, TrendingDown, FileSpreadsheet, FileText, BarChart3, Layers
@@ -135,6 +137,13 @@ export const InventoryLevelsPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  // Branch/warehouse cost overrides (with global fallback)
+  const activeLocationId = locationFilter !== "all" ? locationFilter : null;
+  const { getCost: getBranchCost } = useBranchCosts(activeLocationId);
+
+  // Per-location stock map (only when a specific location is selected)
+  const { stockMap: locationStockMap } = useLocationStock(activeLocationId, locationType);
+
   const processedItems = useMemo(() => {
     let result = [...items];
 
@@ -158,7 +167,10 @@ export const InventoryLevelsPage: React.FC = () => {
 
     // Add status
     const enriched = result.map((item: any) => {
-      const current = Number(item.current_stock);
+      // When a specific location is selected, use location-specific stock; otherwise global
+      const current = activeLocationId
+        ? Math.max(locationStockMap.get(item.id) || 0, 0)
+        : Number(item.current_stock);
       const min = Number(item.min_level);
       const reorder = Number(item.reorder_level);
       const max = Number(item.max_level);
@@ -166,7 +178,8 @@ export const InventoryLevelsPage: React.FC = () => {
       const catName = (item as any).inventory_categories?.name || "بدون مجموعة";
       const levelPercent = getLevelPercent(current, min, reorder, max);
       const levelColor = getLevelColor(current, min, reorder, max);
-      const totalValue = current * Number(item.avg_cost);
+      const branchCost = getBranchCost(item.id, item.avg_cost);
+      const totalValue = current * branchCost;
 
       return {
         ...item,
@@ -175,6 +188,7 @@ export const InventoryLevelsPage: React.FC = () => {
         levelPercent,
         levelColor,
         totalValue,
+        branchCost,
         currentStock: current,
         minLevel: min,
         reorderLevel: reorder,
@@ -198,7 +212,7 @@ export const InventoryLevelsPage: React.FC = () => {
     }
 
     return filtered;
-  }, [items, locationFilter, locationType, categoryFilter, statusFilter, searchQuery, itemLocations]);
+  }, [items, locationFilter, locationType, categoryFilter, statusFilter, searchQuery, itemLocations, activeLocationId, locationStockMap, getBranchCost]);
 
   // Stats
   const stats = useMemo(() => {

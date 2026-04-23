@@ -552,19 +552,44 @@ export const PnlPage: React.FC = () => {
 
                 {compareMode === "branch" ? (
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">فرع المقارنة</label>
-                    <Select value={compareBranchId} onValueChange={setCompareBranchId}>
-                      <SelectTrigger className="w-40 h-8 text-xs">
-                        <SelectValue placeholder="اختر فرع" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(branches || [])
-                          .filter((b) => b.id !== branchId)
-                          .map((b) => (
-                            <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
+                    <label className="text-xs font-medium text-muted-foreground">
+                      فروع المقارنة ({compareBranchIds.length})
+                    </label>
+                    <div className="flex flex-wrap gap-1 items-center max-w-xl">
+                      {(branches || [])
+                        .filter((b) => b.id !== branchId)
+                        .map((b) => {
+                          const selected = compareBranchIds.includes(b.id);
+                          return (
+                            <Button
+                              key={b.id}
+                              type="button"
+                              size="sm"
+                              variant={selected ? "default" : "outline"}
+                              className="h-8 text-xs"
+                              onClick={() =>
+                                setCompareBranchIds((prev) =>
+                                  selected ? prev.filter((id) => id !== b.id) : [...prev, b.id]
+                                )
+                              }
+                            >
+                              {selected && <span className="ml-1">✓</span>}
+                              {b.name}
+                            </Button>
+                          );
+                        })}
+                      {compareBranchIds.length > 0 && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 text-xs text-muted-foreground"
+                          onClick={() => setCompareBranchIds([])}
+                        >
+                          مسح الكل
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="space-y-1">

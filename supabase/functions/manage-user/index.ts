@@ -138,21 +138,31 @@ Deno.serve(async (req) => {
       const allowedStatuses = ["نشط", "موقف"];
       const allowedSubscriptionTypes = ["unlimited", "minutes", "date_range"];
 
-      const sanitizedUpdates = {
-        full_name: typeof updates.full_name === "string" ? updates.full_name.trim() : undefined,
-        branch_id: updates.branch_id ?? null,
-        job_role_id: updates.job_role_id ?? null,
-        status: allowedStatuses.includes(updates.status) ? updates.status : undefined,
-        permissions: Array.isArray(updates.permissions) ? updates.permissions.filter((perm) => typeof perm === "string") : undefined,
-        subscription_type: allowedSubscriptionTypes.includes(updates.subscription_type) ? updates.subscription_type : undefined,
-        subscription_minutes: updates.subscription_type === "minutes" ? updates.subscription_minutes ?? null : null,
-        subscription_start: updates.subscription_type === "date_range" ? updates.subscription_start ?? null : null,
-        subscription_end: updates.subscription_type === "date_range" ? updates.subscription_end ?? null : null,
-      };
+      const sanitizedUpdates: Record<string, any> = {};
 
-      const payload = Object.fromEntries(
-        Object.entries(sanitizedUpdates).filter(([_, value]) => value !== undefined)
-      );
+      if (typeof updates.full_name === "string") {
+        sanitizedUpdates.full_name = updates.full_name.trim();
+      }
+      if (Object.prototype.hasOwnProperty.call(updates, "branch_id")) {
+        sanitizedUpdates.branch_id = updates.branch_id ?? null;
+      }
+      if (Object.prototype.hasOwnProperty.call(updates, "job_role_id")) {
+        sanitizedUpdates.job_role_id = updates.job_role_id ?? null;
+      }
+      if (allowedStatuses.includes(updates.status)) {
+        sanitizedUpdates.status = updates.status;
+      }
+      if (Array.isArray(updates.permissions)) {
+        sanitizedUpdates.permissions = updates.permissions.filter((perm: any) => typeof perm === "string");
+      }
+      if (allowedSubscriptionTypes.includes(updates.subscription_type)) {
+        sanitizedUpdates.subscription_type = updates.subscription_type;
+        sanitizedUpdates.subscription_minutes = updates.subscription_type === "minutes" ? (updates.subscription_minutes ?? null) : null;
+        sanitizedUpdates.subscription_start = updates.subscription_type === "date_range" ? (updates.subscription_start ?? null) : null;
+        sanitizedUpdates.subscription_end = updates.subscription_type === "date_range" ? (updates.subscription_end ?? null) : null;
+      }
+
+      const payload = sanitizedUpdates;
 
       if (Object.keys(payload).length === 0) {
         return new Response(

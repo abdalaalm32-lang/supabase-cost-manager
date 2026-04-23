@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useLocationStock } from "@/hooks/useLocationStock";
+import { useBranchCosts } from "@/hooks/useBranchCosts";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -118,6 +119,9 @@ export const DashboardPage: React.FC = () => {
   const selectedLocationId = filters.branchId || filters.warehouseId || null;
   const { stockMap } = useLocationStock(selectedLocationId, locationType);
 
+  // Per-branch cost overrides (with global fallback)
+  const { getCost: getBranchCost } = useBranchCosts(selectedLocationId);
+
   // Override stock-related KPIs with location-specific data
   const locationStockValue = useMemo(() => {
     if (!selectedLocationId || !d.stockItems) return d.stockValue;
@@ -125,10 +129,11 @@ export const DashboardPage: React.FC = () => {
     for (const item of d.stockItems) {
       if (!item.active) continue;
       const locQty = stockMap.get(item.id) || 0;
-      total += Math.max(locQty, 0) * Number(item.avg_cost || 0);
+      const cost = getBranchCost(item.id, item.avg_cost);
+      total += Math.max(locQty, 0) * cost;
     }
     return total;
-  }, [selectedLocationId, d.stockItems, d.stockValue, stockMap]);
+  }, [selectedLocationId, d.stockItems, d.stockValue, stockMap, getBranchCost]);
 
   const locationActiveItems = useMemo(() => {
     if (!selectedLocationId || !d.stockItems) return d.activeItems;

@@ -128,7 +128,7 @@ export const PurchaseReportsPage: React.FC = () => {
     queryKey: ["purchase-items-pr", companyId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("purchase_items").select("*, purchase_orders!inner(id, date, status, company_id, supplier_name, supplier_id)")
+        .from("purchase_items").select("*, purchase_orders!inner(id, date, status, company_id, supplier_name, supplier_id, branch_id, warehouse_id)")
         .eq("purchase_orders.company_id", companyId!).eq("purchase_orders.status", "مكتمل");
       if (error) throw error;
       return data;

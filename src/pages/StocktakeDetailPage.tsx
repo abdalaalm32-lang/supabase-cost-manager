@@ -260,8 +260,18 @@ export const StocktakeDetailPage: React.FC = () => {
 
   const availableItems = useMemo(() => {
     let items = allStockItems.filter((s: any) => !existingStockItemIds.has(s.id));
-    if (filterDept !== "all") items = items.filter((s: any) => s.department_id === filterDept);
-    if (filterCat !== "all") items = items.filter((s: any) => s.category_id === filterCat);
+    if (filterDept !== "all") {
+      items = items.filter((s: any) => {
+        const allDepts = itemAllDepartments.get(s.id);
+        return !!allDepts && allDepts.has(filterDept);
+      });
+    }
+    if (filterCat !== "all") {
+      items = items.filter((s: any) => {
+        const allCats = itemAllCategories.get(s.id);
+        return !!allCats && allCats.has(filterCat);
+      });
+    }
     if (pickerSearch.trim()) {
       const q = pickerSearch.trim().toLowerCase();
       items = items.filter((s: any) => {
@@ -270,7 +280,16 @@ export const StocktakeDetailPage: React.FC = () => {
       });
     }
     return items.sort((a: any, b: any) => (a.code || "").localeCompare(b.code || ""));
-  }, [allStockItems, existingStockItemIds, filterDept, filterCat, pickerSearch, categories]);
+  }, [allStockItems, existingStockItemIds, filterDept, filterCat, pickerSearch, categories, itemAllCategories, itemAllDepartments]);
+
+  // Categories filtered by selected department (both primary and many-to-many links)
+  const filteredCategories = useMemo(() => {
+    if (filterDept === "all") return categories;
+    return (categories || []).filter((c: any) => {
+      const deptIds = categoryAllDepartments.get(c.id);
+      return !!deptIds && deptIds.has(filterDept);
+    });
+  }, [categories, filterDept, categoryAllDepartments]);
 
   const toggleItem = (itemId: string) => {
     setSelectedItemIds(prev => {

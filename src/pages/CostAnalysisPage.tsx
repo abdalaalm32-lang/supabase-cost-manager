@@ -501,22 +501,33 @@ export const CostAnalysisPage: React.FC = () => {
     return map;
   }, [stockItems, stocktakeData, purchaseData, productionIngData, productionRecords, wasteData, transferData, posSaleItems, recipeIngredients, dateFrom, dateTo, branchFilter, warehouseFilter, categoryFilter, departmentFilter, getCost, itemAllCategories]);
 
-  // Grouped data by category
+  // Grouped data by category — an item can appear in multiple categories
   const grouped = useMemo(() => {
     if (!stockItems) return [];
     const map = new Map<string, { catName: string; catId: string; items: ItemCalc[] }>();
+    const catNameById = new Map<string, string>();
+    (categories || []).forEach((c: any) => catNameById.set(c.id, c.name));
 
     for (const item of stockItems) {
       const calc = calcData.get(item.id);
       if (!calc) continue;
-      const catId = item.category_id || "uncategorized";
-      const catName = (item as any).inventory_categories?.name || "بدون مجموعة";
-      if (!map.has(catId)) map.set(catId, { catName, catId, items: [] });
-      map.get(catId)!.items.push(calc);
+
+      // Collect all categories: primary + additional links
+      const allCats = itemAllCategories.get(item.id);
+      const catIds: string[] = allCats && allCats.size > 0 ? Array.from(allCats) : ["uncategorized"];
+
+      for (const catId of catIds) {
+        const catName =
+          catId === "uncategorized"
+            ? "بدون مجموعة"
+            : catNameById.get(catId) || (item as any).inventory_categories?.name || "بدون مجموعة";
+        if (!map.has(catId)) map.set(catId, { catName, catId, items: [] });
+        map.get(catId)!.items.push(calc);
+      }
     }
 
     return Array.from(map.values());
-  }, [stockItems, calcData]);
+  }, [stockItems, calcData, itemAllCategories, categories]);
 
   const catTotals = (items: ItemCalc[]) => {
     const t = { openQty: 0, openVal: 0, inQty: 0, inVal: 0, outQty: 0, outVal: 0, bookQty: 0, bookVal: 0, countQty: 0, countVal: 0, varQty: 0, varVal: 0 };

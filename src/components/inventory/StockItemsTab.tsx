@@ -218,6 +218,21 @@ export const StockItemsTab: React.FC = () => {
     }
   };
 
+  const saveCategoryLinks = async (stockItemId: string) => {
+    await supabase.from("stock_item_categories" as any).delete().eq("stock_item_id", stockItemId);
+    // Always include the primary categoryId, plus any extra selected categories
+    const allCats = Array.from(new Set([...(categoryId ? [categoryId] : []), ...selectedCategories]));
+    if (allCats.length > 0) {
+      const rows = allCats.map((cId) => ({
+        stock_item_id: stockItemId,
+        category_id: cId,
+        company_id: companyId,
+      }));
+      const { error } = await supabase.from("stock_item_categories" as any).insert(rows);
+      if (error) throw error;
+    }
+  };
+
   const [originalCategoryId, setOriginalCategoryId] = useState<string>("");
 
   const saveMutation = useMutation({

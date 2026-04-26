@@ -164,6 +164,53 @@ export const CostAnalysisPage: React.FC = () => {
     return map;
   }, [stockItems, itemCategoryLinks]);
 
+  // Additional category-department links (many-to-many for groups)
+  const { data: categoryDepartmentLinks } = useQuery({
+    queryKey: ["inv-category-departments-costing", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("inventory_category_departments")
+        .select("category_id, department_id")
+        .eq("company_id", companyId!);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!companyId,
+  });
+
+  // Map: category_id -> Set of all department ids (primary + additional)
+  const categoryAllDepartments = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    (categories || []).forEach((c: any) => {
+      const set = new Set<string>();
+      if (c.department_id) set.add(c.department_id);
+      map.set(c.id, set);
+    });
+    (categoryDepartmentLinks || []).forEach((l: any) => {
+      if (!map.has(l.category_id)) map.set(l.category_id, new Set());
+      map.get(l.category_id)!.add(l.department_id);
+    });
+    return map;
+  }, [categories, categoryDepartmentLinks]);
+
+  // Map: stock_item_id -> Set of all department ids (from all linked categories)
+  const itemAllDepartments = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    (stockItems || []).forEach((si: any) => {
+      const set = new Set<string>();
+      if (si.department_id) set.add(si.department_id);
+      const catIds = itemAllCategories.get(si.id);
+      if (catIds) {
+        for (const catId of catIds) {
+          const deptIds = categoryAllDepartments.get(catId);
+          if (deptIds) deptIds.forEach((d) => set.add(d));
+        }
+      }
+      map.set(si.id, set);
+    });
+    return map;
+  }, [stockItems, itemAllCategories, categoryAllDepartments]);
+
   const { data: stocktakeData } = useQuery({
     queryKey: ["stocktake-data-costing", companyId],
     queryFn: async () => {
@@ -295,7 +342,10 @@ export const CostAnalysisPage: React.FC = () => {
         const allCats = itemAllCategories.get(si.id);
         if (!allCats || !allCats.has(categoryFilter)) continue;
       }
-      if (departmentFilter !== "all" && si.department_id !== departmentFilter) continue;
+      if (departmentFilter !== "all") {
+        const allDepts = itemAllDepartments.get(si.id);
+        if (!allDepts || !allDepts.has(departmentFilter)) continue;
+      }
 
       map.set(si.id, {
         id: si.id,
@@ -499,7 +549,7 @@ export const CostAnalysisPage: React.FC = () => {
     }
 
     return map;
-  }, [stockItems, stocktakeData, purchaseData, productionIngData, productionRecords, wasteData, transferData, posSaleItems, recipeIngredients, dateFrom, dateTo, branchFilter, warehouseFilter, categoryFilter, departmentFilter, getCost, itemAllCategories]);
+  }, [stockItems, stocktakeData, purchaseData, productionIngData, productionRecords, wasteData, transferData, posSaleItems, recipeIngredients, dateFrom, dateTo, branchFilter, warehouseFilter, categoryFilter, departmentFilter, getCost, itemAllCategories, itemAllDepartments]);
 
   // Grouped data by category — an item can appear in multiple categories
   const grouped = useMemo(() => {

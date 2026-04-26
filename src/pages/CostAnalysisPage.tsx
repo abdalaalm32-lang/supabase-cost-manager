@@ -342,7 +342,10 @@ export const CostAnalysisPage: React.FC = () => {
         const allCats = itemAllCategories.get(si.id);
         if (!allCats || !allCats.has(categoryFilter)) continue;
       }
-      if (departmentFilter !== "all" && si.department_id !== departmentFilter) continue;
+      if (departmentFilter !== "all") {
+        const allDepts = itemAllDepartments.get(si.id);
+        if (!allDepts || !allDepts.has(departmentFilter)) continue;
+      }
 
       map.set(si.id, {
         id: si.id,

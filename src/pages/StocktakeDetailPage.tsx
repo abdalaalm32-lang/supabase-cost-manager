@@ -732,7 +732,7 @@ export const StocktakeDetailPage: React.FC = () => {
           <DialogHeader><DialogTitle>إضافة أصناف للجرد</DialogTitle></DialogHeader>
 
           <div className="flex gap-3 flex-wrap">
-            <Select value={filterDept} onValueChange={setFilterDept}>
+            <Select value={filterDept} onValueChange={(v) => { setFilterDept(v); setFilterCat("all"); }}>
               <SelectTrigger className="w-44"><SelectValue placeholder="القسم" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">كل الأقسام</SelectItem>
@@ -743,7 +743,7 @@ export const StocktakeDetailPage: React.FC = () => {
               <SelectTrigger className="w-44"><SelectValue placeholder="المجموعة" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">كل المجموعات</SelectItem>
-                {categories.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                {filteredCategories.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

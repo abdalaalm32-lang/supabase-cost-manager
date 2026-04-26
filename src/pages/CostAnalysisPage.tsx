@@ -291,7 +291,10 @@ export const CostAnalysisPage: React.FC = () => {
     const map = new Map<string, ItemCalc>();
 
     for (const si of stockItems) {
-      if (categoryFilter !== "all" && si.category_id !== categoryFilter) continue;
+      if (categoryFilter !== "all") {
+        const allCats = itemAllCategories.get(si.id);
+        if (!allCats || !allCats.has(categoryFilter)) continue;
+      }
       if (departmentFilter !== "all" && si.department_id !== departmentFilter) continue;
 
       map.set(si.id, {

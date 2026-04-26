@@ -2024,6 +2024,30 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_item_categories: {
+        Row: {
+          category_id: string
+          company_id: string
+          created_at: string
+          id: string
+          stock_item_id: string
+        }
+        Insert: {
+          category_id: string
+          company_id: string
+          created_at?: string
+          id?: string
+          stock_item_id: string
+        }
+        Update: {
+          category_id?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          stock_item_id?: string
+        }
+        Relationships: []
+      }
       stock_item_departments: {
         Row: {
           company_id: string

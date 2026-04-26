@@ -135,6 +135,35 @@ export const CostAnalysisPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  // Additional category links (many-to-many)
+  const { data: itemCategoryLinks } = useQuery({
+    queryKey: ["stock-item-categories-costing", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("stock_item_categories")
+        .select("stock_item_id, category_id")
+        .eq("company_id", companyId!);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!companyId,
+  });
+
+  // Map: stock_item_id -> Set of all category ids (primary + additional)
+  const itemAllCategories = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    (stockItems || []).forEach((si: any) => {
+      const set = new Set<string>();
+      if (si.category_id) set.add(si.category_id);
+      map.set(si.id, set);
+    });
+    (itemCategoryLinks || []).forEach((l: any) => {
+      if (!map.has(l.stock_item_id)) map.set(l.stock_item_id, new Set());
+      map.get(l.stock_item_id)!.add(l.category_id);
+    });
+    return map;
+  }, [stockItems, itemCategoryLinks]);
+
   const { data: stocktakeData } = useQuery({
     queryKey: ["stocktake-data-costing", companyId],
     queryFn: async () => {
@@ -262,7 +291,10 @@ export const CostAnalysisPage: React.FC = () => {
     const map = new Map<string, ItemCalc>();
 
     for (const si of stockItems) {
-      if (categoryFilter !== "all" && si.category_id !== categoryFilter) continue;
+      if (categoryFilter !== "all") {
+        const allCats = itemAllCategories.get(si.id);
+        if (!allCats || !allCats.has(categoryFilter)) continue;
+      }
       if (departmentFilter !== "all" && si.department_id !== departmentFilter) continue;
 
       map.set(si.id, {
@@ -467,24 +499,35 @@ export const CostAnalysisPage: React.FC = () => {
     }
 
     return map;
-  }, [stockItems, stocktakeData, purchaseData, productionIngData, productionRecords, wasteData, transferData, posSaleItems, recipeIngredients, dateFrom, dateTo, branchFilter, warehouseFilter, categoryFilter, departmentFilter, getCost]);
+  }, [stockItems, stocktakeData, purchaseData, productionIngData, productionRecords, wasteData, transferData, posSaleItems, recipeIngredients, dateFrom, dateTo, branchFilter, warehouseFilter, categoryFilter, departmentFilter, getCost, itemAllCategories]);
 
-  // Grouped data by category
+  // Grouped data by category — an item can appear in multiple categories
   const grouped = useMemo(() => {
     if (!stockItems) return [];
     const map = new Map<string, { catName: string; catId: string; items: ItemCalc[] }>();
+    const catNameById = new Map<string, string>();
+    (categories || []).forEach((c: any) => catNameById.set(c.id, c.name));
 
     for (const item of stockItems) {
       const calc = calcData.get(item.id);
       if (!calc) continue;
-      const catId = item.category_id || "uncategorized";
-      const catName = (item as any).inventory_categories?.name || "بدون مجموعة";
-      if (!map.has(catId)) map.set(catId, { catName, catId, items: [] });
-      map.get(catId)!.items.push(calc);
+
+      // Collect all categories: primary + additional links
+      const allCats = itemAllCategories.get(item.id);
+      const catIds: string[] = allCats && allCats.size > 0 ? Array.from(allCats) : ["uncategorized"];
+
+      for (const catId of catIds) {
+        const catName =
+          catId === "uncategorized"
+            ? "بدون مجموعة"
+            : catNameById.get(catId) || (item as any).inventory_categories?.name || "بدون مجموعة";
+        if (!map.has(catId)) map.set(catId, { catName, catId, items: [] });
+        map.get(catId)!.items.push(calc);
+      }
     }
 
     return Array.from(map.values());
-  }, [stockItems, calcData]);
+  }, [stockItems, calcData, itemAllCategories, categories]);
 
   const catTotals = (items: ItemCalc[]) => {
     const t = { openQty: 0, openVal: 0, inQty: 0, inVal: 0, outQty: 0, outVal: 0, bookQty: 0, bookVal: 0, countQty: 0, countVal: 0, varQty: 0, varVal: 0 };

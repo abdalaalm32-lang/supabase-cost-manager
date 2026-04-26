@@ -353,6 +353,13 @@ export const StockItemsTab: React.FC = () => {
     setOriginalCategoryId(item.category_id || "");
     const deptLinks = itemDepartments.filter((d: any) => d.stock_item_id === item.id);
     setSelectedDepartments(deptLinks.map((d: any) => d.department_id));
+    // Load extra category links (excluding the primary category)
+    const catLinks = itemCategories.filter((c: any) => c.stock_item_id === item.id);
+    setSelectedCategories(
+      catLinks
+        .map((c: any) => c.category_id)
+        .filter((cid: string) => cid !== item.category_id)
+    );
     setStandardCost(String(item.standard_cost || ""));
     setStockUnit(item.stock_unit || "");
     setRecipeUnit(item.recipe_unit || "");

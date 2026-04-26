@@ -49,6 +49,7 @@ export const StockItemsTab: React.FC = () => {
   // Form fields
   const [itemName, setItemName] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
   const [standardCost, setStandardCost] = useState("");
   const [stockUnit, setStockUnit] = useState("");

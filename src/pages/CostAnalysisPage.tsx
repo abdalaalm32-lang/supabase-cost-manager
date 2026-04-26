@@ -135,6 +135,35 @@ export const CostAnalysisPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  // Additional category links (many-to-many)
+  const { data: itemCategoryLinks } = useQuery({
+    queryKey: ["stock-item-categories-costing", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("stock_item_categories")
+        .select("stock_item_id, category_id")
+        .eq("company_id", companyId!);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!companyId,
+  });
+
+  // Map: stock_item_id -> Set of all category ids (primary + additional)
+  const itemAllCategories = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    (stockItems || []).forEach((si: any) => {
+      const set = new Set<string>();
+      if (si.category_id) set.add(si.category_id);
+      map.set(si.id, set);
+    });
+    (itemCategoryLinks || []).forEach((l: any) => {
+      if (!map.has(l.stock_item_id)) map.set(l.stock_item_id, new Set());
+      map.get(l.stock_item_id)!.add(l.category_id);
+    });
+    return map;
+  }, [stockItems, itemCategoryLinks]);
+
   const { data: stocktakeData } = useQuery({
     queryKey: ["stocktake-data-costing", companyId],
     queryFn: async () => {

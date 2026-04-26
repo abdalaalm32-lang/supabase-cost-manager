@@ -49,6 +49,7 @@ export const StockItemsTab: React.FC = () => {
   // Form fields
   const [itemName, setItemName] = useState("");
   const [categoryId, setCategoryId] = useState("");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
   const [standardCost, setStandardCost] = useState("");
   const [stockUnit, setStockUnit] = useState("");
@@ -156,9 +157,22 @@ export const StockItemsTab: React.FC = () => {
     enabled: !!companyId,
   });
 
+  const { data: itemCategories = [] } = useQuery({
+    queryKey: ["stock-item-categories", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("stock_item_categories" as any)
+        .select("*");
+      if (error) throw error;
+      return data as any[];
+    },
+    enabled: !!companyId,
+  });
+
   const resetForm = () => {
     setItemName("");
     setCategoryId("");
+    setSelectedCategories([]);
     setSelectedDepartments([]);
     setStandardCost("");
     setStockUnit("");
@@ -204,6 +218,21 @@ export const StockItemsTab: React.FC = () => {
     }
   };
 
+  const saveCategoryLinks = async (stockItemId: string) => {
+    await supabase.from("stock_item_categories" as any).delete().eq("stock_item_id", stockItemId);
+    // Always include the primary categoryId, plus any extra selected categories
+    const allCats = Array.from(new Set([...(categoryId ? [categoryId] : []), ...selectedCategories]));
+    if (allCats.length > 0) {
+      const rows = allCats.map((cId) => ({
+        stock_item_id: stockItemId,
+        category_id: cId,
+        company_id: companyId,
+      }));
+      const { error } = await supabase.from("stock_item_categories" as any).insert(rows);
+      if (error) throw error;
+    }
+  };
+
   const [originalCategoryId, setOriginalCategoryId] = useState<string>("");
 
   const saveMutation = useMutation({
@@ -245,6 +274,7 @@ export const StockItemsTab: React.FC = () => {
         if (error) throw error;
         await saveLocationLinks(editId);
         await saveDepartmentLinks(editId);
+        await saveCategoryLinks(editId);
       } else {
         const selectedCat = categories.find((c: any) => c.id === categoryId);
         const identifierCode = selectedCat?.identifier_code || null;
@@ -272,12 +302,14 @@ export const StockItemsTab: React.FC = () => {
         if (error) throw error;
         await saveLocationLinks(inserted.id);
         await saveDepartmentLinks(inserted.id);
+        await saveCategoryLinks(inserted.id);
       }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["stock-items"] });
       qc.invalidateQueries({ queryKey: ["stock-item-locations"] });
       qc.invalidateQueries({ queryKey: ["stock-item-departments"] });
+      qc.invalidateQueries({ queryKey: ["stock-item-categories"] });
       toast.success(editId ? "تم التعديل" : "تم إضافة الصنف");
       setOpen(false);
       resetForm();
@@ -321,6 +353,13 @@ export const StockItemsTab: React.FC = () => {
     setOriginalCategoryId(item.category_id || "");
     const deptLinks = itemDepartments.filter((d: any) => d.stock_item_id === item.id);
     setSelectedDepartments(deptLinks.map((d: any) => d.department_id));
+    // Load extra category links (excluding the primary category)
+    const catLinks = itemCategories.filter((c: any) => c.stock_item_id === item.id);
+    setSelectedCategories(
+      catLinks
+        .map((c: any) => c.category_id)
+        .filter((cid: string) => cid !== item.category_id)
+    );
     setStandardCost(String(item.standard_cost || ""));
     setStockUnit(item.stock_unit || "");
     setRecipeUnit(item.recipe_unit || "");
@@ -350,6 +389,24 @@ export const StockItemsTab: React.FC = () => {
   const getCatName = (id: string | null) => {
     if (!id) return "—";
     return categories.find((c: any) => c.id === id)?.name || "—";
+  };
+
+  const getAllCatIdsForItem = (item: any): string[] => {
+    const ids = new Set<string>();
+    if (item.category_id) ids.add(item.category_id);
+    itemCategories
+      .filter((c: any) => c.stock_item_id === item.id)
+      .forEach((c: any) => ids.add(c.category_id));
+    return Array.from(ids);
+  };
+
+  const getCatNames = (item: any) => {
+    const ids = getAllCatIdsForItem(item);
+    if (ids.length === 0) return "—";
+    return ids
+      .map((id) => categories.find((c: any) => c.id === id)?.name)
+      .filter(Boolean)
+      .join("، ") || "—";
   };
   const getDepNames = (itemId: string) => {
     const deptLinks = itemDepartments.filter((d: any) => d.stock_item_id === itemId);
@@ -401,7 +458,9 @@ export const StockItemsTab: React.FC = () => {
       return true;
     });
     if (filterCategory !== "all") {
-      result = result.filter((item: any) => item.category_id === filterCategory);
+      result = result.filter((item: any) =>
+        getAllCatIdsForItem(item).includes(filterCategory)
+      );
     }
     if (filterDepartment !== "all") {
       result = result.filter((item: any) => item.department_id === filterDepartment);
@@ -427,7 +486,7 @@ export const StockItemsTab: React.FC = () => {
       return pa.num - pb.num;
     });
     return result;
-  }, [items, filter, searchQuery, filterCategory, filterDepartment, filterCodePrefix]);
+  }, [items, filter, searchQuery, filterCategory, filterDepartment, filterCodePrefix, itemCategories]);
 
   const toggleBranch = (id: string) => {
     setSelectedBranches((prev) => prev.includes(id) ? prev.filter((b) => b !== id) : [...prev, id]);
@@ -486,7 +545,7 @@ export const StockItemsTab: React.FC = () => {
           ))}
         </div>
         <ExportButtons
-          data={filtered.map((item: any) => ({ code: item.code || "—", name: item.name, category: getCatName(item.category_id), department: getDepNames(item.id), unit: item.stock_unit, cost: Number(item.standard_cost).toFixed(2), locations: getLocationNames(item.id), status: item.active ? "نشط" : "غير نشط" }))}
+          data={filtered.map((item: any) => ({ code: item.code || "—", name: item.name, category: getCatNames(item), department: getDepNames(item.id), unit: item.stock_unit, cost: Number(item.standard_cost).toFixed(2), locations: getLocationNames(item.id), status: item.active ? "نشط" : "غير نشط" }))}
           columns={[{ key: "code", label: "الكود" }, { key: "name", label: "اسم الصنف" }, { key: "category", label: "المجموعة" }, { key: "department", label: "القسم" }, { key: "unit", label: "وحدة التخزين" }, { key: "cost", label: "التكلفة المعيارية" }, { key: "locations", label: "المواقع" }, { key: "status", label: "الحالة" }]}
           filename="أصناف_المخزون"
           title="أصناف المخزون"
@@ -519,7 +578,7 @@ export const StockItemsTab: React.FC = () => {
                 <TableRow key={item.id}>
                   <TableCell className="font-mono text-xs">{item.code || "—"}</TableCell>
                   <TableCell className="font-medium">{item.name}</TableCell>
-                  <TableCell>{getCatName(item.category_id)}</TableCell>
+                  <TableCell>{getCatNames(item)}</TableCell>
                   <TableCell>{getDepNames(item.id)}</TableCell>
                   <TableCell>{item.stock_unit}</TableCell>
                   <TableCell>{Number(item.standard_cost).toFixed(2)}</TableCell>
@@ -560,13 +619,55 @@ export const StockItemsTab: React.FC = () => {
                   {submitted && !itemName.trim() && <p className="text-sm text-destructive">هذا الحقل مطلوب</p>}
                 </div>
                 <div className="space-y-2">
-                  <Label>المجموعة</Label>
+                  <Label>المجموعة الأساسية</Label>
                   <Select value={categoryId} onValueChange={setCategoryId}>
                     <SelectTrigger><SelectValue placeholder="اختر المجموعة" /></SelectTrigger>
                     <SelectContent>
                       {categories.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  <p className="text-[10px] text-muted-foreground">تُستخدم في توليد كود الصنف</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>مجموعات إضافية</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-between gap-2">
+                        <span>{selectedCategories.length > 0 ? `${selectedCategories.length} مجموعة إضافية` : "اختر مجموعات إضافية"}</span>
+                        <Plus size={16} />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-3" align="start">
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {categories
+                          .filter((c: any) => c.id !== categoryId)
+                          .map((c: any) => (
+                            <div key={c.id} className="flex items-center gap-2">
+                              <Checkbox
+                                checked={selectedCategories.includes(c.id)}
+                                onCheckedChange={() => {
+                                  setSelectedCategories((prev) =>
+                                    prev.includes(c.id) ? prev.filter((id) => id !== c.id) : [...prev, c.id]
+                                  );
+                                }}
+                              />
+                              <Label className="text-sm cursor-pointer">{c.name}</Label>
+                            </div>
+                          ))}
+                        {categories.filter((c: any) => c.id !== categoryId).length === 0 && (
+                          <p className="text-xs text-muted-foreground text-center py-2">لا توجد مجموعات أخرى</p>
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  {selectedCategories.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {selectedCategories.map((cId) => {
+                        const c = categories.find((cat: any) => cat.id === cId);
+                        return c ? <Badge key={cId} variant="secondary" className="text-xs">{c.name}</Badge> : null;
+                      })}
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>الأقسام التشغيلية</Label>

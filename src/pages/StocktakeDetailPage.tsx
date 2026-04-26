@@ -238,6 +238,18 @@ export const StocktakeDetailPage: React.FC = () => {
     queryClient.invalidateQueries({ queryKey: ["stocktake-items", id] });
   };
 
+  const handleDeleteAllItems = async () => {
+    const { error } = await supabase.from("stocktake_items").delete().eq("stocktake_id", id!);
+    if (error) {
+      toast({ title: "خطأ", description: error.message, variant: "destructive" });
+      return;
+    }
+    setShowDeleteAllConfirm(false);
+    setLocalQty({});
+    queryClient.invalidateQueries({ queryKey: ["stocktake-items", id] });
+    toast({ title: "تم حذف جميع الأصناف بنجاح" });
+  };
+
   const handleQtyChange = (itemId: string, value: string) => {
     setLocalQty(prev => ({ ...prev, [itemId]: value }));
   };

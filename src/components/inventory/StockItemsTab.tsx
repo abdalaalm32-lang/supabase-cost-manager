@@ -486,7 +486,7 @@ export const StockItemsTab: React.FC = () => {
       return pa.num - pb.num;
     });
     return result;
-  }, [items, filter, searchQuery, filterCategory, filterDepartment, filterCodePrefix]);
+  }, [items, filter, searchQuery, filterCategory, filterDepartment, filterCodePrefix, itemCategories]);
 
   const toggleBranch = (id: string) => {
     setSelectedBranches((prev) => prev.includes(id) ? prev.filter((b) => b !== id) : [...prev, id]);

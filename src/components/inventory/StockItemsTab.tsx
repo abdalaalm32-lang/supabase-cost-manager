@@ -578,7 +578,7 @@ export const StockItemsTab: React.FC = () => {
                 <TableRow key={item.id}>
                   <TableCell className="font-mono text-xs">{item.code || "—"}</TableCell>
                   <TableCell className="font-medium">{item.name}</TableCell>
-                  <TableCell>{getCatName(item.category_id)}</TableCell>
+                  <TableCell>{getCatNames(item)}</TableCell>
                   <TableCell>{getDepNames(item.id)}</TableCell>
                   <TableCell>{item.stock_unit}</TableCell>
                   <TableCell>{Number(item.standard_cost).toFixed(2)}</TableCell>

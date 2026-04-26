@@ -619,13 +619,55 @@ export const StockItemsTab: React.FC = () => {
                   {submitted && !itemName.trim() && <p className="text-sm text-destructive">هذا الحقل مطلوب</p>}
                 </div>
                 <div className="space-y-2">
-                  <Label>المجموعة</Label>
+                  <Label>المجموعة الأساسية</Label>
                   <Select value={categoryId} onValueChange={setCategoryId}>
                     <SelectTrigger><SelectValue placeholder="اختر المجموعة" /></SelectTrigger>
                     <SelectContent>
                       {categories.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                  <p className="text-[10px] text-muted-foreground">تُستخدم في توليد كود الصنف</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>مجموعات إضافية</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-between gap-2">
+                        <span>{selectedCategories.length > 0 ? `${selectedCategories.length} مجموعة إضافية` : "اختر مجموعات إضافية"}</span>
+                        <Plus size={16} />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-3" align="start">
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {categories
+                          .filter((c: any) => c.id !== categoryId)
+                          .map((c: any) => (
+                            <div key={c.id} className="flex items-center gap-2">
+                              <Checkbox
+                                checked={selectedCategories.includes(c.id)}
+                                onCheckedChange={() => {
+                                  setSelectedCategories((prev) =>
+                                    prev.includes(c.id) ? prev.filter((id) => id !== c.id) : [...prev, c.id]
+                                  );
+                                }}
+                              />
+                              <Label className="text-sm cursor-pointer">{c.name}</Label>
+                            </div>
+                          ))}
+                        {categories.filter((c: any) => c.id !== categoryId).length === 0 && (
+                          <p className="text-xs text-muted-foreground text-center py-2">لا توجد مجموعات أخرى</p>
+                        )}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  {selectedCategories.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {selectedCategories.map((cId) => {
+                        const c = categories.find((cat: any) => cat.id === cId);
+                        return c ? <Badge key={cId} variant="secondary" className="text-xs">{c.name}</Badge> : null;
+                      })}
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>الأقسام التشغيلية</Label>

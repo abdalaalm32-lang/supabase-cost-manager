@@ -15,6 +15,10 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { ArrowRight, Plus, Trash2, Save, ClipboardCheck, Package, TrendingUp, TrendingDown, DollarSign, MapPin, User } from "lucide-react";
@@ -38,6 +42,8 @@ export const StocktakeDetailPage: React.FC = () => {
   const [notesLoaded, setNotesLoaded] = useState(false);
   const [localQty, setLocalQty] = useState<Record<string, string>>({});
   const [pickerSearch, setPickerSearch] = useState("");
+  const [itemsSearch, setItemsSearch] = useState("");
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
 
   const { data: stocktake, isLoading: stLoading } = useQuery({
     queryKey: ["stocktake", id],
@@ -234,6 +240,18 @@ export const StocktakeDetailPage: React.FC = () => {
   const handleDeleteItem = async (itemId: string) => {
     await supabase.from("stocktake_items").delete().eq("id", itemId);
     queryClient.invalidateQueries({ queryKey: ["stocktake-items", id] });
+  };
+
+  const handleDeleteAllItems = async () => {
+    const { error } = await supabase.from("stocktake_items").delete().eq("stocktake_id", id!);
+    if (error) {
+      toast({ title: "خطأ", description: error.message, variant: "destructive" });
+      return;
+    }
+    setShowDeleteAllConfirm(false);
+    setLocalQty({});
+    queryClient.invalidateQueries({ queryKey: ["stocktake-items", id] });
+    toast({ title: "تم حذف جميع الأصناف بنجاح" });
   };
 
   const handleQtyChange = (itemId: string, value: string) => {
@@ -478,11 +496,26 @@ export const StocktakeDetailPage: React.FC = () => {
         </div>
       )}
 
-      {/* Add Items Button */}
+      {/* Add Items + Tools */}
       {isEditable && (
-        <Button onClick={() => { setShowAddItems(true); setSelectedItemIds(new Set()); setFilterDept("all"); setFilterCat("all"); setPickerSearch(""); }}>
-          <Plus size={16} /> إضافة أصناف للجرد
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button onClick={() => { setShowAddItems(true); setSelectedItemIds(new Set()); setFilterDept("all"); setFilterCat("all"); setPickerSearch(""); }}>
+            <Plus size={16} /> إضافة أصناف للجرد
+          </Button>
+          {stocktakeItems.length > 0 && (
+            <Button variant="destructive" onClick={() => setShowDeleteAllConfirm(true)}>
+              <Trash2 size={16} /> حذف كل الأصناف ({stocktakeItems.length})
+            </Button>
+          )}
+          {stocktakeItems.length > 0 && (
+            <Input
+              placeholder="بحث في الأصناف المضافة بالكود أو الاسم..."
+              value={itemsSearch}
+              onChange={e => setItemsSearch(e.target.value)}
+              className="flex-1 min-w-[240px] max-w-md"
+            />
+          )}
+        </div>
       )}
 
       {/* Items Table */}
@@ -513,6 +546,11 @@ export const StocktakeDetailPage: React.FC = () => {
                   const codeA = getStockItemInfo(a.stock_item_id)?.code || "";
                   const codeB = getStockItemInfo(b.stock_item_id)?.code || "";
                   return codeA.localeCompare(codeB);
+                }).filter((item: any) => {
+                  if (!itemsSearch.trim()) return true;
+                  const si = getStockItemInfo(item.stock_item_id);
+                  const q = itemsSearch.trim().toLowerCase();
+                  return (si?.name || "").toLowerCase().includes(q) || (si?.code || "").toLowerCase().includes(q);
                 }).map((item: any) => {
                   const si = getStockItemInfo(item.stock_item_id);
                   const countedQty = Number(getCountedQty(item));
@@ -663,6 +701,24 @@ export const StocktakeDetailPage: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete All Items Confirmation */}
+      <AlertDialog open={showDeleteAllConfirm} onOpenChange={setShowDeleteAllConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>حذف جميع الأصناف</AlertDialogTitle>
+            <AlertDialogDescription>
+              هل أنت متأكد من حذف جميع الأصناف ({stocktakeItems.length}) من هذا الجرد؟ لا يمكن التراجع عن هذا الإجراء.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteAllItems} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              حذف الكل
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

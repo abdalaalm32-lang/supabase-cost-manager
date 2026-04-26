@@ -157,6 +157,18 @@ export const StockItemsTab: React.FC = () => {
     enabled: !!companyId,
   });
 
+  const { data: itemCategories = [] } = useQuery({
+    queryKey: ["stock-item-categories", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("stock_item_categories" as any)
+        .select("*");
+      if (error) throw error;
+      return data as any[];
+    },
+    enabled: !!companyId,
+  });
+
   const resetForm = () => {
     setItemName("");
     setCategoryId("");

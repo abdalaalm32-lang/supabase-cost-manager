@@ -545,7 +545,7 @@ export const StockItemsTab: React.FC = () => {
           ))}
         </div>
         <ExportButtons
-          data={filtered.map((item: any) => ({ code: item.code || "—", name: item.name, category: getCatName(item.category_id), department: getDepNames(item.id), unit: item.stock_unit, cost: Number(item.standard_cost).toFixed(2), locations: getLocationNames(item.id), status: item.active ? "نشط" : "غير نشط" }))}
+          data={filtered.map((item: any) => ({ code: item.code || "—", name: item.name, category: getCatNames(item), department: getDepNames(item.id), unit: item.stock_unit, cost: Number(item.standard_cost).toFixed(2), locations: getLocationNames(item.id), status: item.active ? "نشط" : "غير نشط" }))}
           columns={[{ key: "code", label: "الكود" }, { key: "name", label: "اسم الصنف" }, { key: "category", label: "المجموعة" }, { key: "department", label: "القسم" }, { key: "unit", label: "وحدة التخزين" }, { key: "cost", label: "التكلفة المعيارية" }, { key: "locations", label: "المواقع" }, { key: "status", label: "الحالة" }]}
           filename="أصناف_المخزون"
           title="أصناف المخزون"

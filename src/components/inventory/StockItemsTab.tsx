@@ -302,6 +302,7 @@ export const StockItemsTab: React.FC = () => {
         if (error) throw error;
         await saveLocationLinks(inserted.id);
         await saveDepartmentLinks(inserted.id);
+        await saveCategoryLinks(inserted.id);
       }
     },
     onSuccess: () => {

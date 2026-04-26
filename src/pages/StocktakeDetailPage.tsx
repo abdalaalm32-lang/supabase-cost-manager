@@ -542,6 +542,11 @@ export const StocktakeDetailPage: React.FC = () => {
                   const codeA = getStockItemInfo(a.stock_item_id)?.code || "";
                   const codeB = getStockItemInfo(b.stock_item_id)?.code || "";
                   return codeA.localeCompare(codeB);
+                }).filter((item: any) => {
+                  if (!itemsSearch.trim()) return true;
+                  const si = getStockItemInfo(item.stock_item_id);
+                  const q = itemsSearch.trim().toLowerCase();
+                  return (si?.name || "").toLowerCase().includes(q) || (si?.code || "").toLowerCase().includes(q);
                 }).map((item: any) => {
                   const si = getStockItemInfo(item.stock_item_id);
                   const countedQty = Number(getCountedQty(item));

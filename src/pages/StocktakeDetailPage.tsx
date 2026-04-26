@@ -492,11 +492,26 @@ export const StocktakeDetailPage: React.FC = () => {
         </div>
       )}
 
-      {/* Add Items Button */}
+      {/* Add Items + Tools */}
       {isEditable && (
-        <Button onClick={() => { setShowAddItems(true); setSelectedItemIds(new Set()); setFilterDept("all"); setFilterCat("all"); setPickerSearch(""); }}>
-          <Plus size={16} /> إضافة أصناف للجرد
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button onClick={() => { setShowAddItems(true); setSelectedItemIds(new Set()); setFilterDept("all"); setFilterCat("all"); setPickerSearch(""); }}>
+            <Plus size={16} /> إضافة أصناف للجرد
+          </Button>
+          {stocktakeItems.length > 0 && (
+            <Button variant="destructive" onClick={() => setShowDeleteAllConfirm(true)}>
+              <Trash2 size={16} /> حذف كل الأصناف ({stocktakeItems.length})
+            </Button>
+          )}
+          {stocktakeItems.length > 0 && (
+            <Input
+              placeholder="بحث في الأصناف المضافة بالكود أو الاسم..."
+              value={itemsSearch}
+              onChange={e => setItemsSearch(e.target.value)}
+              className="flex-1 min-w-[240px] max-w-md"
+            />
+          )}
+        </div>
       )}
 
       {/* Items Table */}

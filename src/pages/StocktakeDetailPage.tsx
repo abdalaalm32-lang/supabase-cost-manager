@@ -125,6 +125,82 @@ export const StocktakeDetailPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  // Many-to-many: stock_item -> categories
+  const { data: itemCategoryLinks = [] } = useQuery({
+    queryKey: ["stock-item-categories-stocktake", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("stock_item_categories")
+        .select("stock_item_id, category_id")
+        .eq("company_id", companyId!);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!companyId,
+  });
+
+  // Many-to-many: category -> departments
+  const { data: categoryDepartmentLinks = [] } = useQuery({
+    queryKey: ["inv-category-departments-stocktake", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("inventory_category_departments")
+        .select("category_id, department_id")
+        .eq("company_id", companyId!);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!companyId,
+  });
+
+  // Map: stock_item_id -> Set of all category ids (primary + additional)
+  const itemAllCategories = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    (allStockItems || []).forEach((si: any) => {
+      const set = new Set<string>();
+      if (si.category_id) set.add(si.category_id);
+      map.set(si.id, set);
+    });
+    (itemCategoryLinks || []).forEach((l: any) => {
+      if (!map.has(l.stock_item_id)) map.set(l.stock_item_id, new Set());
+      map.get(l.stock_item_id)!.add(l.category_id);
+    });
+    return map;
+  }, [allStockItems, itemCategoryLinks]);
+
+  // Map: category_id -> Set of all department ids (primary + additional)
+  const categoryAllDepartments = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    (categories || []).forEach((c: any) => {
+      const set = new Set<string>();
+      if (c.department_id) set.add(c.department_id);
+      map.set(c.id, set);
+    });
+    (categoryDepartmentLinks || []).forEach((l: any) => {
+      if (!map.has(l.category_id)) map.set(l.category_id, new Set());
+      map.get(l.category_id)!.add(l.department_id);
+    });
+    return map;
+  }, [categories, categoryDepartmentLinks]);
+
+  // Map: stock_item_id -> Set of all department ids (from primary + all linked categories)
+  const itemAllDepartments = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    (allStockItems || []).forEach((si: any) => {
+      const set = new Set<string>();
+      if (si.department_id) set.add(si.department_id);
+      const catIds = itemAllCategories.get(si.id);
+      if (catIds) {
+        for (const catId of catIds) {
+          const deptIds = categoryAllDepartments.get(catId);
+          if (deptIds) deptIds.forEach((d) => set.add(d));
+        }
+      }
+      map.set(si.id, set);
+    });
+    return map;
+  }, [allStockItems, itemAllCategories, categoryAllDepartments]);
+
   const { data: branches = [] } = useQuery({
     queryKey: ["branches-active", companyId],
     queryFn: async () => {

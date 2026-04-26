@@ -1057,7 +1057,11 @@ export const CostAnalysisPage: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">كل المجموعات</SelectItem>
-                {categories?.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                {categories?.filter((c: any) => {
+                  if (departmentFilter === "all") return true;
+                  const deptIds = categoryAllDepartments.get(c.id);
+                  return !!deptIds && deptIds.has(departmentFilter);
+                }).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

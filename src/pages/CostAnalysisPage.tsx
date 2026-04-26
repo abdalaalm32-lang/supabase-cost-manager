@@ -564,7 +564,21 @@ export const CostAnalysisPage: React.FC = () => {
 
       // Collect all categories: primary + additional links
       const allCats = itemAllCategories.get(item.id);
-      const catIds: string[] = allCats && allCats.size > 0 ? Array.from(allCats) : ["uncategorized"];
+      let catIds: string[] = allCats && allCats.size > 0 ? Array.from(allCats) : ["uncategorized"];
+
+      // Restrict to the selected category only (if filter set)
+      if (categoryFilter !== "all") {
+        catIds = catIds.filter((c) => c === categoryFilter);
+      }
+
+      // Restrict to categories belonging to the selected department only (if filter set)
+      if (departmentFilter !== "all") {
+        catIds = catIds.filter((c) => {
+          if (c === "uncategorized") return false;
+          const deptIds = categoryAllDepartments.get(c);
+          return !!deptIds && deptIds.has(departmentFilter);
+        });
+      }
 
       for (const catId of catIds) {
         const catName =
@@ -577,7 +591,7 @@ export const CostAnalysisPage: React.FC = () => {
     }
 
     return Array.from(map.values());
-  }, [stockItems, calcData, itemAllCategories, categories]);
+  }, [stockItems, calcData, itemAllCategories, categories, categoryFilter, departmentFilter, categoryAllDepartments]);
 
   const catTotals = (items: ItemCalc[]) => {
     const t = { openQty: 0, openVal: 0, inQty: 0, inVal: 0, outQty: 0, outVal: 0, bookQty: 0, bookVal: 0, countQty: 0, countVal: 0, varQty: 0, varVal: 0 };
@@ -1043,7 +1057,11 @@ export const CostAnalysisPage: React.FC = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">كل المجموعات</SelectItem>
-                {categories?.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                {categories?.filter((c: any) => {
+                  if (departmentFilter === "all") return true;
+                  const deptIds = categoryAllDepartments.get(c.id);
+                  return !!deptIds && deptIds.has(departmentFilter);
+                }).map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

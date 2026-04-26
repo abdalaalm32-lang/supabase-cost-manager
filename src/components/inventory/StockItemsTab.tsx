@@ -458,7 +458,9 @@ export const StockItemsTab: React.FC = () => {
       return true;
     });
     if (filterCategory !== "all") {
-      result = result.filter((item: any) => item.category_id === filterCategory);
+      result = result.filter((item: any) =>
+        getAllCatIdsForItem(item).includes(filterCategory)
+      );
     }
     if (filterDepartment !== "all") {
       result = result.filter((item: any) => item.department_id === filterDepartment);

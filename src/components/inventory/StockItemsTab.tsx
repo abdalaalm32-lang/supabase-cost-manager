@@ -172,6 +172,7 @@ export const StockItemsTab: React.FC = () => {
   const resetForm = () => {
     setItemName("");
     setCategoryId("");
+    setSelectedCategories([]);
     setSelectedDepartments([]);
     setStandardCost("");
     setStockUnit("");

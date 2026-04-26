@@ -274,6 +274,7 @@ export const StockItemsTab: React.FC = () => {
         if (error) throw error;
         await saveLocationLinks(editId);
         await saveDepartmentLinks(editId);
+        await saveCategoryLinks(editId);
       } else {
         const selectedCat = categories.find((c: any) => c.id === categoryId);
         const identifierCode = selectedCat?.identifier_code || null;

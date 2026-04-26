@@ -38,6 +38,8 @@ export const StocktakeDetailPage: React.FC = () => {
   const [notesLoaded, setNotesLoaded] = useState(false);
   const [localQty, setLocalQty] = useState<Record<string, string>>({});
   const [pickerSearch, setPickerSearch] = useState("");
+  const [itemsSearch, setItemsSearch] = useState("");
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
 
   const { data: stocktake, isLoading: stLoading } = useQuery({
     queryKey: ["stocktake", id],

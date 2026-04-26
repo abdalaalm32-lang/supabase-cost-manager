@@ -390,6 +390,24 @@ export const StockItemsTab: React.FC = () => {
     if (!id) return "—";
     return categories.find((c: any) => c.id === id)?.name || "—";
   };
+
+  const getAllCatIdsForItem = (item: any): string[] => {
+    const ids = new Set<string>();
+    if (item.category_id) ids.add(item.category_id);
+    itemCategories
+      .filter((c: any) => c.stock_item_id === item.id)
+      .forEach((c: any) => ids.add(c.category_id));
+    return Array.from(ids);
+  };
+
+  const getCatNames = (item: any) => {
+    const ids = getAllCatIdsForItem(item);
+    if (ids.length === 0) return "—";
+    return ids
+      .map((id) => categories.find((c: any) => c.id === id)?.name)
+      .filter(Boolean)
+      .join("، ") || "—";
+  };
   const getDepNames = (itemId: string) => {
     const deptLinks = itemDepartments.filter((d: any) => d.stock_item_id === itemId);
     if (deptLinks.length === 0) return "—";

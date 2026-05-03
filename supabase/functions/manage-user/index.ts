@@ -45,33 +45,27 @@ Deno.serve(async (req) => {
       .from("profiles")
       .select("company_id")
       .eq("user_id", callerId)
-      .single();
-
-    if (!callerProfile) {
-      return new Response(JSON.stringify({ error: "لم يتم العثور على الملف الشخصي" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const { data: isAdmin } = await supabaseAdmin.rpc("is_company_admin", {
-      _user_id: callerId,
-      _company_id: callerProfile.company_id,
-    });
-
-    const { data: isOwner } = await supabaseAdmin.rpc("is_company_owner", {
-      _user_id: callerId,
-      _company_id: callerProfile.company_id,
-    });
+      .maybeSingle();
 
     const { data: isSysAdmin } = await supabaseAdmin.rpc("has_role", {
       _user_id: callerId,
       _role: "admin",
     });
 
+    let isAdmin = false;
+    let isOwner = false;
+    if (callerProfile?.company_id) {
+      const [{ data: a }, { data: o }] = await Promise.all([
+        supabaseAdmin.rpc("is_company_admin", { _user_id: callerId, _company_id: callerProfile.company_id }),
+        supabaseAdmin.rpc("is_company_owner", { _user_id: callerId, _company_id: callerProfile.company_id }),
+      ]);
+      isAdmin = !!a;
+      isOwner = !!o;
+    }
+
     if (!isAdmin && !isOwner && !isSysAdmin) {
       return new Response(JSON.stringify({ error: "يجب أن تكون مديراً أو مالكاً" }), {
-        status: 403,
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -84,19 +78,19 @@ Deno.serve(async (req) => {
       .from("profiles")
       .select("company_id, user_id")
       .eq("user_id", target_user_id)
-      .single();
+      .maybeSingle();
 
     if (!targetProfile) {
       return new Response(JSON.stringify({ error: "المستخدم غير موجود" }), {
-        status: 404,
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     // Non-system-admins must be in the same company
-    if (!isSysAdmin && targetProfile.company_id !== callerProfile.company_id) {
+    if (!isSysAdmin && targetProfile.company_id !== callerProfile?.company_id) {
       return new Response(JSON.stringify({ error: "المستخدم غير موجود في شركتك" }), {
-        status: 403,
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

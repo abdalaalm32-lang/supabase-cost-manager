@@ -231,12 +231,14 @@ export const CostAnalysisPage: React.FC = () => {
   const { data: stocktakeData } = useQuery({
     queryKey: ["stocktake-data-costing", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("stocktake_items").select("*, stocktakes!inner(id, date, status, type, company_id, branch_id, warehouse_id)")
-        .eq("stocktakes.company_id", companyId!)
-        .eq("stocktakes.status", "مكتمل");
-      if (error) throw error;
-      return data;
+      return fetchAllRows<any>((from, to) =>
+        supabase
+          .from("stocktake_items")
+          .select("*, stocktakes!inner(id, date, status, type, company_id, branch_id, warehouse_id)")
+          .eq("stocktakes.company_id", companyId!)
+          .eq("stocktakes.status", "مكتمل")
+          .range(from, to)
+      );
     },
     enabled: !!companyId,
   });
@@ -244,12 +246,14 @@ export const CostAnalysisPage: React.FC = () => {
   const { data: purchaseData } = useQuery({
     queryKey: ["purchase-data-costing", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("purchase_items").select("*, purchase_orders!inner(id, date, status, company_id, branch_id, warehouse_id, department_id)")
-        .eq("purchase_orders.company_id", companyId!)
-        .eq("purchase_orders.status", "مكتمل");
-      if (error) throw error;
-      return data;
+      return fetchAllRows<any>((from, to) =>
+        supabase
+          .from("purchase_items")
+          .select("*, purchase_orders!inner(id, date, status, company_id, branch_id, warehouse_id, department_id)")
+          .eq("purchase_orders.company_id", companyId!)
+          .eq("purchase_orders.status", "مكتمل")
+          .range(from, to)
+      );
     },
     enabled: !!companyId,
   });
@@ -257,12 +261,14 @@ export const CostAnalysisPage: React.FC = () => {
   const { data: productionIngData } = useQuery({
     queryKey: ["production-ing-costing", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("production_ingredients").select("*, production_records!inner(id, date, status, company_id, branch_id, warehouse_id, department_id)")
-        .eq("production_records.company_id", companyId!)
-        .eq("production_records.status", "مكتمل");
-      if (error) throw error;
-      return data;
+      return fetchAllRows<any>((from, to) =>
+        supabase
+          .from("production_ingredients")
+          .select("*, production_records!inner(id, date, status, company_id, branch_id, warehouse_id, department_id)")
+          .eq("production_records.company_id", companyId!)
+          .eq("production_records.status", "مكتمل")
+          .range(from, to)
+      );
     },
     enabled: !!companyId,
   });

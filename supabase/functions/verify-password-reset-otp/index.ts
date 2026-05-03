@@ -20,6 +20,13 @@ Deno.serve(async (req) => {
       );
     }
 
+    if (new_password !== undefined && (typeof new_password !== "string" || new_password.length < 8)) {
+      return new Response(
+        JSON.stringify({ error: "كلمة المرور يجب أن تكون 8 أحرف على الأقل" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!

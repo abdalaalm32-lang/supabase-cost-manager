@@ -816,14 +816,16 @@ export const StocktakeDetailPage: React.FC = () => {
                 {/* Totals Row - values only, no quantities */}
                 <TableRow className="bg-muted/50 font-bold">
                   <TableCell colSpan={3} className="text-right">الإجمالي</TableCell>
-                  <TableCell>—</TableCell>
+                  {stocktakeLocationType === "warehouse" && <TableCell>—</TableCell>}
                   <TableCell>—</TableCell>
                   <TableCell>—</TableCell>
                   <TableCell>{totals.totalValue.toFixed(2)}</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell className={cn(totals.totalDiffValue >= 0 ? "text-green-600" : "text-red-600")}>
-                    {totals.totalDiffValue >= 0 ? `+${totals.totalDiffValue.toFixed(2)}` : totals.totalDiffValue.toFixed(2)}
-                  </TableCell>
+                  {stocktakeLocationType === "warehouse" && <TableCell>—</TableCell>}
+                  {stocktakeLocationType === "warehouse" && (
+                    <TableCell className={cn(totals.totalDiffValue >= 0 ? "text-green-600" : "text-red-600")}>
+                      {totals.totalDiffValue >= 0 ? `+${totals.totalDiffValue.toFixed(2)}` : totals.totalDiffValue.toFixed(2)}
+                    </TableCell>
+                  )}
                   {isEditable && <TableCell />}
                 </TableRow>
               </>

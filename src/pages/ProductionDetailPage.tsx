@@ -708,7 +708,7 @@ export const ProductionDetailPage: React.FC = () => {
                           <TableCell className="font-medium text-sm">{ing.name}</TableCell>
                           <TableCell className="text-sm">{ing.unit}</TableCell>
                           <TableCell className={cn("text-sm", isOverStock && "text-destructive font-bold")}>
-                            {available !== null ? available.toFixed(2) : "—"}
+                            {available !== null ? available : "—"}
                           </TableCell>
                           <TableCell>
                             {isLocked ? (
@@ -723,7 +723,7 @@ export const ProductionDetailPage: React.FC = () => {
                               />
                             )}
                             {isOverStock && (
-                              <p className="text-[10px] text-destructive mt-0.5">المتاح: {available!.toFixed(2)}</p>
+                              <p className="text-[10px] text-destructive mt-0.5">المتاح: {available}</p>
                             )}
                           </TableCell>
                           <TableCell className="text-sm">{ing.unit_cost.toFixed(2)}</TableCell>

@@ -298,6 +298,7 @@ export const CostAnalysisPage: React.FC = () => {
           .select("*, waste_records!inner(id, date, status, company_id, branch_id, warehouse_id, department_id)")
           .eq("waste_records.company_id", companyId!)
           .eq("waste_records.status", "مكتمل")
+          .order("id", { ascending: true })
           .range(from, to)
       );
     },
@@ -313,6 +314,7 @@ export const CostAnalysisPage: React.FC = () => {
           .select("*, transfers!inner(id, date, status, company_id, source_id, destination_id, source_department_id, destination_department_id)")
           .eq("transfers.company_id", companyId!)
           .eq("transfers.status", "مكتمل")
+          .order("id", { ascending: true })
           .range(from, to)
       );
     },
@@ -328,6 +330,7 @@ export const CostAnalysisPage: React.FC = () => {
           .select("*, pos_sales!inner(id, date, status, company_id, branch_id)")
           .eq("pos_sales.company_id", companyId!)
           .eq("pos_sales.status", "مكتمل")
+          .order("id", { ascending: true })
           .range(from, to)
       );
     },

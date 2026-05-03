@@ -317,7 +317,9 @@ export const ProductionDetailPage: React.FC = () => {
       for (const ing of ingredients) {
         if (ing.stock_item_id && ing.required_qty > 0) {
           const available = getLocationStock(ing.stock_item_id);
-          if (ing.required_qty > available) {
+          // Use small epsilon tolerance to avoid floating-point precision issues
+          // when required exactly matches available (e.g., 10.5 vs 10.4999999)
+          if (ing.required_qty - available > 0.0001) {
             overStockItems.push(`"${ing.name}" (المطلوب: ${ing.required_qty} / المتاح: ${available.toFixed(2)})`);
           }
         }

@@ -776,7 +776,7 @@ export const StocktakeDetailPage: React.FC = () => {
                       <TableCell className="font-mono text-xs">{si?.code || "—"}</TableCell>
                       <TableCell className="font-medium">{si?.name || "—"}</TableCell>
                       <TableCell>{si?.stock_unit || "—"}</TableCell>
-                      <TableCell>{bookQty.toFixed(2)}</TableCell>
+                      {stocktakeLocationType === "warehouse" && <TableCell>{bookQty.toFixed(2)}</TableCell>}
                       <TableCell>
                         {isEditable ? (
                           <Input
@@ -793,12 +793,16 @@ export const StocktakeDetailPage: React.FC = () => {
                       </TableCell>
                       <TableCell>{avgCost.toFixed(2)}</TableCell>
                       <TableCell className="font-semibold">{value.toFixed(2)}</TableCell>
-                      <TableCell className={cn("font-semibold", diff > 0 ? "text-green-600" : diff < 0 ? "text-red-600" : "")}>
-                        {diff > 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2)}
-                      </TableCell>
-                      <TableCell className={cn("font-semibold", diffValue > 0 ? "text-green-600" : diffValue < 0 ? "text-red-600" : "")}>
-                        {diffValue > 0 ? `+${diffValue.toFixed(2)}` : diffValue.toFixed(2)}
-                      </TableCell>
+                      {stocktakeLocationType === "warehouse" && (
+                        <TableCell className={cn("font-semibold", diff > 0 ? "text-green-600" : diff < 0 ? "text-red-600" : "")}>
+                          {diff > 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2)}
+                        </TableCell>
+                      )}
+                      {stocktakeLocationType === "warehouse" && (
+                        <TableCell className={cn("font-semibold", diffValue > 0 ? "text-green-600" : diffValue < 0 ? "text-red-600" : "")}>
+                          {diffValue > 0 ? `+${diffValue.toFixed(2)}` : diffValue.toFixed(2)}
+                        </TableCell>
+                      )}
                       {isEditable && (
                         <TableCell>
                           <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteItem(item.id)}>

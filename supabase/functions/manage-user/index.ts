@@ -45,33 +45,27 @@ Deno.serve(async (req) => {
       .from("profiles")
       .select("company_id")
       .eq("user_id", callerId)
-      .single();
-
-    if (!callerProfile) {
-      return new Response(JSON.stringify({ error: "لم يتم العثور على الملف الشخصي" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const { data: isAdmin } = await supabaseAdmin.rpc("is_company_admin", {
-      _user_id: callerId,
-      _company_id: callerProfile.company_id,
-    });
-
-    const { data: isOwner } = await supabaseAdmin.rpc("is_company_owner", {
-      _user_id: callerId,
-      _company_id: callerProfile.company_id,
-    });
+      .maybeSingle();
 
     const { data: isSysAdmin } = await supabaseAdmin.rpc("has_role", {
       _user_id: callerId,
       _role: "admin",
     });
 
+    let isAdmin = false;
+    let isOwner = false;
+    if (callerProfile?.company_id) {
+      const [{ data: a }, { data: o }] = await Promise.all([
+        supabaseAdmin.rpc("is_company_admin", { _user_id: callerId, _company_id: callerProfile.company_id }),
+        supabaseAdmin.rpc("is_company_owner", { _user_id: callerId, _company_id: callerProfile.company_id }),
+      ]);
+      isAdmin = !!a;
+      isOwner = !!o;
+    }
+
     if (!isAdmin && !isOwner && !isSysAdmin) {
       return new Response(JSON.stringify({ error: "يجب أن تكون مديراً أو مالكاً" }), {
-        status: 403,
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -84,19 +78,19 @@ Deno.serve(async (req) => {
       .from("profiles")
       .select("company_id, user_id")
       .eq("user_id", target_user_id)
-      .single();
+      .maybeSingle();
 
     if (!targetProfile) {
       return new Response(JSON.stringify({ error: "المستخدم غير موجود" }), {
-        status: 404,
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     // Non-system-admins must be in the same company
-    if (!isSysAdmin && targetProfile.company_id !== callerProfile.company_id) {
+    if (!isSysAdmin && targetProfile.company_id !== callerProfile?.company_id) {
       return new Response(JSON.stringify({ error: "المستخدم غير موجود في شركتك" }), {
-        status: 403,
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -105,7 +99,7 @@ Deno.serve(async (req) => {
       if (!new_password || new_password.length < 6) {
         return new Response(
           JSON.stringify({ error: "كلمة المرور يجب أن تكون 6 أحرف على الأقل" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
@@ -117,7 +111,7 @@ Deno.serve(async (req) => {
       if (error) {
         return new Response(
           JSON.stringify({ error: "فشل تغيير كلمة المرور", details: error.message }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
@@ -131,7 +125,7 @@ Deno.serve(async (req) => {
       if (!updates || typeof updates !== "object") {
         return new Response(
           JSON.stringify({ error: "بيانات التحديث غير صالحة" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
@@ -167,7 +161,7 @@ Deno.serve(async (req) => {
       if (Object.keys(payload).length === 0) {
         return new Response(
           JSON.stringify({ error: "لا توجد بيانات صالحة للتحديث" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
@@ -181,7 +175,7 @@ Deno.serve(async (req) => {
       if (error || !updatedProfile) {
         return new Response(
           JSON.stringify({ error: "فشل تحديث بيانات المستخدم", details: error?.message }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
@@ -196,7 +190,7 @@ Deno.serve(async (req) => {
       if (target_user_id === callerId) {
         return new Response(
           JSON.stringify({ error: "لا يمكنك حذف حسابك الخاص" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
@@ -206,7 +200,7 @@ Deno.serve(async (req) => {
       if (error) {
         return new Response(
           JSON.stringify({ error: "فشل حذف المستخدم", details: error.message }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
@@ -218,7 +212,7 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ error: "إجراء غير معروف" }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
     return new Response(JSON.stringify({ error: (err as Error).message }), {

@@ -454,6 +454,24 @@ export const StocktakeDetailPage: React.FC = () => {
         });
       }
 
+      // Track header field changes
+      const newDateStr = editDate ? format(editDate, "yyyy-MM-dd") : stocktake?.date;
+      if (newDateStr !== stocktake?.date) {
+        changes.push({ field: "date", old_value: stocktake?.date, new_value: newDateStr });
+      }
+      if (editType !== stocktake?.type) {
+        changes.push({ field: "type", old_value: stocktake?.type, new_value: editType });
+      }
+      const newBranchId = editLocationType === "branch" ? (editLocationId || null) : null;
+      const newWarehouseId = editLocationType === "warehouse" ? (editLocationId || null) : null;
+      if (newBranchId !== (stocktake?.branch_id || null) || newWarehouseId !== (stocktake?.warehouse_id || null)) {
+        changes.push({ field: "location", old_value: locationName, new_value: "تم التعديل" });
+      }
+      const newDeptId = editDepartmentId || null;
+      if (newDeptId !== ((stocktake as any)?.department_id || null)) {
+        changes.push({ field: "department", old_value: (stocktake as any)?.department_id || "—", new_value: newDeptId || "—" });
+      }
+
       // Save edit history
       if (changes.length > 0) {
         await supabase.from("stocktake_edit_history").insert({
@@ -463,12 +481,17 @@ export const StocktakeDetailPage: React.FC = () => {
         });
       }
 
-      // Mark as edited and save as مكتمل
+      // Mark as edited and save as مكتمل (with header updates)
       const { error } = await supabase.from("stocktakes").update({
         notes,
         total_actual_value: totalActual,
         status: "مكتمل",
         is_edited: true,
+        date: newDateStr,
+        type: editType,
+        branch_id: newBranchId,
+        warehouse_id: newWarehouseId,
+        department_id: newDeptId,
       }).eq("id", id!);
 
       if (error) {

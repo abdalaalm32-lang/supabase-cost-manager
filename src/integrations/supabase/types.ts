@@ -2953,6 +2953,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      current_user_has_pos_password: { Args: never; Returns: boolean }
       generate_branch_code: { Args: { p_company_id: string }; Returns: string }
       generate_category_code: {
         Args: { p_company_id: string }

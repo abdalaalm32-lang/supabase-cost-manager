@@ -157,7 +157,8 @@ export const CallCenterPage: React.FC = () => {
         .ilike("name", "%كاشير%");
       const cashierRoleIds = cashierRoles?.map((r: any) => r.id) || [];
 
-      let query = supabase.from("profiles").select("id, full_name, branch_id, job_role_id").eq("company_id", companyId!).eq("status", "نشط");
+      const { data: dirData } = await supabase.rpc("get_company_profiles_directory", { _company_id: companyId! });
+      let query: any = { data: (dirData || []).filter((p: any) => p.status === "نشط") };
       if (selectedBranchId) {
         query = query.eq("branch_id", selectedBranchId);
       }

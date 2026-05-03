@@ -609,15 +609,17 @@ export const StocktakeDetailPage: React.FC = () => {
           <p className="text-xs text-muted-foreground mb-1">عدد الأصناف</p>
           <p className="font-semibold text-sm">{stocktakeItems.length}</p>
         </div>
-        <div className="glass-card p-4 text-center">
-          <div className="flex items-center justify-center mb-2">
-            {totals.totalDiffValue >= 0 ? <TrendingUp size={18} className="text-green-600" /> : <TrendingDown size={18} className="text-red-600" />}
+        {stocktakeLocationType === "warehouse" && (
+          <div className="glass-card p-4 text-center">
+            <div className="flex items-center justify-center mb-2">
+              {totals.totalDiffValue >= 0 ? <TrendingUp size={18} className="text-green-600" /> : <TrendingDown size={18} className="text-red-600" />}
+            </div>
+            <p className="text-xs text-muted-foreground mb-1">إجمالي قيمة الفارق</p>
+            <p className={cn("font-semibold text-sm", totals.totalDiffValue >= 0 ? "text-green-600" : "text-red-600")}>
+              {totals.totalDiffValue >= 0 ? `+${totals.totalDiffValue.toFixed(2)}` : totals.totalDiffValue.toFixed(2)}
+            </p>
           </div>
-          <p className="text-xs text-muted-foreground mb-1">إجمالي قيمة الفارق</p>
-          <p className={cn("font-semibold text-sm", totals.totalDiffValue >= 0 ? "text-green-600" : "text-red-600")}>
-            {totals.totalDiffValue >= 0 ? `+${totals.totalDiffValue.toFixed(2)}` : totals.totalDiffValue.toFixed(2)}
-          </p>
-        </div>
+        )}
         <div className="glass-card p-4 text-center">
           <div className="flex items-center justify-center mb-2">
             <MapPin size={18} className="text-muted-foreground" />
@@ -735,20 +737,20 @@ export const StocktakeDetailPage: React.FC = () => {
               <TableHead className="text-right">كود الصنف</TableHead>
               <TableHead className="text-right">اسم الصنف</TableHead>
               <TableHead className="text-right">وحدة التخزين</TableHead>
-              <TableHead className="text-right">الرصيد الدفتري</TableHead>
+              {stocktakeLocationType === "warehouse" && <TableHead className="text-right">الرصيد الدفتري</TableHead>}
               <TableHead className="text-right">الرصيد الفعلي</TableHead>
               <TableHead className="text-right">متوسط التكلفة</TableHead>
               <TableHead className="text-right">القيمة</TableHead>
-              <TableHead className="text-right">الفارق</TableHead>
-              <TableHead className="text-right">قيمة الفارق</TableHead>
+              {stocktakeLocationType === "warehouse" && <TableHead className="text-right">الفارق</TableHead>}
+              {stocktakeLocationType === "warehouse" && <TableHead className="text-right">قيمة الفارق</TableHead>}
               {isEditable && <TableHead className="text-right">حذف</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {itemsLoading ? (
-              <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">جاري التحميل...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={stocktakeLocationType === "warehouse" ? 10 : 7} className="text-center py-8 text-muted-foreground">جاري التحميل...</TableCell></TableRow>
             ) : stocktakeItems.length === 0 ? (
-              <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">لا توجد أصناف - أضف أصناف للجرد</TableCell></TableRow>
+              <TableRow><TableCell colSpan={stocktakeLocationType === "warehouse" ? 10 : 7} className="text-center py-8 text-muted-foreground">لا توجد أصناف - أضف أصناف للجرد</TableCell></TableRow>
             ) : (
               <>
                 {[...stocktakeItems].sort((a: any, b: any) => {
@@ -774,7 +776,7 @@ export const StocktakeDetailPage: React.FC = () => {
                       <TableCell className="font-mono text-xs">{si?.code || "—"}</TableCell>
                       <TableCell className="font-medium">{si?.name || "—"}</TableCell>
                       <TableCell>{si?.stock_unit || "—"}</TableCell>
-                      <TableCell>{bookQty.toFixed(2)}</TableCell>
+                      {stocktakeLocationType === "warehouse" && <TableCell>{bookQty.toFixed(2)}</TableCell>}
                       <TableCell>
                         {isEditable ? (
                           <Input
@@ -791,12 +793,16 @@ export const StocktakeDetailPage: React.FC = () => {
                       </TableCell>
                       <TableCell>{avgCost.toFixed(2)}</TableCell>
                       <TableCell className="font-semibold">{value.toFixed(2)}</TableCell>
-                      <TableCell className={cn("font-semibold", diff > 0 ? "text-green-600" : diff < 0 ? "text-red-600" : "")}>
-                        {diff > 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2)}
-                      </TableCell>
-                      <TableCell className={cn("font-semibold", diffValue > 0 ? "text-green-600" : diffValue < 0 ? "text-red-600" : "")}>
-                        {diffValue > 0 ? `+${diffValue.toFixed(2)}` : diffValue.toFixed(2)}
-                      </TableCell>
+                      {stocktakeLocationType === "warehouse" && (
+                        <TableCell className={cn("font-semibold", diff > 0 ? "text-green-600" : diff < 0 ? "text-red-600" : "")}>
+                          {diff > 0 ? `+${diff.toFixed(2)}` : diff.toFixed(2)}
+                        </TableCell>
+                      )}
+                      {stocktakeLocationType === "warehouse" && (
+                        <TableCell className={cn("font-semibold", diffValue > 0 ? "text-green-600" : diffValue < 0 ? "text-red-600" : "")}>
+                          {diffValue > 0 ? `+${diffValue.toFixed(2)}` : diffValue.toFixed(2)}
+                        </TableCell>
+                      )}
                       {isEditable && (
                         <TableCell>
                           <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteItem(item.id)}>
@@ -810,14 +816,16 @@ export const StocktakeDetailPage: React.FC = () => {
                 {/* Totals Row - values only, no quantities */}
                 <TableRow className="bg-muted/50 font-bold">
                   <TableCell colSpan={3} className="text-right">الإجمالي</TableCell>
-                  <TableCell>—</TableCell>
+                  {stocktakeLocationType === "warehouse" && <TableCell>—</TableCell>}
                   <TableCell>—</TableCell>
                   <TableCell>—</TableCell>
                   <TableCell>{totals.totalValue.toFixed(2)}</TableCell>
-                  <TableCell>—</TableCell>
-                  <TableCell className={cn(totals.totalDiffValue >= 0 ? "text-green-600" : "text-red-600")}>
-                    {totals.totalDiffValue >= 0 ? `+${totals.totalDiffValue.toFixed(2)}` : totals.totalDiffValue.toFixed(2)}
-                  </TableCell>
+                  {stocktakeLocationType === "warehouse" && <TableCell>—</TableCell>}
+                  {stocktakeLocationType === "warehouse" && (
+                    <TableCell className={cn(totals.totalDiffValue >= 0 ? "text-green-600" : "text-red-600")}>
+                      {totals.totalDiffValue >= 0 ? `+${totals.totalDiffValue.toFixed(2)}` : totals.totalDiffValue.toFixed(2)}
+                    </TableCell>
+                  )}
                   {isEditable && <TableCell />}
                 </TableRow>
               </>

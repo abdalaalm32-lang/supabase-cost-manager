@@ -225,13 +225,13 @@ export const PosShiftManager: React.FC<PosShiftManagerProps> = ({ companyId, bra
   const variance = !isNaN(actualCashNum) ? actualCashNum - totals.expectedCash : null;
   const hasSignificantVariance = variance !== null && Math.abs(variance) >= 1;
 
-  const verifyPassword = (action: "open" | "close") => {
+  const verifyPassword = async (action: "open" | "close") => {
     if (action === "open") {
       setShowOpenDialog(true);
       return;
     }
-    const userPosPassword = (currentProfile as any)?.pos_password;
-    if (userPosPassword) {
+    const { data: hasPwd } = await supabase.rpc("current_user_has_pos_password");
+    if (hasPwd) {
       setPasswordAction(action);
       setPosPassword("");
       setShowPasswordDialog(true);
@@ -247,9 +247,10 @@ export const PosShiftManager: React.FC<PosShiftManagerProps> = ({ companyId, bra
     setShowCloseDialog(true);
   };
 
-  const handlePasswordSubmit = () => {
-    const userPosPassword = (currentProfile as any)?.pos_password;
-    if (posPassword === userPosPassword) {
+  const handlePasswordSubmit = async () => {
+    const { data: ok, error } = await supabase.rpc("verify_own_pos_password", { _password: posPassword });
+    if (error) { toast.error("تعذر التحقق من كلمة المرور"); return; }
+    if (ok) {
       setShowPasswordDialog(false);
       setPosPassword("");
       if (passwordAction === "open") setShowOpenDialog(true);
@@ -259,11 +260,12 @@ export const PosShiftManager: React.FC<PosShiftManagerProps> = ({ companyId, bra
     }
   };
 
-  const handleOpenShiftSubmit = () => {
+  const handleOpenShiftSubmit = async () => {
     if (selectedDefId) {
       const selectedDef = shiftDefinitions?.find((d: any) => d.id === selectedDefId);
-      if (selectedDef?.pos_password) {
-        if (posPassword !== selectedDef.pos_password) {
+      if (selectedDef?.has_password) {
+        const { data: ok, error } = await supabase.rpc("verify_shift_definition_password", { _definition_id: selectedDefId, _password: posPassword });
+        if (error || !ok) {
           toast.error("كلمة مرور الشيفت غير صحيحة");
           return;
         }

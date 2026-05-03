@@ -77,7 +77,8 @@ export const PosItemSalesPage: React.FC = () => {
   const { data: cashiers } = useQuery({
     queryKey: ["item-sales-cashiers", companyId],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("id, full_name").eq("company_id", companyId!).order("full_name");
+      const { data } = await supabase.rpc("get_company_profiles_directory", { _company_id: companyId! });
+      return (data || []).map((p: any) => ({ id: p.id, full_name: p.full_name })).sort((a: any, b: any) => (a.full_name || "").localeCompare(b.full_name || ""));
       return data || [];
     },
     enabled: !!companyId,

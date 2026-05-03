@@ -43,34 +43,30 @@ export const PosShiftManager: React.FC<PosShiftManagerProps> = ({ companyId, bra
   const [closingNotes, setClosingNotes] = useState<string>("");
   const [confirmedVariance, setConfirmedVariance] = useState(false);
 
-  // Get shift definitions
+  // Get shift definitions via safe directory (no pos_password exposure)
   const { data: shiftDefinitions } = useQuery({
     queryKey: ["pos-shift-definitions-active", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("pos_shift_definitions")
-        .select("*")
-        .eq("company_id", companyId)
-        .eq("active", true)
-        .order("shift_name");
+      const { data, error } = await supabase.rpc("get_company_shift_definitions", {
+        _company_id: companyId,
+      });
       if (error) throw error;
-      return data || [];
+      return (data || [])
+        .filter((d: any) => d.active)
+        .sort((a: any, b: any) => (a.shift_name || "").localeCompare(b.shift_name || ""));
     },
     enabled: !!companyId,
   });
 
-  // Get current user's profile (for pos_password)
+  // Get current user's profile (id + name only; pos_password verified server-side)
   const { data: currentProfile } = useQuery({
     queryKey: ["pos-user-profile", userName],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, pos_password, full_name")
-        .eq("company_id", companyId)
-        .eq("full_name", userName)
-        .limit(1);
+      const { data, error } = await supabase.rpc("get_company_profiles_directory", {
+        _company_id: companyId,
+      });
       if (error) throw error;
-      return data?.[0] || null;
+      return (data || []).find((p: any) => p.full_name === userName) || null;
     },
     enabled: !!companyId && !!userName,
   });
@@ -229,13 +225,13 @@ export const PosShiftManager: React.FC<PosShiftManagerProps> = ({ companyId, bra
   const variance = !isNaN(actualCashNum) ? actualCashNum - totals.expectedCash : null;
   const hasSignificantVariance = variance !== null && Math.abs(variance) >= 1;
 
-  const verifyPassword = (action: "open" | "close") => {
+  const verifyPassword = async (action: "open" | "close") => {
     if (action === "open") {
       setShowOpenDialog(true);
       return;
     }
-    const userPosPassword = (currentProfile as any)?.pos_password;
-    if (userPosPassword) {
+    const { data: hasPwd } = await supabase.rpc("current_user_has_pos_password");
+    if (hasPwd) {
       setPasswordAction(action);
       setPosPassword("");
       setShowPasswordDialog(true);
@@ -251,9 +247,10 @@ export const PosShiftManager: React.FC<PosShiftManagerProps> = ({ companyId, bra
     setShowCloseDialog(true);
   };
 
-  const handlePasswordSubmit = () => {
-    const userPosPassword = (currentProfile as any)?.pos_password;
-    if (posPassword === userPosPassword) {
+  const handlePasswordSubmit = async () => {
+    const { data: ok, error } = await supabase.rpc("verify_own_pos_password", { _password: posPassword });
+    if (error) { toast.error("تعذر التحقق من كلمة المرور"); return; }
+    if (ok) {
       setShowPasswordDialog(false);
       setPosPassword("");
       if (passwordAction === "open") setShowOpenDialog(true);
@@ -263,11 +260,12 @@ export const PosShiftManager: React.FC<PosShiftManagerProps> = ({ companyId, bra
     }
   };
 
-  const handleOpenShiftSubmit = () => {
+  const handleOpenShiftSubmit = async () => {
     if (selectedDefId) {
       const selectedDef = shiftDefinitions?.find((d: any) => d.id === selectedDefId);
-      if (selectedDef?.pos_password) {
-        if (posPassword !== selectedDef.pos_password) {
+      if (selectedDef?.has_password) {
+        const { data: ok, error } = await supabase.rpc("verify_shift_definition_password", { _definition_id: selectedDefId, _password: posPassword });
+        if (error || !ok) {
           toast.error("كلمة مرور الشيفت غير صحيحة");
           return;
         }
@@ -555,7 +553,7 @@ ${closingNotes.trim() ? `<div class="sep"><p class="bold">📝 ملاحظات:</
                 </Select>
               </div>
             )}
-            {selectedDef?.pos_password && (
+            {selectedDef?.has_password && (
               <div>
                 <label className="text-sm text-muted-foreground mb-1 block">كلمة مرور الشيفت</label>
                 <Input

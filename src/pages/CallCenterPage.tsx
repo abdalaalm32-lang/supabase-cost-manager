@@ -157,19 +157,19 @@ export const CallCenterPage: React.FC = () => {
         .ilike("name", "%كاشير%");
       const cashierRoleIds = cashierRoles?.map((r: any) => r.id) || [];
 
-      let query = supabase.from("profiles").select("id, full_name, branch_id, job_role_id").eq("company_id", companyId!).eq("status", "نشط");
-      if (selectedBranchId) {
-        query = query.eq("branch_id", selectedBranchId);
-      }
-      if (cashierRoleIds.length > 0) {
-        query = query.in("job_role_id", cashierRoleIds);
-      } else {
+      if (cashierRoleIds.length === 0) {
         // No cashier role defined — return empty
         return [];
       }
-      const { data, error } = await query;
+      const { data: dirData, error } = await supabase.rpc("get_company_profiles_directory", { _company_id: companyId! });
       if (error) throw error;
-      return data;
+      let result = (dirData || []).filter((p: any) =>
+        p.status === "نشط" && cashierRoleIds.includes(p.job_role_id)
+      );
+      if (selectedBranchId) {
+        result = result.filter((p: any) => p.branch_id === selectedBranchId);
+      }
+      return result;
     },
     enabled: !!companyId,
   });

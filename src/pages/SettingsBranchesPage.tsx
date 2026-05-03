@@ -75,13 +75,11 @@ export const SettingsBranchesPage: React.FC = () => {
   const { data: users } = useQuery({
     queryKey: ["all-users", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("user_id, full_name")
-        .eq("company_id", companyId!)
-        .eq("status", "نشط");
+      const { data, error } = await supabase.rpc("get_company_profiles_directory", { _company_id: companyId! });
       if (error) throw error;
-      return data;
+      return (data || [])
+        .filter((p: any) => p.status === "نشط")
+        .map((p: any) => ({ user_id: p.user_id, full_name: p.full_name }));
     },
     enabled: !!companyId,
   });

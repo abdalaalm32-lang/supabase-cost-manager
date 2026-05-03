@@ -25,15 +25,29 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Check if email exists
+    const genericResponse = new Response(
+      JSON.stringify({ success: true, message: "إذا كان البريد مسجلاً، سيصلك رمز التحقق قريباً" }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+
+    // Rate limit: reject if an unused, recent OTP was sent within the last 60 seconds
+    const sixtySecAgo = new Date(Date.now() - 60 * 1000).toISOString();
+    const { data: recent } = await supabaseAdmin
+      .from("otp_codes")
+      .select("id")
+      .eq("admin_email", email)
+      .gte("created_at", sixtySecAgo)
+      .limit(1);
+    if (recent && recent.length > 0) {
+      return genericResponse;
+    }
+
+    // Check if email exists — but never reveal that to the caller
     const { data: users } = await supabaseAdmin.auth.admin.listUsers();
     const user = users?.users?.find((u) => u.email === email);
 
     if (!user) {
-      return new Response(
-        JSON.stringify({ error: "البريد الإلكتروني غير مسجل في النظام" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return genericResponse;
     }
 
     // Generate 6-digit OTP
@@ -102,7 +116,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, message: "تم إرسال كود التحقق إلى بريدك الإلكتروني" }),
+      JSON.stringify({ success: true, message: "إذا كان البريد مسجلاً، سيصلك رمز التحقق قريباً" }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {

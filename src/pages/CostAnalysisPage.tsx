@@ -345,6 +345,7 @@ export const CostAnalysisPage: React.FC = () => {
           .from("recipe_ingredients")
           .select("*, recipes!inner(id, menu_item_id, company_id)")
           .eq("recipes.company_id", companyId!)
+          .order("id", { ascending: true })
           .range(from, to)
       );
     },

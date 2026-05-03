@@ -14,7 +14,8 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
   CalendarIcon, Search, ShoppingCart, TrendingUp, TrendingDown, Package,
-  FileText, Download, FileSpreadsheet, DollarSign, Layers, Store, Hash, BarChart3, Warehouse
+  FileText, Download, FileSpreadsheet, DollarSign, Layers, Store, Hash, BarChart3, Warehouse,
+  ChevronDown, ChevronLeft
 } from "lucide-react";
 import {
   Table, TableHeader, TableBody, TableHead, TableRow, TableCell,
@@ -58,6 +59,7 @@ export const PurchaseReportsPage: React.FC = () => {
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [locationType, setLocationType] = useState<"branch" | "warehouse">("branch");
   const [locationFilter, setLocationFilter] = useState<string>("all");
+  const [expandedItem, setExpandedItem] = useState<string | null>(null);
 
   // --- Data queries ---
   const { data: stockItems } = useQuery({
@@ -128,7 +130,7 @@ export const PurchaseReportsPage: React.FC = () => {
     queryKey: ["purchase-items-pr", companyId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("purchase_items").select("*, purchase_orders!inner(id, date, status, company_id, supplier_name, supplier_id, branch_id, warehouse_id)")
+        .from("purchase_items").select("*, purchase_orders!inner(id, date, status, company_id, supplier_name, supplier_id, branch_id, warehouse_id, invoice_number)")
         .eq("purchase_orders.company_id", companyId!).eq("purchase_orders.status", "مكتمل");
       if (error) throw error;
       return data;
@@ -253,7 +255,42 @@ export const PurchaseReportsPage: React.FC = () => {
     return result;
   }, [calcData, categoryFilter, searchQuery, stockItems]);
 
-  // Stats
+  // Receipts per stock item (for expandable detail rows)
+  const receiptsByItem = useMemo(() => {
+    const m = new Map<string, Array<{ id: string; date: string; invoice: string; supplier: string; qty: number; unitCost: number; total: number; location: string }>>();
+    if (!purchaseItems) return m;
+    const branchMap = new Map((branches || []).map((b: any) => [b.id, b.name]));
+    const warehouseMap = new Map((warehouses || []).map((w: any) => [w.id, w.name]));
+    for (const pi of purchaseItems) {
+      if (!pi.stock_item_id) continue;
+      const po = (pi as any).purchase_orders;
+      if (!po?.date || !inDateRange(po.date)) continue;
+      if (supplierFilter !== "all" && po.supplier_id !== supplierFilter) continue;
+      if (locationFilter !== "all") {
+        if (locationType === "branch" && po.branch_id !== locationFilter) continue;
+        if (locationType === "warehouse" && po.warehouse_id !== locationFilter) continue;
+      }
+      const loc = po.branch_id ? branchMap.get(po.branch_id) : po.warehouse_id ? warehouseMap.get(po.warehouse_id) : "";
+      const arr = m.get(pi.stock_item_id) || [];
+      const qty = Number(pi.quantity) || 0;
+      const unitCost = Number(pi.unit_cost) || 0;
+      arr.push({
+        id: pi.id,
+        date: po.date,
+        invoice: (po as any).invoice_number || "—",
+        supplier: po.supplier_name || "—",
+        qty,
+        unitCost,
+        total: qty * unitCost,
+        location: (loc as string) || "—",
+      });
+      m.set(pi.stock_item_id, arr);
+    }
+    for (const [, arr] of m) arr.sort((a, b) => b.date.localeCompare(a.date));
+    return m;
+  }, [purchaseItems, branches, warehouses, dateFrom, dateTo, supplierFilter, locationFilter, locationType]);
+
+
   const stats = useMemo(() => {
     const totalInvoices = new Set<string>();
     const totalValue = filteredData.reduce((s, i) => s + i.totalValue, 0);
@@ -658,9 +695,18 @@ export const PurchaseReportsPage: React.FC = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredData.map((item, idx) => (
-                    <TableRow key={item.id} className="hover:bg-muted/30">
-                      <TableCell className="text-center text-xs">{idx + 1}</TableCell>
+                  filteredData.map((item, idx) => {
+                    const isExpanded = expandedItem === item.id;
+                    const receipts = receiptsByItem.get(item.id) || [];
+                    return (
+                    <React.Fragment key={item.id}>
+                    <TableRow className="hover:bg-muted/30 cursor-pointer" onClick={() => setExpandedItem(isExpanded ? null : item.id)}>
+                      <TableCell className="text-center text-xs">
+                        <div className="flex items-center justify-center gap-1">
+                          {isExpanded ? <ChevronDown size={12} /> : <ChevronLeft size={12} />}
+                          <span>{idx + 1}</span>
+                        </div>
+                      </TableCell>
                       <TableCell className="text-center text-xs font-mono">{item.code || "-"}</TableCell>
                       <TableCell className="text-xs font-medium">{item.name}</TableCell>
                       <TableCell className="text-xs">{item.categoryName}</TableCell>
@@ -680,7 +726,52 @@ export const PurchaseReportsPage: React.FC = () => {
                       </TableCell>
                       <TableCell className="text-center text-xs font-bold">{fmt(item.totalValue)}</TableCell>
                     </TableRow>
-                  ))
+                    {isExpanded && (
+                      <TableRow className="bg-muted/20">
+                        <TableCell colSpan={12} className="p-0">
+                          <div className="p-3">
+                            <p className="text-xs font-bold text-foreground mb-2 flex items-center gap-2">
+                              <Package size={14} /> تفاصيل الاستلامات ({receipts.length})
+                            </p>
+                            <div className="overflow-x-auto rounded-md border border-border/40">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow className="bg-muted/40">
+                                    <TableHead className="text-center text-[11px] font-bold">#</TableHead>
+                                    <TableHead className="text-center text-[11px] font-bold">التاريخ</TableHead>
+                                    <TableHead className="text-center text-[11px] font-bold">رقم الفاتورة</TableHead>
+                                    <TableHead className="text-[11px] font-bold">المورد</TableHead>
+                                    <TableHead className="text-[11px] font-bold">الموقع المستلم</TableHead>
+                                    <TableHead className="text-center text-[11px] font-bold">الكمية</TableHead>
+                                    <TableHead className="text-center text-[11px] font-bold">سعر الوحدة</TableHead>
+                                    <TableHead className="text-center text-[11px] font-bold">الإجمالي</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {receipts.length === 0 ? (
+                                    <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground text-xs py-4">لا توجد استلامات</TableCell></TableRow>
+                                  ) : receipts.map((r, ri) => (
+                                    <TableRow key={r.id}>
+                                      <TableCell className="text-center text-[11px]">{ri + 1}</TableCell>
+                                      <TableCell className="text-center text-[11px]">{format(new Date(r.date), "yyyy/MM/dd")}</TableCell>
+                                      <TableCell className="text-center text-[11px] font-mono">{r.invoice}</TableCell>
+                                      <TableCell className="text-[11px]">{r.supplier}</TableCell>
+                                      <TableCell className="text-[11px]">{r.location}</TableCell>
+                                      <TableCell className="text-center text-[11px] font-bold">{fmt(r.qty)}</TableCell>
+                                      <TableCell className="text-center text-[11px]">{fmt(r.unitCost)}</TableCell>
+                                      <TableCell className="text-center text-[11px] font-bold">{fmt(r.total)}</TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    </React.Fragment>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>

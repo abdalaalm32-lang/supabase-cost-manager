@@ -14,7 +14,8 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
   CalendarIcon, Search, ShoppingCart, TrendingUp, TrendingDown, Package,
-  FileText, Download, FileSpreadsheet, DollarSign, Layers, Store, Hash, BarChart3, Warehouse
+  FileText, Download, FileSpreadsheet, DollarSign, Layers, Store, Hash, BarChart3, Warehouse,
+  ChevronDown, ChevronLeft
 } from "lucide-react";
 import {
   Table, TableHeader, TableBody, TableHead, TableRow, TableCell,

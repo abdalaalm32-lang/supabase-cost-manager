@@ -237,6 +237,7 @@ export const CostAnalysisPage: React.FC = () => {
           .select("*, stocktakes!inner(id, date, status, type, company_id, branch_id, warehouse_id)")
           .eq("stocktakes.company_id", companyId!)
           .eq("stocktakes.status", "مكتمل")
+          .order("id", { ascending: true })
           .range(from, to)
       );
     },
@@ -252,6 +253,7 @@ export const CostAnalysisPage: React.FC = () => {
           .select("*, purchase_orders!inner(id, date, status, company_id, branch_id, warehouse_id, department_id)")
           .eq("purchase_orders.company_id", companyId!)
           .eq("purchase_orders.status", "مكتمل")
+          .order("id", { ascending: true })
           .range(from, to)
       );
     },
@@ -267,6 +269,7 @@ export const CostAnalysisPage: React.FC = () => {
           .select("*, production_records!inner(id, date, status, company_id, branch_id, warehouse_id, department_id)")
           .eq("production_records.company_id", companyId!)
           .eq("production_records.status", "مكتمل")
+          .order("id", { ascending: true })
           .range(from, to)
       );
     },

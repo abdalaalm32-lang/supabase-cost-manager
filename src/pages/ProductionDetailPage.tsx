@@ -708,7 +708,7 @@ export const ProductionDetailPage: React.FC = () => {
                           <TableCell className="font-medium text-sm">{ing.name}</TableCell>
                           <TableCell className="text-sm">{ing.unit}</TableCell>
                           <TableCell className={cn("text-sm", isOverStock && "text-destructive font-bold")}>
-                            {available !== null ? available.toFixed(2) : "—"}
+                            {available !== null ? available : "—"}
                           </TableCell>
                           <TableCell>
                             {isLocked ? (

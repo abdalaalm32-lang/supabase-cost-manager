@@ -48,6 +48,14 @@ export const StocktakeDetailPage: React.FC = () => {
   const [itemsSearch, setItemsSearch] = useState("");
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
 
+  // Editable header fields (used in edit mode for archived stocktakes)
+  const [editDate, setEditDate] = useState<Date | undefined>(undefined);
+  const [editType, setEditType] = useState<string>("");
+  const [editLocationType, setEditLocationType] = useState<"branch" | "warehouse">("branch");
+  const [editLocationId, setEditLocationId] = useState<string>("");
+  const [editDepartmentId, setEditDepartmentId] = useState<string>("");
+  const [headerLoaded, setHeaderLoaded] = useState(false);
+
   const { data: stocktake, isLoading: stLoading } = useQuery({
     queryKey: ["stocktake", id],
     queryFn: async () => {

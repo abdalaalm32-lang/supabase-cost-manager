@@ -737,12 +737,12 @@ export const StocktakeDetailPage: React.FC = () => {
               <TableHead className="text-right">كود الصنف</TableHead>
               <TableHead className="text-right">اسم الصنف</TableHead>
               <TableHead className="text-right">وحدة التخزين</TableHead>
-              <TableHead className="text-right">الرصيد الدفتري</TableHead>
+              {stocktakeLocationType === "warehouse" && <TableHead className="text-right">الرصيد الدفتري</TableHead>}
               <TableHead className="text-right">الرصيد الفعلي</TableHead>
               <TableHead className="text-right">متوسط التكلفة</TableHead>
               <TableHead className="text-right">القيمة</TableHead>
-              <TableHead className="text-right">الفارق</TableHead>
-              <TableHead className="text-right">قيمة الفارق</TableHead>
+              {stocktakeLocationType === "warehouse" && <TableHead className="text-right">الفارق</TableHead>}
+              {stocktakeLocationType === "warehouse" && <TableHead className="text-right">قيمة الفارق</TableHead>}
               {isEditable && <TableHead className="text-right">حذف</TableHead>}
             </TableRow>
           </TableHeader>

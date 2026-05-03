@@ -70,13 +70,10 @@ export const PosShiftsPage: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_company_profiles_directory", { _company_id: companyId! });
       if (error) throw error;
-      const filtered = (data || [])
+      return (data || [])
         .filter((p: any) => p.status === "نشط")
-        .map((p: any) => ({ id: p.id, full_name: p.full_name, user_code: p.user_code, email: null }))
+        .map((p: any) => ({ id: p.id, full_name: p.full_name, user_code: p.user_code }))
         .sort((a: any, b: any) => (a.full_name || "").localeCompare(b.full_name || ""));
-      return { data: filtered, error: null } as any;
-      if (error) throw error;
-      return data || [];
     },
     enabled: !!companyId,
   });

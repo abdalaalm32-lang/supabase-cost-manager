@@ -627,6 +627,70 @@ export const StocktakeDetailPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Editable header (visible only when editing an archived stocktake) */}
+      {isEditMode && (
+        <div className="glass-card p-4 space-y-3">
+          <p className="font-semibold text-sm mb-2">تعديل بيانات الجرد</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+            <div>
+              <Label className="text-xs">التاريخ</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-full justify-start text-right font-normal", !editDate && "text-muted-foreground")}>
+                    <CalendarIcon className="ml-2 h-4 w-4" />
+                    {editDate ? format(editDate, "yyyy-MM-dd") : "اختر التاريخ"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={editDate} onSelect={(d) => d && setEditDate(d)} initialFocus />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div>
+              <Label className="text-xs">نوع الجرد</Label>
+              <Select value={editType} onValueChange={setEditType}>
+                <SelectTrigger><SelectValue placeholder="اختر النوع" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="جرد أول المدة">جرد أول المدة</SelectItem>
+                  <SelectItem value="جرد آخر المدة">جرد آخر المدة</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">نوع الموقع</Label>
+              <Select value={editLocationType} onValueChange={(v: "branch" | "warehouse") => { setEditLocationType(v); setEditLocationId(""); }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="branch">فرع</SelectItem>
+                  <SelectItem value="warehouse">مخزن</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">{editLocationType === "branch" ? "الفرع" : "المخزن"}</Label>
+              <Select value={editLocationId} onValueChange={setEditLocationId}>
+                <SelectTrigger><SelectValue placeholder="اختر..." /></SelectTrigger>
+                <SelectContent>
+                  {(editLocationType === "branch" ? branches : warehouses).map((loc: any) => (
+                    <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">القسم (اختياري)</Label>
+              <Select value={editDepartmentId || "none"} onValueChange={(v) => setEditDepartmentId(v === "none" ? "" : v)}>
+                <SelectTrigger><SelectValue placeholder="كل الأقسام" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">كل الأقسام</SelectItem>
+                  {departments.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Notes */}
       {isEditable && (
         <div className="max-w-lg">

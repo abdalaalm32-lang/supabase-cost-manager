@@ -73,6 +73,22 @@ export const StocktakeDetailPage: React.FC = () => {
     }
   }, [stocktake, notesLoaded]);
 
+  React.useEffect(() => {
+    if (stocktake && !headerLoaded) {
+      setEditDate(stocktake.date ? new Date(stocktake.date) : new Date());
+      setEditType(stocktake.type || "");
+      if (stocktake.warehouse_id) {
+        setEditLocationType("warehouse");
+        setEditLocationId(stocktake.warehouse_id);
+      } else {
+        setEditLocationType("branch");
+        setEditLocationId(stocktake.branch_id || "");
+      }
+      setEditDepartmentId((stocktake as any).department_id || "");
+      setHeaderLoaded(true);
+    }
+  }, [stocktake, headerLoaded]);
+
 
   const { data: stocktakeItems = [], isLoading: itemsLoading } = useQuery({
     queryKey: ["stocktake-items", id],

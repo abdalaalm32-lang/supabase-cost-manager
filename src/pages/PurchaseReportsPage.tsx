@@ -255,7 +255,42 @@ export const PurchaseReportsPage: React.FC = () => {
     return result;
   }, [calcData, categoryFilter, searchQuery, stockItems]);
 
-  // Stats
+  // Receipts per stock item (for expandable detail rows)
+  const receiptsByItem = useMemo(() => {
+    const m = new Map<string, Array<{ id: string; date: string; invoice: string; supplier: string; qty: number; unitCost: number; total: number; location: string }>>();
+    if (!purchaseItems) return m;
+    const branchMap = new Map((branches || []).map((b: any) => [b.id, b.name]));
+    const warehouseMap = new Map((warehouses || []).map((w: any) => [w.id, w.name]));
+    for (const pi of purchaseItems) {
+      if (!pi.stock_item_id) continue;
+      const po = (pi as any).purchase_orders;
+      if (!po?.date || !inDateRange(po.date)) continue;
+      if (supplierFilter !== "all" && po.supplier_id !== supplierFilter) continue;
+      if (locationFilter !== "all") {
+        if (locationType === "branch" && po.branch_id !== locationFilter) continue;
+        if (locationType === "warehouse" && po.warehouse_id !== locationFilter) continue;
+      }
+      const loc = po.branch_id ? branchMap.get(po.branch_id) : po.warehouse_id ? warehouseMap.get(po.warehouse_id) : "";
+      const arr = m.get(pi.stock_item_id) || [];
+      const qty = Number(pi.quantity) || 0;
+      const unitCost = Number(pi.unit_cost) || 0;
+      arr.push({
+        id: pi.id,
+        date: po.date,
+        invoice: (po as any).invoice_number || "—",
+        supplier: po.supplier_name || "—",
+        qty,
+        unitCost,
+        total: qty * unitCost,
+        location: (loc as string) || "—",
+      });
+      m.set(pi.stock_item_id, arr);
+    }
+    for (const [, arr] of m) arr.sort((a, b) => b.date.localeCompare(a.date));
+    return m;
+  }, [purchaseItems, branches, warehouses, dateFrom, dateTo, supplierFilter, locationFilter, locationType]);
+
+
   const stats = useMemo(() => {
     const totalInvoices = new Set<string>();
     const totalValue = filteredData.reduce((s, i) => s + i.totalValue, 0);

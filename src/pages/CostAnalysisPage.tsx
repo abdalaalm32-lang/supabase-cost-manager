@@ -77,17 +77,51 @@ export const CostAnalysisPage: React.FC = () => {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;
 
-  const [locationType, setLocationType] = useState<"branch" | "warehouse">("branch");
-  const [locationFilter, setLocationFilter] = useState<string>("all");
-  const [departmentFilter, setDepartmentFilter] = useState<string>("all");
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  // Persisted filters via sessionStorage
+  const FILTERS_KEY = "costAnalysis:filters";
+  const savedFilters = (() => {
+    try {
+      const raw = sessionStorage.getItem(FILTERS_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  })();
+
+  const [locationType, setLocationType] = useState<"branch" | "warehouse">(savedFilters?.locationType ?? "branch");
+  const [locationFilter, setLocationFilter] = useState<string>(savedFilters?.locationFilter ?? "all");
+  const [departmentFilter, setDepartmentFilter] = useState<string>(savedFilters?.departmentFilter ?? "all");
+  const [categoryFilter, setCategoryFilter] = useState<string>(savedFilters?.categoryFilter ?? "all");
 
   // Derived location filters
   const branchFilter = locationType === "branch" ? locationFilter : "all";
   const warehouseFilter = locationType === "warehouse" ? locationFilter : "all";
-  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
-  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(
+    savedFilters?.dateFrom ? new Date(savedFilters.dateFrom) : undefined
+  );
+  const [dateTo, setDateTo] = useState<Date | undefined>(
+    savedFilters?.dateTo ? new Date(savedFilters.dateTo) : undefined
+  );
   const [showCharts, setShowCharts] = useState(false);
+
+  // Persist filters whenever they change
+  React.useEffect(() => {
+    try {
+      sessionStorage.setItem(
+        FILTERS_KEY,
+        JSON.stringify({
+          locationType,
+          locationFilter,
+          departmentFilter,
+          categoryFilter,
+          dateFrom: dateFrom ? dateFrom.toISOString() : null,
+          dateTo: dateTo ? dateTo.toISOString() : null,
+        })
+      );
+    } catch {
+      // ignore
+    }
+  }, [locationType, locationFilter, departmentFilter, categoryFilter, dateFrom, dateTo]);
 
   // Per-branch / per-warehouse costs (fallback to global avg_cost)
   const activeLocationId =

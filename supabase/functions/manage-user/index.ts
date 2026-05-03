@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
       if (!new_password || new_password.length < 6) {
         return new Response(
           JSON.stringify({ error: "كلمة المرور يجب أن تكون 6 أحرف على الأقل" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
       if (error) {
         return new Response(
           JSON.stringify({ error: "فشل تغيير كلمة المرور", details: error.message }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
       if (!updates || typeof updates !== "object") {
         return new Response(
           JSON.stringify({ error: "بيانات التحديث غير صالحة" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
@@ -161,7 +161,7 @@ Deno.serve(async (req) => {
       if (Object.keys(payload).length === 0) {
         return new Response(
           JSON.stringify({ error: "لا توجد بيانات صالحة للتحديث" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
@@ -175,7 +175,7 @@ Deno.serve(async (req) => {
       if (error || !updatedProfile) {
         return new Response(
           JSON.stringify({ error: "فشل تحديث بيانات المستخدم", details: error?.message }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
@@ -190,7 +190,7 @@ Deno.serve(async (req) => {
       if (target_user_id === callerId) {
         return new Response(
           JSON.stringify({ error: "لا يمكنك حذف حسابك الخاص" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
@@ -200,7 +200,7 @@ Deno.serve(async (req) => {
       if (error) {
         return new Response(
           JSON.stringify({ error: "فشل حذف المستخدم", details: error.message }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
@@ -212,7 +212,7 @@ Deno.serve(async (req) => {
 
     return new Response(
       JSON.stringify({ error: "إجراء غير معروف" }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
     return new Response(JSON.stringify({ error: (err as Error).message }), {

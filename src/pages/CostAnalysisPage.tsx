@@ -56,6 +56,23 @@ const CHART_COLORS = [
 
 type ChartType = "bar" | "pie" | "radar" | "area" | "line";
 
+const fetchAllRows = async <T,>(
+  makeQuery: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>
+) => {
+  const pageSize = 1000;
+  const all: T[] = [];
+
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await makeQuery(from, from + pageSize - 1);
+    if (error) throw error;
+    const rows = data || [];
+    all.push(...rows);
+    if (rows.length < pageSize) break;
+  }
+
+  return all;
+};
+
 export const CostAnalysisPage: React.FC = () => {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;

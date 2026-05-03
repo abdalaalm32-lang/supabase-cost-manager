@@ -748,9 +748,9 @@ export const StocktakeDetailPage: React.FC = () => {
           </TableHeader>
           <TableBody>
             {itemsLoading ? (
-              <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">جاري التحميل...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={stocktakeLocationType === "warehouse" ? 10 : 7} className="text-center py-8 text-muted-foreground">جاري التحميل...</TableCell></TableRow>
             ) : stocktakeItems.length === 0 ? (
-              <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">لا توجد أصناف - أضف أصناف للجرد</TableCell></TableRow>
+              <TableRow><TableCell colSpan={stocktakeLocationType === "warehouse" ? 10 : 7} className="text-center py-8 text-muted-foreground">لا توجد أصناف - أضف أصناف للجرد</TableCell></TableRow>
             ) : (
               <>
                 {[...stocktakeItems].sort((a: any, b: any) => {

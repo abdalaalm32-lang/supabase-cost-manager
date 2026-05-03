@@ -59,6 +59,7 @@ export const PurchaseReportsPage: React.FC = () => {
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [locationType, setLocationType] = useState<"branch" | "warehouse">("branch");
   const [locationFilter, setLocationFilter] = useState<string>("all");
+  const [expandedItem, setExpandedItem] = useState<string | null>(null);
 
   // --- Data queries ---
   const { data: stockItems } = useQuery({

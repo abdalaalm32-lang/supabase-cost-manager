@@ -289,12 +289,14 @@ export const CostAnalysisPage: React.FC = () => {
   const { data: wasteData } = useQuery({
     queryKey: ["waste-data-costing", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("waste_items").select("*, waste_records!inner(id, date, status, company_id, branch_id, warehouse_id, department_id)")
-        .eq("waste_records.company_id", companyId!)
-        .eq("waste_records.status", "مكتمل");
-      if (error) throw error;
-      return data;
+      return fetchAllRows<any>((from, to) =>
+        supabase
+          .from("waste_items")
+          .select("*, waste_records!inner(id, date, status, company_id, branch_id, warehouse_id, department_id)")
+          .eq("waste_records.company_id", companyId!)
+          .eq("waste_records.status", "مكتمل")
+          .range(from, to)
+      );
     },
     enabled: !!companyId,
   });
@@ -302,12 +304,14 @@ export const CostAnalysisPage: React.FC = () => {
   const { data: transferData } = useQuery({
     queryKey: ["transfer-data-costing", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("transfer_items").select("*, transfers!inner(id, date, status, company_id, source_id, destination_id, source_department_id, destination_department_id)")
-        .eq("transfers.company_id", companyId!)
-        .eq("transfers.status", "مكتمل");
-      if (error) throw error;
-      return data;
+      return fetchAllRows<any>((from, to) =>
+        supabase
+          .from("transfer_items")
+          .select("*, transfers!inner(id, date, status, company_id, source_id, destination_id, source_department_id, destination_department_id)")
+          .eq("transfers.company_id", companyId!)
+          .eq("transfers.status", "مكتمل")
+          .range(from, to)
+      );
     },
     enabled: !!companyId,
   });
@@ -315,12 +319,14 @@ export const CostAnalysisPage: React.FC = () => {
   const { data: posSaleItems } = useQuery({
     queryKey: ["pos-sale-items-costing", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("pos_sale_items").select("*, pos_sales!inner(id, date, status, company_id, branch_id)")
-        .eq("pos_sales.company_id", companyId!)
-        .eq("pos_sales.status", "مكتمل");
-      if (error) throw error;
-      return data;
+      return fetchAllRows<any>((from, to) =>
+        supabase
+          .from("pos_sale_items")
+          .select("*, pos_sales!inner(id, date, status, company_id, branch_id)")
+          .eq("pos_sales.company_id", companyId!)
+          .eq("pos_sales.status", "مكتمل")
+          .range(from, to)
+      );
     },
     enabled: !!companyId,
   });

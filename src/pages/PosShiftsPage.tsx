@@ -68,7 +68,13 @@ export const PosShiftsPage: React.FC = () => {
   const { data: cashiers } = useQuery({
     queryKey: ["pos-cashiers", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("profiles").select("id, full_name, user_code, email").eq("company_id", companyId!).eq("status", "نشط").order("full_name");
+      const { data, error } = await supabase.rpc("get_company_profiles_directory", { _company_id: companyId! });
+      if (error) throw error;
+      const filtered = (data || [])
+        .filter((p: any) => p.status === "نشط")
+        .map((p: any) => ({ id: p.id, full_name: p.full_name, user_code: p.user_code, email: null }))
+        .sort((a: any, b: any) => (a.full_name || "").localeCompare(b.full_name || ""));
+      return { data: filtered, error: null } as any;
       if (error) throw error;
       return data || [];
     },

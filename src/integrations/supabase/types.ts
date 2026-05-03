@@ -3021,6 +3021,32 @@ export type Database = {
         Args: { p_stock_item_id: string }
         Returns: number
       }
+      get_company_profiles_directory: {
+        Args: { _company_id: string }
+        Returns: {
+          branch_id: string
+          company_id: string
+          full_name: string
+          id: string
+          job_role_id: string
+          status: string
+          user_code: string
+          user_id: string
+        }[]
+      }
+      get_company_shift_definitions: {
+        Args: { _company_id: string }
+        Returns: {
+          active: boolean
+          cashier_profile_id: string
+          company_id: string
+          created_at: string
+          definition_code: string
+          has_password: boolean
+          id: string
+          shift_name: string
+        }[]
+      }
       get_user_company_id: { Args: never; Returns: string }
       get_user_roles: {
         Args: { _user_id: string }
@@ -3037,8 +3063,17 @@ export type Database = {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
       }
+      is_company_admin_or_owner: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_company_owner: {
         Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
+      verify_own_pos_password: { Args: { _password: string }; Returns: boolean }
+      verify_shift_definition_password: {
+        Args: { _definition_id: string; _password: string }
         Returns: boolean
       }
     }

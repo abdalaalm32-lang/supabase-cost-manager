@@ -21,10 +21,13 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { ArrowRight, Plus, Trash2, Save, ClipboardCheck, Package, TrendingUp, TrendingDown, DollarSign, MapPin, User } from "lucide-react";
+import { ArrowRight, Plus, Trash2, Save, ClipboardCheck, Package, TrendingUp, TrendingDown, DollarSign, MapPin, User, CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useLocationStock } from "@/hooks/useLocationStock";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
 
 export const StocktakeDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();

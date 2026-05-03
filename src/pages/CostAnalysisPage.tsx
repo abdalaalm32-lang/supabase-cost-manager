@@ -56,6 +56,23 @@ const CHART_COLORS = [
 
 type ChartType = "bar" | "pie" | "radar" | "area" | "line";
 
+const fetchAllRows = async <T,>(
+  makeQuery: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>
+) => {
+  const pageSize = 1000;
+  const all: T[] = [];
+
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await makeQuery(from, from + pageSize - 1);
+    if (error) throw error;
+    const rows = data || [];
+    all.push(...rows);
+    if (rows.length < pageSize) break;
+  }
+
+  return all;
+};
+
 export const CostAnalysisPage: React.FC = () => {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;
@@ -214,12 +231,15 @@ export const CostAnalysisPage: React.FC = () => {
   const { data: stocktakeData } = useQuery({
     queryKey: ["stocktake-data-costing", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("stocktake_items").select("*, stocktakes!inner(id, date, status, type, company_id, branch_id, warehouse_id)")
-        .eq("stocktakes.company_id", companyId!)
-        .eq("stocktakes.status", "مكتمل");
-      if (error) throw error;
-      return data;
+      return fetchAllRows<any>((from, to) =>
+        supabase
+          .from("stocktake_items")
+          .select("*, stocktakes!inner(id, date, status, type, company_id, branch_id, warehouse_id)")
+          .eq("stocktakes.company_id", companyId!)
+          .eq("stocktakes.status", "مكتمل")
+          .order("id", { ascending: true })
+          .range(from, to)
+      );
     },
     enabled: !!companyId,
   });
@@ -227,12 +247,15 @@ export const CostAnalysisPage: React.FC = () => {
   const { data: purchaseData } = useQuery({
     queryKey: ["purchase-data-costing", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("purchase_items").select("*, purchase_orders!inner(id, date, status, company_id, branch_id, warehouse_id, department_id)")
-        .eq("purchase_orders.company_id", companyId!)
-        .eq("purchase_orders.status", "مكتمل");
-      if (error) throw error;
-      return data;
+      return fetchAllRows<any>((from, to) =>
+        supabase
+          .from("purchase_items")
+          .select("*, purchase_orders!inner(id, date, status, company_id, branch_id, warehouse_id, department_id)")
+          .eq("purchase_orders.company_id", companyId!)
+          .eq("purchase_orders.status", "مكتمل")
+          .order("id", { ascending: true })
+          .range(from, to)
+      );
     },
     enabled: !!companyId,
   });
@@ -240,12 +263,15 @@ export const CostAnalysisPage: React.FC = () => {
   const { data: productionIngData } = useQuery({
     queryKey: ["production-ing-costing", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("production_ingredients").select("*, production_records!inner(id, date, status, company_id, branch_id, warehouse_id, department_id)")
-        .eq("production_records.company_id", companyId!)
-        .eq("production_records.status", "مكتمل");
-      if (error) throw error;
-      return data;
+      return fetchAllRows<any>((from, to) =>
+        supabase
+          .from("production_ingredients")
+          .select("*, production_records!inner(id, date, status, company_id, branch_id, warehouse_id, department_id)")
+          .eq("production_records.company_id", companyId!)
+          .eq("production_records.status", "مكتمل")
+          .order("id", { ascending: true })
+          .range(from, to)
+      );
     },
     enabled: !!companyId,
   });
@@ -266,12 +292,15 @@ export const CostAnalysisPage: React.FC = () => {
   const { data: wasteData } = useQuery({
     queryKey: ["waste-data-costing", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("waste_items").select("*, waste_records!inner(id, date, status, company_id, branch_id, warehouse_id, department_id)")
-        .eq("waste_records.company_id", companyId!)
-        .eq("waste_records.status", "مكتمل");
-      if (error) throw error;
-      return data;
+      return fetchAllRows<any>((from, to) =>
+        supabase
+          .from("waste_items")
+          .select("*, waste_records!inner(id, date, status, company_id, branch_id, warehouse_id, department_id)")
+          .eq("waste_records.company_id", companyId!)
+          .eq("waste_records.status", "مكتمل")
+          .order("id", { ascending: true })
+          .range(from, to)
+      );
     },
     enabled: !!companyId,
   });
@@ -279,12 +308,15 @@ export const CostAnalysisPage: React.FC = () => {
   const { data: transferData } = useQuery({
     queryKey: ["transfer-data-costing", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("transfer_items").select("*, transfers!inner(id, date, status, company_id, source_id, destination_id, source_department_id, destination_department_id)")
-        .eq("transfers.company_id", companyId!)
-        .eq("transfers.status", "مكتمل");
-      if (error) throw error;
-      return data;
+      return fetchAllRows<any>((from, to) =>
+        supabase
+          .from("transfer_items")
+          .select("*, transfers!inner(id, date, status, company_id, source_id, destination_id, source_department_id, destination_department_id)")
+          .eq("transfers.company_id", companyId!)
+          .eq("transfers.status", "مكتمل")
+          .order("id", { ascending: true })
+          .range(from, to)
+      );
     },
     enabled: !!companyId,
   });
@@ -292,12 +324,15 @@ export const CostAnalysisPage: React.FC = () => {
   const { data: posSaleItems } = useQuery({
     queryKey: ["pos-sale-items-costing", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("pos_sale_items").select("*, pos_sales!inner(id, date, status, company_id, branch_id)")
-        .eq("pos_sales.company_id", companyId!)
-        .eq("pos_sales.status", "مكتمل");
-      if (error) throw error;
-      return data;
+      return fetchAllRows<any>((from, to) =>
+        supabase
+          .from("pos_sale_items")
+          .select("*, pos_sales!inner(id, date, status, company_id, branch_id)")
+          .eq("pos_sales.company_id", companyId!)
+          .eq("pos_sales.status", "مكتمل")
+          .order("id", { ascending: true })
+          .range(from, to)
+      );
     },
     enabled: !!companyId,
   });
@@ -305,11 +340,14 @@ export const CostAnalysisPage: React.FC = () => {
   const { data: recipeIngredients } = useQuery({
     queryKey: ["recipe-ingredients-costing", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("recipe_ingredients").select("*, recipes!inner(id, menu_item_id, company_id)")
-        .eq("recipes.company_id", companyId!);
-      if (error) throw error;
-      return data;
+      return fetchAllRows<any>((from, to) =>
+        supabase
+          .from("recipe_ingredients")
+          .select("*, recipes!inner(id, menu_item_id, company_id)")
+          .eq("recipes.company_id", companyId!)
+          .order("id", { ascending: true })
+          .range(from, to)
+      );
     },
     enabled: !!companyId,
   });

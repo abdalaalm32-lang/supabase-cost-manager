@@ -553,7 +553,7 @@ ${closingNotes.trim() ? `<div class="sep"><p class="bold">📝 ملاحظات:</
                 </Select>
               </div>
             )}
-            {selectedDef?.pos_password && (
+            {selectedDef?.has_password && (
               <div>
                 <label className="text-sm text-muted-foreground mb-1 block">كلمة مرور الشيفت</label>
                 <Input

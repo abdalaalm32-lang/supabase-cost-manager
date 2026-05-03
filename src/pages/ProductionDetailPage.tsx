@@ -723,7 +723,7 @@ export const ProductionDetailPage: React.FC = () => {
                               />
                             )}
                             {isOverStock && (
-                              <p className="text-[10px] text-destructive mt-0.5">المتاح: {available!.toFixed(2)}</p>
+                              <p className="text-[10px] text-destructive mt-0.5">المتاح: {available}</p>
                             )}
                           </TableCell>
                           <TableCell className="text-sm">{ing.unit_cost.toFixed(2)}</TableCell>

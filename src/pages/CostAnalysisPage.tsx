@@ -322,11 +322,13 @@ export const CostAnalysisPage: React.FC = () => {
   const { data: recipeIngredients } = useQuery({
     queryKey: ["recipe-ingredients-costing", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("recipe_ingredients").select("*, recipes!inner(id, menu_item_id, company_id)")
-        .eq("recipes.company_id", companyId!);
-      if (error) throw error;
-      return data;
+      return fetchAllRows<any>((from, to) =>
+        supabase
+          .from("recipe_ingredients")
+          .select("*, recipes!inner(id, menu_item_id, company_id)")
+          .eq("recipes.company_id", companyId!)
+          .range(from, to)
+      );
     },
     enabled: !!companyId,
   });

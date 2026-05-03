@@ -116,7 +116,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, message: "تم إرسال كود التحقق إلى بريدك الإلكتروني" }),
+      JSON.stringify({ success: true, message: "إذا كان البريد مسجلاً، سيصلك رمز التحقق قريباً" }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {

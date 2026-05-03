@@ -21,10 +21,13 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { ArrowRight, Plus, Trash2, Save, ClipboardCheck, Package, TrendingUp, TrendingDown, DollarSign, MapPin, User } from "lucide-react";
+import { ArrowRight, Plus, Trash2, Save, ClipboardCheck, Package, TrendingUp, TrendingDown, DollarSign, MapPin, User, CalendarIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useLocationStock } from "@/hooks/useLocationStock";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
 
 export const StocktakeDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -45,6 +48,14 @@ export const StocktakeDetailPage: React.FC = () => {
   const [itemsSearch, setItemsSearch] = useState("");
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
 
+  // Editable header fields (used in edit mode for archived stocktakes)
+  const [editDate, setEditDate] = useState<Date | undefined>(undefined);
+  const [editType, setEditType] = useState<string>("");
+  const [editLocationType, setEditLocationType] = useState<"branch" | "warehouse">("branch");
+  const [editLocationId, setEditLocationId] = useState<string>("");
+  const [editDepartmentId, setEditDepartmentId] = useState<string>("");
+  const [headerLoaded, setHeaderLoaded] = useState(false);
+
   const { data: stocktake, isLoading: stLoading } = useQuery({
     queryKey: ["stocktake", id],
     queryFn: async () => {
@@ -61,6 +72,22 @@ export const StocktakeDetailPage: React.FC = () => {
       setNotesLoaded(true);
     }
   }, [stocktake, notesLoaded]);
+
+  React.useEffect(() => {
+    if (stocktake && !headerLoaded) {
+      setEditDate(stocktake.date ? new Date(stocktake.date) : new Date());
+      setEditType(stocktake.type || "");
+      if (stocktake.warehouse_id) {
+        setEditLocationType("warehouse");
+        setEditLocationId(stocktake.warehouse_id);
+      } else {
+        setEditLocationType("branch");
+        setEditLocationId(stocktake.branch_id || "");
+      }
+      setEditDepartmentId((stocktake as any).department_id || "");
+      setHeaderLoaded(true);
+    }
+  }, [stocktake, headerLoaded]);
 
 
   const { data: stocktakeItems = [], isLoading: itemsLoading } = useQuery({
@@ -427,6 +454,24 @@ export const StocktakeDetailPage: React.FC = () => {
         });
       }
 
+      // Track header field changes
+      const newDateStr = editDate ? format(editDate, "yyyy-MM-dd") : stocktake?.date;
+      if (newDateStr !== stocktake?.date) {
+        changes.push({ field: "date", old_value: stocktake?.date, new_value: newDateStr });
+      }
+      if (editType !== stocktake?.type) {
+        changes.push({ field: "type", old_value: stocktake?.type, new_value: editType });
+      }
+      const newBranchId = editLocationType === "branch" ? (editLocationId || null) : null;
+      const newWarehouseId = editLocationType === "warehouse" ? (editLocationId || null) : null;
+      if (newBranchId !== (stocktake?.branch_id || null) || newWarehouseId !== (stocktake?.warehouse_id || null)) {
+        changes.push({ field: "location", old_value: locationName, new_value: "تم التعديل" });
+      }
+      const newDeptId = editDepartmentId || null;
+      if (newDeptId !== ((stocktake as any)?.department_id || null)) {
+        changes.push({ field: "department", old_value: (stocktake as any)?.department_id || "—", new_value: newDeptId || "—" });
+      }
+
       // Save edit history
       if (changes.length > 0) {
         await supabase.from("stocktake_edit_history").insert({
@@ -436,12 +481,17 @@ export const StocktakeDetailPage: React.FC = () => {
         });
       }
 
-      // Mark as edited and save as مكتمل
+      // Mark as edited and save as مكتمل (with header updates)
       const { error } = await supabase.from("stocktakes").update({
         notes,
         total_actual_value: totalActual,
         status: "مكتمل",
         is_edited: true,
+        date: newDateStr,
+        type: editType,
+        branch_id: newBranchId,
+        warehouse_id: newWarehouseId,
+        department_id: newDeptId,
       }).eq("id", id!);
 
       if (error) {
@@ -576,6 +626,70 @@ export const StocktakeDetailPage: React.FC = () => {
           <p className="font-semibold text-sm">{locationName || "—"}</p>
         </div>
       </div>
+
+      {/* Editable header (visible only when editing an archived stocktake) */}
+      {isEditMode && (
+        <div className="glass-card p-4 space-y-3">
+          <p className="font-semibold text-sm mb-2">تعديل بيانات الجرد</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+            <div>
+              <Label className="text-xs">التاريخ</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-full justify-start text-right font-normal", !editDate && "text-muted-foreground")}>
+                    <CalendarIcon className="ml-2 h-4 w-4" />
+                    {editDate ? format(editDate, "yyyy-MM-dd") : "اختر التاريخ"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={editDate} onSelect={(d) => d && setEditDate(d)} initialFocus />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div>
+              <Label className="text-xs">نوع الجرد</Label>
+              <Select value={editType} onValueChange={setEditType}>
+                <SelectTrigger><SelectValue placeholder="اختر النوع" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="جرد أول المدة">جرد أول المدة</SelectItem>
+                  <SelectItem value="جرد آخر المدة">جرد آخر المدة</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">نوع الموقع</Label>
+              <Select value={editLocationType} onValueChange={(v: "branch" | "warehouse") => { setEditLocationType(v); setEditLocationId(""); }}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="branch">فرع</SelectItem>
+                  <SelectItem value="warehouse">مخزن</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">{editLocationType === "branch" ? "الفرع" : "المخزن"}</Label>
+              <Select value={editLocationId} onValueChange={setEditLocationId}>
+                <SelectTrigger><SelectValue placeholder="اختر..." /></SelectTrigger>
+                <SelectContent>
+                  {(editLocationType === "branch" ? branches : warehouses).map((loc: any) => (
+                    <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">القسم (اختياري)</Label>
+              <Select value={editDepartmentId || "none"} onValueChange={(v) => setEditDepartmentId(v === "none" ? "" : v)}>
+                <SelectTrigger><SelectValue placeholder="كل الأقسام" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">كل الأقسام</SelectItem>
+                  {departments.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Notes */}
       {isEditable && (

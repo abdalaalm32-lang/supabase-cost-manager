@@ -54,6 +54,7 @@ export const EditPurchaseInvoicePage: React.FC = () => {
   const [submitted, setSubmitted] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState("");
+  const [cartSearch, setCartSearch] = useState("");
 
   const { data: order } = useQuery({
     queryKey: ["purchase-order", id],

@@ -315,7 +315,7 @@ export const ProductionListPage: React.FC = () => {
         </div>
         <ExportButtons
           data={filtered.map((r: any) => ({ record: r.record_number || "—", date: r.date, product: r.product_name, location: r.branch_name || "—", creator: r.creator_name || "—", status: r.is_edited ? "معدل" : r.status, cost: Number(r.total_production_cost).toFixed(2) }))}
-          columns={[{ key: "record", label: "رقم العملية" }, { key: "date", label: "التاريخ" }, { key: "product", label: "المنتج" }, { key: "location", label: "الموقع" }, { key: "creator", label: "المنشئ" }, { key: "status", label: "الحالة" }, { key: "cost", label: "إجمالي التكلفة" }]}
+          columns={[{ key: "record", label: "رقم العملية" }, { key: "date", label: "التاريخ" }, { key: "product", label: "المنتج" }, { key: "location", label: "الموقع" }, { key: "creator", label: "المنشئ" }, { key: "status", label: "الحالة" }, { key: "qty", label: "الكمية المنتجة" }, { key: "cost", label: "إجمالي التكلفة" }]}
           filename="عمليات_الإنتاج"
           title="عمليات الإنتاج"
         />
@@ -332,15 +332,16 @@ export const ProductionListPage: React.FC = () => {
               <TableHead className="text-right">الموقع</TableHead>
               <TableHead className="text-right">المنشئ</TableHead>
               <TableHead className="text-right">الحالة</TableHead>
+              <TableHead className="text-right">الكمية المنتجة</TableHead>
               <TableHead className="text-right">إجمالي التكلفة</TableHead>
               <TableHead className="text-right">الإجراءات</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">جاري التحميل...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">جاري التحميل...</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">لا توجد عمليات إنتاج</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">لا توجد عمليات إنتاج</TableCell></TableRow>
             ) : (
               filtered.map((r: any) => (
                 <TableRow key={r.id}>
@@ -350,6 +351,7 @@ export const ProductionListPage: React.FC = () => {
                     <TableCell>{r.branch_name || "—"}</TableCell>
                     <TableCell className="text-sm">{r.creator_name || "—"}</TableCell>
                   <TableCell>{getStatusBadge(r.status, r.is_edited)}</TableCell>
+                  <TableCell>{Number(r.produced_qty ?? 0).toFixed(3)} {r.unit || ""}</TableCell>
                   <TableCell>{Number(r.total_production_cost).toFixed(2)}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">

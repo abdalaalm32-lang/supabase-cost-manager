@@ -236,6 +236,8 @@ export const StocktakeListPage: React.FC = () => {
     const logoSrc = `${window.location.origin}/logo.png`;
     const locName = getLocationName(record);
 
+    const isBranch = !!record.branch_id;
+
     let itemsHTML = "";
     let totalDiffValue = 0;
     (items || []).forEach((item: any, idx: number) => {
@@ -248,12 +250,12 @@ export const StocktakeListPage: React.FC = () => {
         <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${si?.code || "—"}</td>
         <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:right;">${si?.name || "—"}</td>
         <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${si?.stock_unit || "—"}</td>
-        <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${Number(item.book_qty).toFixed(2)}</td>
+        ${isBranch ? "" : `<td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${Number(item.book_qty).toFixed(2)}</td>`}
         <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${Number(item.counted_qty).toFixed(2)}</td>
-        <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;${diff !== 0 ? (diff > 0 ? 'color:green;' : 'color:red;') : ''}">${diff.toFixed(2)}</td>
+        ${isBranch ? "" : `<td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;${diff !== 0 ? (diff > 0 ? 'color:green;' : 'color:red;') : ''}">${diff.toFixed(2)}</td>`}
         <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${Number(item.avg_cost).toFixed(2)}</td>
         <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${(Number(item.counted_qty) * Number(item.avg_cost)).toFixed(2)}</td>
-        <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;${diffValue !== 0 ? (diffValue > 0 ? 'color:green;' : 'color:red;') : ''}">${diffValue.toFixed(2)}</td>
+        ${isBranch ? "" : `<td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;${diffValue !== 0 ? (diffValue > 0 ? 'color:green;' : 'color:red;') : ''}">${diffValue.toFixed(2)}</td>`}
       </tr>`;
     });
     const totalValue = (items || []).reduce((s: number, item: any) => s + Number(item.counted_qty) * Number(item.avg_cost), 0);
@@ -262,12 +264,12 @@ export const StocktakeListPage: React.FC = () => {
       <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;"></td>
       <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">الإجمالي</td>
       <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;"></td>
+      ${isBranch ? "" : `<td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;"></td>`}
       <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;"></td>
-      <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;"></td>
-      <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;"></td>
+      ${isBranch ? "" : `<td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;"></td>`}
       <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;"></td>
       <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${totalValue.toFixed(2)}</td>
-      <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;${totalDiffValue !== 0 ? (totalDiffValue > 0 ? 'color:green;' : 'color:red;') : ''}">${totalDiffValue.toFixed(2)}</td>
+      ${isBranch ? "" : `<td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;${totalDiffValue !== 0 ? (totalDiffValue > 0 ? 'color:green;' : 'color:red;') : ''}">${totalDiffValue.toFixed(2)}</td>`}
     </tr>`;
 
     const printHTML = `<!DOCTYPE html>
@@ -320,12 +322,12 @@ export const StocktakeListPage: React.FC = () => {
         <th>الكود</th>
         <th>اسم الصنف</th>
         <th>الوحدة</th>
-        <th>الرصيد الدفتري</th>
+        ${isBranch ? "" : "<th>الرصيد الدفتري</th>"}
         <th>الكمية الفعلية</th>
-        <th>الفرق</th>
+        ${isBranch ? "" : "<th>الفرق</th>"}
         <th>متوسط التكلفة</th>
         <th>القيمة</th>
-        <th>قيمة الفرق</th>
+        ${isBranch ? "" : "<th>قيمة الفرق</th>"}
       </tr>
     </thead>
     <tbody>${itemsHTML}</tbody>

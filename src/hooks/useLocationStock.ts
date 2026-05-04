@@ -22,7 +22,7 @@ export function useLocationStock(
     queryFn: async () => {
       const { data, error } = await supabase
         .from("purchase_items")
-        .select("stock_item_id, quantity, purchase_orders!inner(id, status, branch_id, warehouse_id, company_id, department_id)")
+        .select("stock_item_id, quantity, purchase_orders!inner(id, status, date, branch_id, warehouse_id, company_id, department_id)")
         .eq("purchase_orders.company_id", companyId!)
         .eq("purchase_orders.status", "مكتمل");
       if (error) throw error;
@@ -278,36 +278,48 @@ export function useLocationStock(
     return stockMap.get(stockItemId) || 0;
   };
 
-  // Production-specific available balance: latest stocktake counted_qty (opening stock) + all completed purchases.
-  // Does NOT subtract production/waste/transfers/POS, and ignores stocktake book_qty differences.
+  // Production-specific available balance: opening-period stocktake counted_qty + purchases AFTER that opening date.
+  // Uses the EARLIEST completed stocktake per item as "جرد أول المدة" baseline,
+  // then adds only purchases dated on/after that opening date.
+  // Does NOT subtract production/waste/transfers/POS and ignores later stocktake adjustments.
   const productionAvailableMap = useMemo(() => {
     if (!locationId) return new Map<string, number>();
     const map = new Map<string, number>();
 
-    // Opening stock = latest completed stocktake per item at this location (and department if specified)
-    const latest = new Map<string, { qty: number; date: string }>();
+    // Opening stock = EARLIEST completed stocktake per item at this location.
+    // Prefer records of type "جرد أول المدة" if present; otherwise fall back to the oldest record.
+    const opening = new Map<string, { qty: number; date: string; isOpening: boolean }>();
     for (const st of stocktakes) {
       if (locationType === "branch" ? st.branch_id !== locationId : st.warehouse_id !== locationId) continue;
       if (departmentId && st.department_id && st.department_id !== departmentId) continue;
       const stDate = st.date || st.created_at || "";
+      const isOpening = st.type === "جرد أول المدة";
       for (const si of (st.stocktake_items || [])) {
         if (!si.stock_item_id) continue;
-        const existing = latest.get(si.stock_item_id);
-        if (!existing || stDate > existing.date) {
-          latest.set(si.stock_item_id, { qty: Number(si.counted_qty), date: stDate });
+        const existing = opening.get(si.stock_item_id);
+        const shouldReplace =
+          !existing ||
+          (isOpening && !existing.isOpening) ||
+          (isOpening === existing.isOpening && stDate < existing.date);
+        if (shouldReplace) {
+          opening.set(si.stock_item_id, { qty: Number(si.counted_qty), date: stDate, isOpening });
         }
       }
     }
-    for (const [id, v] of latest) {
+    for (const [id, v] of opening) {
       map.set(id, (map.get(id) || 0) + v.qty);
     }
 
-    // Add purchases IN
+    // Add purchases IN dated on/after the opening stocktake date for that item.
+    // For items without an opening stocktake, include all purchases.
     for (const pi of purchaseItems) {
       const po = pi.purchase_orders;
       if (locationType === "branch" ? po.branch_id !== locationId : po.warehouse_id !== locationId) continue;
       if (departmentId && po.department_id !== departmentId) continue;
       if (!pi.stock_item_id) continue;
+      const op = opening.get(pi.stock_item_id);
+      const poDate = (po as any).date || "";
+      if (op && poDate && poDate < op.date) continue;
       map.set(pi.stock_item_id, (map.get(pi.stock_item_id) || 0) + Number(pi.quantity));
     }
 

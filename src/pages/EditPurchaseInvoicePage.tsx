@@ -395,7 +395,17 @@ export const EditPurchaseInvoicePage: React.FC = () => {
            {!isViewOnly && <Button className="gap-2" onClick={() => setItemPickerOpen(true)}><Plus size={16} /> اختيار أصناف</Button>}
          </div>
          {items.length > 0 ? (
-           <Table>
+           <>
+             <div className="relative max-w-md">
+               <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+               <Input
+                 placeholder="بحث في الأصناف المضافة بالاسم أو الكود..."
+                 value={cartSearch}
+                 onChange={(e) => setCartSearch(e.target.value)}
+                 className="glass-input pr-9"
+               />
+             </div>
+             <Table>
               <TableHeader><TableRow>
                 <TableHead className="text-right">الكود</TableHead>
                 <TableHead className="text-right">الصنف</TableHead>
@@ -406,7 +416,10 @@ export const EditPurchaseInvoicePage: React.FC = () => {
                 {!isViewOnly && <TableHead className="text-right w-12"></TableHead>}
               </TableRow></TableHeader>
               <TableBody>
-                {items.map((item, idx) => (
+                {items.map((item, idx) => {
+                  const q = cartSearch.trim().toLowerCase();
+                  if (q && !((item.name || "").toLowerCase().includes(q) || (item.code || "").toLowerCase().includes(q))) return null;
+                  return (
                   <TableRow key={idx}>
                     <TableCell className="font-mono text-xs">{item.code || "—"}</TableCell>
                     <TableCell className="font-medium">{item.name}</TableCell>
@@ -416,9 +429,11 @@ export const EditPurchaseInvoicePage: React.FC = () => {
                     <TableCell>{isViewOnly ? item.total.toFixed(2) : <Input type="number" min={0} step="0.01" value={item.total} onChange={(e) => updateItemField(idx, "total", parseFloat(e.target.value) || 0)} className="glass-input w-28" />}</TableCell>
                     {!isViewOnly && <TableCell><Button variant="ghost" size="icon" className="text-destructive" onClick={() => removeItem(idx)}><Trash2 size={15} /></Button></TableCell>}
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
-           </Table>
+             </Table>
+           </>
          ) : (
            <div className="text-center py-8 text-muted-foreground text-sm">لم يتم إضافة أصناف بعد</div>
          )}

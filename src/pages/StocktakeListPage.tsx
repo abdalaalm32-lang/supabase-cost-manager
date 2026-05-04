@@ -181,6 +181,9 @@ export const StocktakeListPage: React.FC = () => {
   });
 
   const getDiffValue = (stId: string) => {
+    // For branch stocktakes there is no book balance, so variance is always 0
+    const st = stocktakes.find((s: any) => s.id === stId);
+    if (st?.branch_id) return 0;
     const items = allStocktakeItems.filter((i: any) => i.stocktake_id === stId);
     return items.reduce((sum: number, i: any) => {
       const diff = Number(i.counted_qty) - Number(i.book_qty);

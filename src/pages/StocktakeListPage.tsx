@@ -191,6 +191,11 @@ export const StocktakeListPage: React.FC = () => {
     }, 0);
   };
 
+  const getActualValue = (stId: string) => {
+    const items = allStocktakeItems.filter((i: any) => i.stocktake_id === stId);
+    return items.reduce((sum: number, i: any) => sum + Number(i.counted_qty) * Number(i.avg_cost), 0);
+  };
+
   const filtered = useMemo(() => {
     let list = stocktakes;
 

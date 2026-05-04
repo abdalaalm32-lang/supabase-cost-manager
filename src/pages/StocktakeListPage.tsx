@@ -391,8 +391,8 @@ export const StocktakeListPage: React.FC = () => {
       </div>
       <div className="flex items-center gap-2">
         <ExportButtons
-          data={filtered.map((st: any) => ({ record: st.record_number || "—", date: st.date, type: st.type, location: getLocationName(st), status: st.is_edited ? "معدل" : st.status, diff: getDiffValue(st.id).toFixed(2) }))}
-          columns={[{ key: "record", label: "رقم الجرد" }, { key: "date", label: "تاريخ الجرد" }, { key: "type", label: "نوع الجرد" }, { key: "location", label: "الفرع / المخزن" }, { key: "status", label: "الحالة" }, { key: "diff", label: "قيمة الفروقات" }]}
+          data={filtered.map((st: any) => ({ record: st.record_number || "—", date: st.date, type: st.type, location: getLocationName(st), status: st.is_edited ? "معدل" : st.status, actual: getActualValue(st.id).toFixed(2), diff: getDiffValue(st.id).toFixed(2) }))}
+          columns={[{ key: "record", label: "رقم الجرد" }, { key: "date", label: "تاريخ الجرد" }, { key: "type", label: "نوع الجرد" }, { key: "location", label: "الفرع / المخزن" }, { key: "status", label: "الحالة" }, { key: "actual", label: "قيمة الجرد الفعلي" }, { key: "diff", label: "قيمة الفروقات" }]}
           filename="الجرد_الدوري"
           title="الجرد الدوري"
         />

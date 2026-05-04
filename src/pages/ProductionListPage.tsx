@@ -332,6 +332,7 @@ export const ProductionListPage: React.FC = () => {
               <TableHead className="text-right">الموقع</TableHead>
               <TableHead className="text-right">المنشئ</TableHead>
               <TableHead className="text-right">الحالة</TableHead>
+              <TableHead className="text-right">الكمية المنتجة</TableHead>
               <TableHead className="text-right">إجمالي التكلفة</TableHead>
               <TableHead className="text-right">الإجراءات</TableHead>
             </TableRow>

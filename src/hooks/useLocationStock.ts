@@ -22,7 +22,7 @@ export function useLocationStock(
     queryFn: async () => {
       const { data, error } = await supabase
         .from("purchase_items")
-        .select("stock_item_id, quantity, purchase_orders!inner(id, status, branch_id, warehouse_id, company_id, department_id)")
+        .select("stock_item_id, quantity, purchase_orders!inner(id, status, date, branch_id, warehouse_id, company_id, department_id)")
         .eq("purchase_orders.company_id", companyId!)
         .eq("purchase_orders.status", "مكتمل");
       if (error) throw error;

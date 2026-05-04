@@ -53,6 +53,7 @@ export const AddPurchaseInvoicePage: React.FC = () => {
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [categoryFilter, setCategoryFilter] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [cartSearch, setCartSearch] = useState("");
 
   const { data: suppliers = [] } = useQuery({
     queryKey: ["suppliers-active", companyId],

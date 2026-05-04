@@ -123,7 +123,9 @@ export const ProductionDetailPage: React.FC = () => {
     enabled: !!companyId,
   });
 
-  const { getLocationStock } = useLocationStock(locationId || null, locationType, selectedDept !== "all" ? selectedDept : null);
+  const { getProductionAvailable } = useLocationStock(locationId || null, locationType, selectedDept !== "all" ? selectedDept : null);
+  // Production "available balance" = Opening stock + Purchases only (per business rule)
+  const getLocationStock = getProductionAvailable;
 
   // Load existing record
   const { data: existingRecord } = useQuery({

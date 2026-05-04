@@ -257,9 +257,11 @@ export function useLocationStock(
     }
 
     // Stocktake adjustments (counted_qty - book_qty for this location, filtered by department)
+    // Note: A stocktake with NULL department_id covers the whole location across all departments,
+    // so it must be applied even when a department filter is active.
     for (const st of stocktakes) {
       if (match(st.branch_id, st.warehouse_id)) {
-        if (departmentId && st.department_id !== departmentId) continue;
+        if (departmentId && st.department_id && st.department_id !== departmentId) continue;
         for (const si of (st.stocktake_items || [])) {
           if (si.stock_item_id) {
             const adjustment = Number(si.counted_qty) - Number(si.book_qty || 0);

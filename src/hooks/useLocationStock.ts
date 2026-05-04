@@ -257,11 +257,9 @@ export function useLocationStock(
     }
 
     // Stocktake adjustments (counted_qty - book_qty for this location, filtered by department)
-    // Note: A stocktake with NULL department_id covers the whole location across all departments,
-    // so it must be applied even when a department filter is active.
     for (const st of stocktakes) {
       if (match(st.branch_id, st.warehouse_id)) {
-        if (departmentId && st.department_id && st.department_id !== departmentId) continue;
+        if (departmentId && st.department_id !== departmentId) continue;
         for (const si of (st.stocktake_items || [])) {
           if (si.stock_item_id) {
             const adjustment = Number(si.counted_qty) - Number(si.book_qty || 0);
@@ -280,5 +278,45 @@ export function useLocationStock(
     return stockMap.get(stockItemId) || 0;
   };
 
-  return { stockMap, getLocationStock };
+  // Production-specific available balance: latest stocktake counted_qty (opening stock) + all completed purchases.
+  // Does NOT subtract production/waste/transfers/POS, and ignores stocktake book_qty differences.
+  const productionAvailableMap = useMemo(() => {
+    if (!locationId) return new Map<string, number>();
+    const map = new Map<string, number>();
+
+    // Opening stock = latest completed stocktake per item at this location (and department if specified)
+    const latest = new Map<string, { qty: number; date: string }>();
+    for (const st of stocktakes) {
+      if (locationType === "branch" ? st.branch_id !== locationId : st.warehouse_id !== locationId) continue;
+      if (departmentId && st.department_id && st.department_id !== departmentId) continue;
+      const stDate = st.date || st.created_at || "";
+      for (const si of (st.stocktake_items || [])) {
+        if (!si.stock_item_id) continue;
+        const existing = latest.get(si.stock_item_id);
+        if (!existing || stDate > existing.date) {
+          latest.set(si.stock_item_id, { qty: Number(si.counted_qty), date: stDate });
+        }
+      }
+    }
+    for (const [id, v] of latest) {
+      map.set(id, (map.get(id) || 0) + v.qty);
+    }
+
+    // Add purchases IN
+    for (const pi of purchaseItems) {
+      const po = pi.purchase_orders;
+      if (locationType === "branch" ? po.branch_id !== locationId : po.warehouse_id !== locationId) continue;
+      if (departmentId && po.department_id !== departmentId) continue;
+      if (!pi.stock_item_id) continue;
+      map.set(pi.stock_item_id, (map.get(pi.stock_item_id) || 0) + Number(pi.quantity));
+    }
+
+    return map;
+  }, [locationId, locationType, departmentId, stocktakes, purchaseItems]);
+
+  const getProductionAvailable = (stockItemId: string): number => {
+    return productionAvailableMap.get(stockItemId) || 0;
+  };
+
+  return { stockMap, getLocationStock, getProductionAvailable };
 }

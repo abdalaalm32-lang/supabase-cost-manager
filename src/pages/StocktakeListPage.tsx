@@ -191,6 +191,11 @@ export const StocktakeListPage: React.FC = () => {
     }, 0);
   };
 
+  const getActualValue = (stId: string) => {
+    const items = allStocktakeItems.filter((i: any) => i.stocktake_id === stId);
+    return items.reduce((sum: number, i: any) => sum + Number(i.counted_qty) * Number(i.avg_cost), 0);
+  };
+
   const filtered = useMemo(() => {
     let list = stocktakes;
 
@@ -386,8 +391,8 @@ export const StocktakeListPage: React.FC = () => {
       </div>
       <div className="flex items-center gap-2">
         <ExportButtons
-          data={filtered.map((st: any) => ({ record: st.record_number || "—", date: st.date, type: st.type, location: getLocationName(st), status: st.is_edited ? "معدل" : st.status, diff: getDiffValue(st.id).toFixed(2) }))}
-          columns={[{ key: "record", label: "رقم الجرد" }, { key: "date", label: "تاريخ الجرد" }, { key: "type", label: "نوع الجرد" }, { key: "location", label: "الفرع / المخزن" }, { key: "status", label: "الحالة" }, { key: "diff", label: "قيمة الفروقات" }]}
+          data={filtered.map((st: any) => ({ record: st.record_number || "—", date: st.date, type: st.type, location: getLocationName(st), status: st.is_edited ? "معدل" : st.status, actual: getActualValue(st.id).toFixed(2), diff: getDiffValue(st.id).toFixed(2) }))}
+          columns={[{ key: "record", label: "رقم الجرد" }, { key: "date", label: "تاريخ الجرد" }, { key: "type", label: "نوع الجرد" }, { key: "location", label: "الفرع / المخزن" }, { key: "status", label: "الحالة" }, { key: "actual", label: "قيمة الجرد الفعلي" }, { key: "diff", label: "قيمة الفروقات" }]}
           filename="الجرد_الدوري"
           title="الجرد الدوري"
         />
@@ -402,17 +407,19 @@ export const StocktakeListPage: React.FC = () => {
               <TableHead className="text-right">نوع الجرد</TableHead>
               <TableHead className="text-right">الفرع / المخزن</TableHead>
               <TableHead className="text-right">الحالة</TableHead>
+              <TableHead className="text-right">قيمة الجرد الفعلي</TableHead>
               <TableHead className="text-right">قيمة الفروقات</TableHead>
               <TableHead className="text-right">إجراءات</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">جاري التحميل...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">جاري التحميل...</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">لا توجد عمليات جرد</TableCell></TableRow>
+              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">لا توجد عمليات جرد</TableCell></TableRow>
             ) : filtered.map((st: any) => {
               const diffVal = getDiffValue(st.id);
+              const actualVal = getActualValue(st.id);
               return (
                 <TableRow key={st.id}>
                   <TableCell className="font-mono text-xs">{st.record_number || "—"}</TableCell>
@@ -424,6 +431,9 @@ export const StocktakeListPage: React.FC = () => {
                       {getStatusBadge(st)}
                       {st.is_edited && <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700">معدل</span>}
                     </div>
+                  </TableCell>
+                  <TableCell className="font-semibold">
+                    {actualVal.toFixed(2)}
                   </TableCell>
                   <TableCell className={cn("font-semibold", diffVal >= 0 ? "text-green-600" : "text-red-600")}>
                     {diffVal.toFixed(2)}

@@ -451,12 +451,19 @@ export const ProductionDetailPage: React.FC = () => {
 
         // Update record
         const updateData: any = {
+          date,
+          product_id: selectedProductId,
+          product_name: selectedProduct?.name || "",
           produced_qty: producedQtyNum,
           unit: selectedUnit,
           total_production_cost: totalComponentsCost,
           unit_cost: unitCost,
           is_edited: true,
           notes: productionNotes || null,
+          branch_name: locationName || null,
+          branch_id: locationType === "branch" ? (locationId || null) : null,
+          warehouse_id: locationType === "warehouse" ? (locationId || null) : null,
+          department_id: selectedDept !== "all" ? selectedDept : null,
         };
 
         const { error } = await supabase.from("production_records").update(updateData).eq("id", id!);

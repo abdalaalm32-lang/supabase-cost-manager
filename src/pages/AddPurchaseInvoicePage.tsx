@@ -53,6 +53,7 @@ export const AddPurchaseInvoicePage: React.FC = () => {
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [categoryFilter, setCategoryFilter] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [cartSearch, setCartSearch] = useState("");
 
   const { data: suppliers = [] } = useQuery({
     queryKey: ["suppliers-active", companyId],
@@ -396,7 +397,17 @@ export const AddPurchaseInvoicePage: React.FC = () => {
         </div>
 
         {items.length > 0 && (
-          <Table>
+          <>
+            <div className="relative max-w-md">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="بحث في الأصناف المضافة بالاسم أو الكود..."
+                value={cartSearch}
+                onChange={(e) => setCartSearch(e.target.value)}
+                className="glass-input pr-9"
+              />
+            </div>
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="text-right">الكود</TableHead>
@@ -409,7 +420,10 @@ export const AddPurchaseInvoicePage: React.FC = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((item, idx) => (
+              {items.map((item, idx) => {
+                const q = cartSearch.trim().toLowerCase();
+                if (q && !(item.name?.toLowerCase().includes(q) || item.code?.toLowerCase().includes(q))) return null;
+                return (
                 <TableRow key={item.stock_item_id}>
                   <TableCell className="font-mono text-xs">{item.code}</TableCell>
                   <TableCell className="font-medium">{item.name}</TableCell>
@@ -425,9 +439,11 @@ export const AddPurchaseInvoicePage: React.FC = () => {
                     <Button variant="ghost" size="icon" className="text-destructive" onClick={() => removeItem(idx)}><Trash2 size={15} /></Button>
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
+          </>
         )}
 
         {items.length === 0 && (

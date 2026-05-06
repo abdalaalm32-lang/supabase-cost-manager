@@ -198,7 +198,7 @@ export function usePnlData(
     0
   );
   const discountAmount = (sales || []).reduce(
-    (s, r) => s + Number(r.discount_amount || 0),
+    (s, r) => s + (r.discount_in_pnl === false ? 0 : Number(r.discount_amount || 0)),
     0
   );
   const netSales = grossSales - taxAmount - discountAmount;

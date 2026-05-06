@@ -277,6 +277,32 @@ export const PnlPage: React.FC = () => {
       </tr>`;
     });
 
+    // COGS breakdown table
+    let cogsBreakdownHTML = "";
+    if (pnl.cogsByCategory.length > 0) {
+      let cogsRows = "";
+      pnl.cogsByCategory.forEach((c) => {
+        const costPct = c.salesAmount > 0 ? (c.amount / c.salesAmount) * 100 : 0;
+        cogsRows += `<tr>
+          <td style="border:1px solid #ddd;padding:6px 10px;text-align:right;font-size:11px;">${c.category}</td>
+          <td style="border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:11px;font-variant-numeric:tabular-nums;">${fmt(c.salesAmount)}</td>
+          <td style="border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:11px;font-variant-numeric:tabular-nums;">${fmt(c.amount)}</td>
+          <td style="border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:11px;">${costPct.toFixed(1)}%</td>
+        </tr>`;
+      });
+      cogsBreakdownHTML = `
+        <h2 style="font-size:14px;font-weight:bold;margin:20px 0 8px;border-bottom:1px solid #000;padding-bottom:4px;">تفصيل تكلفة البضاعة المباعة حسب المجموعة</h2>
+        <table>
+          <thead><tr style="background:#f0f0f0;">
+            <th style="border:1px solid #ddd;padding:6px 10px;text-align:right;font-size:11px;">المجموعة</th>
+            <th style="border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:11px;">المبيعات (ج.م)</th>
+            <th style="border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:11px;">التكلفة (ج.م)</th>
+            <th style="border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:11px;">Food Cost %</th>
+          </tr></thead>
+          <tbody>${cogsRows}</tbody>
+        </table>`;
+    }
+
     const printHTML = `<!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>

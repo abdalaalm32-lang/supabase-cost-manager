@@ -777,7 +777,11 @@ export const PosScreenPage: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <div className="flex items-center gap-1">
                     <span className="text-[10px] text-muted-foreground">خصم</span>
-                    <Switch dir="ltr" checked={discountEnabled} onCheckedChange={(v) => { setDiscountEnabled(v); if (!v) setDiscountValue(0); }} className="scale-75" />
+                    <Switch dir="ltr" checked={discountEnabled} onCheckedChange={(v) => {
+                      setDiscountEnabled(v);
+                      if (!v) { setDiscountValue(0); setDiscountInPnl(true); }
+                      else { setDiscountPnlDialogOpen(true); }
+                    }} className="scale-75" />
                   </div>
                   <div className="flex items-center gap-1">
                     <span className="text-[10px] text-muted-foreground">ضريبة</span>

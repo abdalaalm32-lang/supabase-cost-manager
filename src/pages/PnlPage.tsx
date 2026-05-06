@@ -97,8 +97,19 @@ export const PnlPage: React.FC = () => {
   const [compareCustomFrom, setCompareCustomFrom] = useState<Date>(startOfMonth(subMonths(new Date(), 1)));
   const [compareCustomTo, setCompareCustomTo] = useState<Date>(endOfMonth(subMonths(new Date(), 1)));
 
+  // Persistence key (per company)
+  const storageKey = `pnl-overrides-${companyId || "none"}`;
+  const loadInitial = () => {
+    try {
+      const raw = typeof window !== "undefined" ? localStorage.getItem(storageKey) : null;
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch { return null; }
+  };
+  const initial = loadInitial();
+
   // Manual expenses
-  const [manualExpenses, setManualExpenses] = useState<IndirectExpenseItem[]>([]);
+  const [manualExpenses, setManualExpenses] = useState<IndirectExpenseItem[]>(initial?.manualExpenses || []);
   const [manualExpensesCompare, setManualExpensesCompare] = useState<IndirectExpenseItem[]>([]);
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [newExpName, setNewExpName] = useState("");
@@ -106,9 +117,25 @@ export const PnlPage: React.FC = () => {
   const [addingForCompare, setAddingForCompare] = useState(false);
 
   // Overrides for auto expenses (from costing period): deleted names & amount edits
-  const [deletedAutoExpenses, setDeletedAutoExpenses] = useState<Set<string>>(new Set());
-  const [autoExpenseOverrides, setAutoExpenseOverrides] = useState<Record<string, number>>({});
+  const [deletedAutoExpenses, setDeletedAutoExpenses] = useState<Set<string>>(
+    new Set<string>(initial?.deletedAutoExpenses || [])
+  );
+  const [autoExpenseOverrides, setAutoExpenseOverrides] = useState<Record<string, number>>(
+    initial?.autoExpenseOverrides || {}
+  );
   const [editingExpense, setEditingExpense] = useState<{ name: string; amount: number } | null>(null);
+
+  // Persist edits across navigation
+  React.useEffect(() => {
+    if (!companyId) return;
+    try {
+      localStorage.setItem(storageKey, JSON.stringify({
+        manualExpenses,
+        deletedAutoExpenses: Array.from(deletedAutoExpenses),
+        autoExpenseOverrides,
+      }));
+    } catch {}
+  }, [companyId, storageKey, manualExpenses, deletedAutoExpenses, autoExpenseOverrides]);
 
   // Dates
   const [dateFrom, dateTo] = useMemo(() => {

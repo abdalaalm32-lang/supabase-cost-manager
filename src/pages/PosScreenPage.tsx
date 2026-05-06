@@ -470,6 +470,7 @@ export const PosScreenPage: React.FC = () => {
       setDiscountEnabled(true);
       setDiscountType("fixed");
       setDiscountValue(sale.discount_amount);
+      setDiscountInPnl((sale as any).discount_in_pnl ?? true);
     }
     setCart(saleItems.map((item: any) => ({
       id: crypto.randomUUID(),

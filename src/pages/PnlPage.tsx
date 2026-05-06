@@ -123,6 +123,9 @@ export const PnlPage: React.FC = () => {
   const [autoExpenseOverrides, setAutoExpenseOverrides] = useState<Record<string, number>>(
     initial?.autoExpenseOverrides || {}
   );
+  const [lockedAutoExpenses, setLockedAutoExpenses] = useState<IndirectExpenseItem[] | null>(
+    initial?.lockedAutoExpenses || null
+  );
   const [editingExpense, setEditingExpense] = useState<{ name: string; amount: number } | null>(null);
 
   // When branch changes, reload that branch's saved overrides (each branch isolated)
@@ -134,6 +137,7 @@ export const PnlPage: React.FC = () => {
     setManualExpenses(data?.manualExpenses || []);
     setDeletedAutoExpenses(new Set<string>(data?.deletedAutoExpenses || []));
     setAutoExpenseOverrides(data?.autoExpenseOverrides || {});
+    setLockedAutoExpenses(data?.lockedAutoExpenses || null);
   }, [storageKey]);
 
   // Persist edits across navigation (per branch)
@@ -144,9 +148,10 @@ export const PnlPage: React.FC = () => {
         manualExpenses,
         deletedAutoExpenses: Array.from(deletedAutoExpenses),
         autoExpenseOverrides,
+        lockedAutoExpenses,
       }));
     } catch {}
-  }, [companyId, storageKey, manualExpenses, deletedAutoExpenses, autoExpenseOverrides]);
+  }, [companyId, storageKey, manualExpenses, deletedAutoExpenses, autoExpenseOverrides, lockedAutoExpenses]);
 
   // Dates
   const [dateFrom, dateTo] = useMemo(() => {
@@ -179,7 +184,17 @@ export const PnlPage: React.FC = () => {
   });
 
   // P&L data (main)
-  const pnl = usePnlData(dateFromStr, dateToStr, branchId, manualExpenses, deletedAutoExpenses, autoExpenseOverrides);
+  const pnl = usePnlData(dateFromStr, dateToStr, branchId, manualExpenses, deletedAutoExpenses, autoExpenseOverrides, lockedAutoExpenses);
+
+  React.useEffect(() => {
+    if (lockedAutoExpenses || pnl.isLoading) return;
+    const initialAutoExpenses = pnl.indirectExpenses
+      .filter((expense) => !expense.isManual)
+      .map((expense) => ({ name: expense.name, amount: expense.amount }));
+    if (initialAutoExpenses.length > 0) {
+      setLockedAutoExpenses(initialAutoExpenses);
+    }
+  }, [lockedAutoExpenses, pnl.isLoading, pnl.indirectExpenses]);
 
   // Comparison: period mode uses single hook call (same branch, different period)
   const pnlComparePeriod = usePnlData(
@@ -1070,6 +1085,14 @@ export const PnlPage: React.FC = () => {
                   if (manualIdx >= 0) {
                     setManualExpenses(prev => prev.map((e, i) => i === manualIdx ? { ...e, amount: newVal } : e));
                   } else {
+                    setLockedAutoExpenses((prev) => {
+                      const current = prev || pnl.indirectExpenses
+                        .filter((expense) => !expense.isManual)
+                        .map((expense) => ({ name: expense.name, amount: expense.amount }));
+                      return current.map((expense) =>
+                        expense.name === editingExpense.name ? { ...expense, amount: newVal } : expense
+                      );
+                    });
                     setAutoExpenseOverrides(prev => ({ ...prev, [editingExpense.name]: newVal }));
                   }
                 }

@@ -432,6 +432,7 @@ export const PosScreenPage: React.FC = () => {
     setEditingSaleId(null);
     setDiscountEnabled(false);
     setDiscountValue(0);
+    setDiscountInPnl(true);
     setTaxEnabled(false);
     setTaxRate(0);
     setTaxInputVisible(false);

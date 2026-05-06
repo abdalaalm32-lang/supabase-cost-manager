@@ -495,6 +495,7 @@ export const PosScreenPage: React.FC = () => {
         total_amount: total, status,
         tax_enabled: taxEnabled, tax_rate: taxEnabled ? taxRate : 0, tax_amount: taxAmount,
         discount_amount: discountAmount,
+        discount_in_pnl: discountEnabled ? discountInPnl : true,
         order_type: orderType,
         payment_method: paymentMethod,
         delivery_fee: orderType === "دليفري" ? deliveryFee : 0,

@@ -1116,6 +1116,7 @@ export type Database = {
           delivery_fee: number
           delivery_status: string | null
           discount_amount: number
+          discount_in_pnl: boolean
           driver_id: string | null
           driver_settled: boolean
           driver_settled_at: string | null
@@ -1146,6 +1147,7 @@ export type Database = {
           delivery_fee?: number
           delivery_status?: string | null
           discount_amount?: number
+          discount_in_pnl?: boolean
           driver_id?: string | null
           driver_settled?: boolean
           driver_settled_at?: string | null
@@ -1176,6 +1178,7 @@ export type Database = {
           delivery_fee?: number
           delivery_status?: string | null
           discount_amount?: number
+          discount_in_pnl?: boolean
           driver_id?: string | null
           driver_settled?: boolean
           driver_settled_at?: string | null

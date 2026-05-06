@@ -688,10 +688,9 @@ export const RecipesPage: React.FC = () => {
       a[0].localeCompare(b[0], "ar"),
     );
 
-    categoryEntries.forEach(([catName, recipesInCat], catIdx) => {
+    categoryEntries.forEach(([catName, recipesInCat]) => {
       const catTotal = recipesInCat.reduce((s: number, r: any) => s + r.totalCost, 0);
-      const pageBreak = catIdx > 0 ? "page-break-before:always;" : "";
-      allTablesHTML += `<div style="${pageBreak}">`;
+      allTablesHTML += `<div style="margin-top:18px;">`;
       allTablesHTML += `<h2 style="margin:10px 0 8px 0;font-size:16px;font-weight:bold;font-family:'AmiriBold','CairoLocal',sans-serif;background:#000;color:#fff;padding:6px 10px;text-align:center;">التصنيف: ${catName} (${recipesInCat.length})</h2>`;
 
       recipesInCat.forEach((rd: any) => {

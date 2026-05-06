@@ -184,7 +184,17 @@ export const PnlPage: React.FC = () => {
   });
 
   // P&L data (main)
-  const pnl = usePnlData(dateFromStr, dateToStr, branchId, manualExpenses, deletedAutoExpenses, autoExpenseOverrides);
+  const pnl = usePnlData(dateFromStr, dateToStr, branchId, manualExpenses, deletedAutoExpenses, autoExpenseOverrides, lockedAutoExpenses);
+
+  React.useEffect(() => {
+    if (lockedAutoExpenses || pnl.isLoading) return;
+    const initialAutoExpenses = pnl.indirectExpenses
+      .filter((expense) => !expense.isManual)
+      .map((expense) => ({ name: expense.name, amount: expense.amount }));
+    if (initialAutoExpenses.length > 0) {
+      setLockedAutoExpenses(initialAutoExpenses);
+    }
+  }, [lockedAutoExpenses, pnl.isLoading, pnl.indirectExpenses]);
 
   // Comparison: period mode uses single hook call (same branch, different period)
   const pnlComparePeriod = usePnlData(

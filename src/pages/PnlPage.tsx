@@ -123,6 +123,9 @@ export const PnlPage: React.FC = () => {
   const [autoExpenseOverrides, setAutoExpenseOverrides] = useState<Record<string, number>>(
     initial?.autoExpenseOverrides || {}
   );
+  const [lockedAutoExpenses, setLockedAutoExpenses] = useState<IndirectExpenseItem[] | null>(
+    initial?.lockedAutoExpenses || null
+  );
   const [editingExpense, setEditingExpense] = useState<{ name: string; amount: number } | null>(null);
 
   // When branch changes, reload that branch's saved overrides (each branch isolated)
@@ -134,6 +137,7 @@ export const PnlPage: React.FC = () => {
     setManualExpenses(data?.manualExpenses || []);
     setDeletedAutoExpenses(new Set<string>(data?.deletedAutoExpenses || []));
     setAutoExpenseOverrides(data?.autoExpenseOverrides || {});
+    setLockedAutoExpenses(data?.lockedAutoExpenses || null);
   }, [storageKey]);
 
   // Persist edits across navigation (per branch)
@@ -144,9 +148,10 @@ export const PnlPage: React.FC = () => {
         manualExpenses,
         deletedAutoExpenses: Array.from(deletedAutoExpenses),
         autoExpenseOverrides,
+        lockedAutoExpenses,
       }));
     } catch {}
-  }, [companyId, storageKey, manualExpenses, deletedAutoExpenses, autoExpenseOverrides]);
+  }, [companyId, storageKey, manualExpenses, deletedAutoExpenses, autoExpenseOverrides, lockedAutoExpenses]);
 
   // Dates
   const [dateFrom, dateTo] = useMemo(() => {

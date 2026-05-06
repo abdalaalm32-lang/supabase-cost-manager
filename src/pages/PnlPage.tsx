@@ -277,6 +277,32 @@ export const PnlPage: React.FC = () => {
       </tr>`;
     });
 
+    // COGS breakdown table
+    let cogsBreakdownHTML = "";
+    if (pnl.cogsByCategory.length > 0) {
+      let cogsRows = "";
+      pnl.cogsByCategory.forEach((c) => {
+        const costPct = c.salesAmount > 0 ? (c.amount / c.salesAmount) * 100 : 0;
+        cogsRows += `<tr>
+          <td style="border:1px solid #ddd;padding:6px 10px;text-align:right;font-size:11px;">${c.category}</td>
+          <td style="border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:11px;font-variant-numeric:tabular-nums;">${fmt(c.salesAmount)}</td>
+          <td style="border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:11px;font-variant-numeric:tabular-nums;">${fmt(c.amount)}</td>
+          <td style="border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:11px;">${costPct.toFixed(1)}%</td>
+        </tr>`;
+      });
+      cogsBreakdownHTML = `
+        <h2 style="font-size:14px;font-weight:bold;margin:20px 0 8px;border-bottom:1px solid #000;padding-bottom:4px;">تفصيل تكلفة البضاعة المباعة حسب المجموعة</h2>
+        <table>
+          <thead><tr style="background:#f0f0f0;">
+            <th style="border:1px solid #ddd;padding:6px 10px;text-align:right;font-size:11px;">المجموعة</th>
+            <th style="border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:11px;">المبيعات (ج.م)</th>
+            <th style="border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:11px;">التكلفة (ج.م)</th>
+            <th style="border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:11px;">Food Cost %</th>
+          </tr></thead>
+          <tbody>${cogsRows}</tbody>
+        </table>`;
+    }
+
     const printHTML = `<!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
@@ -322,6 +348,7 @@ export const PnlPage: React.FC = () => {
     </tr></thead>
     <tbody>${tableRows}</tbody>
   </table>
+  ${cogsBreakdownHTML}
   <div class="footer">Powered by Mohamed Abdel Aal</div>
   <script>
     (async function(){try{if(document.fonts&&document.fonts.ready)await document.fonts.ready;}catch(e){}window.print();window.onafterprint=function(){window.close();};})();
@@ -332,6 +359,27 @@ export const PnlPage: React.FC = () => {
     if (w) { w.document.write(printHTML); w.document.close(); }
   };
 
+  const buildCogsBreakdownRows = () => {
+    if (!pnl.cogsByCategory.length) return [];
+    const out: any[] = [];
+    out.push({
+      label: "── تفصيل تكلفة البضاعة المباعة حسب المجموعة ──",
+      amount: "",
+      pct: "",
+      __rowType: "group-total",
+    });
+    out.push({ label: "المجموعة", amount: "المبيعات / التكلفة (ج.م)", pct: "Food Cost %" });
+    pnl.cogsByCategory.forEach((c) => {
+      const costPct = c.salesAmount > 0 ? (c.amount / c.salesAmount) * 100 : 0;
+      out.push({
+        label: c.category,
+        amount: `${fmt(c.salesAmount)} / ${fmt(c.amount)}`,
+        pct: costPct.toFixed(1) + "%",
+      });
+    });
+    return out;
+  };
+
   const handleExportPDF = () => {
     const exportData = rows
       .filter((r) => r.type !== "separator")
@@ -340,7 +388,8 @@ export const PnlPage: React.FC = () => {
         amount: r.type === "header" ? "" : fmt(r.amount),
         pct: r.pctVal,
         __rowType: r.type === "total" ? "grand-total" : r.type === "subtotal" ? "group-total" : undefined,
-      }));
+      }))
+      .concat(buildCogsBreakdownRows());
     exportToPDF({
       title: `قائمة الأرباح والخسائر - ${format(dateFrom, "yyyy/MM/dd")} إلى ${format(dateTo, "yyyy/MM/dd")}`,
       filename: `PnL_${dateFromStr}_${dateToStr}`,
@@ -361,7 +410,8 @@ export const PnlPage: React.FC = () => {
         amount: r.type === "header" ? "" : fmt(r.amount),
         pct: r.pctVal,
         __rowType: r.type === "total" ? "grand-total" : r.type === "subtotal" ? "group-total" : undefined,
-      }));
+      }))
+      .concat(buildCogsBreakdownRows());
     exportToExcel({
       title: `قائمة الأرباح والخسائر`,
       filename: `PnL_${dateFromStr}_${dateToStr}`,

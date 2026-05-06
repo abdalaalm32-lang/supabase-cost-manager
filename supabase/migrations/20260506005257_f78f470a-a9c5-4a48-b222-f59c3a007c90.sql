@@ -1,0 +1,1 @@
+ALTER TABLE public.pos_sales ADD COLUMN IF NOT EXISTS discount_in_pnl boolean NOT NULL DEFAULT true;

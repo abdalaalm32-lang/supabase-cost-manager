@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -86,6 +87,8 @@ export const PosScreenPage: React.FC = () => {
   const [discountEnabled, setDiscountEnabled] = useState(saved?.discountEnabled || false);
   const [discountType, setDiscountType] = useState<"percent" | "fixed">(saved?.discountType || "percent");
   const [discountValue, setDiscountValue] = useState<number>(saved?.discountValue || 0);
+  const [discountInPnl, setDiscountInPnl] = useState<boolean>(saved?.discountInPnl ?? true);
+  const [discountPnlDialogOpen, setDiscountPnlDialogOpen] = useState(false);
   const [editingSaleId, setEditingSaleId] = useState<string | null>(saved?.editingSaleId || null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -272,9 +275,9 @@ export const PosScreenPage: React.FC = () => {
   });
 
   useEffect(() => {
-    const draft = { cart, branchId, saleDate: saleDate.toISOString(), taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId, customerName, orderType, paymentMethod, deliveryFee, customerPhone, customerAddress };
+    const draft = { cart, branchId, saleDate: saleDate.toISOString(), taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, discountInPnl, editingSaleId, customerName, orderType, paymentMethod, deliveryFee, customerPhone, customerAddress };
     sessionStorage.setItem("pos_draft", JSON.stringify(draft));
-  }, [cart, branchId, saleDate, taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, editingSaleId, customerName, orderType, paymentMethod, deliveryFee, customerPhone, customerAddress]);
+  }, [cart, branchId, saleDate, taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, discountInPnl, editingSaleId, customerName, orderType, paymentMethod, deliveryFee, customerPhone, customerAddress]);
 
   // Load archived sale from navigation state
   useEffect(() => {
@@ -305,6 +308,7 @@ export const PosScreenPage: React.FC = () => {
         setDiscountEnabled(true);
         setDiscountType("fixed");
         setDiscountValue(sale.discount_amount);
+        setDiscountInPnl((sale as any).discount_in_pnl ?? true);
       }
 
       setCart(saleItems.map((item: any) => ({
@@ -429,6 +433,7 @@ export const PosScreenPage: React.FC = () => {
     setEditingSaleId(null);
     setDiscountEnabled(false);
     setDiscountValue(0);
+    setDiscountInPnl(true);
     setTaxEnabled(false);
     setTaxRate(0);
     setTaxInputVisible(false);
@@ -467,6 +472,7 @@ export const PosScreenPage: React.FC = () => {
       setDiscountEnabled(true);
       setDiscountType("fixed");
       setDiscountValue(sale.discount_amount);
+      setDiscountInPnl((sale as any).discount_in_pnl ?? true);
     }
     setCart(saleItems.map((item: any) => ({
       id: crypto.randomUUID(),
@@ -491,6 +497,7 @@ export const PosScreenPage: React.FC = () => {
         total_amount: total, status,
         tax_enabled: taxEnabled, tax_rate: taxEnabled ? taxRate : 0, tax_amount: taxAmount,
         discount_amount: discountAmount,
+        discount_in_pnl: discountEnabled ? discountInPnl : true,
         order_type: orderType,
         payment_method: paymentMethod,
         delivery_fee: orderType === "دليفري" ? deliveryFee : 0,
@@ -771,7 +778,11 @@ export const PosScreenPage: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <div className="flex items-center gap-1">
                     <span className="text-[10px] text-muted-foreground">خصم</span>
-                    <Switch dir="ltr" checked={discountEnabled} onCheckedChange={(v) => { setDiscountEnabled(v); if (!v) setDiscountValue(0); }} className="scale-75" />
+                    <Switch dir="ltr" checked={discountEnabled} onCheckedChange={(v) => {
+                      setDiscountEnabled(v);
+                      if (!v) { setDiscountValue(0); setDiscountInPnl(true); }
+                      else { setDiscountPnlDialogOpen(true); }
+                    }} className="scale-75" />
                   </div>
                   <div className="flex items-center gap-1">
                     <span className="text-[10px] text-muted-foreground">ضريبة</span>
@@ -896,6 +907,18 @@ export const PosScreenPage: React.FC = () => {
                     </div>
                     <Input type="number" placeholder={discountType === "percent" ? "%" : "مبلغ"} value={discountValue || ""} onChange={(e) => setDiscountValue(Number(e.target.value))} className="glass-input h-8 text-xs" />
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setDiscountPnlDialogOpen(true)}
+                    className={cn(
+                      "mt-1 w-full text-[10px] px-2 py-1 rounded-md border transition-colors text-right",
+                      discountInPnl
+                        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                        : "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                    )}
+                  >
+                    {discountInPnl ? "✓ يظهر الخصم في قائمة P&L" : "✕ لا يظهر الخصم في قائمة P&L"} — اضغط للتغيير
+                  </button>
                 </div>
               )}
 
@@ -1240,6 +1263,25 @@ export const PosScreenPage: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={discountPnlDialogOpen} onOpenChange={setDiscountPnlDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>هل تريد ظهور هذا الخصم في قائمة الأرباح والخسائر (P&L)؟</AlertDialogTitle>
+            <AlertDialogDescription>
+              عند اختيار "نعم" سيتم خصم قيمة الخصم من صافي المبيعات في تقرير P&L. عند اختيار "لا" سيتم تجاهل قيمة الخصم في حساب صافي المبيعات.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setDiscountInPnl(false); setDiscountPnlDialogOpen(false); }}>
+              لا
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setDiscountInPnl(true); setDiscountPnlDialogOpen(false); }}>
+              نعم
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

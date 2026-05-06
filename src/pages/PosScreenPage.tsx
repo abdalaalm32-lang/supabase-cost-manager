@@ -1262,6 +1262,25 @@ export const PosScreenPage: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={discountPnlDialogOpen} onOpenChange={setDiscountPnlDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>هل تريد ظهور هذا الخصم في قائمة الأرباح والخسائر (P&L)؟</AlertDialogTitle>
+            <AlertDialogDescription>
+              عند اختيار "نعم" سيتم خصم قيمة الخصم من صافي المبيعات في تقرير P&L. عند اختيار "لا" سيتم تجاهل قيمة الخصم في حساب صافي المبيعات.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setDiscountInPnl(false); setDiscountPnlDialogOpen(false); }}>
+              لا
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setDiscountInPnl(true); setDiscountPnlDialogOpen(false); }}>
+              نعم
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

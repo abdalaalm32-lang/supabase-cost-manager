@@ -672,22 +672,50 @@ export const RecipesPage: React.FC = () => {
     let allTablesHTML = "";
     let grandTotal = 0;
 
+    // Group recipes by category
+    const groupedByCategory = new Map<string, any[]>();
     allRecipesData.forEach((rd: any) => {
-      grandTotal += rd.totalCost;
-      allTablesHTML += `<h3 style="margin-top:15px;font-size:13px;font-weight:bold;font-family:'AmiriBold','CairoLocal',sans-serif;">${rd.product.name} ${rd.product.code ? `(${rd.product.code})` : ""} ${withCost ? `— سعر البيع: ${Number(rd.product.price).toFixed(2)}` : ""}</h3>`;
-      allTablesHTML += `<table><thead><tr><th>م</th><th>الكود</th><th>الخامة</th><th>الوحدة</th><th>الكمية</th>`;
-      if (withCost) allTablesHTML += `<th>م. التكلفة</th><th>الإجمالي</th>`;
-      allTablesHTML += `</tr></thead><tbody>`;
-      rd.ingredients.forEach((ing: any, idx: number) => {
-        const td = (v: string) => `<td style="border:1px solid #000;padding:3px 5px;font-size:9px;text-align:center;">${v}</td>`;
-        allTablesHTML += `<tr>${td(String(idx + 1))}${td(ing.code)}${td(ing.name)}${td(ing.unit)}${td(String(ing.qty))}`;
-        if (withCost) allTablesHTML += `${td(ing.avgCost.toFixed(2))}${td(ing.cost.toFixed(2))}`;
-        allTablesHTML += `</tr>`;
+      const p = rd.product;
+      const catName =
+        p.category ||
+        posCategories.find((c: any) => c.id === p.category_id)?.name ||
+        "بدون تصنيف";
+      if (!groupedByCategory.has(catName)) groupedByCategory.set(catName, []);
+      groupedByCategory.get(catName)!.push(rd);
+    });
+
+    const categoryEntries = Array.from(groupedByCategory.entries()).sort((a, b) =>
+      a[0].localeCompare(b[0], "ar"),
+    );
+
+    categoryEntries.forEach(([catName, recipesInCat], catIdx) => {
+      const catTotal = recipesInCat.reduce((s: number, r: any) => s + r.totalCost, 0);
+      const pageBreak = catIdx > 0 ? "page-break-before:always;" : "";
+      allTablesHTML += `<div style="${pageBreak}">`;
+      allTablesHTML += `<h2 style="margin:10px 0 8px 0;font-size:16px;font-weight:bold;font-family:'AmiriBold','CairoLocal',sans-serif;background:#000;color:#fff;padding:6px 10px;text-align:center;">التصنيف: ${catName} (${recipesInCat.length})</h2>`;
+
+      recipesInCat.forEach((rd: any) => {
+        grandTotal += rd.totalCost;
+        allTablesHTML += `<h3 style="margin-top:12px;font-size:13px;font-weight:bold;font-family:'AmiriBold','CairoLocal',sans-serif;">${rd.product.name} ${rd.product.code ? `(${rd.product.code})` : ""} ${withCost ? `— سعر البيع: ${Number(rd.product.price).toFixed(2)}` : ""}</h3>`;
+        allTablesHTML += `<table><thead><tr><th>م</th><th>الكود</th><th>الخامة</th><th>الوحدة</th><th>الكمية</th>`;
+        if (withCost) allTablesHTML += `<th>م. التكلفة</th><th>الإجمالي</th>`;
+        allTablesHTML += `</tr></thead><tbody>`;
+        rd.ingredients.forEach((ing: any, idx: number) => {
+          const td = (v: string) => `<td style="border:1px solid #000;padding:3px 5px;font-size:9px;text-align:center;">${v}</td>`;
+          allTablesHTML += `<tr>${td(String(idx + 1))}${td(ing.code)}${td(ing.name)}${td(ing.unit)}${td(String(ing.qty))}`;
+          if (withCost) allTablesHTML += `${td(ing.avgCost.toFixed(2))}${td(ing.cost.toFixed(2))}`;
+          allTablesHTML += `</tr>`;
+        });
+        if (withCost) {
+          allTablesHTML += `<tr style="font-weight:bold;background:#f5f5f5;"><td colspan="6" style="border:1px solid #000;padding:3px 5px;font-size:9px;text-align:center;">إجمالي التكلفة</td><td style="border:1px solid #000;padding:3px 5px;font-size:9px;text-align:center;">${rd.totalCost.toFixed(2)}</td></tr>`;
+        }
+        allTablesHTML += `</tbody></table>`;
       });
+
       if (withCost) {
-        allTablesHTML += `<tr style="font-weight:bold;background:#f5f5f5;"><td colspan="6" style="border:1px solid #000;padding:3px 5px;font-size:9px;text-align:center;">إجمالي التكلفة</td><td style="border:1px solid #000;padding:3px 5px;font-size:9px;text-align:center;">${rd.totalCost.toFixed(2)}</td></tr>`;
+        allTablesHTML += `<div style="margin-top:8px;padding:6px;border:1px solid #000;text-align:center;font-weight:bold;font-size:11px;font-family:'AmiriBold','CairoLocal',sans-serif;background:#f0f0f0;">إجمالي تكلفة تصنيف "${catName}": ${catTotal.toFixed(2)}</div>`;
       }
-      allTablesHTML += `</tbody></table>`;
+      allTablesHTML += `</div>`;
     });
 
     if (withCost) {

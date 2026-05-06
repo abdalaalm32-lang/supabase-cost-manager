@@ -906,6 +906,18 @@ export const PosScreenPage: React.FC = () => {
                     </div>
                     <Input type="number" placeholder={discountType === "percent" ? "%" : "مبلغ"} value={discountValue || ""} onChange={(e) => setDiscountValue(Number(e.target.value))} className="glass-input h-8 text-xs" />
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setDiscountPnlDialogOpen(true)}
+                    className={cn(
+                      "mt-1 w-full text-[10px] px-2 py-1 rounded-md border transition-colors text-right",
+                      discountInPnl
+                        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                        : "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                    )}
+                  >
+                    {discountInPnl ? "✓ يظهر الخصم في قائمة P&L" : "✕ لا يظهر الخصم في قائمة P&L"} — اضغط للتغيير
+                  </button>
                 </div>
               )}
 

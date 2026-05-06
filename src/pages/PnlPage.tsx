@@ -1085,6 +1085,14 @@ export const PnlPage: React.FC = () => {
                   if (manualIdx >= 0) {
                     setManualExpenses(prev => prev.map((e, i) => i === manualIdx ? { ...e, amount: newVal } : e));
                   } else {
+                    setLockedAutoExpenses((prev) => {
+                      const current = prev || pnl.indirectExpenses
+                        .filter((expense) => !expense.isManual)
+                        .map((expense) => ({ name: expense.name, amount: expense.amount }));
+                      return current.map((expense) =>
+                        expense.name === editingExpense.name ? { ...expense, amount: newVal } : expense
+                      );
+                    });
                     setAutoExpenseOverrides(prev => ({ ...prev, [editingExpense.name]: newVal }));
                   }
                 }

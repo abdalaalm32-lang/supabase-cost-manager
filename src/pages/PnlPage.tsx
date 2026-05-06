@@ -97,16 +97,16 @@ export const PnlPage: React.FC = () => {
   const [compareCustomFrom, setCompareCustomFrom] = useState<Date>(startOfMonth(subMonths(new Date(), 1)));
   const [compareCustomTo, setCompareCustomTo] = useState<Date>(endOfMonth(subMonths(new Date(), 1)));
 
-  // Persistence key (per company)
-  const storageKey = `pnl-overrides-${companyId || "none"}`;
-  const loadInitial = () => {
+  // Persistence key (per company + per branch so each branch keeps its own edits)
+  const storageKey = `pnl-overrides-${companyId || "none"}-${branchId || "all"}`;
+  const loadFromStorage = (key: string) => {
     try {
-      const raw = typeof window !== "undefined" ? localStorage.getItem(storageKey) : null;
+      const raw = typeof window !== "undefined" ? localStorage.getItem(key) : null;
       if (!raw) return null;
       return JSON.parse(raw);
     } catch { return null; }
   };
-  const initial = loadInitial();
+  const initial = loadFromStorage(storageKey);
 
   // Manual expenses
   const [manualExpenses, setManualExpenses] = useState<IndirectExpenseItem[]>(initial?.manualExpenses || []);
@@ -125,7 +125,18 @@ export const PnlPage: React.FC = () => {
   );
   const [editingExpense, setEditingExpense] = useState<{ name: string; amount: number } | null>(null);
 
-  // Persist edits across navigation
+  // When branch changes, reload that branch's saved overrides (each branch isolated)
+  const lastLoadedKeyRef = React.useRef(storageKey);
+  React.useEffect(() => {
+    if (lastLoadedKeyRef.current === storageKey) return;
+    lastLoadedKeyRef.current = storageKey;
+    const data = loadFromStorage(storageKey);
+    setManualExpenses(data?.manualExpenses || []);
+    setDeletedAutoExpenses(new Set<string>(data?.deletedAutoExpenses || []));
+    setAutoExpenseOverrides(data?.autoExpenseOverrides || {});
+  }, [storageKey]);
+
+  // Persist edits across navigation (per branch)
   React.useEffect(() => {
     if (!companyId) return;
     try {

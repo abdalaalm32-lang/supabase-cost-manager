@@ -50,7 +50,7 @@ export function usePnlData(
     queryFn: async () => {
       let q = supabase
         .from("pos_sales")
-        .select("id, total_amount, tax_amount, discount_amount, date, branch_id")
+        .select("id, total_amount, tax_amount, discount_amount, discount_in_pnl, date, branch_id")
         .eq("company_id", companyId!)
         .eq("status", "مكتمل")
         .gte("date", `${dateFrom}T00:00:00`)

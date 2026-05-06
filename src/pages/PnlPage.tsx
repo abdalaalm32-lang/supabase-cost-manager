@@ -359,6 +359,27 @@ export const PnlPage: React.FC = () => {
     if (w) { w.document.write(printHTML); w.document.close(); }
   };
 
+  const buildCogsBreakdownRows = () => {
+    if (!pnl.cogsByCategory.length) return [];
+    const out: any[] = [];
+    out.push({
+      label: "── تفصيل تكلفة البضاعة المباعة حسب المجموعة ──",
+      amount: "",
+      pct: "",
+      __rowType: "group-total",
+    });
+    out.push({ label: "المجموعة", amount: "المبيعات / التكلفة (ج.م)", pct: "Food Cost %" });
+    pnl.cogsByCategory.forEach((c) => {
+      const costPct = c.salesAmount > 0 ? (c.amount / c.salesAmount) * 100 : 0;
+      out.push({
+        label: c.category,
+        amount: `${fmt(c.salesAmount)} / ${fmt(c.amount)}`,
+        pct: costPct.toFixed(1) + "%",
+      });
+    });
+    return out;
+  };
+
   const handleExportPDF = () => {
     const exportData = rows
       .filter((r) => r.type !== "separator")
@@ -367,7 +388,8 @@ export const PnlPage: React.FC = () => {
         amount: r.type === "header" ? "" : fmt(r.amount),
         pct: r.pctVal,
         __rowType: r.type === "total" ? "grand-total" : r.type === "subtotal" ? "group-total" : undefined,
-      }));
+      }))
+      .concat(buildCogsBreakdownRows());
     exportToPDF({
       title: `قائمة الأرباح والخسائر - ${format(dateFrom, "yyyy/MM/dd")} إلى ${format(dateTo, "yyyy/MM/dd")}`,
       filename: `PnL_${dateFromStr}_${dateToStr}`,
@@ -388,7 +410,8 @@ export const PnlPage: React.FC = () => {
         amount: r.type === "header" ? "" : fmt(r.amount),
         pct: r.pctVal,
         __rowType: r.type === "total" ? "grand-total" : r.type === "subtotal" ? "group-total" : undefined,
-      }));
+      }))
+      .concat(buildCogsBreakdownRows());
     exportToExcel({
       title: `قائمة الأرباح والخسائر`,
       filename: `PnL_${dateFromStr}_${dateToStr}`,

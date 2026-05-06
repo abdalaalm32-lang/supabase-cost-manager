@@ -38,7 +38,8 @@ export function usePnlData(
   branchId?: string,
   manualExpenses: IndirectExpenseItem[] = [],
   deletedAutoExpenses: Set<string> = new Set(),
-  autoExpenseOverrides: Record<string, number> = {}
+  autoExpenseOverrides: Record<string, number> = {},
+  lockedAutoExpenses: IndirectExpenseItem[] | null = null
 ): PnlResult {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;
@@ -274,7 +275,15 @@ export function usePnlData(
   );
 
   const autoExpenses: IndirectExpenseItem[] = [];
-  if (relevantPeriod) {
+  if (lockedAutoExpenses) {
+    lockedAutoExpenses.forEach((expense) => {
+      const name = expense.name;
+      if (deletedAutoExpenses.has(name)) return;
+      const rawAmount = Number(expense.amount ?? 0);
+      const val = name in autoExpenseOverrides ? autoExpenseOverrides[name] : rawAmount;
+      if (val > 0) autoExpenses.push({ name, amount: val });
+    });
+  } else if (relevantPeriod) {
     const fields: [string, string][] = [
       ["rent", "الإيجار"],
       ["salaries", "الرواتب"],

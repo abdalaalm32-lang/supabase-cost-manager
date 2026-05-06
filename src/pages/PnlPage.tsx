@@ -348,6 +348,7 @@ export const PnlPage: React.FC = () => {
     </tr></thead>
     <tbody>${tableRows}</tbody>
   </table>
+  ${cogsBreakdownHTML}
   <div class="footer">Powered by Mohamed Abdel Aal</div>
   <script>
     (async function(){try{if(document.fonts&&document.fonts.ready)await document.fonts.ready;}catch(e){}window.print();window.onafterprint=function(){window.close();};})();

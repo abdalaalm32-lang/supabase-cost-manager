@@ -86,6 +86,8 @@ export const PosScreenPage: React.FC = () => {
   const [discountEnabled, setDiscountEnabled] = useState(saved?.discountEnabled || false);
   const [discountType, setDiscountType] = useState<"percent" | "fixed">(saved?.discountType || "percent");
   const [discountValue, setDiscountValue] = useState<number>(saved?.discountValue || 0);
+  const [discountInPnl, setDiscountInPnl] = useState<boolean>(saved?.discountInPnl ?? true);
+  const [discountPnlDialogOpen, setDiscountPnlDialogOpen] = useState(false);
   const [editingSaleId, setEditingSaleId] = useState<string | null>(saved?.editingSaleId || null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);

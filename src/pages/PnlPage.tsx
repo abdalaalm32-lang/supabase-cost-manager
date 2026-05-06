@@ -384,7 +384,8 @@ export const PnlPage: React.FC = () => {
     <img src="${logoSrc}" alt="Logo" class="logo" />
     <div>
       <h1>قائمة الأرباح والخسائر</h1>
-      <p>${periodStr} • ${branchName} • ${dateStr}</p>
+      <p style="font-size:13px;font-weight:bold;color:#000;margin-top:4px;">الفرع: ${branchName}</p>
+      <p>${periodStr} • ${dateStr}</p>
     </div>
   </div>
   <div class="kpi-row">

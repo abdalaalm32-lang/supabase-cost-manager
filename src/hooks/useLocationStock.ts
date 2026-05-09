@@ -107,6 +107,8 @@ export function useLocationStock(
     enabled,
     staleTime: 30000,
   });
+
+  const { data: recipes = [] } = useQuery({
     queryKey: ["loc-stock-recipes", companyId],
     queryFn: async () => {
       const { data, error } = await supabase

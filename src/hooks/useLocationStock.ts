@@ -11,7 +11,8 @@ import { useQuery } from "@tanstack/react-query";
 export function useLocationStock(
   locationId: string | null | undefined,
   locationType: "branch" | "warehouse",
-  departmentId?: string | null
+  departmentId?: string | null,
+  asOfDate?: string | null,
 ) {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;

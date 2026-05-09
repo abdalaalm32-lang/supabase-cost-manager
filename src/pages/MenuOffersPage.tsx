@@ -699,13 +699,25 @@ export const MenuOffersPage: React.FC = () => {
               <div className="max-h-[400px] overflow-auto border rounded-md">
                 {filteredPosForAdd.map((p: any) => {
                   const hasRecipe = !!recipeMap[p.id];
+                  const qty = posQtyMap[p.id] ?? 1;
                   return (
-                    <div key={p.id} className="flex items-center justify-between p-2 border-b text-sm hover:bg-accent">
-                      <div>
-                        <div className="font-medium">{p.name}</div>
+                    <div key={p.id} className="flex items-center justify-between gap-2 p-2 border-b text-sm hover:bg-accent">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">{p.name}</div>
                         <div className="text-xs text-muted-foreground">{p.code} {!hasRecipe && <Badge variant="outline" className="text-[10px] ms-1">بدون ريسبي</Badge>}</div>
                       </div>
-                      <Button size="sm" variant="outline" onClick={() => addFromPosItem(p.id)}>إضافة</Button>
+                      <div className="flex items-center gap-1">
+                        <Label className="text-xs text-muted-foreground">عدد</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          step={1}
+                          value={qty}
+                          onChange={(e) => setPosQtyMap((m) => ({ ...m, [p.id]: Number(e.target.value) }))}
+                          className="h-8 w-16 text-center"
+                        />
+                      </div>
+                      <Button size="sm" variant="outline" onClick={() => addFromPosItem(p.id, qty)}>إضافة</Button>
                     </div>
                   );
                 })}

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -45,6 +46,26 @@ export const PosInvoicesPage: React.FC = () => {
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [branchFilter, setBranchFilter] = useState<string>("all");
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+
+  const deleteMutation = useMutation({
+    mutationFn: async (saleId: string) => {
+      await supabase.from("pos_return_items").delete().in(
+        "return_id",
+        ((await supabase.from("pos_returns").select("id").eq("sale_id", saleId)).data || []).map((r: any) => r.id)
+      );
+      await supabase.from("pos_returns").delete().eq("sale_id", saleId);
+      await supabase.from("pos_sale_items").delete().eq("sale_id", saleId);
+      const { error } = await supabase.from("pos_sales").delete().eq("id", saleId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("تم حذف الفاتورة");
+      queryClient.invalidateQueries({ queryKey: ["pos-sales"] });
+      setDeleteTarget(null);
+    },
+    onError: (e: any) => toast.error(e.message || "حدث خطأ أثناء الحذف"),
+  });
 
   // Fetch branches for filter
   const { data: branchesList } = useQuery({
@@ -407,10 +428,18 @@ export const PosInvoicesPage: React.FC = () => {
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button variant="ghost" size="sm" className="gap-1" onClick={() => setSelectedSale(sale)}>
-                    <Eye className="h-4 w-4" />
-                    عرض وتعديل
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="sm" className="gap-1" onClick={() => setSelectedSale(sale)}>
+                      <Eye className="h-4 w-4" />
+                      عرض وتعديل
+                    </Button>
+                    {sale.status === "مؤرشف" && (
+                      <Button variant="ghost" size="sm" className="gap-1 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteTarget(sale)}>
+                        <Trash2 className="h-4 w-4" />
+                        حذف
+                      </Button>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -598,6 +627,26 @@ export const PosInvoicesPage: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>تأكيد حذف الفاتورة</AlertDialogTitle>
+            <AlertDialogDescription>
+              هل أنت متأكد من حذف الفاتورة <strong>{deleteTarget?.invoice_number}</strong>؟ سيتم حذف بنود الفاتورة وأي مرتجعات مرتبطة بها. لا يمكن التراجع عن هذا الإجراء.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+            >
+              {deleteMutation.isPending ? "جاري الحذف..." : "حذف"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

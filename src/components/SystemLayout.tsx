@@ -12,7 +12,7 @@ import {
   FileText, Settings, LogOut, Menu,
   Store, ArrowRightLeft, ClipboardCheck, Trash2,
   Layers, PieChart, BarChart3, ShieldBan, Factory,
-  ChevronDown, Monitor, Receipt, BrainCircuit, FolderOpen, UtensilsCrossed, MessageSquare,
+  ChevronDown, Monitor, Receipt, BrainCircuit, FolderOpen, UtensilsCrossed, MessageSquare, Tags,
   Shield, Building2, Sun, Moon, Phone, Clock, GitBranch
 } from "lucide-react";
 
@@ -69,6 +69,7 @@ const mainNavItems: NavItem[] = [
     children: [
       { id: "recipes-products", path: "/recipes/products", label: "ريسيبي المنتجات", icon: UtensilsCrossed },
       { id: "recipes-production", path: "/recipes/production", label: "ريسيبي تركيبة الإنتاج", icon: Layers },
+      { id: "recipes-offers", path: "/recipes/offers", label: "تسعير العروض", icon: Tags },
     ],
   },
   { id: "production", path: "/production", label: "عمليات الإنتاج", icon: Layers },

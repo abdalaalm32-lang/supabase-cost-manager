@@ -69,6 +69,7 @@ const mainNavItems: NavItem[] = [
     children: [
       { id: "recipes-products", path: "/recipes/products", label: "ريسيبي المنتجات", icon: UtensilsCrossed },
       { id: "recipes-production", path: "/recipes/production", label: "ريسيبي تركيبة الإنتاج", icon: Layers },
+      { id: "recipes-offers", path: "/recipes/offers", label: "تسعير العروض", icon: Tags },
     ],
   },
   { id: "production", path: "/production", label: "عمليات الإنتاج", icon: Layers },

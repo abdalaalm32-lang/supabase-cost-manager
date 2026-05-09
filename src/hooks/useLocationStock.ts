@@ -38,7 +38,7 @@ export function useLocationStock(
     queryFn: async () => {
       const { data, error } = await supabase
         .from("production_records")
-        .select("product_id, produced_qty, branch_id, warehouse_id, department_id")
+        .select("product_id, produced_qty, branch_id, warehouse_id, department_id, date, created_at")
         .eq("company_id", companyId!)
         .eq("status", "مكتمل");
       if (error) throw error;
@@ -53,7 +53,7 @@ export function useLocationStock(
     queryFn: async () => {
       const { data, error } = await supabase
         .from("production_ingredients")
-        .select("stock_item_id, required_qty, production_records!inner(id, status, branch_id, warehouse_id, department_id, company_id)")
+        .select("stock_item_id, required_qty, production_records!inner(id, status, branch_id, warehouse_id, department_id, company_id, date, created_at)")
         .eq("production_records.company_id", companyId!)
         .eq("production_records.status", "مكتمل");
       if (error) throw error;
@@ -68,7 +68,7 @@ export function useLocationStock(
     queryFn: async () => {
       const { data, error } = await supabase
         .from("transfer_items")
-        .select("stock_item_id, quantity, transfers!inner(id, status, source_id, destination_id, source_department_id, destination_department_id, company_id)")
+        .select("stock_item_id, quantity, transfers!inner(id, status, source_id, destination_id, source_department_id, destination_department_id, company_id, date, created_at)")
         .eq("transfers.company_id", companyId!)
         .eq("transfers.status", "مكتمل");
       if (error) throw error;
@@ -83,7 +83,7 @@ export function useLocationStock(
     queryFn: async () => {
       const { data, error } = await supabase
         .from("waste_items")
-        .select("stock_item_id, quantity, waste_records!inner(id, status, branch_id, warehouse_id, company_id, department_id)")
+        .select("stock_item_id, quantity, waste_records!inner(id, status, branch_id, warehouse_id, company_id, department_id, date, created_at)")
         .eq("waste_records.company_id", companyId!)
         .eq("waste_records.status", "مكتمل");
       if (error) throw error;
@@ -98,7 +98,7 @@ export function useLocationStock(
     queryFn: async () => {
       const { data, error } = await supabase
         .from("pos_sale_items")
-        .select("pos_item_id, quantity, pos_sales!inner(id, status, branch_id, company_id)")
+        .select("pos_item_id, quantity, pos_sales!inner(id, status, branch_id, company_id, date, created_at)")
         .eq("pos_sales.company_id", companyId!)
         .eq("pos_sales.status", "مكتمل");
       if (error) throw error;
@@ -107,8 +107,6 @@ export function useLocationStock(
     enabled,
     staleTime: 30000,
   });
-
-  const { data: recipes = [] } = useQuery({
     queryKey: ["loc-stock-recipes", companyId],
     queryFn: async () => {
       const { data, error } = await supabase

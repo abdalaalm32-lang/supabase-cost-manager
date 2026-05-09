@@ -42,6 +42,7 @@ const ProductionDetailPage = lazy(() => import("@/pages/ProductionDetailPage").t
 const TransferListPage = lazy(() => import("@/pages/TransferListPage").then((m) => ({ default: m.TransferListPage })));
 const TransferDetailPage = lazy(() => import("@/pages/TransferDetailPage").then((m) => ({ default: m.TransferDetailPage })));
 const ProductionRecipesPage = lazy(() => import("@/pages/ProductionRecipesPage").then((m) => ({ default: m.ProductionRecipesPage })));
+const MenuOffersPage = lazy(() => import("@/pages/MenuOffersPage").then((m) => ({ default: m.MenuOffersPage })));
 const CostAnalysisPage = lazy(() => import("@/pages/CostAnalysisPage").then((m) => ({ default: m.CostAnalysisPage })));
 const InventoryMovementPage = lazy(() => import("@/pages/InventoryMovementPage").then((m) => ({ default: m.InventoryMovementPage })));
 const PurchaseReportsPage = lazy(() => import("@/pages/PurchaseReportsPage").then((m) => ({ default: m.PurchaseReportsPage })));

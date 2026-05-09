@@ -46,6 +46,26 @@ export const PosInvoicesPage: React.FC = () => {
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [branchFilter, setBranchFilter] = useState<string>("all");
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+
+  const deleteMutation = useMutation({
+    mutationFn: async (saleId: string) => {
+      await supabase.from("pos_return_items").delete().in(
+        "return_id",
+        ((await supabase.from("pos_returns").select("id").eq("sale_id", saleId)).data || []).map((r: any) => r.id)
+      );
+      await supabase.from("pos_returns").delete().eq("sale_id", saleId);
+      await supabase.from("pos_sale_items").delete().eq("sale_id", saleId);
+      const { error } = await supabase.from("pos_sales").delete().eq("id", saleId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("تم حذف الفاتورة");
+      queryClient.invalidateQueries({ queryKey: ["pos-sales"] });
+      setDeleteTarget(null);
+    },
+    onError: (e: any) => toast.error(e.message || "حدث خطأ أثناء الحذف"),
+  });
 
   // Fetch branches for filter
   const { data: branchesList } = useQuery({

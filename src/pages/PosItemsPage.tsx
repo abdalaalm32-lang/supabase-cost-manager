@@ -288,6 +288,9 @@ export const PosItemsPage: React.FC = () => {
     if (filterClass && filterClass !== "all") {
       result = result.filter((item: any) => (item.menu_engineering_class || "") === filterClass);
     }
+    if (filterCategoryName && filterCategoryName !== "all") {
+      result = result.filter((item: any) => (item.categories?.name || item.category || "") === filterCategoryName);
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       result = result.filter((item: any) =>
@@ -298,7 +301,7 @@ export const PosItemsPage: React.FC = () => {
       );
     }
     return result;
-  }, [items, filter, searchQuery, filterBranchId, filterClass]);
+  }, [items, filter, searchQuery, filterBranchId, filterClass, filterCategoryName]);
 
   const BranchLinkSection = ({ 
     currentBranchId, isLinked, onLinkChange, selectedIds, onSelectedChange, idPrefix 

@@ -43,6 +43,7 @@ export const PosItemsPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterBranchId, setFilterBranchId] = useState("all");
   const [filterClass, setFilterClass] = useState<string>("all");
+  const [filterCategoryName, setFilterCategoryName] = useState<string>("all");
 
   // Edit state
   const [editOpen, setEditOpen] = useState(false);
@@ -287,6 +288,9 @@ export const PosItemsPage: React.FC = () => {
     if (filterClass && filterClass !== "all") {
       result = result.filter((item: any) => (item.menu_engineering_class || "") === filterClass);
     }
+    if (filterCategoryName && filterCategoryName !== "all") {
+      result = result.filter((item: any) => (item.categories?.name || item.category || "") === filterCategoryName);
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       result = result.filter((item: any) =>
@@ -297,7 +301,7 @@ export const PosItemsPage: React.FC = () => {
       );
     }
     return result;
-  }, [items, filter, searchQuery, filterBranchId, filterClass]);
+  }, [items, filter, searchQuery, filterBranchId, filterClass, filterCategoryName]);
 
   const BranchLinkSection = ({ 
     currentBranchId, isLinked, onLinkChange, selectedIds, onSelectedChange, idPrefix 
@@ -484,6 +488,22 @@ export const PosItemsPage: React.FC = () => {
             <SelectItem value="all">كل الفروع</SelectItem>
             {branches.map((b: any) => (
               <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={filterCategoryName} onValueChange={setFilterCategoryName}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="كل المجموعات" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">كل المجموعات</SelectItem>
+            {Array.from(new Set(
+              items
+                .filter((it: any) => filterBranchId === "all" || it.branch_id === filterBranchId)
+                .map((it: any) => it.categories?.name || it.category)
+                .filter(Boolean)
+            )).sort().map((catName: any) => (
+              <SelectItem key={catName} value={catName}>{catName}</SelectItem>
             ))}
           </SelectContent>
         </Select>

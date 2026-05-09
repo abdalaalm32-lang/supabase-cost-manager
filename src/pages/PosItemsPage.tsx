@@ -43,6 +43,7 @@ export const PosItemsPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterBranchId, setFilterBranchId] = useState("all");
   const [filterClass, setFilterClass] = useState<string>("all");
+  const [filterCategoryName, setFilterCategoryName] = useState<string>("all");
 
   // Edit state
   const [editOpen, setEditOpen] = useState(false);

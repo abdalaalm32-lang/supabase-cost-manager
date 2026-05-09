@@ -428,10 +428,18 @@ export const PosInvoicesPage: React.FC = () => {
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button variant="ghost" size="sm" className="gap-1" onClick={() => setSelectedSale(sale)}>
-                    <Eye className="h-4 w-4" />
-                    عرض وتعديل
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="sm" className="gap-1" onClick={() => setSelectedSale(sale)}>
+                      <Eye className="h-4 w-4" />
+                      عرض وتعديل
+                    </Button>
+                    {sale.status === "مؤرشف" && (
+                      <Button variant="ghost" size="sm" className="gap-1 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setDeleteTarget(sale)}>
+                        <Trash2 className="h-4 w-4" />
+                        حذف
+                      </Button>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

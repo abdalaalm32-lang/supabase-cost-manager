@@ -158,14 +158,13 @@ export function useLocationStock(
   const stockMap = useMemo(() => {
     if (!locationId) return new Map<string, number>();
 
-    const map = new Map<string, number>();
-    const add = (id: string | null, qty: number) => {
-      if (!id) return;
-      map.set(id, (map.get(id) || 0) + qty);
-    };
-    const sub = (id: string | null, qty: number) => {
-      if (!id) return;
-      map.set(id, (map.get(id) || 0) - qty);
+    // Cutoff (asOfDate end-of-day) used for both stocktake selection AND filtering subsequent movements
+    const cutoff = asOfDate ? `${asOfDate}T23:59:59.999Z` : null;
+    const inDate = (rec: any): boolean => {
+      if (!cutoff) return true;
+      const d = (rec?.date as string) || (rec?.created_at as string) || "";
+      if (!d) return true;
+      return d <= cutoff;
     };
 
     const match = (branchId: string | null, warehouseId: string | null) => {
@@ -173,69 +172,115 @@ export function useLocationStock(
       return warehouseId === locationId;
     };
 
-    // Date filter helper: include records where (date || created_at) <= asOfDate (end of day)
-    const cutoff = asOfDate ? `${asOfDate}T23:59:59.999Z` : null;
-    const inDate = (rec: any): boolean => {
-      if (!cutoff) return true;
-      const d = (rec?.date as string) || (rec?.created_at as string) || "";
-      if (!d) return true;
-      // dates can be 'YYYY-MM-DD' (treated as start of day) — compare lexicographically with cutoff
-      return d <= cutoff;
+    // ============================================================
+    // STEP 1 — Find LATEST stocktake per item at this location
+    //          (on/before cutoff). This is the RESET baseline.
+    //          Balance = stocktake.counted_qty + movements AFTER stocktake date
+    // ============================================================
+    const baseline = new Map<string, { qty: number; date: string }>();
+    for (const st of stocktakes) {
+      if (!match(st.branch_id, st.warehouse_id)) continue;
+      if (departmentId && st.department_id !== departmentId) continue;
+      const stDate = (st.date as string) || (st.created_at as string) || "";
+      if (cutoff && stDate && stDate > cutoff) continue;
+      for (const si of (st.stocktake_items || [])) {
+        if (!si.stock_item_id) continue;
+        const existing = baseline.get(si.stock_item_id);
+        if (!existing || stDate > existing.date) {
+          baseline.set(si.stock_item_id, { qty: Number(si.counted_qty) || 0, date: stDate });
+        }
+      }
+    }
+
+    // Helper: a movement is counted ONLY if it happened AFTER this item's stocktake date
+    // (or always if the item has no stocktake baseline).
+    const afterBaseline = (stockItemId: string | null, recDateRaw: string): boolean => {
+      if (!stockItemId) return false;
+      const base = baseline.get(stockItemId);
+      if (!base) return true; // no stocktake → include all movements
+      if (!recDateRaw) return false; // can't determine → safer to skip (avoid double-counting)
+      // Compare lexicographically (ISO strings); strict > so same-day records aren't double-counted
+      return recDateRaw > base.date;
     };
 
-    // Purchases IN (filter by department if departmentId is provided)
+    const map = new Map<string, number>();
+    // Seed with stocktake baselines
+    for (const [id, v] of baseline) {
+      map.set(id, v.qty);
+    }
+    const add = (id: string | null, qty: number) => {
+      if (!id) return;
+      map.set(id, (map.get(id) ?? 0) + qty);
+    };
+    const sub = (id: string | null, qty: number) => {
+      if (!id) return;
+      map.set(id, (map.get(id) ?? 0) - qty);
+    };
+    const recDate = (rec: any): string =>
+      (rec?.date as string) || (rec?.created_at as string) || "";
+
+    // ============================================================
+    // STEP 2 — Apply only movements AFTER each item's baseline date
+    // ============================================================
+
+    // Purchases IN
     for (const pi of purchaseItems) {
       const po = pi.purchase_orders;
       if (!inDate(po)) continue;
-      if (match(po.branch_id, po.warehouse_id)) {
-        if (departmentId && po.department_id !== departmentId) continue;
-        add(pi.stock_item_id, Number(pi.quantity));
-      }
+      if (!match(po.branch_id, po.warehouse_id)) continue;
+      if (departmentId && po.department_id !== departmentId) continue;
+      if (!afterBaseline(pi.stock_item_id, recDate(po))) continue;
+      add(pi.stock_item_id, Number(pi.quantity));
     }
 
-    // Production produced IN (filter by department if departmentId is provided)
+    // Production produced IN
     for (const pr of productionRecords) {
       if (!inDate(pr)) continue;
-      if (match(pr.branch_id, pr.warehouse_id)) {
-        if (departmentId && pr.department_id !== departmentId) continue;
-        add(pr.product_id, Number(pr.produced_qty));
-      }
+      if (!match(pr.branch_id, pr.warehouse_id)) continue;
+      if (departmentId && pr.department_id !== departmentId) continue;
+      if (!afterBaseline(pr.product_id, recDate(pr))) continue;
+      add(pr.product_id, Number(pr.produced_qty));
     }
 
-    // Production ingredients OUT (filter by department if departmentId is provided)
+    // Production ingredients OUT
     for (const ing of productionIngredients) {
       const pr = ing.production_records;
       if (!inDate(pr)) continue;
-      if (match(pr.branch_id, pr.warehouse_id)) {
-        if (departmentId && pr.department_id !== departmentId) continue;
-        sub(ing.stock_item_id, Number(ing.required_qty));
-      }
+      if (!match(pr.branch_id, pr.warehouse_id)) continue;
+      if (departmentId && pr.department_id !== departmentId) continue;
+      if (!afterBaseline(ing.stock_item_id, recDate(pr))) continue;
+      sub(ing.stock_item_id, Number(ing.required_qty));
     }
 
-    // Transfers (with department filtering)
+    // Transfers
     for (const ti of transferItems) {
       const t = ti.transfers;
       if (!inDate(t)) continue;
+      const tDate = recDate(t);
       if (t.source_id === locationId) {
         if (!departmentId || t.source_department_id === departmentId) {
-          sub(ti.stock_item_id, Number(ti.quantity));
+          if (afterBaseline(ti.stock_item_id, tDate)) {
+            sub(ti.stock_item_id, Number(ti.quantity));
+          }
         }
       }
       if (t.destination_id === locationId) {
         if (!departmentId || t.destination_department_id === departmentId) {
-          add(ti.stock_item_id, Number(ti.quantity));
+          if (afterBaseline(ti.stock_item_id, tDate)) {
+            add(ti.stock_item_id, Number(ti.quantity));
+          }
         }
       }
     }
 
-    // Waste OUT (filter by department if departmentId is provided)
+    // Waste OUT
     for (const wi of wasteItems) {
       const wr = wi.waste_records;
       if (!inDate(wr)) continue;
-      if (match(wr.branch_id, wr.warehouse_id)) {
-        if (departmentId && wr.department_id !== departmentId) continue;
-        sub(wi.stock_item_id, Number(wi.quantity));
-      }
+      if (!match(wr.branch_id, wr.warehouse_id)) continue;
+      if (departmentId && wr.department_id !== departmentId) continue;
+      if (!afterBaseline(wi.stock_item_id, recDate(wr))) continue;
+      sub(wi.stock_item_id, Number(wi.quantity));
     }
 
     // POS Sales OUT (via recipes) - only for branches
@@ -244,7 +289,6 @@ export function useLocationStock(
       for (const si of stockItemsData) {
         conversionMap.set(si.id, Number(si.conversion_factor) || 1);
       }
-
       const recipeMap = new Map<string, { stock_item_id: string; qty: number }[]>();
       for (const r of recipes) {
         recipeMap.set(r.menu_item_id, (r.recipe_ingredients || []).map((i: any) => ({
@@ -255,31 +299,15 @@ export function useLocationStock(
       for (const si of posSaleItems) {
         const sale = si.pos_sales;
         if (!inDate(sale)) continue;
-        if (sale.branch_id === locationId) {
-          const ings = recipeMap.get(si.pos_item_id);
-          if (ings) {
-            for (const ing of ings) {
-              const convFactor = conversionMap.get(ing.stock_item_id) || 1;
-              const qtyInStockUnit = (ing.qty / convFactor) * Number(si.quantity);
-              sub(ing.stock_item_id, qtyInStockUnit);
-            }
-          }
-        }
-      }
-    }
-
-    // Stocktake adjustments (counted_qty - book_qty for this location, filtered by department)
-    for (const st of stocktakes) {
-      if (!inDate(st)) continue;
-      if (match(st.branch_id, st.warehouse_id)) {
-        if (departmentId && st.department_id !== departmentId) continue;
-        for (const si of (st.stocktake_items || [])) {
-          if (si.stock_item_id) {
-            const adjustment = Number(si.counted_qty) - Number(si.book_qty || 0);
-            if (adjustment !== 0) {
-              add(si.stock_item_id, adjustment);
-            }
-          }
+        if (sale.branch_id !== locationId) continue;
+        const ings = recipeMap.get(si.pos_item_id);
+        if (!ings) continue;
+        const sDate = recDate(sale);
+        for (const ing of ings) {
+          if (!afterBaseline(ing.stock_item_id, sDate)) continue;
+          const convFactor = conversionMap.get(ing.stock_item_id) || 1;
+          const qtyInStockUnit = (ing.qty / convFactor) * Number(si.quantity);
+          sub(ing.stock_item_id, qtyInStockUnit);
         }
       }
     }

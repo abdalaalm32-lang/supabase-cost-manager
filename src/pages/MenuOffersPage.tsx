@@ -219,10 +219,14 @@ export const MenuOffersPage: React.FC = () => {
     })));
   };
 
-  // Add item from POS menu (with full recipe snapshot)
-  const addFromPosItem = (posItemId: string) => {
+  // Per-row quantity (multiplier) for menu items in the add dialog
+  const [posQtyMap, setPosQtyMap] = useState<Record<string, number>>({});
+
+  // Add item from POS menu (with full recipe snapshot) — multiplied by qty
+  const addFromPosItem = (posItemId: string, qty: number = 1) => {
     const p = posItems.find((x: any) => x.id === posItemId);
     if (!p) return;
+    const multiplier = qty > 0 ? qty : 1;
     const r = recipeMap[posItemId];
     const ings: OfferIngredient[] = (r?.recipe_ingredients ?? []).map((ri: any) => {
       const si = stockMap[ri.stock_item_id];
@@ -231,12 +235,13 @@ export const MenuOffersPage: React.FC = () => {
         stock_item_id: ri.stock_item_id,
         name: si?.name ?? "",
         unit: si?.recipe_unit ?? si?.stock_unit ?? "",
-        qty: Number(ri.qty) ?? 0,
+        qty: (Number(ri.qty) ?? 0) * multiplier,
         conversion_factor: Number(si?.conversion_factor) ?? 1,
         avg_cost: getCost(ri.stock_item_id, si?.avg_cost),
       };
     });
-    setItems((prev) => [...prev, { tempId: uid(), name: p.name, source_pos_item_id: p.id, ingredients: ings }]);
+    const displayName = multiplier > 1 ? `${p.name} ×${multiplier}` : p.name;
+    setItems((prev) => [...prev, { tempId: uid(), name: displayName, source_pos_item_id: p.id, ingredients: ings }]);
     setShowAddItem(false);
   };
 

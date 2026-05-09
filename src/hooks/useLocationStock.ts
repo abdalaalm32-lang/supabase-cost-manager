@@ -188,7 +188,9 @@ export function useLocationStock(
     const baseline = new Map<string, { qty: number; date: string }>();
     for (const st of stocktakes) {
       if (!match(st.branch_id, st.warehouse_id)) continue;
-      if (departmentId && st.department_id !== departmentId) continue;
+      // A branch/warehouse stocktake with no department is a full location count,
+      // so it must still be used as the baseline when viewing a specific department.
+      if (departmentId && st.department_id && st.department_id !== departmentId) continue;
       const stDate = normalizeStocktakeDate((st.date as string) || (st.created_at as string) || "");
       if (cutoff && stDate && stDate > cutoff) continue;
       for (const si of (st.stocktake_items || [])) {

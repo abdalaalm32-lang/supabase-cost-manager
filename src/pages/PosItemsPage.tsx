@@ -491,6 +491,22 @@ export const PosItemsPage: React.FC = () => {
             ))}
           </SelectContent>
         </Select>
+        <Select value={filterCategoryName} onValueChange={setFilterCategoryName}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="كل المجموعات" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">كل المجموعات</SelectItem>
+            {Array.from(new Set(
+              items
+                .filter((it: any) => filterBranchId === "all" || it.branch_id === filterBranchId)
+                .map((it: any) => it.categories?.name || it.category)
+                .filter(Boolean)
+            )).sort().map((catName: any) => (
+              <SelectItem key={catName} value={catName}>{catName}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Select value={filterClass} onValueChange={setFilterClass}>
           <SelectTrigger className="w-[160px]">
             <SelectValue placeholder="كل التصنيفات" />

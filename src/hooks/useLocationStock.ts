@@ -173,9 +173,20 @@ export function useLocationStock(
       return warehouseId === locationId;
     };
 
+    // Date filter helper: include records where (date || created_at) <= asOfDate (end of day)
+    const cutoff = asOfDate ? `${asOfDate}T23:59:59.999Z` : null;
+    const inDate = (rec: any): boolean => {
+      if (!cutoff) return true;
+      const d = (rec?.date as string) || (rec?.created_at as string) || "";
+      if (!d) return true;
+      // dates can be 'YYYY-MM-DD' (treated as start of day) — compare lexicographically with cutoff
+      return d <= cutoff;
+    };
+
     // Purchases IN (filter by department if departmentId is provided)
     for (const pi of purchaseItems) {
       const po = pi.purchase_orders;
+      if (!inDate(po)) continue;
       if (match(po.branch_id, po.warehouse_id)) {
         if (departmentId && po.department_id !== departmentId) continue;
         add(pi.stock_item_id, Number(pi.quantity));
@@ -184,6 +195,7 @@ export function useLocationStock(
 
     // Production produced IN (filter by department if departmentId is provided)
     for (const pr of productionRecords) {
+      if (!inDate(pr)) continue;
       if (match(pr.branch_id, pr.warehouse_id)) {
         if (departmentId && pr.department_id !== departmentId) continue;
         add(pr.product_id, Number(pr.produced_qty));
@@ -193,6 +205,7 @@ export function useLocationStock(
     // Production ingredients OUT (filter by department if departmentId is provided)
     for (const ing of productionIngredients) {
       const pr = ing.production_records;
+      if (!inDate(pr)) continue;
       if (match(pr.branch_id, pr.warehouse_id)) {
         if (departmentId && pr.department_id !== departmentId) continue;
         sub(ing.stock_item_id, Number(ing.required_qty));
@@ -202,14 +215,13 @@ export function useLocationStock(
     // Transfers (with department filtering)
     for (const ti of transferItems) {
       const t = ti.transfers;
+      if (!inDate(t)) continue;
       if (t.source_id === locationId) {
-        // Only subtract if departmentId matches source_department_id (or no department filter)
         if (!departmentId || t.source_department_id === departmentId) {
           sub(ti.stock_item_id, Number(ti.quantity));
         }
       }
       if (t.destination_id === locationId) {
-        // Only add if departmentId matches destination_department_id (or no department filter)
         if (!departmentId || t.destination_department_id === departmentId) {
           add(ti.stock_item_id, Number(ti.quantity));
         }
@@ -219,6 +231,7 @@ export function useLocationStock(
     // Waste OUT (filter by department if departmentId is provided)
     for (const wi of wasteItems) {
       const wr = wi.waste_records;
+      if (!inDate(wr)) continue;
       if (match(wr.branch_id, wr.warehouse_id)) {
         if (departmentId && wr.department_id !== departmentId) continue;
         sub(wi.stock_item_id, Number(wi.quantity));
@@ -226,9 +239,7 @@ export function useLocationStock(
     }
 
     // POS Sales OUT (via recipes) - only for branches
-    // Recipe quantities are in recipe_unit (grams/ml), must convert to stock_unit using conversion_factor
     if (locationType === "branch") {
-      // Build conversion factor map: stock_item_id -> conversion_factor
       const conversionMap = new Map<string, number>();
       for (const si of stockItemsData) {
         conversionMap.set(si.id, Number(si.conversion_factor) || 1);
@@ -243,11 +254,11 @@ export function useLocationStock(
       }
       for (const si of posSaleItems) {
         const sale = si.pos_sales;
+        if (!inDate(sale)) continue;
         if (sale.branch_id === locationId) {
           const ings = recipeMap.get(si.pos_item_id);
           if (ings) {
             for (const ing of ings) {
-              // Convert recipe qty (grams/ml/pieces) to stock unit (kg/liters) by dividing by conversion_factor
               const convFactor = conversionMap.get(ing.stock_item_id) || 1;
               const qtyInStockUnit = (ing.qty / convFactor) * Number(si.quantity);
               sub(ing.stock_item_id, qtyInStockUnit);
@@ -259,6 +270,7 @@ export function useLocationStock(
 
     // Stocktake adjustments (counted_qty - book_qty for this location, filtered by department)
     for (const st of stocktakes) {
+      if (!inDate(st)) continue;
       if (match(st.branch_id, st.warehouse_id)) {
         if (departmentId && st.department_id !== departmentId) continue;
         for (const si of (st.stocktake_items || [])) {
@@ -273,7 +285,7 @@ export function useLocationStock(
     }
 
     return map;
-  }, [locationId, locationType, departmentId, purchaseItems, productionRecords, productionIngredients, transferItems, wasteItems, posSaleItems, recipes, stocktakes, stockItemsData]);
+  }, [locationId, locationType, departmentId, asOfDate, purchaseItems, productionRecords, productionIngredients, transferItems, wasteItems, posSaleItems, recipes, stocktakes, stockItemsData]);
 
   const getLocationStock = (stockItemId: string): number => {
     return stockMap.get(stockItemId) || 0;

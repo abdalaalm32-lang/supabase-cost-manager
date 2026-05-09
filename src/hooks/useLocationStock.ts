@@ -177,11 +177,19 @@ export function useLocationStock(
     //          (on/before cutoff). This is the RESET baseline.
     //          Balance = stocktake.counted_qty + movements AFTER stocktake date
     // ============================================================
+    const normalizeStocktakeDate = (value: string): string => {
+      if (!value) return "";
+      // A stocktake date represents the closing balance of that whole day.
+      // Normalize date-only values to end-of-day so same-day sales/waste are not deducted again.
+      if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return `${value}T23:59:59.999Z`;
+      return value;
+    };
+
     const baseline = new Map<string, { qty: number; date: string }>();
     for (const st of stocktakes) {
       if (!match(st.branch_id, st.warehouse_id)) continue;
       if (departmentId && st.department_id !== departmentId) continue;
-      const stDate = (st.date as string) || (st.created_at as string) || "";
+      const stDate = normalizeStocktakeDate((st.date as string) || (st.created_at as string) || "");
       if (cutoff && stDate && stDate > cutoff) continue;
       for (const si of (st.stocktake_items || [])) {
         if (!si.stock_item_id) continue;

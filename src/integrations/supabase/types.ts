@@ -801,6 +801,142 @@ export type Database = {
           },
         ]
       }
+      menu_offer_ingredients: {
+        Row: {
+          avg_cost: number
+          conversion_factor: number
+          created_at: string
+          id: string
+          name: string
+          offer_item_id: string
+          qty: number
+          stock_item_id: string | null
+          unit: string | null
+        }
+        Insert: {
+          avg_cost?: number
+          conversion_factor?: number
+          created_at?: string
+          id?: string
+          name: string
+          offer_item_id: string
+          qty?: number
+          stock_item_id?: string | null
+          unit?: string | null
+        }
+        Update: {
+          avg_cost?: number
+          conversion_factor?: number
+          created_at?: string
+          id?: string
+          name?: string
+          offer_item_id?: string
+          qty?: number
+          stock_item_id?: string | null
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_offer_ingredients_offer_item_id_fkey"
+            columns: ["offer_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_offer_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menu_offer_items: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          offer_id: string
+          sort_order: number
+          source_pos_item_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          offer_id: string
+          sort_order?: number
+          source_pos_item_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          offer_id?: string
+          sort_order?: number
+          source_pos_item_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_offer_items_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "menu_offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menu_offers: {
+        Row: {
+          branch_id: string | null
+          code: string | null
+          company_id: string
+          consumables_pct: number
+          created_at: string
+          id: string
+          indirect_expenses_pct: number
+          name: string
+          notes: string | null
+          order_type: string
+          packing_cost: number
+          sale_price: number
+          side_cost: number
+          status: string
+          tax_rate: number
+          updated_at: string
+        }
+        Insert: {
+          branch_id?: string | null
+          code?: string | null
+          company_id: string
+          consumables_pct?: number
+          created_at?: string
+          id?: string
+          indirect_expenses_pct?: number
+          name: string
+          notes?: string | null
+          order_type?: string
+          packing_cost?: number
+          sale_price?: number
+          side_cost?: number
+          status?: string
+          tax_rate?: number
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string | null
+          code?: string | null
+          company_id?: string
+          consumables_pct?: number
+          created_at?: string
+          id?: string
+          indirect_expenses_pct?: number
+          name?: string
+          notes?: string | null
+          order_type?: string
+          packing_cost?: number
+          sale_price?: number
+          side_cost?: number
+          status?: string
+          tax_rate?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       otp_codes: {
         Row: {
           admin_email: string
@@ -2979,6 +3115,7 @@ export type Database = {
         Returns: string
       }
       generate_item_code: { Args: { p_company_id: string }; Returns: string }
+      generate_offer_code: { Args: { p_company_id: string }; Returns: string }
       generate_production_record_number: {
         Args: { p_company_id: string }
         Returns: string

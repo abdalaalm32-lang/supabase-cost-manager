@@ -219,10 +219,14 @@ export const MenuOffersPage: React.FC = () => {
     })));
   };
 
-  // Add item from POS menu (with full recipe snapshot)
-  const addFromPosItem = (posItemId: string) => {
+  // Per-row quantity (multiplier) for menu items in the add dialog
+  const [posQtyMap, setPosQtyMap] = useState<Record<string, number>>({});
+
+  // Add item from POS menu (with full recipe snapshot) — multiplied by qty
+  const addFromPosItem = (posItemId: string, qty: number = 1) => {
     const p = posItems.find((x: any) => x.id === posItemId);
     if (!p) return;
+    const multiplier = qty > 0 ? qty : 1;
     const r = recipeMap[posItemId];
     const ings: OfferIngredient[] = (r?.recipe_ingredients ?? []).map((ri: any) => {
       const si = stockMap[ri.stock_item_id];
@@ -231,12 +235,13 @@ export const MenuOffersPage: React.FC = () => {
         stock_item_id: ri.stock_item_id,
         name: si?.name ?? "",
         unit: si?.recipe_unit ?? si?.stock_unit ?? "",
-        qty: Number(ri.qty) ?? 0,
+        qty: (Number(ri.qty) ?? 0) * multiplier,
         conversion_factor: Number(si?.conversion_factor) ?? 1,
         avg_cost: getCost(ri.stock_item_id, si?.avg_cost),
       };
     });
-    setItems((prev) => [...prev, { tempId: uid(), name: p.name, source_pos_item_id: p.id, ingredients: ings }]);
+    const displayName = multiplier > 1 ? `${p.name} ×${multiplier}` : p.name;
+    setItems((prev) => [...prev, { tempId: uid(), name: displayName, source_pos_item_id: p.id, ingredients: ings }]);
     setShowAddItem(false);
   };
 
@@ -694,13 +699,25 @@ export const MenuOffersPage: React.FC = () => {
               <div className="max-h-[400px] overflow-auto border rounded-md">
                 {filteredPosForAdd.map((p: any) => {
                   const hasRecipe = !!recipeMap[p.id];
+                  const qty = posQtyMap[p.id] ?? 1;
                   return (
-                    <div key={p.id} className="flex items-center justify-between p-2 border-b text-sm hover:bg-accent">
-                      <div>
-                        <div className="font-medium">{p.name}</div>
+                    <div key={p.id} className="flex items-center justify-between gap-2 p-2 border-b text-sm hover:bg-accent">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium truncate">{p.name}</div>
                         <div className="text-xs text-muted-foreground">{p.code} {!hasRecipe && <Badge variant="outline" className="text-[10px] ms-1">بدون ريسبي</Badge>}</div>
                       </div>
-                      <Button size="sm" variant="outline" onClick={() => addFromPosItem(p.id)}>إضافة</Button>
+                      <div className="flex items-center gap-1">
+                        <Label className="text-xs text-muted-foreground">عدد</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          step={1}
+                          value={qty}
+                          onChange={(e) => setPosQtyMap((m) => ({ ...m, [p.id]: Number(e.target.value) }))}
+                          className="h-8 w-16 text-center"
+                        />
+                      </div>
+                      <Button size="sm" variant="outline" onClick={() => addFromPosItem(p.id, qty)}>إضافة</Button>
                     </div>
                   );
                 })}

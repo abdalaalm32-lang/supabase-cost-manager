@@ -747,7 +747,7 @@ export const TransferDetailPage: React.FC = () => {
                       <TableCell className="font-mono text-xs">{si.code || "—"}</TableCell>
                       <TableCell>{si.name}</TableCell>
                       <TableCell>{si.stock_unit}</TableCell>
-                      <TableCell>{si.current_stock}</TableCell>
+                      <TableCell>{(sourceId ? getSourceStock(si.id) : Number(si.current_stock) || 0).toFixed(2)}</TableCell>
                       <TableCell>{Number(si.avg_cost).toFixed(2)}</TableCell>
                     </TableRow>
                   ))

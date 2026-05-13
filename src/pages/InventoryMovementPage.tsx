@@ -865,7 +865,7 @@ export const InventoryMovementPage: React.FC = () => {
               <TableBody>
                 {filteredData.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} className="text-center py-12 text-muted-foreground">
+                    <TableCell colSpan={12} className="text-center py-12 text-muted-foreground">
                       <Package className="h-12 w-12 mx-auto mb-3 opacity-30" />
                       <p className="text-sm">لا توجد بيانات</p>
                     </TableCell>
@@ -875,6 +875,7 @@ export const InventoryMovementPage: React.FC = () => {
                     <TableRow key={item.id} className="hover:bg-muted/30 transition-colors">
                       <TableCell className="text-center text-xs font-mono border-l sticky right-0 bg-background">{item.code || "-"}</TableCell>
                       <TableCell className="text-xs font-medium border-l">{item.name}</TableCell>
+                      <TableCell className="text-center text-xs font-semibold border-l bg-blue-500/5">{item.openQty ? fmtQty(item.openQty) : "-"}</TableCell>
                       <TableCell className="text-center text-xs border-l">{item.inPurchases ? fmtQty(item.inPurchases) : "-"}</TableCell>
                       <TableCell className="text-center text-xs border-l">{item.inProduction ? fmtQty(item.inProduction) : "-"}</TableCell>
                       <TableCell className="text-center text-xs border-l">{item.inReceipts ? fmtQty(item.inReceipts) : "-"}</TableCell>

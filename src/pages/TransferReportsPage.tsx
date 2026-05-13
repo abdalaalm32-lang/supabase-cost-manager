@@ -246,7 +246,7 @@ export const TransferReportsPage: React.FC = () => {
       }
       const arr = m.get(ti.stock_item_id) || [];
       const qty = Number(ti.quantity) || 0;
-      const unitCost = Number(ti.unit_cost) || 0;
+      const unitCost = Number(ti.avg_cost) || 0;
       arr.push({
         id: ti.id,
         date: rec.date,

@@ -229,7 +229,7 @@ export const TransferReportsPage: React.FC = () => {
   // Transfers per stock item (for expandable detail rows)
   const transfersByItem = useMemo(() => {
     const m = new Map<string, Array<{
-      id: string; date: string; transferNo: string; source: string; destination: string;
+      id: string; date: string; recordNumber: string; source: string; destination: string;
       qty: number; unitCost: number; total: number;
     }>>();
     if (!transferItems) return m;

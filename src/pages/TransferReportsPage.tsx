@@ -807,7 +807,7 @@ export const TransferReportsPage: React.FC = () => {
                                         <TableRow key={t.id}>
                                           <TableCell className="text-center text-[11px]">{ti + 1}</TableCell>
                                           <TableCell className="text-center text-[11px]">{t.date}</TableCell>
-                                          <TableCell className="text-center text-[11px] font-mono">{t.transferNo}</TableCell>
+                                          <TableCell className="text-center text-[11px] font-mono">{t.recordNumber}</TableCell>
                                           <TableCell className="text-center text-[11px]">
                                             <div className="inline-flex items-center gap-1">
                                               <span>{t.source}</span>

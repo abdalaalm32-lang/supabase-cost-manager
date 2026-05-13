@@ -223,6 +223,47 @@ export const TransferReportsPage: React.FC = () => {
     return result;
   }, [transferItems, stockItems, dateFrom, dateTo, locationFilter, locationType, categoryFilter, searchQuery]);
 
+  // Transfers per stock item (for expandable detail rows)
+  const transfersByItem = useMemo(() => {
+    const m = new Map<string, Array<{
+      id: string; date: string; transferNo: string; source: string; destination: string;
+      qty: number; unitCost: number; total: number;
+    }>>();
+    if (!transferItems) return m;
+
+    for (const ti of transferItems) {
+      if (!ti.stock_item_id) continue;
+      const rec = (ti as any).transfers;
+      if (!rec?.date) continue;
+      if (dateFrom && rec.date < format(dateFrom, "yyyy-MM-dd")) continue;
+      if (dateTo && rec.date > format(dateTo, "yyyy-MM-dd")) continue;
+      if (locationFilter !== "all") {
+        if (rec.source_id !== locationFilter && rec.destination_id !== locationFilter) continue;
+      }
+      if (categoryFilter !== "all") {
+        const si = stockItems?.find((s: any) => s.id === ti.stock_item_id);
+        if (si?.category_id !== categoryFilter) continue;
+      }
+      const arr = m.get(ti.stock_item_id) || [];
+      const qty = Number(ti.quantity) || 0;
+      const unitCost = Number(ti.unit_cost) || 0;
+      arr.push({
+        id: ti.id,
+        date: rec.date,
+        transferNo: rec.transfer_no || "—",
+        source: rec.source_name || "—",
+        destination: rec.destination_name || "—",
+        qty,
+        unitCost,
+        total: qty * unitCost,
+      });
+      m.set(ti.stock_item_id, arr);
+    }
+    for (const [, arr] of m) arr.sort((a, b) => b.date.localeCompare(a.date));
+    return m;
+  }, [transferItems, stockItems, dateFrom, dateTo, locationFilter, locationType, categoryFilter]);
+
+
   // Stats
   const stats = useMemo(() => {
     let filtered = [...transfers];

@@ -794,8 +794,7 @@ export const TransferReportsPage: React.FC = () => {
                                         <TableHead className="text-center text-[11px] font-bold">#</TableHead>
                                         <TableHead className="text-center text-[11px] font-bold">التاريخ</TableHead>
                                         <TableHead className="text-center text-[11px] font-bold">رقم التحويل</TableHead>
-                                        <TableHead className="text-[11px] font-bold">من</TableHead>
-                                        <TableHead className="text-[11px] font-bold">إلى</TableHead>
+                                        <TableHead className="text-center text-[11px] font-bold">المسار</TableHead>
                                         <TableHead className="text-center text-[11px] font-bold">الكمية</TableHead>
                                         <TableHead className="text-center text-[11px] font-bold">متوسط التكلفة</TableHead>
                                         <TableHead className="text-center text-[11px] font-bold">الإجمالي</TableHead>

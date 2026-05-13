@@ -631,7 +631,13 @@ export const TransferDetailPage: React.FC = () => {
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-bold text-sm">الأصناف</h2>
               {!isLocked && (
-                <Button size="sm" variant="outline" onClick={() => setShowAddItems(true)}>
+                <Button size="sm" variant="outline" onClick={() => {
+                  if (!date || !sourceId || !destinationId) {
+                    toast({ title: "خطأ", description: "اكمل بيانات الإذن أولاً (التاريخ، الموقع المصدر، الموقع المستلم)", variant: "destructive" });
+                    return;
+                  }
+                  setShowAddItems(true);
+                }}>
                   <Plus size={14} /> إضافة أصناف
                 </Button>
               )}

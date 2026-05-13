@@ -695,6 +695,7 @@ export const TransferReportsPage: React.FC = () => {
                   <TableHead className="text-right">الكود</TableHead>
                   <TableHead className="text-right">اسم الصنف</TableHead>
                   <TableHead className="text-right">المجموعة</TableHead>
+                  <TableHead className="text-center">أرقام الأذون</TableHead>
                   <TableHead className="text-center">حركة العملية</TableHead>
                   <TableHead className="text-center">إجمالي الكمية</TableHead>
                   <TableHead className="text-center">الوحدة</TableHead>
@@ -705,9 +706,9 @@ export const TransferReportsPage: React.FC = () => {
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={10} className="text-center py-10 text-muted-foreground">جاري التحميل...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={11} className="text-center py-10 text-muted-foreground">جاري التحميل...</TableCell></TableRow>
                 ) : processedData.length === 0 ? (
-                  <TableRow><TableCell colSpan={10} className="text-center py-10 text-muted-foreground">لا توجد بيانات</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={11} className="text-center py-10 text-muted-foreground">لا توجد بيانات</TableCell></TableRow>
                 ) : (
                   processedData.map((item, idx) => {
                     const isExpanded = expandedItem === item.stockItemId;
@@ -733,6 +734,13 @@ export const TransferReportsPage: React.FC = () => {
                             </div>
                           </TableCell>
                           <TableCell className="text-sm">{item.catName}</TableCell>
+                          <TableCell className="text-center text-xs">
+                            <div className="flex flex-wrap justify-center gap-1">
+                              {Array.from(item.transferNumbers).map((tn, i) => (
+                                <span key={i} className="inline-block px-2 py-0.5 rounded bg-muted text-muted-foreground font-mono text-[10px]">{tn}</span>
+                              ))}
+                            </div>
+                          </TableCell>
                           <TableCell className="text-center">
                             {hasLocationFilter ? (
                               <div className="flex flex-col gap-1 items-center">

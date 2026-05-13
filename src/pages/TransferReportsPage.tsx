@@ -794,7 +794,8 @@ export const TransferReportsPage: React.FC = () => {
                                         <TableHead className="text-center text-[11px] font-bold">#</TableHead>
                                         <TableHead className="text-center text-[11px] font-bold">التاريخ</TableHead>
                                         <TableHead className="text-center text-[11px] font-bold">رقم التحويل</TableHead>
-                                        <TableHead className="text-center text-[11px] font-bold">المسار</TableHead>
+                                        <TableHead className="text-center text-[11px] font-bold">من</TableHead>
+                                        <TableHead className="text-center text-[11px] font-bold">إلى</TableHead>
                                         <TableHead className="text-center text-[11px] font-bold">الكمية</TableHead>
                                         <TableHead className="text-center text-[11px] font-bold">متوسط التكلفة</TableHead>
                                         <TableHead className="text-center text-[11px] font-bold">الإجمالي</TableHead>
@@ -802,19 +803,14 @@ export const TransferReportsPage: React.FC = () => {
                                     </TableHeader>
                                     <TableBody>
                                       {transfers.length === 0 ? (
-                                        <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground text-xs py-4">لا توجد تحويلات</TableCell></TableRow>
+                                        <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground text-xs py-4">لا توجد تحويلات</TableCell></TableRow>
                                       ) : transfers.map((t, ti) => (
                                         <TableRow key={t.id}>
                                           <TableCell className="text-center text-[11px]">{ti + 1}</TableCell>
                                           <TableCell className="text-center text-[11px]">{t.date}</TableCell>
                                           <TableCell className="text-center text-[11px] font-mono">{t.recordNumber}</TableCell>
-                                          <TableCell className="text-center text-[11px]">
-                                            <div className="inline-flex items-center gap-1">
-                                              <span>{t.source}</span>
-                                              <ArrowRight size={12} className="text-primary shrink-0" />
-                                              <span>{t.destination}</span>
-                                            </div>
-                                          </TableCell>
+                                          <TableCell className="text-right text-[11px]">{t.source}</TableCell>
+                                          <TableCell className="text-right text-[11px]">{t.destination}</TableCell>
                                           <TableCell className="text-center text-[11px] font-bold">{fmt(t.qty)}</TableCell>
                                           <TableCell className="text-center text-[11px]">{fmt(t.unitCost)}</TableCell>
                                           <TableCell className="text-center text-[11px] font-bold">{fmt(t.total)}</TableCell>

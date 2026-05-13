@@ -148,6 +148,7 @@ export const TransferReportsPage: React.FC = () => {
       incomingQty: number;
       outgoingRoutes: Map<string, number>;
       incomingRoutes: Map<string, number>;
+      transferNumbers: Set<string>;
     }>();
 
     for (const ti of filteredItems) {
@@ -169,6 +170,7 @@ export const TransferReportsPage: React.FC = () => {
         existing.totalCost += cost;
         existing.occurrences += 1;
         existing.routes.set(routeKey, (existing.routes.get(routeKey) || 0) + 1);
+        existing.transferNumbers.add(rec?.transfer_no || "—");
         if (isOutgoing) {
           existing.outgoingQty += qty;
           existing.outgoingRoutes.set(rec?.destination_name || "—", (existing.outgoingRoutes.get(rec?.destination_name || "—") || 0) + 1);
@@ -202,6 +204,7 @@ export const TransferReportsPage: React.FC = () => {
           incomingQty: isIncoming ? qty : 0,
           outgoingRoutes,
           incomingRoutes,
+          transferNumbers: new Set([rec?.transfer_no || "—"]),
         });
       }
     }

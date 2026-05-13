@@ -841,6 +841,7 @@ export const InventoryMovementPage: React.FC = () => {
                 <TableRow className="bg-muted/30">
                   <TableHead rowSpan={2} className="text-center border-l font-bold text-xs sticky right-0 bg-muted/30 z-10">الكود</TableHead>
                   <TableHead rowSpan={2} className="text-center border-l font-bold text-xs">اسم الخامة</TableHead>
+                  <TableHead rowSpan={2} className="text-center border-l font-bold text-xs bg-blue-500/10 text-blue-700">جرد أول المدة</TableHead>
                   <TableHead colSpan={3} className="text-center border-l font-bold text-xs bg-emerald-500/10 text-emerald-700">الوارد</TableHead>
                   <TableHead colSpan={3} className="text-center border-l font-bold text-xs bg-destructive/10 text-destructive">المنصرف</TableHead>
                   <TableHead rowSpan={2} className="text-center border-l font-bold text-xs">الرصيد الدفتري</TableHead>

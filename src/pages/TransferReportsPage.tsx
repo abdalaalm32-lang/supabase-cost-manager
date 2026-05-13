@@ -204,7 +204,7 @@ export const TransferReportsPage: React.FC = () => {
           incomingQty: isIncoming ? qty : 0,
           outgoingRoutes,
           incomingRoutes,
-          transferNumbers: new Set([rec?.transfer_no || "—"]),
+          transferNumbers: new Set([rec?.record_number || "—"]),
         });
       }
     }

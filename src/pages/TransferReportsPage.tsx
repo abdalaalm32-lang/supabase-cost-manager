@@ -63,7 +63,7 @@ export const TransferReportsPage: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("transfer_items")
-        .select("*, transfers!inner(status, date, source_id, source_name, destination_id, destination_name)")
+        .select("*, transfers!inner(status, date, record_number, source_id, source_name, destination_id, destination_name)")
         .eq("transfers.status", "مكتمل");
       if (error) throw error;
       return data;
@@ -148,6 +148,7 @@ export const TransferReportsPage: React.FC = () => {
       incomingQty: number;
       outgoingRoutes: Map<string, number>;
       incomingRoutes: Map<string, number>;
+      transferNumbers: Set<string>;
     }>();
 
     for (const ti of filteredItems) {
@@ -169,6 +170,7 @@ export const TransferReportsPage: React.FC = () => {
         existing.totalCost += cost;
         existing.occurrences += 1;
         existing.routes.set(routeKey, (existing.routes.get(routeKey) || 0) + 1);
+        existing.transferNumbers.add(rec?.record_number || "—");
         if (isOutgoing) {
           existing.outgoingQty += qty;
           existing.outgoingRoutes.set(rec?.destination_name || "—", (existing.outgoingRoutes.get(rec?.destination_name || "—") || 0) + 1);
@@ -202,6 +204,7 @@ export const TransferReportsPage: React.FC = () => {
           incomingQty: isIncoming ? qty : 0,
           outgoingRoutes,
           incomingRoutes,
+          transferNumbers: new Set([rec?.record_number || "—"]),
         });
       }
     }
@@ -226,7 +229,7 @@ export const TransferReportsPage: React.FC = () => {
   // Transfers per stock item (for expandable detail rows)
   const transfersByItem = useMemo(() => {
     const m = new Map<string, Array<{
-      id: string; date: string; transferNo: string; source: string; destination: string;
+      id: string; date: string; recordNumber: string; source: string; destination: string;
       qty: number; unitCost: number; total: number;
     }>>();
     if (!transferItems) return m;
@@ -250,7 +253,7 @@ export const TransferReportsPage: React.FC = () => {
       arr.push({
         id: ti.id,
         date: rec.date,
-        transferNo: rec.transfer_no || "—",
+        recordNumber: rec.record_number || "—",
         source: rec.source_name || "—",
         destination: rec.destination_name || "—",
         qty,
@@ -692,6 +695,7 @@ export const TransferReportsPage: React.FC = () => {
                   <TableHead className="text-right">الكود</TableHead>
                   <TableHead className="text-right">اسم الصنف</TableHead>
                   <TableHead className="text-right">المجموعة</TableHead>
+                  <TableHead className="text-center">أرقام الأذون</TableHead>
                   <TableHead className="text-center">حركة العملية</TableHead>
                   <TableHead className="text-center">إجمالي الكمية</TableHead>
                   <TableHead className="text-center">الوحدة</TableHead>
@@ -702,9 +706,9 @@ export const TransferReportsPage: React.FC = () => {
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={10} className="text-center py-10 text-muted-foreground">جاري التحميل...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={11} className="text-center py-10 text-muted-foreground">جاري التحميل...</TableCell></TableRow>
                 ) : processedData.length === 0 ? (
-                  <TableRow><TableCell colSpan={10} className="text-center py-10 text-muted-foreground">لا توجد بيانات</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={11} className="text-center py-10 text-muted-foreground">لا توجد بيانات</TableCell></TableRow>
                 ) : (
                   processedData.map((item, idx) => {
                     const isExpanded = expandedItem === item.stockItemId;
@@ -730,6 +734,13 @@ export const TransferReportsPage: React.FC = () => {
                             </div>
                           </TableCell>
                           <TableCell className="text-sm">{item.catName}</TableCell>
+                          <TableCell className="text-center text-xs">
+                            <div className="flex flex-wrap justify-center gap-1">
+                              {Array.from(item.transferNumbers).map((tn, i) => (
+                                <span key={i} className="inline-block px-2 py-0.5 rounded bg-muted text-muted-foreground font-mono text-[10px]">{tn}</span>
+                              ))}
+                            </div>
+                          </TableCell>
                           <TableCell className="text-center">
                             {hasLocationFilter ? (
                               <div className="flex flex-col gap-1 items-center">
@@ -771,7 +782,7 @@ export const TransferReportsPage: React.FC = () => {
                         </TableRow>
                         {isExpanded && (
                           <TableRow className="bg-muted/20">
-                            <TableCell colSpan={10} className="p-0">
+                          <TableCell colSpan={11} className="p-0">
                               <div className="p-3">
                                 <p className="text-xs font-bold text-foreground mb-2 flex items-center gap-2">
                                   <ArrowRightLeft size={14} /> تفاصيل التحويلات ({transfers.length})
@@ -783,8 +794,7 @@ export const TransferReportsPage: React.FC = () => {
                                         <TableHead className="text-center text-[11px] font-bold">#</TableHead>
                                         <TableHead className="text-center text-[11px] font-bold">التاريخ</TableHead>
                                         <TableHead className="text-center text-[11px] font-bold">رقم التحويل</TableHead>
-                                        <TableHead className="text-[11px] font-bold">من</TableHead>
-                                        <TableHead className="text-[11px] font-bold">إلى</TableHead>
+                                        <TableHead className="text-center text-[11px] font-bold">المسار</TableHead>
                                         <TableHead className="text-center text-[11px] font-bold">الكمية</TableHead>
                                         <TableHead className="text-center text-[11px] font-bold">متوسط التكلفة</TableHead>
                                         <TableHead className="text-center text-[11px] font-bold">الإجمالي</TableHead>
@@ -792,14 +802,19 @@ export const TransferReportsPage: React.FC = () => {
                                     </TableHeader>
                                     <TableBody>
                                       {transfers.length === 0 ? (
-                                        <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground text-xs py-4">لا توجد تحويلات</TableCell></TableRow>
+                                        <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground text-xs py-4">لا توجد تحويلات</TableCell></TableRow>
                                       ) : transfers.map((t, ti) => (
                                         <TableRow key={t.id}>
                                           <TableCell className="text-center text-[11px]">{ti + 1}</TableCell>
                                           <TableCell className="text-center text-[11px]">{t.date}</TableCell>
-                                          <TableCell className="text-center text-[11px] font-mono">{t.transferNo}</TableCell>
-                                          <TableCell className="text-[11px]">{t.source}</TableCell>
-                                          <TableCell className="text-[11px]">{t.destination}</TableCell>
+                                          <TableCell className="text-center text-[11px] font-mono">{t.recordNumber}</TableCell>
+                                          <TableCell className="text-center text-[11px]">
+                                            <div className="inline-flex items-center gap-1">
+                                              <span>{t.source}</span>
+                                              <ArrowRight size={12} className="text-primary shrink-0" />
+                                              <span>{t.destination}</span>
+                                            </div>
+                                          </TableCell>
                                           <TableCell className="text-center text-[11px] font-bold">{fmt(t.qty)}</TableCell>
                                           <TableCell className="text-center text-[11px]">{fmt(t.unitCost)}</TableCell>
                                           <TableCell className="text-center text-[11px] font-bold">{fmt(t.total)}</TableCell>
@@ -820,7 +835,7 @@ export const TransferReportsPage: React.FC = () => {
               {processedData.length > 0 && (
                 <TableFooter>
                   <TableRow className="bg-muted/40 font-bold">
-                    <TableCell colSpan={5} className="text-right">الإجمالي</TableCell>
+                    <TableCell colSpan={6} className="text-right">الإجمالي</TableCell>
                     <TableCell className="text-center">{fmt(processedData.reduce((s, i) => s + i.totalTransferQty, 0))}</TableCell>
                     <TableCell />
                     <TableCell className="text-center text-primary">{fmt(processedData.reduce((s, i) => s + i.totalCost, 0))}</TableCell>

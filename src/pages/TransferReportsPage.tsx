@@ -63,7 +63,7 @@ export const TransferReportsPage: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("transfer_items")
-        .select("*, transfers!inner(status, date, transfer_no, source_id, source_name, destination_id, destination_name)")
+        .select("*, transfers!inner(status, date, record_number, source_id, source_name, destination_id, destination_name)")
         .eq("transfers.status", "مكتمل");
       if (error) throw error;
       return data;
@@ -170,7 +170,7 @@ export const TransferReportsPage: React.FC = () => {
         existing.totalCost += cost;
         existing.occurrences += 1;
         existing.routes.set(routeKey, (existing.routes.get(routeKey) || 0) + 1);
-        existing.transferNumbers.add(rec?.transfer_no || "—");
+        existing.transferNumbers.add(rec?.record_number || "—");
         if (isOutgoing) {
           existing.outgoingQty += qty;
           existing.outgoingRoutes.set(rec?.destination_name || "—", (existing.outgoingRoutes.get(rec?.destination_name || "—") || 0) + 1);

@@ -808,8 +808,13 @@ export const TransferReportsPage: React.FC = () => {
                                           <TableCell className="text-center text-[11px]">{ti + 1}</TableCell>
                                           <TableCell className="text-center text-[11px]">{t.date}</TableCell>
                                           <TableCell className="text-center text-[11px] font-mono">{t.transferNo}</TableCell>
-                                          <TableCell className="text-[11px]">{t.source}</TableCell>
-                                          <TableCell className="text-[11px]">{t.destination}</TableCell>
+                                          <TableCell className="text-center text-[11px]">
+                                            <div className="inline-flex items-center gap-1">
+                                              <span>{t.source}</span>
+                                              <ArrowRight size={12} className="text-primary shrink-0" />
+                                              <span>{t.destination}</span>
+                                            </div>
+                                          </TableCell>
                                           <TableCell className="text-center text-[11px] font-bold">{fmt(t.qty)}</TableCell>
                                           <TableCell className="text-center text-[11px]">{fmt(t.unitCost)}</TableCell>
                                           <TableCell className="text-center text-[11px] font-bold">{fmt(t.total)}</TableCell>

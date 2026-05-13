@@ -63,7 +63,7 @@ export const TransferReportsPage: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("transfer_items")
-        .select("*, transfers!inner(status, date, source_id, source_name, destination_id, destination_name)")
+        .select("*, transfers!inner(status, date, transfer_no, source_id, source_name, destination_id, destination_name)")
         .eq("transfers.status", "مكتمل");
       if (error) throw error;
       return data;

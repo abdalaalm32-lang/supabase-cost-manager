@@ -707,61 +707,112 @@ export const TransferReportsPage: React.FC = () => {
                   <TableRow><TableCell colSpan={10} className="text-center py-10 text-muted-foreground">لا توجد بيانات</TableCell></TableRow>
                 ) : (
                   processedData.map((item, idx) => {
+                    const isExpanded = expandedItem === item.stockItemId;
+                    const transfers = transfersByItem.get(item.stockItemId) || [];
                     const route = getTopRoute(item.routes);
-                    // When a location is selected, show outgoing/incoming relative to it
                     const hasLocationFilter = locationFilter !== "all";
                     const outRoutes = Array.from(item.outgoingRoutes.entries()).sort((a, b) => b[1] - a[1]);
                     const inRoutes = Array.from(item.incomingRoutes.entries()).sort((a, b) => b[1] - a[1]);
                     return (
-                      <TableRow key={item.stockItemId} className={cn(item.occurrences >= 5 && "bg-primary/5")}>
-                        <TableCell className="text-muted-foreground text-xs">{idx + 1}</TableCell>
-                        <TableCell className="font-mono text-xs">{item.code}</TableCell>
-                        <TableCell className="font-medium text-sm">
-                          <div className="flex items-center gap-1">
-                            {item.occurrences >= 5 && <ArrowRightLeft size={14} className="text-primary" />}
-                            {item.name}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-sm">{item.catName}</TableCell>
-                        <TableCell className="text-center">
-                          {hasLocationFilter ? (
-                            <div className="flex flex-col gap-1 items-center">
-                              {outRoutes.length > 0 && outRoutes.map(([dest], i) => (
-                                <div key={`out-${i}`} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-destructive/30 bg-destructive/5 text-xs font-medium">
-                                  <span className="text-foreground">{selectedLocationName}</span>
-                                  <ArrowLeft size={14} className="text-destructive shrink-0" />
-                                  <span className="text-foreground">{dest}</span>
-                                </div>
-                              ))}
-                              {inRoutes.length > 0 && inRoutes.map(([src], i) => (
-                                <div key={`in-${i}`} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/5 text-xs font-medium">
-                                  <span className="text-foreground">{src}</span>
-                                  <ArrowRight size={14} className="text-emerald-600 shrink-0" />
-                                  <span className="text-foreground">{selectedLocationName}</span>
-                                </div>
-                              ))}
+                      <React.Fragment key={item.stockItemId}>
+                        <TableRow className={cn("hover:bg-muted/30 cursor-pointer", item.occurrences >= 5 && "bg-primary/5")} onClick={() => setExpandedItem(isExpanded ? null : item.stockItemId)}>
+                          <TableCell className="text-muted-foreground text-xs">
+                            <div className="flex items-center justify-center gap-1">
+                              {isExpanded ? <ChevronDown size={12} /> : <ChevronLeft size={12} />}
+                              <span>{idx + 1}</span>
                             </div>
-                          ) : (
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/60 bg-muted/30 text-xs font-medium">
-                              <span className="text-foreground">{route.source}</span>
-                              <ArrowRight size={14} className="text-primary shrink-0" />
-                              <span className="text-foreground">{route.destination}</span>
+                          </TableCell>
+                          <TableCell className="font-mono text-xs">{item.code}</TableCell>
+                          <TableCell className="font-medium text-sm">
+                            <div className="flex items-center gap-1">
+                              {item.occurrences >= 5 && <ArrowRightLeft size={14} className="text-primary" />}
+                              {item.name}
                             </div>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-center font-semibold">{fmt(item.totalTransferQty)}</TableCell>
-                        <TableCell className="text-center text-xs text-muted-foreground">{item.unit}</TableCell>
-                        <TableCell className="text-center font-bold text-primary">{fmt(item.totalCost)}</TableCell>
-                        <TableCell className="text-center">
-                          <span className={cn(
-                            "inline-block min-w-[28px] px-2 py-0.5 rounded-full text-xs font-bold",
-                            item.occurrences >= 5 ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
-                          )}>
-                            {item.occurrences}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-center text-xs text-muted-foreground">{item.lastTransferDate}</TableCell>
-                      </TableRow>
+                          </TableCell>
+                          <TableCell className="text-sm">{item.catName}</TableCell>
+                          <TableCell className="text-center">
+                            {hasLocationFilter ? (
+                              <div className="flex flex-col gap-1 items-center">
+                                {outRoutes.length > 0 && outRoutes.map(([dest], i) => (
+                                  <div key={`out-${i}`} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-destructive/30 bg-destructive/5 text-xs font-medium">
+                                    <span className="text-foreground">{selectedLocationName}</span>
+                                    <ArrowLeft size={14} className="text-destructive shrink-0" />
+                                    <span className="text-foreground">{dest}</span>
+                                  </div>
+                                ))}
+                                {inRoutes.length > 0 && inRoutes.map(([src], i) => (
+                                  <div key={`in-${i}`} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/5 text-xs font-medium">
+                                    <span className="text-foreground">{src}</span>
+                                    <ArrowRight size={14} className="text-emerald-600 shrink-0" />
+                                    <span className="text-foreground">{selectedLocationName}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/60 bg-muted/30 text-xs font-medium">
+                                <span className="text-foreground">{route.source}</span>
+                                <ArrowRight size={14} className="text-primary shrink-0" />
+                                <span className="text-foreground">{route.destination}</span>
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center font-semibold">{fmt(item.totalTransferQty)}</TableCell>
+                          <TableCell className="text-center text-xs text-muted-foreground">{item.unit}</TableCell>
+                          <TableCell className="text-center font-bold text-primary">{fmt(item.totalCost)}</TableCell>
+                          <TableCell className="text-center">
+                            <span className={cn(
+                              "inline-block min-w-[28px] px-2 py-0.5 rounded-full text-xs font-bold",
+                              item.occurrences >= 5 ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
+                            )}>
+                              {item.occurrences}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-center text-xs text-muted-foreground">{item.lastTransferDate}</TableCell>
+                        </TableRow>
+                        {isExpanded && (
+                          <TableRow className="bg-muted/20">
+                            <TableCell colSpan={10} className="p-0">
+                              <div className="p-3">
+                                <p className="text-xs font-bold text-foreground mb-2 flex items-center gap-2">
+                                  <ArrowRightLeft size={14} /> تفاصيل التحويلات ({transfers.length})
+                                </p>
+                                <div className="overflow-x-auto rounded-md border border-border/40">
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow className="bg-muted/40">
+                                        <TableHead className="text-center text-[11px] font-bold">#</TableHead>
+                                        <TableHead className="text-center text-[11px] font-bold">التاريخ</TableHead>
+                                        <TableHead className="text-center text-[11px] font-bold">رقم التحويل</TableHead>
+                                        <TableHead className="text-[11px] font-bold">من</TableHead>
+                                        <TableHead className="text-[11px] font-bold">إلى</TableHead>
+                                        <TableHead className="text-center text-[11px] font-bold">الكمية</TableHead>
+                                        <TableHead className="text-center text-[11px] font-bold">متوسط التكلفة</TableHead>
+                                        <TableHead className="text-center text-[11px] font-bold">الإجمالي</TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {transfers.length === 0 ? (
+                                        <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground text-xs py-4">لا توجد تحويلات</TableCell></TableRow>
+                                      ) : transfers.map((t, ti) => (
+                                        <TableRow key={t.id}>
+                                          <TableCell className="text-center text-[11px]">{ti + 1}</TableCell>
+                                          <TableCell className="text-center text-[11px]">{t.date}</TableCell>
+                                          <TableCell className="text-center text-[11px] font-mono">{t.transferNo}</TableCell>
+                                          <TableCell className="text-[11px]">{t.source}</TableCell>
+                                          <TableCell className="text-[11px]">{t.destination}</TableCell>
+                                          <TableCell className="text-center text-[11px] font-bold">{fmt(t.qty)}</TableCell>
+                                          <TableCell className="text-center text-[11px]">{fmt(t.unitCost)}</TableCell>
+                                          <TableCell className="text-center text-[11px] font-bold">{fmt(t.total)}</TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
+                                </div>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </React.Fragment>
                     );
                   })
                 )}

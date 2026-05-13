@@ -253,7 +253,7 @@ export const TransferReportsPage: React.FC = () => {
       arr.push({
         id: ti.id,
         date: rec.date,
-        transferNo: rec.transfer_no || "—",
+        recordNumber: rec.record_number || "—",
         source: rec.source_name || "—",
         destination: rec.destination_name || "—",
         qty,

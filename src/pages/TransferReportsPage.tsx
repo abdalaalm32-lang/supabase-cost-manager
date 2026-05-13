@@ -42,6 +42,7 @@ export const TransferReportsPage: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+  const [expandedItem, setExpandedItem] = useState<string | null>(null);
 
   const { data: transfers = [], isLoading } = useQuery({
     queryKey: ["transfers-report", companyId],

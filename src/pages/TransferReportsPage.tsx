@@ -782,7 +782,7 @@ export const TransferReportsPage: React.FC = () => {
                         </TableRow>
                         {isExpanded && (
                           <TableRow className="bg-muted/20">
-                            <TableCell colSpan={10} className="p-0">
+                          <TableCell colSpan={11} className="p-0">
                               <div className="p-3">
                                 <p className="text-xs font-bold text-foreground mb-2 flex items-center gap-2">
                                   <ArrowRightLeft size={14} /> تفاصيل التحويلات ({transfers.length})

@@ -904,6 +904,7 @@ export const InventoryMovementPage: React.FC = () => {
                 <TableFooter>
                   <TableRow className="bg-muted/50 font-bold">
                     <TableCell colSpan={2} className="text-center text-xs border-l">الإجمالي</TableCell>
+                    <TableCell className="text-center text-xs border-l bg-blue-500/5">-</TableCell>
                     <TableCell className="text-center text-xs border-l">-</TableCell>
                     <TableCell className="text-center text-xs border-l">-</TableCell>
                     <TableCell className="text-center text-xs border-l">-</TableCell>

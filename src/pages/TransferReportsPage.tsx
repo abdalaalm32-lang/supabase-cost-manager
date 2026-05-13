@@ -835,7 +835,7 @@ export const TransferReportsPage: React.FC = () => {
               {processedData.length > 0 && (
                 <TableFooter>
                   <TableRow className="bg-muted/40 font-bold">
-                    <TableCell colSpan={5} className="text-right">الإجمالي</TableCell>
+                    <TableCell colSpan={6} className="text-right">الإجمالي</TableCell>
                     <TableCell className="text-center">{fmt(processedData.reduce((s, i) => s + i.totalTransferQty, 0))}</TableCell>
                     <TableCell />
                     <TableCell className="text-center text-primary">{fmt(processedData.reduce((s, i) => s + i.totalCost, 0))}</TableCell>

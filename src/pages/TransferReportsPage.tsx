@@ -803,7 +803,7 @@ export const TransferReportsPage: React.FC = () => {
                                     </TableHeader>
                                     <TableBody>
                                       {transfers.length === 0 ? (
-                                        <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground text-xs py-4">لا توجد تحويلات</TableCell></TableRow>
+                                        <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground text-xs py-4">لا توجد تحويلات</TableCell></TableRow>
                                       ) : transfers.map((t, ti) => (
                                         <TableRow key={t.id}>
                                           <TableCell className="text-center text-[11px]">{ti + 1}</TableCell>

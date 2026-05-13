@@ -820,15 +820,15 @@ export const InventoryMovementPage: React.FC = () => {
           <h3 className="text-sm font-bold">جدول حركة المخزون</h3>
           <div className="flex items-center gap-2">
             <PrintButton
-              data={filteredData.map(item => ({ code: item.code || "—", name: item.name, purchases: item.inPurchases ? item.inPurchases.toFixed(2) : "-", production: item.inProduction ? item.inProduction.toFixed(2) : "-", receipts: item.inReceipts ? item.inReceipts.toFixed(2) : "-", transfers: item.outTransfers ? item.outTransfers.toFixed(2) : "-", consumption: item.outConsumption ? item.outConsumption.toFixed(2) : "-", waste: item.outWaste ? item.outWaste.toFixed(2) : "-", bookQty: item.bookQty.toFixed(2), countQty: item.countQty ? item.countQty.toFixed(2) : "-", varQty: item.varQty ? item.varQty.toFixed(2) : "-", varVal: item.varVal ? item.varVal.toFixed(2) : "-" }))}
-              columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الخامة" }, { key: "purchases", label: "مشتريات" }, { key: "production", label: "إنتاج" }, { key: "receipts", label: "استلامات" }, { key: "transfers", label: "تحويلات" }, { key: "consumption", label: "استهلاك" }, { key: "waste", label: "هالك" }, { key: "bookQty", label: "الرصيد الدفتري" }, { key: "countQty", label: "رصيد الجرد" }, { key: "varQty", label: "تباين كمية" }, { key: "varVal", label: "تباين قيمة" }]}
-              headerGroups={[{ label: "الكود", colSpan: 1 }, { label: "الخامة", colSpan: 1 }, { label: "الوارد", colSpan: 3 }, { label: "المنصرف", colSpan: 3 }, { label: "الرصيد الدفتري", colSpan: 1 }, { label: "رصيد الجرد", colSpan: 1 }, { label: "التباين", colSpan: 2 }]}
+              data={filteredData.map(item => ({ code: item.code || "—", name: item.name, openQty: item.openQty ? item.openQty.toFixed(2) : "-", purchases: item.inPurchases ? item.inPurchases.toFixed(2) : "-", production: item.inProduction ? item.inProduction.toFixed(2) : "-", receipts: item.inReceipts ? item.inReceipts.toFixed(2) : "-", transfers: item.outTransfers ? item.outTransfers.toFixed(2) : "-", consumption: item.outConsumption ? item.outConsumption.toFixed(2) : "-", waste: item.outWaste ? item.outWaste.toFixed(2) : "-", bookQty: item.bookQty.toFixed(2), countQty: item.countQty ? item.countQty.toFixed(2) : "-", varQty: item.varQty ? item.varQty.toFixed(2) : "-", varVal: item.varVal ? item.varVal.toFixed(2) : "-" }))}
+              columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الخامة" }, { key: "openQty", label: "جرد أول المدة" }, { key: "purchases", label: "مشتريات" }, { key: "production", label: "إنتاج" }, { key: "receipts", label: "استلامات" }, { key: "transfers", label: "تحويلات" }, { key: "consumption", label: "استهلاك" }, { key: "waste", label: "هالك" }, { key: "bookQty", label: "الرصيد الدفتري" }, { key: "countQty", label: "رصيد الجرد" }, { key: "varQty", label: "تباين كمية" }, { key: "varVal", label: "تباين قيمة" }]}
+              headerGroups={[{ label: "الكود", colSpan: 1 }, { label: "الخامة", colSpan: 1 }, { label: "جرد أول المدة", colSpan: 1 }, { label: "الوارد", colSpan: 3 }, { label: "المنصرف", colSpan: 3 }, { label: "الرصيد الدفتري", colSpan: 1 }, { label: "رصيد الجرد", colSpan: 1 }, { label: "التباين", colSpan: 2 }]}
               title="حركة المخزون"
             />
             <ExportButtons
-              data={filteredData.map(item => ({ code: item.code || "—", name: item.name, purchases: item.inPurchases ? item.inPurchases.toFixed(2) : "-", production: item.inProduction ? item.inProduction.toFixed(2) : "-", receipts: item.inReceipts ? item.inReceipts.toFixed(2) : "-", transfers: item.outTransfers ? item.outTransfers.toFixed(2) : "-", consumption: item.outConsumption ? item.outConsumption.toFixed(2) : "-", waste: item.outWaste ? item.outWaste.toFixed(2) : "-", bookQty: item.bookQty.toFixed(2), countQty: item.countQty ? item.countQty.toFixed(2) : "-", varQty: item.varQty ? item.varQty.toFixed(2) : "-", varVal: item.varVal ? item.varVal.toFixed(2) : "-" }))}
-              columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الخامة" }, { key: "purchases", label: "مشتريات" }, { key: "production", label: "إنتاج" }, { key: "receipts", label: "استلامات" }, { key: "transfers", label: "تحويلات" }, { key: "consumption", label: "استهلاك" }, { key: "waste", label: "هالك" }, { key: "bookQty", label: "الرصيد الدفتري" }, { key: "countQty", label: "رصيد الجرد" }, { key: "varQty", label: "تباين كمية" }, { key: "varVal", label: "تباين قيمة" }]}
-              headerGroups={[{ label: "الكود", colSpan: 1 }, { label: "الخامة", colSpan: 1 }, { label: "الوارد", colSpan: 3 }, { label: "المنصرف", colSpan: 3 }, { label: "الرصيد الدفتري", colSpan: 1 }, { label: "رصيد الجرد", colSpan: 1 }, { label: "التباين", colSpan: 2 }]}
+              data={filteredData.map(item => ({ code: item.code || "—", name: item.name, openQty: item.openQty ? item.openQty.toFixed(2) : "-", purchases: item.inPurchases ? item.inPurchases.toFixed(2) : "-", production: item.inProduction ? item.inProduction.toFixed(2) : "-", receipts: item.inReceipts ? item.inReceipts.toFixed(2) : "-", transfers: item.outTransfers ? item.outTransfers.toFixed(2) : "-", consumption: item.outConsumption ? item.outConsumption.toFixed(2) : "-", waste: item.outWaste ? item.outWaste.toFixed(2) : "-", bookQty: item.bookQty.toFixed(2), countQty: item.countQty ? item.countQty.toFixed(2) : "-", varQty: item.varQty ? item.varQty.toFixed(2) : "-", varVal: item.varVal ? item.varVal.toFixed(2) : "-" }))}
+              columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الخامة" }, { key: "openQty", label: "جرد أول المدة" }, { key: "purchases", label: "مشتريات" }, { key: "production", label: "إنتاج" }, { key: "receipts", label: "استلامات" }, { key: "transfers", label: "تحويلات" }, { key: "consumption", label: "استهلاك" }, { key: "waste", label: "هالك" }, { key: "bookQty", label: "الرصيد الدفتري" }, { key: "countQty", label: "رصيد الجرد" }, { key: "varQty", label: "تباين كمية" }, { key: "varVal", label: "تباين قيمة" }]}
+              headerGroups={[{ label: "الكود", colSpan: 1 }, { label: "الخامة", colSpan: 1 }, { label: "جرد أول المدة", colSpan: 1 }, { label: "الوارد", colSpan: 3 }, { label: "المنصرف", colSpan: 3 }, { label: "الرصيد الدفتري", colSpan: 1 }, { label: "رصيد الجرد", colSpan: 1 }, { label: "التباين", colSpan: 2 }]}
               filename="حركة_المخزون"
               title="حركة المخزون"
             />
@@ -841,6 +841,7 @@ export const InventoryMovementPage: React.FC = () => {
                 <TableRow className="bg-muted/30">
                   <TableHead rowSpan={2} className="text-center border-l font-bold text-xs sticky right-0 bg-muted/30 z-10">الكود</TableHead>
                   <TableHead rowSpan={2} className="text-center border-l font-bold text-xs">اسم الخامة</TableHead>
+                  <TableHead rowSpan={2} className="text-center border-l font-bold text-xs bg-blue-500/10 text-blue-700">جرد أول المدة</TableHead>
                   <TableHead colSpan={3} className="text-center border-l font-bold text-xs bg-emerald-500/10 text-emerald-700">الوارد</TableHead>
                   <TableHead colSpan={3} className="text-center border-l font-bold text-xs bg-destructive/10 text-destructive">المنصرف</TableHead>
                   <TableHead rowSpan={2} className="text-center border-l font-bold text-xs">الرصيد الدفتري</TableHead>
@@ -864,7 +865,7 @@ export const InventoryMovementPage: React.FC = () => {
               <TableBody>
                 {filteredData.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} className="text-center py-12 text-muted-foreground">
+                    <TableCell colSpan={12} className="text-center py-12 text-muted-foreground">
                       <Package className="h-12 w-12 mx-auto mb-3 opacity-30" />
                       <p className="text-sm">لا توجد بيانات</p>
                     </TableCell>
@@ -874,6 +875,7 @@ export const InventoryMovementPage: React.FC = () => {
                     <TableRow key={item.id} className="hover:bg-muted/30 transition-colors">
                       <TableCell className="text-center text-xs font-mono border-l sticky right-0 bg-background">{item.code || "-"}</TableCell>
                       <TableCell className="text-xs font-medium border-l">{item.name}</TableCell>
+                      <TableCell className="text-center text-xs font-semibold border-l bg-blue-500/5">{item.openQty ? fmtQty(item.openQty) : "-"}</TableCell>
                       <TableCell className="text-center text-xs border-l">{item.inPurchases ? fmtQty(item.inPurchases) : "-"}</TableCell>
                       <TableCell className="text-center text-xs border-l">{item.inProduction ? fmtQty(item.inProduction) : "-"}</TableCell>
                       <TableCell className="text-center text-xs border-l">{item.inReceipts ? fmtQty(item.inReceipts) : "-"}</TableCell>
@@ -902,6 +904,7 @@ export const InventoryMovementPage: React.FC = () => {
                 <TableFooter>
                   <TableRow className="bg-muted/50 font-bold">
                     <TableCell colSpan={2} className="text-center text-xs border-l">الإجمالي</TableCell>
+                    <TableCell className="text-center text-xs border-l bg-blue-500/5">-</TableCell>
                     <TableCell className="text-center text-xs border-l">-</TableCell>
                     <TableCell className="text-center text-xs border-l">-</TableCell>
                     <TableCell className="text-center text-xs border-l">-</TableCell>

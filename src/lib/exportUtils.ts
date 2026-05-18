@@ -123,7 +123,7 @@ export async function exportToExcel({ title, filename, columns, data, headerGrou
   headerRow.height = 26;
   headerRow.eachCell((cell) => {
     cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 9, name: "Cairo" };
-    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF0B7EC5` } };
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${XL_PRIMARY}` } };
     cell.alignment = { horizontal: "center", vertical: "middle" };
     cell.border = {
       top: { style: "thin", color: { argb: `FF${XL_BORDER}` } },

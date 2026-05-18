@@ -340,7 +340,7 @@ export async function exportToPDF({ title, filename, columns, data, headerGroups
   autoTable(doc, {
     head: headRows,
     body: bodyRows,
-    startY: 24,
+    startY: tableStartY,
     theme: "grid",
     styles: {
       font: fontName,

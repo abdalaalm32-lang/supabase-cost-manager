@@ -701,6 +701,15 @@ export const WasteDetailPage: React.FC = () => {
               </Select>
             </div>
           </div>
+          <div className="mb-4">
+            <Label className="text-xs">بحث باسم الخامة أو الكود</Label>
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="ابحث..."
+              className="h-9"
+            />
+          </div>
 
           <div className="border rounded-lg overflow-hidden">
             <Table>

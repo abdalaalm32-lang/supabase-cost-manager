@@ -15,6 +15,8 @@ export interface ExportOptions {
   data: Record<string, any>[];
   /** Optional two-row header: array of { label, colSpan } for the top row */
   headerGroups?: { label: string; colSpan: number }[];
+  /** Optional filter chips to render under the title (branch, date range, etc.) */
+  filters?: { label: string; value: string }[];
   /** Mark rows as "group-total" or "grand-total" via a __rowType field */
 }
 

@@ -56,7 +56,7 @@ async function loadFontBase64(url: string): Promise<string> {
 }
 
 // ─── Excel Export ───────────────────────────────────────────────────
-export async function exportToExcel({ title, filename, columns, data, headerGroups }: ExportOptions) {
+export async function exportToExcel({ title, filename, columns, data, headerGroups, filters }: ExportOptions) {
   const wb = new ExcelJS.Workbook();
   wb.creator = "Cost Management System";
   const ws = wb.addWorksheet(title.substring(0, 31));

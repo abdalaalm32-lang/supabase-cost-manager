@@ -30,17 +30,17 @@ const BORDER_BW: [number, number, number] = [180, 180, 180];
 const GROUP_TOTAL_BW: [number, number, number] = [230, 230, 230];
 const GRAND_TOTAL_BW: [number, number, number] = [210, 210, 210];
 
-// Excel hex colors
-const XL_DARK_BG = "0F121E";
-const XL_DARK_CARD = "121626";
-const XL_DARK_ALT = "161C30";
-const XL_PRIMARY = "0EA5E9";
-const XL_PRIMARY_LIGHT = "38BDF8";
-const XL_TEXT = "E2E8F0";
-const XL_TEXT_MUTED = "94A3B8";
-const XL_BORDER = "283246";
-const XL_GROUP_TOTAL = "1C263E";
-const XL_GRAND_TOTAL = "23304E";
+// Excel hex colors — Soft Teal Light theme (easy on the eyes)
+const XL_DARK_BG = "FBFCFC";        // page background (light cream)
+const XL_DARK_CARD = "FFFFFF";      // primary row bg (white)
+const XL_DARK_ALT = "F1F8F7";       // alternating row (soft teal tint)
+const XL_PRIMARY = "0F766E";        // header bg (deep teal)
+const XL_PRIMARY_LIGHT = "134E4A";  // title text (darker teal)
+const XL_TEXT = "1F2937";           // body text (slate-800)
+const XL_TEXT_MUTED = "64748B";     // muted text (slate-500)
+const XL_BORDER = "CBD5D1";         // soft grey-teal border
+const XL_GROUP_TOTAL = "DDEEEB";    // subtotal rows
+const XL_GRAND_TOTAL = "B8DCD6";    // grand total rows
 
 async function loadFontBase64(url: string): Promise<string> {
   const res = await fetch(url);

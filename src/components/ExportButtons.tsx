@@ -40,7 +40,7 @@ export const ExportButtons: React.FC<ExportButtonsProps> = ({
   const handlePdf = async () => {
     setLoadingPdf(true);
     try {
-      await exportToPDF({ title, filename, columns, data, headerGroups });
+      await exportToPDF({ title, filename, columns, data, headerGroups, filters });
       toast.success("تم تصدير PDF بنجاح");
     } catch (err) {
       console.error(err);

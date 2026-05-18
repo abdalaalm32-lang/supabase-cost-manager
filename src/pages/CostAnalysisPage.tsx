@@ -858,15 +858,35 @@ export const CostAnalysisPage: React.FC = () => {
     return rows;
   }, [grouped, grandTotals]);
 
+  const exportFilters = useMemo(() => {
+    const locationName = locationFilter !== "all"
+      ? (locationType === "branch"
+          ? branches?.find(b => b.id === locationFilter)?.name
+          : warehouses?.find(w => w.id === locationFilter)?.name) || ""
+      : "الكل";
+    const deptName = departmentFilter !== "all" ? departments?.find(d => d.id === departmentFilter)?.name || "" : "الكل";
+    const catName = categoryFilter !== "all" ? categories?.find(c => c.id === categoryFilter)?.name || "" : "الكل";
+    const periodLabel = dateFrom && dateTo
+      ? `${format(dateFrom, "yyyy-MM-dd")} → ${format(dateTo, "yyyy-MM-dd")}`
+      : dateFrom ? `من ${format(dateFrom, "yyyy-MM-dd")}`
+      : dateTo ? `حتى ${format(dateTo, "yyyy-MM-dd")}` : "";
+    return [
+      { label: locationType === "branch" ? "الفرع" : "المخزن", value: locationName },
+      { label: "القسم", value: deptName },
+      { label: "المجموعة", value: catName },
+      { label: "المدة", value: periodLabel },
+    ];
+  }, [locationType, locationFilter, departmentFilter, categoryFilter, dateFrom, dateTo, branches, warehouses, departments, categories]);
+
   const handleExportExcel = async () => {
     try {
-      await exportToExcel({ title: "تحليل التكاليف", filename: "تحليل_التكاليف", columns: exportColumns, data: exportData, headerGroups: exportHeaderGroups });
+      await exportToExcel({ title: "تحليل التكاليف", filename: "تحليل_التكاليف", columns: exportColumns, data: exportData, headerGroups: exportHeaderGroups, filters: exportFilters });
       toast.success("تم تصدير الملف بنجاح");
     } catch (e) { console.error(e); toast.error("حدث خطأ أثناء التصدير"); }
   };
   const handleExportPdf = async () => {
     try {
-      await exportToPDF({ title: "تحليل التكاليف", filename: "تحليل_التكاليف", columns: exportColumns, data: exportData, headerGroups: exportHeaderGroups });
+      await exportToPDF({ title: "تحليل التكاليف", filename: "تحليل_التكاليف", columns: exportColumns, data: exportData, headerGroups: exportHeaderGroups, filters: exportFilters });
       toast.success("تم تصدير الملف بنجاح");
     } catch (e) { console.error(e); toast.error("حدث خطأ أثناء التصدير"); }
   };

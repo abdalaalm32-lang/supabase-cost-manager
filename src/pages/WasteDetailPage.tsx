@@ -42,6 +42,7 @@ export const WasteDetailPage: React.FC = () => {
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [filterDept, setFilterDept] = useState("all");
   const [filterCat, setFilterCat] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedProductId, setSelectedProductId] = useState("");
   const [productCount, setProductCount] = useState<number>(1);
 
@@ -187,8 +188,10 @@ export const WasteDetailPage: React.FC = () => {
     let items = allStockItems.filter((s: any) => !existingStockItemIds.has(s.id));
     if (filterDept !== "all") items = items.filter((s: any) => s.department_id === filterDept);
     if (filterCat !== "all") items = items.filter((s: any) => s.category_id === filterCat);
+    const q = searchTerm.trim().toLowerCase();
+    if (q) items = items.filter((s: any) => (s.name || "").toLowerCase().includes(q) || (s.code || "").toLowerCase().includes(q));
     return items;
-  }, [allStockItems, existingStockItemIds, filterDept, filterCat]);
+  }, [allStockItems, existingStockItemIds, filterDept, filterCat, searchTerm]);
 
   const toggleItem = (itemId: string) => {
     setSelectedItemIds(prev => {
@@ -697,6 +700,15 @@ export const WasteDetailPage: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
+          </div>
+          <div className="mb-4">
+            <Label className="text-xs">بحث باسم الخامة أو الكود</Label>
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="ابحث..."
+              className="h-9"
+            />
           </div>
 
           <div className="border rounded-lg overflow-hidden">

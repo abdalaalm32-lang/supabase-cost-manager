@@ -659,6 +659,12 @@ export const PurchaseReportsPage: React.FC = () => {
                 columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الخامة" }, { key: "category", label: "المجموعة" }, { key: "purchases", label: "عدد الشراء" }, { key: "supplier", label: "المورد الأكثر" }, { key: "qty", label: "إجمالي الكمية" }, { key: "unit", label: "الوحدة" }, { key: "stdCost", label: "التكلفة المعيارية" }, { key: "avgCost", label: "متوسط التكلفة" }, { key: "diff", label: "فرق السعر" }, { key: "total", label: "إجمالي القيمة" }]}
                 filename="تقارير_المشتريات"
                 title="تقارير المشتريات"
+                filters={[
+                  { label: locationType === "branch" ? "الفرع" : "المخزن", value: locationFilter === "all" ? "الكل" : ((locationType === "branch" ? branches : warehouses)?.find((l: any) => l.id === locationFilter)?.name ?? "—") },
+                  { label: "المورد", value: supplierFilter === "all" ? "الكل" : (suppliers?.find((s: any) => s.id === supplierFilter)?.name ?? "—") },
+                  { label: "من تاريخ", value: dateFrom ? format(dateFrom, "yyyy/MM/dd") : "—" },
+                  { label: "إلى تاريخ", value: dateTo ? format(dateTo, "yyyy/MM/dd") : "—" },
+                ]}
               />
               <PrintButton
                 data={filteredData.map((item: any) => ({ code: item.code || "—", name: item.name, category: item.categoryName, purchases: item.purchaseCount, supplier: item.topSupplier, qty: fmt(item.totalQty), unit: item.unit, stdCost: fmt(item.standardCost), avgCost: fmt(item.avgCost), diff: fmt(item.priceDiff), total: fmt(item.totalValue) }))}

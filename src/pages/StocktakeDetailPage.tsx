@@ -306,7 +306,7 @@ export const StocktakeDetailPage: React.FC = () => {
         return (s.name || "").toLowerCase().includes(q) || (s.code || "").toLowerCase().includes(q) || catName.toLowerCase().includes(q);
       });
     }
-    return items.sort((a: any, b: any) => (a.code || "").localeCompare(b.code || ""));
+    return items.sort((a: any, b: any) => (a.code || "").localeCompare(b.code || "", undefined, { numeric: true, sensitivity: "base" }));
   }, [allStockItems, existingStockItemIds, filterDept, filterCat, pickerSearch, categories, itemAllCategories, itemAllDepartments]);
 
   // Categories filtered by selected department (both primary and many-to-many links)
@@ -756,7 +756,7 @@ export const StocktakeDetailPage: React.FC = () => {
                 {[...stocktakeItems].sort((a: any, b: any) => {
                   const codeA = getStockItemInfo(a.stock_item_id)?.code || "";
                   const codeB = getStockItemInfo(b.stock_item_id)?.code || "";
-                  return codeA.localeCompare(codeB);
+                  return codeA.localeCompare(codeB, undefined, { numeric: true, sensitivity: "base" });
                 }).filter((item: any) => {
                   if (!itemsSearch.trim()) return true;
                   const si = getStockItemInfo(item.stock_item_id);

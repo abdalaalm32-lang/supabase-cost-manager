@@ -610,14 +610,22 @@ export const CostAnalysisPage: React.FC = () => {
       }
     }
 
+    const round4 = (n: number) => Math.round(n * 10000) / 10000;
     for (const calc of map.values()) {
-      calc.inVal = calc.inQty * calc.avgCost;
-      calc.outVal = calc.outQty * calc.avgCost;
-      calc.bookQty = calc.openQty + calc.inQty - calc.outQty;
-      calc.bookVal = calc.bookQty * calc.avgCost;
-      calc.countVal = calc.countQty * calc.avgCost;
-      calc.varQty = calc.countQty - calc.bookQty;
-      calc.varVal = calc.varQty * calc.avgCost;
+      calc.openQty = round4(calc.openQty);
+      calc.inQty = round4(calc.inQty);
+      calc.outQty = round4(calc.outQty);
+      calc.countQty = round4(calc.countQty);
+      calc.inVal = round4(calc.inQty * calc.avgCost);
+      calc.outVal = round4(calc.outQty * calc.avgCost);
+      calc.bookQty = round4(calc.openQty + calc.inQty - calc.outQty);
+      calc.bookVal = round4(calc.bookQty * calc.avgCost);
+      calc.countVal = round4(calc.countQty * calc.avgCost);
+      calc.varQty = round4(calc.countQty - calc.bookQty);
+      calc.varVal = round4(calc.varQty * calc.avgCost);
+      // Clamp negligible noise to zero
+      if (Math.abs(calc.varQty) < 0.01) { calc.varQty = 0; calc.varVal = 0; }
+      if (Math.abs(calc.bookQty) < 0.01) { calc.bookQty = 0; calc.bookVal = 0; }
     }
 
     return map;

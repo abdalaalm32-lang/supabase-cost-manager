@@ -192,7 +192,7 @@ export async function exportToExcel({ title, filename, columns, data, headerGrou
 }
 
 // ─── PDF Export ─────────────────────────────────────────────────────
-export async function exportToPDF({ title, filename, columns, data, headerGroups }: ExportOptions) {
+export async function exportToPDF({ title, filename, columns, data, headerGroups, filters }: ExportOptions) {
   const doc = new jsPDF({
     orientation: columns.length > 5 ? "landscape" : "portrait",
     unit: "mm",

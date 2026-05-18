@@ -10,6 +10,7 @@ interface ExportButtonsProps {
   filename: string;
   title: string;
   headerGroups?: { label: string; colSpan: number }[];
+  filters?: { label: string; value: string }[];
 }
 
 export const ExportButtons: React.FC<ExportButtonsProps> = ({
@@ -18,6 +19,7 @@ export const ExportButtons: React.FC<ExportButtonsProps> = ({
   filename,
   title,
   headerGroups,
+  filters,
 }) => {
   const [loadingExcel, setLoadingExcel] = useState(false);
   const [loadingPdf, setLoadingPdf] = useState(false);

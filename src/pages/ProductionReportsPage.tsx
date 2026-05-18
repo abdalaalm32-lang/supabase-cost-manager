@@ -510,6 +510,11 @@ export const ProductionReportsPage: React.FC = () => {
                 columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الصنف" }, { key: "category", label: "المجموعة" }, { key: "count", label: "كثافة الإنتاج" }, { key: "qty", label: "إجمالي الكمية" }, { key: "stock", label: "الرصيد الحالي" }, { key: "unit", label: "الوحدة" }, { key: "avgCost", label: "متوسط التكلفة" }, { key: "totalCost", label: "إجمالي تكلفة الإنتاج" }, { key: "lastDate", label: "آخر تاريخ" }]}
                 filename="تقارير_الإنتاج"
                 title="تقارير الإنتاج"
+                filters={[
+                  { label: locationType === "branch" ? "الفرع" : "المخزن", value: locationFilter === "all" ? "الكل" : ((locationType === "branch" ? branches : warehouses).find((l: any) => l.id === locationFilter)?.name ?? "—") },
+                  { label: "من تاريخ", value: dateFrom ? format(dateFrom, "yyyy/MM/dd") : "—" },
+                  { label: "إلى تاريخ", value: dateTo ? format(dateTo, "yyyy/MM/dd") : "—" },
+                ]}
               />
               <PrintButton
                 data={processedData.map((item: any) => ({ code: item.code || "—", name: item.name, category: item.catName, count: item.productionCount, qty: fmt(item.totalProducedQty), stock: fmt(item.currentStock), unit: item.stockUnit, avgCost: fmt(item.avgCost), totalCost: fmt(item.totalProductionCost), lastDate: item.lastProductionDate }))}

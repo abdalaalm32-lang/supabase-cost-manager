@@ -756,7 +756,7 @@ export const StocktakeDetailPage: React.FC = () => {
                 {[...stocktakeItems].sort((a: any, b: any) => {
                   const codeA = getStockItemInfo(a.stock_item_id)?.code || "";
                   const codeB = getStockItemInfo(b.stock_item_id)?.code || "";
-                  return codeA.localeCompare(codeB);
+                  return codeA.localeCompare(codeB, undefined, { numeric: true, sensitivity: "base" });
                 }).filter((item: any) => {
                   if (!itemsSearch.trim()) return true;
                   const si = getStockItemInfo(item.stock_item_id);

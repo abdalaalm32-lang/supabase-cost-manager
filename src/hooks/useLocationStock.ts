@@ -337,6 +337,9 @@ export function useLocationStock(
     if (!locationId) return new Map<string, number>();
     const map = new Map<string, number>();
 
+    // Cutoff (asOfDate) — only include opening stocktake on/before cutoff and purchases on/before cutoff.
+    const cutoff = asOfDate || null;
+
     // Opening stock = EARLIEST completed stocktake per item at this location.
     // Prefer records of type "جرد أول المدة" if present; otherwise fall back to the oldest record.
     const opening = new Map<string, { qty: number; date: string; isOpening: boolean }>();
@@ -344,6 +347,7 @@ export function useLocationStock(
       if (locationType === "branch" ? st.branch_id !== locationId : st.warehouse_id !== locationId) continue;
       if (departmentId && st.department_id && st.department_id !== departmentId) continue;
       const stDate = st.date || st.created_at || "";
+      if (cutoff && stDate && stDate > cutoff) continue;
       const isOpening = st.type === "جرد أول المدة";
       for (const si of (st.stocktake_items || [])) {
         if (!si.stock_item_id) continue;
@@ -361,21 +365,21 @@ export function useLocationStock(
       map.set(id, (map.get(id) || 0) + v.qty);
     }
 
-    // Add purchases IN dated on/after the opening stocktake date for that item.
-    // For items without an opening stocktake, include all purchases.
+    // Add purchases IN dated on/after the opening stocktake date for that item, and on/before cutoff.
     for (const pi of purchaseItems) {
       const po = pi.purchase_orders;
       if (locationType === "branch" ? po.branch_id !== locationId : po.warehouse_id !== locationId) continue;
       if (departmentId && po.department_id !== departmentId) continue;
       if (!pi.stock_item_id) continue;
-      const op = opening.get(pi.stock_item_id);
       const poDate = (po as any).date || "";
+      if (cutoff && poDate && poDate > cutoff) continue;
+      const op = opening.get(pi.stock_item_id);
       if (op && poDate && poDate < op.date) continue;
       map.set(pi.stock_item_id, (map.get(pi.stock_item_id) || 0) + Number(pi.quantity));
     }
 
     return map;
-  }, [locationId, locationType, departmentId, stocktakes, purchaseItems]);
+  }, [locationId, locationType, departmentId, asOfDate, stocktakes, purchaseItems]);
 
   const getProductionAvailable = (stockItemId: string): number => {
     return productionAvailableMap.get(stockItemId) || 0;

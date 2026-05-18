@@ -927,6 +927,11 @@ export const InventoryTurnoverPage: React.FC = () => {
               columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الصنف" }, { key: "category", label: "المجموعة" }, { key: "unit", label: "الوحدة" }, { key: "stock", label: "المخزون" }, { key: "value", label: "القيمة" }, { key: "consumption", label: "الاستهلاك" }, { key: "turnover", label: "معدل الدوران" }, { key: "holding", label: "فترة الاحتفاظ" }, { key: "speed", label: "التصنيف" }, { key: "recommendation", label: "التوصية" }]}
               filename="تحليل_حركة_المخزون"
               title="تحليل حركة المخزون"
+              filters={[
+                { label: locationType === "branch" ? "الفرع" : "المخزن", value: locationFilter === "all" ? "الكل" : ((locationType === "branch" ? branches : warehouses)?.find((l: any) => l.id === locationFilter)?.name ?? "—") },
+                { label: "من تاريخ", value: dateFrom ? format(dateFrom, "yyyy/MM/dd") : "—" },
+                { label: "إلى تاريخ", value: dateTo ? format(dateTo, "yyyy/MM/dd") : "—" },
+              ]}
             />
           </div>
         </div>

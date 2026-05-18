@@ -831,6 +831,11 @@ export const InventoryMovementPage: React.FC = () => {
               headerGroups={[{ label: "الكود", colSpan: 1 }, { label: "الخامة", colSpan: 1 }, { label: "جرد أول المدة", colSpan: 1 }, { label: "الوارد", colSpan: 3 }, { label: "المنصرف", colSpan: 3 }, { label: "الرصيد الدفتري", colSpan: 1 }, { label: "رصيد الجرد", colSpan: 1 }, { label: "التباين", colSpan: 2 }]}
               filename="حركة_المخزون"
               title="حركة المخزون"
+              filters={[
+                { label: locationType === "branch" ? "الفرع" : "المخزن", value: locationFilter === "all" ? "الكل" : ((locationType === "branch" ? branches : warehouses)?.find((l: any) => l.id === locationFilter)?.name ?? "—") },
+                { label: "من تاريخ", value: dateFrom ? format(dateFrom, "yyyy/MM/dd") : "—" },
+                { label: "إلى تاريخ", value: dateTo ? format(dateTo, "yyyy/MM/dd") : "—" },
+              ]}
             />
           </div>
         </div>

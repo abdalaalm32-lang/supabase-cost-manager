@@ -27,7 +27,7 @@ export const ExportButtons: React.FC<ExportButtonsProps> = ({
   const handleExcel = async () => {
     setLoadingExcel(true);
     try {
-      await exportToExcel({ title, filename, columns, data, headerGroups });
+      await exportToExcel({ title, filename, columns, data, headerGroups, filters });
       toast.success("تم تصدير Excel بنجاح");
     } catch (err) {
       console.error(err);

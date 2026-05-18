@@ -370,7 +370,7 @@ export async function exportToPDF({ title, filename, columns, data, headerGroups
       fillColor: WHITE_BG,
       textColor: BLACK,
     },
-    margin: { top: 24, right: 4, bottom: 14, left: 4 },
+    margin: { top: tableStartY, right: 4, bottom: 14, left: 4 },
     tableWidth: "auto",
     didDrawPage: (pageData: any) => {
       doc.setTextColor(...BLACK);

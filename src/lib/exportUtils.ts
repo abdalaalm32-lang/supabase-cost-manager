@@ -90,17 +90,33 @@ export async function exportToExcel({ title, filename, columns, data, headerGrou
   ws.mergeCells(2, 1, 2, columns.length);
   ws.getRow(2).height = 20;
 
+  // Filters row (optional)
+  let nextRow = 3;
+  const filtersText = (filters ?? [])
+    .filter((f) => f.value !== undefined && f.value !== null && String(f.value).trim() !== "")
+    .map((f) => `${f.label}: ${f.value}`)
+    .join("   •   ");
+  if (filtersText) {
+    ws.spliceRows(nextRow, 0, []);
+    const fCell = ws.getCell(nextRow, 1);
+    fCell.value = filtersText;
+    fCell.font = { bold: true, color: { argb: `FF${XL_PRIMARY_LIGHT}` }, size: 10, name: "Cairo" };
+    fCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${XL_DARK_ALT}` } };
+    fCell.alignment = { horizontal: "center", vertical: "middle" };
+    ws.mergeCells(nextRow, 1, nextRow, columns.length);
+    ws.getRow(nextRow).height = 22;
+    nextRow++;
+  }
+
   // If headerGroups provided, insert a merged group header row before the column headers
-  let dataStartRow = 4; // default: row 3 = headers, row 4+ = data
   if (headerGroups && headerGroups.length > 0) {
-    ws.spliceRows(3, 0, []);
-    const groupRow = ws.getRow(3);
+    ws.spliceRows(nextRow, 0, []);
+    const groupRow = ws.getRow(nextRow);
     groupRow.height = 26;
-    // Reverse the header groups for RTL
     const revGroups = [...headerGroups].reverse();
     let colIdx = 1;
     for (const grp of revGroups) {
-      const cell = ws.getCell(3, colIdx);
+      const cell = ws.getCell(nextRow, colIdx);
       cell.value = grp.label;
       cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10, name: "Cairo" };
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${XL_PRIMARY}` } };
@@ -112,15 +128,15 @@ export async function exportToExcel({ title, filename, columns, data, headerGrou
         right: { style: "thin", color: { argb: `FF${XL_BORDER}` } },
       };
       if (grp.colSpan > 1) {
-        ws.mergeCells(3, colIdx, 3, colIdx + grp.colSpan - 1);
+        ws.mergeCells(nextRow, colIdx, nextRow, colIdx + grp.colSpan - 1);
       }
       colIdx += grp.colSpan;
     }
-    dataStartRow = 5; // row 3 = group header, row 4 = sub headers, row 5+ = data
+    nextRow++;
   }
 
-  // Style the column header row
-  const headerRowNum = headerGroups ? 4 : 3;
+  // Style the column header row (= current nextRow, which is the auto header)
+  const headerRowNum = nextRow;
   const headerRow = ws.getRow(headerRowNum);
   headerRow.height = 26;
   headerRow.eachCell((cell) => {

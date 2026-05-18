@@ -494,6 +494,11 @@ export const CostAdjustmentReportsPage: React.FC = () => {
                 columns={[{ key: "record", label: "رقم السجل" }, { key: "date", label: "التاريخ" }, { key: "item", label: "الصنف" }, { key: "code", label: "الكود" }, { key: "location", label: "الموقع" }, { key: "category", label: "المجموعة" }, { key: "oldCost", label: "التكلفة السابقة" }, { key: "newCost", label: "التكلفة الجديدة" }, { key: "diff", label: "فرق القيمة" }, { key: "diffPct", label: "نسبة التغيير" }, { key: "notes", label: "البيان" }]}
                 filename="تقارير_تعديل_التكاليف"
                 title="تقارير تعديل التكاليف"
+                filters={[
+                  { label: locationType === "branch" ? "الفرع" : "المخزن", value: locationFilter === "all" ? "الكل" : ((locationType === "branch" ? branches : warehouses).find((l: any) => l.id === locationFilter)?.name ?? "—") },
+                  { label: "من تاريخ", value: dateFrom ? format(dateFrom, "yyyy/MM/dd") : "—" },
+                  { label: "إلى تاريخ", value: dateTo ? format(dateTo, "yyyy/MM/dd") : "—" },
+                ]}
               />
               <PrintButton
                 data={processedData.map((row: any) => ({ record: row.recordNumber, date: row.date, item: row.itemName, code: row.code, location: row.branchName, category: row.catName, oldCost: fmt(row.oldCost), newCost: fmt(row.newCost), diff: fmt(row.diff), diffPct: row.diffPercent.toFixed(1) + "%", notes: row.notes || "—" }))}

@@ -679,6 +679,11 @@ export const TransferReportsPage: React.FC = () => {
                 columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الصنف" }, { key: "category", label: "المجموعة" }, { key: "qty", label: "إجمالي الكمية" }, { key: "unit", label: "الوحدة" }, { key: "cost", label: "إجمالي التكلفة" }, { key: "occurrences", label: "مرات التحويل" }, { key: "lastDate", label: "آخر تحويل" }]}
                 filename="تقارير_التحويلات"
                 title="تقارير التحويلات"
+                filters={[
+                  { label: locationType === "branch" ? "الفرع" : "المخزن", value: locationFilter === "all" ? "الكل" : ((locationType === "branch" ? branches : warehouses).find((l: any) => l.id === locationFilter)?.name ?? "—") },
+                  { label: "من تاريخ", value: dateFrom ? format(dateFrom, "yyyy/MM/dd") : "—" },
+                  { label: "إلى تاريخ", value: dateTo ? format(dateTo, "yyyy/MM/dd") : "—" },
+                ]}
               />
               <PrintButton
                 data={processedData.map((item: any) => ({ code: item.code, name: item.name, category: item.catName, qty: fmt(item.totalTransferQty), unit: item.unit, cost: fmt(item.totalCost), occurrences: item.occurrences, lastDate: item.lastTransferDate }))}

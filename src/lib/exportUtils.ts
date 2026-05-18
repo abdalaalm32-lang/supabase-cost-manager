@@ -15,6 +15,8 @@ export interface ExportOptions {
   data: Record<string, any>[];
   /** Optional two-row header: array of { label, colSpan } for the top row */
   headerGroups?: { label: string; colSpan: number }[];
+  /** Optional filter chips to render under the title (branch, date range, etc.) */
+  filters?: { label: string; value: string }[];
   /** Mark rows as "group-total" or "grand-total" via a __rowType field */
 }
 
@@ -54,7 +56,7 @@ async function loadFontBase64(url: string): Promise<string> {
 }
 
 // ─── Excel Export ───────────────────────────────────────────────────
-export async function exportToExcel({ title, filename, columns, data, headerGroups }: ExportOptions) {
+export async function exportToExcel({ title, filename, columns, data, headerGroups, filters }: ExportOptions) {
   const wb = new ExcelJS.Workbook();
   wb.creator = "Cost Management System";
   const ws = wb.addWorksheet(title.substring(0, 31));
@@ -88,17 +90,33 @@ export async function exportToExcel({ title, filename, columns, data, headerGrou
   ws.mergeCells(2, 1, 2, columns.length);
   ws.getRow(2).height = 20;
 
+  // Filters row (optional)
+  let nextRow = 3;
+  const filtersText = (filters ?? [])
+    .filter((f) => f.value !== undefined && f.value !== null && String(f.value).trim() !== "")
+    .map((f) => `${f.label}: ${f.value}`)
+    .join("   •   ");
+  if (filtersText) {
+    ws.spliceRows(nextRow, 0, []);
+    const fCell = ws.getCell(nextRow, 1);
+    fCell.value = filtersText;
+    fCell.font = { bold: true, color: { argb: `FF${XL_PRIMARY_LIGHT}` }, size: 10, name: "Cairo" };
+    fCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${XL_DARK_ALT}` } };
+    fCell.alignment = { horizontal: "center", vertical: "middle" };
+    ws.mergeCells(nextRow, 1, nextRow, columns.length);
+    ws.getRow(nextRow).height = 22;
+    nextRow++;
+  }
+
   // If headerGroups provided, insert a merged group header row before the column headers
-  let dataStartRow = 4; // default: row 3 = headers, row 4+ = data
   if (headerGroups && headerGroups.length > 0) {
-    ws.spliceRows(3, 0, []);
-    const groupRow = ws.getRow(3);
+    ws.spliceRows(nextRow, 0, []);
+    const groupRow = ws.getRow(nextRow);
     groupRow.height = 26;
-    // Reverse the header groups for RTL
     const revGroups = [...headerGroups].reverse();
     let colIdx = 1;
     for (const grp of revGroups) {
-      const cell = ws.getCell(3, colIdx);
+      const cell = ws.getCell(nextRow, colIdx);
       cell.value = grp.label;
       cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10, name: "Cairo" };
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: `FF${XL_PRIMARY}` } };
@@ -110,15 +128,15 @@ export async function exportToExcel({ title, filename, columns, data, headerGrou
         right: { style: "thin", color: { argb: `FF${XL_BORDER}` } },
       };
       if (grp.colSpan > 1) {
-        ws.mergeCells(3, colIdx, 3, colIdx + grp.colSpan - 1);
+        ws.mergeCells(nextRow, colIdx, nextRow, colIdx + grp.colSpan - 1);
       }
       colIdx += grp.colSpan;
     }
-    dataStartRow = 5; // row 3 = group header, row 4 = sub headers, row 5+ = data
+    nextRow++;
   }
 
-  // Style the column header row
-  const headerRowNum = headerGroups ? 4 : 3;
+  // Style the column header row (= current nextRow, which is the auto header)
+  const headerRowNum = nextRow;
   const headerRow = ws.getRow(headerRowNum);
   headerRow.height = 26;
   headerRow.eachCell((cell) => {
@@ -174,7 +192,7 @@ export async function exportToExcel({ title, filename, columns, data, headerGrou
 }
 
 // ─── PDF Export ─────────────────────────────────────────────────────
-export async function exportToPDF({ title, filename, columns, data, headerGroups }: ExportOptions) {
+export async function exportToPDF({ title, filename, columns, data, headerGroups, filters }: ExportOptions) {
   const doc = new jsPDF({
     orientation: columns.length > 5 ? "landscape" : "portrait",
     unit: "mm",
@@ -256,9 +274,24 @@ export async function exportToPDF({ title, filename, columns, data, headerGroups
   doc.setFontSize(8);
   doc.text(processArabicText(`نظام إدارة التكاليف • ${dateStr}`), pageWidth / 2, 17, { align: "center" });
 
+  // Filters subtitle (optional)
+  const filtersText = (filters ?? [])
+    .filter((f) => f.value !== undefined && f.value !== null && String(f.value).trim() !== "")
+    .map((f) => `${f.label}: ${f.value}`)
+    .join("   •   ");
+  let tableStartY = 24;
+  let dividerY = 21;
+  if (filtersText) {
+    doc.setFont(fontName, "bold");
+    doc.setFontSize(8.5);
+    doc.text(processArabicText(filtersText), pageWidth / 2, 22, { align: "center" });
+    dividerY = 25;
+    tableStartY = 28;
+  }
+
   doc.setDrawColor(...BLACK);
   doc.setLineWidth(0.2);
-  doc.line(8, 21, pageWidth - 8, 21);
+  doc.line(8, dividerY, pageWidth - 8, dividerY);
 
   // Headers - reversed for RTL
   const revCols = [...columns].reverse();
@@ -307,7 +340,7 @@ export async function exportToPDF({ title, filename, columns, data, headerGroups
   autoTable(doc, {
     head: headRows,
     body: bodyRows,
-    startY: 24,
+    startY: tableStartY,
     theme: "grid",
     styles: {
       font: fontName,
@@ -337,7 +370,7 @@ export async function exportToPDF({ title, filename, columns, data, headerGroups
       fillColor: WHITE_BG,
       textColor: BLACK,
     },
-    margin: { top: 24, right: 4, bottom: 14, left: 4 },
+    margin: { top: tableStartY, right: 4, bottom: 14, left: 4 },
     tableWidth: "auto",
     didDrawPage: (pageData: any) => {
       doc.setTextColor(...BLACK);

@@ -10,6 +10,7 @@ interface ExportButtonsProps {
   filename: string;
   title: string;
   headerGroups?: { label: string; colSpan: number }[];
+  filters?: { label: string; value: string }[];
 }
 
 export const ExportButtons: React.FC<ExportButtonsProps> = ({
@@ -18,6 +19,7 @@ export const ExportButtons: React.FC<ExportButtonsProps> = ({
   filename,
   title,
   headerGroups,
+  filters,
 }) => {
   const [loadingExcel, setLoadingExcel] = useState(false);
   const [loadingPdf, setLoadingPdf] = useState(false);
@@ -25,7 +27,7 @@ export const ExportButtons: React.FC<ExportButtonsProps> = ({
   const handleExcel = async () => {
     setLoadingExcel(true);
     try {
-      await exportToExcel({ title, filename, columns, data, headerGroups });
+      await exportToExcel({ title, filename, columns, data, headerGroups, filters });
       toast.success("تم تصدير Excel بنجاح");
     } catch (err) {
       console.error(err);
@@ -38,7 +40,7 @@ export const ExportButtons: React.FC<ExportButtonsProps> = ({
   const handlePdf = async () => {
     setLoadingPdf(true);
     try {
-      await exportToPDF({ title, filename, columns, data, headerGroups });
+      await exportToPDF({ title, filename, columns, data, headerGroups, filters });
       toast.success("تم تصدير PDF بنجاح");
     } catch (err) {
       console.error(err);

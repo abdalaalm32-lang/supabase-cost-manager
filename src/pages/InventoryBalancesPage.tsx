@@ -260,7 +260,16 @@ export const InventoryBalancesPage: React.FC = () => {
           </div>
           <div className="flex items-center gap-2">
             <PrintButton data={exportRows} columns={exportColumns} title="أرصدة المخزون" />
-            <ExportButtons data={exportRows} columns={exportColumns} filename="أرصدة_المخزون" title="أرصدة المخزون" />
+            <ExportButtons
+              data={exportRows}
+              columns={exportColumns}
+              filename="أرصدة_المخزون"
+              title="أرصدة المخزون"
+              filters={[
+                { label: locationType === "branch" ? "الفرع" : "المخزن", value: !locationFilter ? "الكل" : ((locationType === "branch" ? branches : warehouses).find((l: any) => l.id === locationFilter)?.name ?? "—") },
+                { label: "حتى تاريخ", value: asOfDate ? format(asOfDate, "yyyy/MM/dd") : "اليوم" },
+              ]}
+            />
           </div>
         </div>
 

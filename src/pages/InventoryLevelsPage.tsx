@@ -482,6 +482,9 @@ export const InventoryLevelsPage: React.FC = () => {
                 columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الصنف" }, { key: "category", label: "المجموعة" }, { key: "stock", label: "الرصيد" }, { key: "min", label: "الحد الأدنى" }, { key: "max", label: "الحد الأقصى" }, { key: "reorder", label: "نقطة الطلب" }, { key: "unit", label: "الوحدة" }, { key: "status", label: "الحالة" }]}
                 filename="مستويات_المخزون"
                 title="مستويات المخزون"
+                filters={[
+                  { label: locationType === "branch" ? "الفرع" : "المخزن", value: locationFilter === "all" ? "الكل" : ((locationType === "branch" ? branches : warehouses).find((l: any) => l.id === locationFilter)?.name ?? "—") },
+                ]}
               />
             </div>
           </div>

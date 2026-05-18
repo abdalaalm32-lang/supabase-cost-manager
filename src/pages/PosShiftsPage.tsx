@@ -315,6 +315,10 @@ export const PosShiftsPage: React.FC = () => {
                     { label: "وقت الإغلاق", key: "وقت الإغلاق" },
                     { label: "المبلغ الافتتاحي", key: "المبلغ الافتتاحي" },
                     { label: "مبلغ الإغلاق", key: "مبلغ الإغلاق" },
+                  ]} filters={[
+                    { label: "الفرع", value: !branchId ? "الكل" : (branches?.find((b: any) => b.id === branchId)?.name ?? "—") },
+                    { label: "من تاريخ", value: dateFrom ? format(dateFrom, "yyyy/MM/dd") : "—" },
+                    { label: "إلى تاريخ", value: dateTo ? format(dateTo, "yyyy/MM/dd") : "—" },
                   ]} />
                 </div>
               </div>

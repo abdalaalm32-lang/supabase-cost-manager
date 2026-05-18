@@ -251,6 +251,11 @@ export const PosItemSalesPage: React.FC = () => {
           ]}
           filename="مبيعات_حسب_الأصناف"
           title="تقرير مبيعات الأصناف"
+          filters={[
+            { label: "الفرع", value: branchFilter === "all" ? "الكل" : (branches?.find((b: any) => b.id === branchFilter)?.name ?? "—") },
+            { label: "من تاريخ", value: dateFrom ? format(dateFrom, "yyyy/MM/dd") : "—" },
+            { label: "إلى تاريخ", value: dateTo ? format(dateTo, "yyyy/MM/dd") : "—" },
+          ]}
         />
       </div>
 

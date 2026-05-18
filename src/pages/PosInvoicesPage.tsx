@@ -395,6 +395,12 @@ export const PosInvoicesPage: React.FC = () => {
               columns={[{ key: "invoice", label: "رقم الفاتورة" }, { key: "date", label: "التاريخ" }, { key: "branch", label: "الفرع" }, { key: "total", label: "الإجمالي" }, { key: "status", label: "الحالة" }]}
               filename="فواتير_نقطة_البيع"
               title="سجل الفواتير"
+              filters={[
+                { label: "الفرع", value: branchFilter === "all" ? "الكل" : (branchesList?.find((b: any) => b.id === branchFilter)?.name ?? "—") },
+                { label: "من تاريخ", value: dateFrom ? format(dateFrom, "yyyy/MM/dd") : "—" },
+                { label: "إلى تاريخ", value: dateTo ? format(dateTo, "yyyy/MM/dd") : "—" },
+                { label: "الحالة", value: filter },
+              ]}
             />
           </div>
         </div>

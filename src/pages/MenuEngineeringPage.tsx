@@ -423,6 +423,11 @@ export const MenuEngineeringPage: React.FC = () => {
             ]}
             filename="هندسة_المنيو"
             title={`هندسة المنيو - ${activeTab === "kitchen" ? "المطبخ" : "البار"}`}
+            filters={[
+              { label: "الفرع", value: selectedBranch === "all" ? "الكل" : (branches.find((b: any) => b.id === selectedBranch)?.name ?? "—") },
+              { label: "من تاريخ", value: dateFrom ? format(dateFrom, "yyyy/MM/dd") : "—" },
+              { label: "إلى تاريخ", value: dateTo ? format(dateTo, "yyyy/MM/dd") : "—" },
+            ]}
           />
           <Button variant="outline" size="sm" className="gap-2" onClick={() => {
             const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });

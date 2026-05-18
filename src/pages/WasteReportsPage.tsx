@@ -743,6 +743,12 @@ export const WasteReportsPage: React.FC = () => {
                 columns={[{ key: "code", label: "الكود" }, { key: "name", label: "الصنف" }, { key: "category", label: "المجموعة" }, { key: "qty", label: "كمية الهالك" }, { key: "unit", label: "الوحدة" }, { key: "avgCost", label: "متوسط التكلفة" }, { key: "loss", label: "إجمالي الخسارة" }, { key: "reason", label: "السبب الأكثر شيوعاً" }, { key: "occurrences", label: "التكرار" }, { key: "lastDate", label: "آخر تاريخ" }]}
                 filename="تقارير_الهالك"
                 title="تقارير الهالك"
+                filters={[
+                  { label: locationType === "branch" ? "الفرع" : "المخزن", value: locationFilter === "all" ? "الكل" : ((locationType === "branch" ? branches : warehouses).find((l: any) => l.id === locationFilter)?.name ?? "—") },
+                  { label: "من تاريخ", value: dateFrom ? format(dateFrom, "yyyy/MM/dd") : "—" },
+                  { label: "إلى تاريخ", value: dateTo ? format(dateTo, "yyyy/MM/dd") : "—" },
+                  { label: "المجموعة", value: categoryFilter === "all" ? "الكل" : (categories.find((c: any) => c.id === categoryFilter)?.name ?? "—") },
+                ]}
               />
               <PrintButton
                 data={processedData.map((item: any) => ({ code: item.code || "—", name: item.name, category: item.catName, qty: item.totalWasteQty.toFixed(2), unit: item.unit, avgCost: item.avgCost.toFixed(2), loss: item.totalLoss.toFixed(2), reason: getTopReason(item.reasons), occurrences: item.occurrences, lastDate: item.lastWasteDate }))}

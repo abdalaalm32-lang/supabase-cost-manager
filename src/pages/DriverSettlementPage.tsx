@@ -328,6 +328,10 @@ ${showGrandTotal ? `
             columns={exportColumns}
             filename={`driver-settlement-${format(selectedDate, "yyyy-MM-dd")}`}
             title={exportTitle}
+            filters={[
+              { label: "التاريخ", value: format(selectedDate, "yyyy/MM/dd") },
+              { label: "الطيار", value: selectedDriverId === "all" ? "الكل" : selectedDriverId === "unassigned" ? "غير معيّن" : (drivers?.find((d: any) => d.id === selectedDriverId)?.name ?? "—") },
+            ]}
           />
           <Button size="sm" variant="outline" className="gap-1" onClick={handlePrint}>
             <Printer className="h-3.5 w-3.5" /> طباعة

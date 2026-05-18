@@ -42,6 +42,7 @@ export const WasteDetailPage: React.FC = () => {
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [filterDept, setFilterDept] = useState("all");
   const [filterCat, setFilterCat] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedProductId, setSelectedProductId] = useState("");
   const [productCount, setProductCount] = useState<number>(1);
 

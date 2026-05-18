@@ -274,9 +274,24 @@ export async function exportToPDF({ title, filename, columns, data, headerGroups
   doc.setFontSize(8);
   doc.text(processArabicText(`نظام إدارة التكاليف • ${dateStr}`), pageWidth / 2, 17, { align: "center" });
 
+  // Filters subtitle (optional)
+  const filtersText = (filters ?? [])
+    .filter((f) => f.value !== undefined && f.value !== null && String(f.value).trim() !== "")
+    .map((f) => `${f.label}: ${f.value}`)
+    .join("   •   ");
+  let tableStartY = 24;
+  let dividerY = 21;
+  if (filtersText) {
+    doc.setFont(fontName, "bold");
+    doc.setFontSize(8.5);
+    doc.text(processArabicText(filtersText), pageWidth / 2, 22, { align: "center" });
+    dividerY = 25;
+    tableStartY = 28;
+  }
+
   doc.setDrawColor(...BLACK);
   doc.setLineWidth(0.2);
-  doc.line(8, 21, pageWidth - 8, 21);
+  doc.line(8, dividerY, pageWidth - 8, dividerY);
 
   // Headers - reversed for RTL
   const revCols = [...columns].reverse();

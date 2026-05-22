@@ -38,6 +38,7 @@ interface RowData {
   itemCode: string | null;
   itemName: string;
   unit: string | null;
+  categoryId: string | null;
   categoryName: string;
   globalCost: number;
   /** Map<branchId, cost> */

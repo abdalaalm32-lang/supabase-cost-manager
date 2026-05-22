@@ -52,6 +52,7 @@ export const CostAlertsCard: React.FC<CostAlertsCardProps> = ({
   const companyId = auth.profile?.company_id;
   const [threshold, setThreshold] = useState<number>(initialThreshold);
   const [expanded, setExpanded] = useState(false);
+  const [open, setOpen] = useState(false);
 
   // Stock items (for names/codes)
   const { data: stockItems = [] } = useQuery({

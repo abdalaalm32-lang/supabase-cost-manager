@@ -52,6 +52,7 @@ export const CostAlertsCard: React.FC<CostAlertsCardProps> = ({
   const companyId = auth.profile?.company_id;
   const [threshold, setThreshold] = useState<number>(initialThreshold);
   const [expanded, setExpanded] = useState(false);
+  const [open, setOpen] = useState(false);
 
   // Stock items (for names/codes)
   const { data: stockItems = [] } = useQuery({
@@ -167,17 +168,26 @@ export const CostAlertsCard: React.FC<CostAlertsCardProps> = ({
   return (
     <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-red-500/5 p-4 backdrop-blur-sm" dir="rtl">
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <div className="h-9 w-9 rounded-xl bg-amber-500/15 flex items-center justify-center">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="flex items-center gap-2 flex-1 min-w-0 text-right hover:opacity-90 transition"
+        >
+          <div className="h-9 w-9 rounded-xl bg-amber-500/15 flex items-center justify-center shrink-0">
             <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-500" />
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <h3 className="text-sm font-bold text-foreground">تنبيهات تكاليف الفروع</h3>
             <p className="text-[11px] text-muted-foreground">
               {alerts.length} تنبيه • فروع تكلفتها تزيد عن المتوسط بأكثر من {threshold}%
             </p>
           </div>
-        </div>
+          {open ? (
+            <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+          )}
+        </button>
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm" className="h-7 text-xs">
@@ -204,6 +214,7 @@ export const CostAlertsCard: React.FC<CostAlertsCardProps> = ({
         </Popover>
       </div>
 
+      {open && (
       <div className="space-y-2">
         {visibleAlerts.map((alert, i) => (
           <div
@@ -240,8 +251,9 @@ export const CostAlertsCard: React.FC<CostAlertsCardProps> = ({
           </div>
         ))}
       </div>
+      )}
 
-      {compact && hiddenCount > 0 && (
+      {open && compact && hiddenCount > 0 && (
         <Button
           variant="ghost"
           size="sm"

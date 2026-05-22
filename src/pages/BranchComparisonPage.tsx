@@ -38,6 +38,7 @@ interface RowData {
   itemCode: string | null;
   itemName: string;
   unit: string | null;
+  categoryId: string | null;
   categoryName: string;
   globalCost: number;
   /** Map<branchId, cost> */
@@ -148,6 +149,7 @@ export const BranchComparisonPage: React.FC = () => {
         itemCode: si.code,
         itemName: si.name,
         unit: si.unit,
+        categoryId: si.category_id ?? null,
         categoryName: catMap.get(si.category_id) || "—",
         globalCost,
         branchCosts: branchCostsRow,
@@ -172,7 +174,7 @@ export const BranchComparisonPage: React.FC = () => {
       );
     }
     if (categoryFilter !== "all") {
-      out = out.filter((r) => r.categoryName === categoryFilter);
+      out = out.filter((r) => r.categoryId === categoryFilter);
     }
     if (onlyVariance) {
       out = out.filter((r) => r.variancePct >= 1); // any meaningful variance
@@ -347,7 +349,7 @@ export const BranchComparisonPage: React.FC = () => {
                 <SelectContent>
                   <SelectItem value="all">كل المجموعات</SelectItem>
                   {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.name}>
+                    <SelectItem key={c.id} value={c.id}>
                       {c.name}
                     </SelectItem>
                   ))}

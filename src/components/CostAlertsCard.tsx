@@ -251,8 +251,9 @@ export const CostAlertsCard: React.FC<CostAlertsCardProps> = ({
           </div>
         ))}
       </div>
+      )}
 
-      {compact && hiddenCount > 0 && (
+      {open && compact && hiddenCount > 0 && (
         <Button
           variant="ghost"
           size="sm"

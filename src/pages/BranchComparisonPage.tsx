@@ -174,7 +174,7 @@ export const BranchComparisonPage: React.FC = () => {
       );
     }
     if (categoryFilter !== "all") {
-      out = out.filter((r) => r.categoryName === categoryFilter);
+      out = out.filter((r) => r.categoryId === categoryFilter);
     }
     if (onlyVariance) {
       out = out.filter((r) => r.variancePct >= 1); // any meaningful variance

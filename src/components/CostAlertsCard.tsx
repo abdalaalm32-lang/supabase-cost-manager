@@ -214,6 +214,7 @@ export const CostAlertsCard: React.FC<CostAlertsCardProps> = ({
         </Popover>
       </div>
 
+      {open && (
       <div className="space-y-2">
         {visibleAlerts.map((alert, i) => (
           <div

@@ -149,6 +149,7 @@ export const BranchComparisonPage: React.FC = () => {
         itemCode: si.code,
         itemName: si.name,
         unit: si.unit,
+        categoryId: si.category_id ?? null,
         categoryName: catMap.get(si.category_id) || "—",
         globalCost,
         branchCosts: branchCostsRow,

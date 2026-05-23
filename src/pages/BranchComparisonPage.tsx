@@ -105,6 +105,16 @@ export const BranchComparisonPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  const { data: companyName = "" } = useQuery({
+    queryKey: ["bcomp-company-name", companyId],
+    queryFn: async () => {
+      const { data } = await supabase.from("companies").select("name").eq("id", companyId!).single();
+      return (data?.name as string) || "";
+    },
+    enabled: !!companyId,
+  });
+
+
   const { data: categories = [] } = useQuery({
     queryKey: ["bcomp-categories", companyId],
     queryFn: async () => {

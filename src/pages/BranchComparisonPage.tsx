@@ -709,7 +709,10 @@ export const BranchComparisonPage: React.FC = () => {
             title={`مقارنة الفروع — ${modeLabel}`}
             columns={buildExportColumns()}
             data={buildExportData()}
+            filters={exportFilters}
+            companyName={companyName}
           />
+
           <Button variant="outline" size="sm" onClick={handleExportPDF}>
             <FileText className="h-4 w-4 ml-1" /> PDF
           </Button>

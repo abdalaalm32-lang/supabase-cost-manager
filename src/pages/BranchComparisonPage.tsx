@@ -873,10 +873,13 @@ export const BranchComparisonPage: React.FC = () => {
                     <span className="inline-block h-2 w-2 rounded-full bg-red-500" /> شورت (سالب)
                   </span>
                   <span className="flex items-center gap-1">
-                    <span className="inline-block h-2 w-2 rounded-full bg-amber-500" /> أوفر (موجب)
+                    <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" /> أوفر (موجب)
                   </span>
                   <span className="flex items-center gap-1">
-                    <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" /> صفر
+                    <span className="inline-block h-3 w-3 rounded ring-1 ring-inset ring-red-500/40 bg-red-500/15" /> أكبر عجز
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="inline-block h-3 w-3 rounded ring-1 ring-inset ring-emerald-500/40 bg-emerald-500/15" /> أكبر أوفر
                   </span>
                   <span className="italic">— = لا يوجد جرد للفرع</span>
                 </>

@@ -94,7 +94,7 @@ export const BranchComparisonPage: React.FC = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from("stock_items")
-        .select("id, code, name, unit, avg_cost, category_id")
+        .select("id, code, name, stock_unit, avg_cost, category_id")
         .eq("company_id", companyId!)
         .order("code", { ascending: true });
       return (data as any[]) || [];
@@ -148,7 +148,7 @@ export const BranchComparisonPage: React.FC = () => {
         itemId: si.id,
         itemCode: si.code,
         itemName: si.name,
-        unit: si.unit,
+        unit: si.stock_unit,
         categoryId: si.category_id ?? null,
         categoryName: catMap.get(si.category_id) || "—",
         globalCost,

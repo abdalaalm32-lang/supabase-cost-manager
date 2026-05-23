@@ -105,6 +105,16 @@ export const BranchComparisonPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  const { data: companyName = "" } = useQuery({
+    queryKey: ["bcomp-company-name", companyId],
+    queryFn: async () => {
+      const { data } = await supabase.from("companies").select("name").eq("id", companyId!).single();
+      return (data?.name as string) || "";
+    },
+    enabled: !!companyId,
+  });
+
+
   const { data: categories = [] } = useQuery({
     queryKey: ["bcomp-categories", companyId],
     queryFn: async () => {
@@ -699,7 +709,10 @@ export const BranchComparisonPage: React.FC = () => {
             title={`مقارنة الفروع — ${modeLabel}`}
             columns={buildExportColumns()}
             data={buildExportData()}
+            filters={exportFilters}
+            companyName={companyName}
           />
+
           <Button variant="outline" size="sm" onClick={handleExportPDF}>
             <FileText className="h-4 w-4 ml-1" /> PDF
           </Button>

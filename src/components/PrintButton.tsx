@@ -115,14 +115,26 @@ export const PrintButton: React.FC<PrintButtonProps> = ({ data, columns, title, 
   <div class="header">
     <img src="${logoSrc}" alt="Logo" class="logo" />
     <div>
+      ${companyName ? `<p style="font-size:13px;font-weight:bold;margin-bottom:2px;">${companyName}</p>` : ""}
       <h1>${title}</h1>
       <p>Cost Management System • ${dateStr}</p>
     </div>
   </div>
+  ${
+    filters && filters.filter(f => f.value !== undefined && f.value !== null && String(f.value).trim() !== "").length > 0
+      ? `<div style="text-align:center;margin-bottom:10px;font-size:11px;font-weight:bold;border:1px solid #000;padding:6px 8px;">${
+          filters
+            .filter(f => f.value !== undefined && f.value !== null && String(f.value).trim() !== "")
+            .map(f => `${f.label}: ${f.value}`)
+            .join("   •   ")
+        }</div>`
+      : ""
+  }
   <table>
     <thead>${theadHTML}</thead>
     <tbody>${tbodyHTML}</tbody>
   </table>
+
   <div class="footer">Powered by Mohamed Abdel Aal</div>
   <script>
     (async function () {

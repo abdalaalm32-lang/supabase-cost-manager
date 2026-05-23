@@ -661,7 +661,7 @@ export const BranchComparisonPage: React.FC = () => {
     });
   };
 
-  const handlePrint = () => window.print();
+  
 
   if (branches.length < 2) {
     return (

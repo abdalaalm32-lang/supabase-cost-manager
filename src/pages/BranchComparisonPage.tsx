@@ -622,12 +622,12 @@ export const BranchComparisonPage: React.FC = () => {
     ? `من ${format(dateFrom, "yyyy-MM-dd")} إلى ${format(dateTo, "yyyy-MM-dd")}`
     : "—";
 
-  const filtersText = [
-    `الوضع: ${modeLabel}`,
-    needsDates ? `الفترة: ${periodLabel}` : null,
-    `المجموعة: ${categoryFilter === "all" ? "كل المجموعات" : (categories.find(c => c.id === categoryFilter)?.name ?? "—")}`,
-    varianceThreshold > 0 ? `حد التباين: ≥ ${varianceThreshold}%` : null,
-  ].filter(Boolean).join("  |  ");
+  const exportFilters = [
+    { label: "الوضع", value: modeLabel },
+    ...(needsDates ? [{ label: "الفترة", value: periodLabel }] : []),
+    { label: "المجموعة", value: categoryFilter === "all" ? "كل المجموعات" : (categories.find(c => c.id === categoryFilter)?.name ?? "—") },
+    ...(varianceThreshold > 0 ? [{ label: "حد التباين", value: `≥ ${varianceThreshold}%` }] : []),
+  ];
 
   const handleExportPDF = () => {
     exportToPDF({
@@ -635,8 +635,8 @@ export const BranchComparisonPage: React.FC = () => {
       filename: `branch-comparison-${mode}-${new Date().toISOString().slice(0, 10)}`,
       columns: buildExportColumns(),
       data: buildExportData(),
-      subtitle: filtersText,
-    } as any);
+      filters: exportFilters,
+    });
   };
 
   const handleExportExcel = () => {
@@ -645,8 +645,8 @@ export const BranchComparisonPage: React.FC = () => {
       filename: `branch-comparison-${mode}-${new Date().toISOString().slice(0, 10)}`,
       columns: buildExportColumns(),
       data: buildExportData(),
-      subtitle: filtersText,
-    } as any);
+      filters: exportFilters,
+    });
   };
 
   const handlePrint = () => window.print();

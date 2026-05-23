@@ -35,6 +35,7 @@ import {
   TrendingUp, TrendingDown, Minus, CalendarIcon, DollarSign, Package, AlertTriangle,
 } from "lucide-react";
 import { exportToExcel, exportToPDF } from "@/lib/exportUtils";
+import { PrintButton } from "@/components/PrintButton";
 
 type Mode = "cost" | "receipts" | "variance";
 

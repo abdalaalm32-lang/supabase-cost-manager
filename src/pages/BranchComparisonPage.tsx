@@ -695,9 +695,11 @@ export const BranchComparisonPage: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-2 print:hidden flex-wrap">
-          <Button variant="outline" size="sm" onClick={handlePrint}>
-            <Printer className="h-4 w-4 ml-1" /> طباعة
-          </Button>
+          <PrintButton
+            title={`مقارنة الفروع — ${modeLabel}`}
+            columns={buildExportColumns()}
+            data={buildExportData()}
+          />
           <Button variant="outline" size="sm" onClick={handleExportPDF}>
             <FileText className="h-4 w-4 ml-1" /> PDF
           </Button>

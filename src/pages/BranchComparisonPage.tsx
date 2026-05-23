@@ -35,6 +35,7 @@ import {
   TrendingUp, TrendingDown, Minus, CalendarIcon, DollarSign, Package, AlertTriangle,
 } from "lucide-react";
 import { exportToExcel, exportToPDF } from "@/lib/exportUtils";
+import { PrintButton } from "@/components/PrintButton";
 
 type Mode = "cost" | "receipts" | "variance";
 
@@ -660,7 +661,7 @@ export const BranchComparisonPage: React.FC = () => {
     });
   };
 
-  const handlePrint = () => window.print();
+  
 
   if (branches.length < 2) {
     return (
@@ -694,9 +695,11 @@ export const BranchComparisonPage: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-2 print:hidden flex-wrap">
-          <Button variant="outline" size="sm" onClick={handlePrint}>
-            <Printer className="h-4 w-4 ml-1" /> طباعة
-          </Button>
+          <PrintButton
+            title={`مقارنة الفروع — ${modeLabel}`}
+            columns={buildExportColumns()}
+            data={buildExportData()}
+          />
           <Button variant="outline" size="sm" onClick={handleExportPDF}>
             <FileText className="h-4 w-4 ml-1" /> PDF
           </Button>

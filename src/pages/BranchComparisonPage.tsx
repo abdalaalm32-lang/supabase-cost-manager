@@ -577,9 +577,20 @@ export const BranchComparisonPage: React.FC = () => {
   const getCellClass = (val: number | null, row: RowData) => {
     if (val === null) return "text-muted-foreground/60 italic";
     if (mode === "variance") {
-      if (val < 0) return "text-red-600 dark:text-red-500 font-semibold";
-      if (val > 0) return "text-amber-600 dark:text-amber-500 font-semibold";
-      return "text-emerald-600 dark:text-emerald-500";
+      // base text color
+      let base = "text-muted-foreground";
+      if (val < 0) base = "text-red-600 dark:text-red-500 font-semibold";
+      else if (val > 0) base = "text-emerald-600 dark:text-emerald-500 font-semibold";
+      // highlight worst short & biggest over within the row
+      const isBiggestShort = val < 0 && val === row.minVal;
+      const isBiggestOver = val > 0 && val === row.maxVal;
+      // avoid highlighting when only one valid branch (nothing to compare)
+      const validCount = Object.values(row.branchValues).filter((x) => x !== null).length;
+      if (validCount >= 2) {
+        if (isBiggestShort) return cn(base, "bg-red-500/15 ring-1 ring-inset ring-red-500/40 rounded");
+        if (isBiggestOver) return cn(base, "bg-emerald-500/15 ring-1 ring-inset ring-emerald-500/40 rounded");
+      }
+      return base;
     }
     if (row.minVal === row.maxVal) return "";
     if (val === row.minVal && val > 0) return "text-emerald-600 dark:text-emerald-500 font-semibold";

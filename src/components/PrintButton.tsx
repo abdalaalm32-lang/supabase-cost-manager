@@ -8,9 +8,12 @@ interface PrintButtonProps {
   columns: ExportColumn[];
   title: string;
   headerGroups?: { label: string; colSpan: number }[];
+  filters?: { label: string; value: string }[];
+  companyName?: string;
 }
 
-export const PrintButton: React.FC<PrintButtonProps> = ({ data, columns, title, headerGroups }) => {
+export const PrintButton: React.FC<PrintButtonProps> = ({ data, columns, title, headerGroups, filters, companyName }) => {
+
   const [loading, setLoading] = useState(false);
 
   const handlePrint = () => {

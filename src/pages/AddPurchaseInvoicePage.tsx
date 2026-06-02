@@ -99,7 +99,7 @@ export const AddPurchaseInvoicePage: React.FC = () => {
   const { data: stockItems = [] } = useQuery({
     queryKey: ["stock-items-all", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("stock_items").select("*, inventory_categories(name)").eq("active", true).order("name");
+      const { data, error } = await supabase.from("stock_items").select("*, inventory_categories(name), departments(name)").eq("active", true).order("name");
       if (error) throw error;
       return data;
     },

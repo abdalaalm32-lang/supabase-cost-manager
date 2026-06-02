@@ -173,9 +173,23 @@ export const StocktakeListPage: React.FC = () => {
     queryFn: async () => {
       const stIds = stocktakes.map((s: any) => s.id);
       if (stIds.length === 0) return [];
-      const { data, error } = await supabase.from("stocktake_items").select("*").in("stocktake_id", stIds);
-      if (error) throw error;
-      return data;
+      // Paginate to bypass Supabase's default 1000-row limit
+      const pageSize = 1000;
+      let from = 0;
+      const all: any[] = [];
+      while (true) {
+        const { data, error } = await supabase
+          .from("stocktake_items")
+          .select("*")
+          .in("stocktake_id", stIds)
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        all.push(...data);
+        if (data.length < pageSize) break;
+        from += pageSize;
+      }
+      return all;
     },
     enabled: stocktakes.length > 0,
   });

@@ -489,13 +489,13 @@ export const AddPurchaseInvoicePage: React.FC = () => {
         <DialogContent className="sm:max-w-2xl max-h-[80vh]">
           <DialogHeader><DialogTitle>اختيار أصناف</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="flex gap-2">
-              <div className="relative flex-1">
+            <div className="flex gap-2 flex-wrap">
+              <div className="relative flex-1 min-w-[200px]">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="بحث بالصنف أو الكود..." value={itemSearch} onChange={(e) => setItemSearch(e.target.value)} className="glass-input pr-9" />
               </div>
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-[180px]"><SelectValue placeholder="كل المجموعات" /></SelectTrigger>
+                <SelectTrigger className="w-[160px]"><SelectValue placeholder="كل المجموعات" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">كل المجموعات</SelectItem>
                   {categories.map((c) => (
@@ -503,7 +503,28 @@ export const AddPurchaseInvoicePage: React.FC = () => {
                   ))}
                 </SelectContent>
               </Select>
+              <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                <SelectTrigger className="w-[160px]"><SelectValue placeholder="كل الأقسام" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">كل الأقسام</SelectItem>
+                  {departments.map((d: any) => (
+                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+
+            {selectableFilteredItems.length > 0 && (
+              <div
+                className="flex items-center gap-3 p-2 rounded-lg bg-muted/30 cursor-pointer hover:bg-muted/50"
+                onClick={toggleSelectAllFiltered}
+              >
+                <Checkbox checked={allFilteredSelected} />
+                <span className="text-sm font-medium">
+                  تحديد كل الأصناف الظاهرة ({selectableFilteredItems.length})
+                </span>
+              </div>
+            )}
             <div className="max-h-[50vh] overflow-y-auto space-y-1">
               {filteredStockItems.length === 0 ? (
                 <p className="text-center py-8 text-muted-foreground text-sm">لا توجد أصناف</p>

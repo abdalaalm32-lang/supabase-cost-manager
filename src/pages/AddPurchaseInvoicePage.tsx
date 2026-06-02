@@ -52,6 +52,7 @@ export const AddPurchaseInvoicePage: React.FC = () => {
   const [itemSearch, setItemSearch] = useState("");
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [categoryFilter, setCategoryFilter] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [cartSearch, setCartSearch] = useState("");
 

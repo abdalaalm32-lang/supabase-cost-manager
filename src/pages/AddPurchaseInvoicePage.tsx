@@ -52,6 +52,7 @@ export const AddPurchaseInvoicePage: React.FC = () => {
   const [itemSearch, setItemSearch] = useState("");
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [categoryFilter, setCategoryFilter] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [cartSearch, setCartSearch] = useState("");
 
@@ -98,7 +99,7 @@ export const AddPurchaseInvoicePage: React.FC = () => {
   const { data: stockItems = [] } = useQuery({
     queryKey: ["stock-items-all", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("stock_items").select("*, inventory_categories(name)").eq("active", true).order("name");
+      const { data, error } = await supabase.from("stock_items").select("*, inventory_categories(name), departments(name)").eq("active", true).order("name");
       if (error) throw error;
       return data;
     },
@@ -120,16 +121,38 @@ export const AddPurchaseInvoicePage: React.FC = () => {
     if (categoryFilter && categoryFilter !== "all") {
       result = result.filter((s: any) => s.inventory_categories?.name === categoryFilter);
     }
+    if (departmentFilter && departmentFilter !== "all") {
+      result = result.filter((s: any) => s.department_id === departmentFilter);
+    }
     if (itemSearch.trim()) {
       const q = itemSearch.trim().toLowerCase();
       result = result.filter((s: any) =>
         s.name.toLowerCase().includes(q) ||
         (s.code || "").toLowerCase().includes(q) ||
-        (s.inventory_categories?.name || "").toLowerCase().includes(q)
+        (s.inventory_categories?.name || "").toLowerCase().includes(q) ||
+        (s.departments?.name || "").toLowerCase().includes(q)
       );
     }
     return result;
-  }, [stockItems, itemSearch, categoryFilter]);
+  }, [stockItems, itemSearch, categoryFilter, departmentFilter]);
+
+  const selectableFilteredItems = useMemo(
+    () => filteredStockItems.filter((si: any) => !items.some((i) => i.stock_item_id === si.id)),
+    [filteredStockItems, items]
+  );
+  const allFilteredSelected = selectableFilteredItems.length > 0 &&
+    selectableFilteredItems.every((si: any) => selectedItemIds.has(si.id));
+  const toggleSelectAllFiltered = () => {
+    setSelectedItemIds((prev) => {
+      const next = new Set(prev);
+      if (allFilteredSelected) {
+        selectableFilteredItems.forEach((si: any) => next.delete(si.id));
+      } else {
+        selectableFilteredItems.forEach((si: any) => next.add(si.id));
+      }
+      return next;
+    });
+  };
 
   const toggleItemSelection = (id: string) => {
     setSelectedItemIds((prev) => {
@@ -466,13 +489,13 @@ export const AddPurchaseInvoicePage: React.FC = () => {
         <DialogContent className="sm:max-w-2xl max-h-[80vh]">
           <DialogHeader><DialogTitle>اختيار أصناف</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="flex gap-2">
-              <div className="relative flex-1">
+            <div className="flex gap-2 flex-wrap">
+              <div className="relative flex-1 min-w-[200px]">
                 <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="بحث بالصنف أو الكود..." value={itemSearch} onChange={(e) => setItemSearch(e.target.value)} className="glass-input pr-9" />
               </div>
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-[180px]"><SelectValue placeholder="كل المجموعات" /></SelectTrigger>
+                <SelectTrigger className="w-[160px]"><SelectValue placeholder="كل المجموعات" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">كل المجموعات</SelectItem>
                   {categories.map((c) => (
@@ -480,7 +503,28 @@ export const AddPurchaseInvoicePage: React.FC = () => {
                   ))}
                 </SelectContent>
               </Select>
+              <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                <SelectTrigger className="w-[160px]"><SelectValue placeholder="كل الأقسام" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">كل الأقسام</SelectItem>
+                  {departments.map((d: any) => (
+                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+
+            {selectableFilteredItems.length > 0 && (
+              <div
+                className="flex items-center gap-3 p-2 rounded-lg bg-muted/30 cursor-pointer hover:bg-muted/50"
+                onClick={toggleSelectAllFiltered}
+              >
+                <Checkbox checked={allFilteredSelected} />
+                <span className="text-sm font-medium">
+                  تحديد كل الأصناف الظاهرة ({selectableFilteredItems.length})
+                </span>
+              </div>
+            )}
             <div className="max-h-[50vh] overflow-y-auto space-y-1">
               {filteredStockItems.length === 0 ? (
                 <p className="text-center py-8 text-muted-foreground text-sm">لا توجد أصناف</p>

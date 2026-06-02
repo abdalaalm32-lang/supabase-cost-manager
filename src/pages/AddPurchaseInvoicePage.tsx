@@ -121,16 +121,38 @@ export const AddPurchaseInvoicePage: React.FC = () => {
     if (categoryFilter && categoryFilter !== "all") {
       result = result.filter((s: any) => s.inventory_categories?.name === categoryFilter);
     }
+    if (departmentFilter && departmentFilter !== "all") {
+      result = result.filter((s: any) => s.department_id === departmentFilter);
+    }
     if (itemSearch.trim()) {
       const q = itemSearch.trim().toLowerCase();
       result = result.filter((s: any) =>
         s.name.toLowerCase().includes(q) ||
         (s.code || "").toLowerCase().includes(q) ||
-        (s.inventory_categories?.name || "").toLowerCase().includes(q)
+        (s.inventory_categories?.name || "").toLowerCase().includes(q) ||
+        (s.departments?.name || "").toLowerCase().includes(q)
       );
     }
     return result;
-  }, [stockItems, itemSearch, categoryFilter]);
+  }, [stockItems, itemSearch, categoryFilter, departmentFilter]);
+
+  const selectableFilteredItems = useMemo(
+    () => filteredStockItems.filter((si: any) => !items.some((i) => i.stock_item_id === si.id)),
+    [filteredStockItems, items]
+  );
+  const allFilteredSelected = selectableFilteredItems.length > 0 &&
+    selectableFilteredItems.every((si: any) => selectedItemIds.has(si.id));
+  const toggleSelectAllFiltered = () => {
+    setSelectedItemIds((prev) => {
+      const next = new Set(prev);
+      if (allFilteredSelected) {
+        selectableFilteredItems.forEach((si: any) => next.delete(si.id));
+      } else {
+        selectableFilteredItems.forEach((si: any) => next.add(si.id));
+      }
+      return next;
+    });
+  };
 
   const toggleItemSelection = (id: string) => {
     setSelectedItemIds((prev) => {

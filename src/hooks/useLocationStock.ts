@@ -19,13 +19,12 @@ export function useLocationStock(
   const enabled = !!companyId && !!locationId;
 
   const { data: purchaseItems = [] } = useQuery({
-    queryKey: ["loc-stock-purchases", companyId],
+    queryKey: ["loc-stock-purchases", companyId, "all-statuses-for-production"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("purchase_items")
         .select("stock_item_id, quantity, purchase_orders!inner(id, status, date, branch_id, warehouse_id, company_id, department_id)")
-        .eq("purchase_orders.company_id", companyId!)
-        .eq("purchase_orders.status", "مكتمل");
+        .eq("purchase_orders.company_id", companyId!);
       if (error) throw error;
       return data as any[];
     },
@@ -236,6 +235,7 @@ export function useLocationStock(
     // Purchases IN
     for (const pi of purchaseItems) {
       const po = pi.purchase_orders;
+      if (po.status !== "مكتمل") continue;
       if (!inDate(po)) continue;
       if (!match(po.branch_id, po.warehouse_id)) continue;
       if (departmentId && po.department_id !== departmentId) continue;
@@ -357,7 +357,7 @@ export function useLocationStock(
       }
     }
     for (const [id, v] of baseline) {
-      map.set(id, (map.get(id) || 0) + v.qty);
+      map.set(id, (map.get(id) ?? 0) + v.qty);
     }
 
     // Add ALL purchases IN for the same branch/warehouse dated strictly after the baseline
@@ -366,19 +366,20 @@ export function useLocationStock(
     // Items without a baseline stocktake include all completed purchases.
     for (const pi of purchaseItems) {
       const po = pi.purchase_orders;
+      if (!["مكتمل", "مؤرشف"].includes(po.status)) continue;
       if (locationType === "branch" ? po.branch_id !== locationId : po.warehouse_id !== locationId) continue;
       if (!pi.stock_item_id) continue;
       const poDate = (po as any).date || "";
       const base = baseline.get(pi.stock_item_id);
       if (base && poDate && poDate <= base.date) continue;
-      map.set(pi.stock_item_id, (map.get(pi.stock_item_id) || 0) + Number(pi.quantity));
+      map.set(pi.stock_item_id, (map.get(pi.stock_item_id) ?? 0) + Number(pi.quantity));
     }
 
     return map;
   }, [locationId, locationType, departmentId, asOfDate, stocktakes, purchaseItems]);
 
   const getProductionAvailable = (stockItemId: string): number => {
-    return productionAvailableMap.get(stockItemId) || 0;
+    return productionAvailableMap.get(stockItemId) ?? 0;
   };
 
   return { stockMap, getLocationStock, getProductionAvailable };

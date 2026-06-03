@@ -13,6 +13,8 @@ export function useLocationStock(
   locationType: "branch" | "warehouse",
   departmentId?: string | null,
   asOfDate?: string | null,
+  periodFrom?: string | null,
+  periodTo?: string | null,
 ) {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;
@@ -342,24 +344,36 @@ export function useLocationStock(
   };
 
   // Production-specific available balance:
-  //   baseline = LATEST completed stocktake per item on/before production date (asOfDate),
-  //   + ALL purchases at the same location dated AFTER that baseline stocktake (no upper date cutoff).
-  // Does NOT subtract production/waste/transfers/POS and ignores stocktake adjustments other than baseline.
+  //   Mode A (default): baseline = LATEST completed stocktake per item on/before asOfDate,
+  //     + ALL purchases at the same location dated AFTER that baseline (no upper cutoff).
+  //   Mode B (period): when periodFrom (and optionally periodTo) provided:
+  //     baseline = LATEST completed stocktake per item STRICTLY BEFORE periodFrom,
+  //     + ALL purchases at the same location dated WITHIN [periodFrom, periodTo].
+  //   Useful when a mid-period stocktake exists and the user wants a full-month production
+  //   (e.g. 1→31 May with a stocktake on May 15): baseline becomes the latest stocktake
+  //   before May 1, and all purchases in May are added.
+  // Does NOT subtract production/waste/transfers/POS and ignores stocktake adjustments
+  // other than baseline.
   const productionAvailableMap = useMemo(() => {
     if (!locationId) return new Map<string, number>();
     const map = new Map<string, number>();
 
-    // Cutoff (asOfDate) — only used to pick baseline stocktake (latest on/before cutoff).
-    // Purchases are NOT capped by cutoff: we include ALL purchases dated after the baseline stocktake.
-    const cutoff = asOfDate || null;
+    const usePeriod = !!periodFrom;
+    // Baseline cutoff:
+    //   period mode → strictly before periodFrom
+    //   default     → on/before asOfDate
+    const baselineCutoff = usePeriod ? periodFrom! : (asOfDate || null);
 
-    // Baseline = LATEST completed stocktake per item on/before cutoff at this location.
+    // Baseline = LATEST completed stocktake per item at this location, on/before cutoff.
+    // In period mode, exclude stocktakes on/after periodFrom (strict <).
     const baseline = new Map<string, { qty: number; date: string }>();
     for (const st of stocktakes) {
       if (locationType === "branch" ? st.branch_id !== locationId : st.warehouse_id !== locationId) continue;
       if (departmentId && st.department_id && st.department_id !== departmentId) continue;
       const stDate = st.date || st.created_at || "";
-      if (cutoff && stDate && stDate > cutoff) continue;
+      if (baselineCutoff && stDate) {
+        if (usePeriod ? stDate >= baselineCutoff : stDate > baselineCutoff) continue;
+      }
       for (const si of (st.stocktake_items || [])) {
         if (!si.stock_item_id) continue;
         const existing = baseline.get(si.stock_item_id);
@@ -372,23 +386,30 @@ export function useLocationStock(
       map.set(id, (map.get(id) ?? 0) + v.qty);
     }
 
-    // Add ALL purchases IN for the same branch/warehouse dated strictly after the baseline
-    // stocktake date (no upper cutoff). Department is intentionally not used here because
-    // production availability requested by the user is: latest stocktake + all purchases after it.
-    // Items without a baseline stocktake include all completed purchases.
+    // Add purchases IN for the same branch/warehouse.
+    //   period mode → purchases within [periodFrom, periodTo]
+    //   default     → purchases strictly after baseline date (no upper cutoff)
+    // Department is intentionally not used here: production availability is location-wide.
     for (const pi of purchaseItems) {
       const po = pi.purchase_orders;
       if (!["مكتمل", "مؤرشف"].includes(po.status)) continue;
       if (locationType === "branch" ? po.branch_id !== locationId : po.warehouse_id !== locationId) continue;
       if (!pi.stock_item_id) continue;
       const poDate = (po as any).date || "";
-      const base = baseline.get(pi.stock_item_id);
-      if (base && poDate && poDate <= base.date) continue;
+      if (usePeriod) {
+        if (!poDate) continue;
+        if (poDate < periodFrom!) continue;
+        if (periodTo && poDate > periodTo) continue;
+      } else {
+        const base = baseline.get(pi.stock_item_id);
+        if (base && poDate && poDate <= base.date) continue;
+      }
       map.set(pi.stock_item_id, (map.get(pi.stock_item_id) ?? 0) + Number(pi.quantity));
     }
 
     return map;
-  }, [locationId, locationType, departmentId, asOfDate, stocktakes, purchaseItems]);
+  }, [locationId, locationType, departmentId, asOfDate, periodFrom, periodTo, stocktakes, purchaseItems]);
+
 
   const getProductionAvailable = (stockItemId: string): number => {
     return productionAvailableMap.get(stockItemId) ?? 0;

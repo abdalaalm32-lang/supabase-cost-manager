@@ -59,6 +59,8 @@ export const ProductionDetailPage: React.FC = () => {
   const [status, setStatus] = useState("مسودة");
   const [recordNumber, setRecordNumber] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [periodFrom, setPeriodFrom] = useState<string>("");
+  const [periodTo, setPeriodTo] = useState<string>("");
   const [productionNotes, setProductionNotes] = useState("");
 
   // Modal
@@ -123,10 +125,20 @@ export const ProductionDetailPage: React.FC = () => {
     enabled: !!companyId,
   });
 
-  // Production "available balance" = latest stocktake on/before production date
-  // + ALL purchases after that stocktake (no upper date cutoff).
-  const { getProductionAvailable } = useLocationStock(locationId || null, locationType, selectedDept !== "all" ? selectedDept : null, date || null);
+  // Production "available balance":
+  //  - If period (from/to) provided → baseline = latest stocktake strictly before "from"
+  //    + purchases within [from, to]. Useful for full-month production with a mid-period stocktake.
+  //  - Else → latest stocktake on/before production date + all purchases after that stocktake.
+  const { getProductionAvailable } = useLocationStock(
+    locationId || null,
+    locationType,
+    selectedDept !== "all" ? selectedDept : null,
+    date || null,
+    periodFrom || null,
+    periodTo || null,
+  );
   const getLocationStock = getProductionAvailable;
+
 
   // Load existing record
   const { data: existingRecord } = useQuery({
@@ -554,6 +566,34 @@ export const ProductionDetailPage: React.FC = () => {
               <label className="text-xs text-muted-foreground mb-1 block">التاريخ</label>
               <Input type="date" value={date} onChange={e => setDate(e.target.value)} disabled={isLocked} />
             </div>
+
+            {/* Optional production period (for accurate balance when a mid-period stocktake exists) */}
+            <div className="rounded-md border border-dashed border-border/60 p-2 space-y-2">
+              <div className="text-xs text-muted-foreground">
+                فترة الإنتاج (اختيارية) — استخدمها لما يكون فيه جرد نص الفترة وعايز تحسب شهر كامل بدقة.
+                لو فاضية، يتم استخدام آخر جرد قبل تاريخ العملية + كل المشتريات بعده.
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] text-muted-foreground mb-1 block">من</label>
+                  <Input type="date" value={periodFrom} onChange={e => setPeriodFrom(e.target.value)} disabled={isLocked} className="h-8 text-xs" />
+                </div>
+                <div>
+                  <label className="text-[10px] text-muted-foreground mb-1 block">إلى</label>
+                  <Input type="date" value={periodTo} onChange={e => setPeriodTo(e.target.value)} disabled={isLocked} className="h-8 text-xs" />
+                </div>
+              </div>
+              {(periodFrom || periodTo) && !isLocked && (
+                <button
+                  type="button"
+                  onClick={() => { setPeriodFrom(""); setPeriodTo(""); }}
+                  className="text-[10px] text-muted-foreground hover:text-foreground underline"
+                >
+                  مسح الفترة
+                </button>
+              )}
+            </div>
+
 
             {/* Location */}
             <div>

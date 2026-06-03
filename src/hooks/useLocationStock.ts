@@ -24,8 +24,7 @@ export function useLocationStock(
       const { data, error } = await supabase
         .from("purchase_items")
         .select("stock_item_id, quantity, purchase_orders!inner(id, status, date, branch_id, warehouse_id, company_id, department_id)")
-        .eq("purchase_orders.company_id", companyId!)
-        .eq("purchase_orders.status", "مكتمل");
+        .eq("purchase_orders.company_id", companyId!);
       if (error) throw error;
       return data as any[];
     },
@@ -236,6 +235,7 @@ export function useLocationStock(
     // Purchases IN
     for (const pi of purchaseItems) {
       const po = pi.purchase_orders;
+      if (po.status !== "مكتمل") continue;
       if (!inDate(po)) continue;
       if (!match(po.branch_id, po.warehouse_id)) continue;
       if (departmentId && po.department_id !== departmentId) continue;
@@ -366,6 +366,7 @@ export function useLocationStock(
     // Items without a baseline stocktake include all completed purchases.
     for (const pi of purchaseItems) {
       const po = pi.purchase_orders;
+      if (!["مكتمل", "مؤرشف"].includes(po.status)) continue;
       if (locationType === "branch" ? po.branch_id !== locationId : po.warehouse_id !== locationId) continue;
       if (!pi.stock_item_id) continue;
       const poDate = (po as any).date || "";

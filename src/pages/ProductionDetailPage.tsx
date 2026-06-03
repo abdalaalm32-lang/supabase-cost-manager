@@ -59,6 +59,8 @@ export const ProductionDetailPage: React.FC = () => {
   const [status, setStatus] = useState("مسودة");
   const [recordNumber, setRecordNumber] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [periodFrom, setPeriodFrom] = useState<string>("");
+  const [periodTo, setPeriodTo] = useState<string>("");
   const [productionNotes, setProductionNotes] = useState("");
 
   // Modal

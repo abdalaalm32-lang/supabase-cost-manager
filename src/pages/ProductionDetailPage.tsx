@@ -123,9 +123,10 @@ export const ProductionDetailPage: React.FC = () => {
     enabled: !!companyId,
   });
 
-  // Production "available balance" = Real stock as-of production date
-  // (opening + purchases + production in − production out − waste − transfers ± POS)
-  const { getLocationStock } = useLocationStock(locationId || null, locationType, selectedDept !== "all" ? selectedDept : null, date || null);
+  // Production "available balance" = latest stocktake on/before production date
+  // + ALL purchases after that stocktake (no upper date cutoff).
+  const { getProductionAvailable } = useLocationStock(locationId || null, locationType, selectedDept !== "all" ? selectedDept : null, date || null);
+  const getLocationStock = getProductionAvailable;
 
   // Load existing record
   const { data: existingRecord } = useQuery({

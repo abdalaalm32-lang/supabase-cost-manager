@@ -15,6 +15,8 @@ export function useLocationStock(
   asOfDate?: string | null,
   periodFrom?: string | null,
   periodTo?: string | null,
+  transferAsOfDate?: string | null,
+  excludeTransferId?: string | null,
 ) {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;

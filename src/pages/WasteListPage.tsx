@@ -162,6 +162,8 @@ export const WasteListPage: React.FC = () => {
       return;
     }
     queryClient.invalidateQueries({ queryKey: ["waste-records"] });
+    queryClient.invalidateQueries({ queryKey: ["waste-data-costing"] });
+    queryClient.invalidateQueries({ queryKey: ["pnl-waste"] });
     toast({ title: "تم أرشفة سجل الهالك بنجاح" });
   };
 
@@ -172,6 +174,8 @@ export const WasteListPage: React.FC = () => {
       return;
     }
     queryClient.invalidateQueries({ queryKey: ["waste-records"] });
+    queryClient.invalidateQueries({ queryKey: ["waste-data-costing"] });
+    queryClient.invalidateQueries({ queryKey: ["pnl-waste"] });
     toast({ title: "تم إلغاء أرشفة سجل الهالك بنجاح" });
   };
 

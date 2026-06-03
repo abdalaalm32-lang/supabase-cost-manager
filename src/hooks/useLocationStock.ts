@@ -329,10 +329,10 @@ export function useLocationStock(
     return stockMap.get(stockItemId) || 0;
   };
 
-  // Production-specific available balance: opening-period stocktake counted_qty + purchases AFTER that opening date.
-  // Uses the EARLIEST completed stocktake per item as "جرد أول المدة" baseline,
-  // then adds only purchases dated on/after that opening date.
-  // Does NOT subtract production/waste/transfers/POS and ignores later stocktake adjustments.
+  // Production-specific available balance:
+  //   baseline = LATEST completed stocktake per item on/before production date (asOfDate),
+  //   + ALL purchases dated AFTER that baseline stocktake (no upper date cutoff).
+  // Does NOT subtract production/waste/transfers/POS and ignores stocktake adjustments other than baseline.
   const productionAvailableMap = useMemo(() => {
     if (!locationId) return new Map<string, number>();
     const map = new Map<string, number>();

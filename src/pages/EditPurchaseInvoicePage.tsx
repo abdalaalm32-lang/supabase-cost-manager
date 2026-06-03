@@ -221,6 +221,31 @@ export const EditPurchaseInvoicePage: React.FC = () => {
   const saveMutation = useMutation({
     mutationFn: async (status: string) => {
       const selectedSupplier = suppliers.find((s: any) => s.id === supplierId);
+
+      // Snapshot OLD purchase items + OLD branch BEFORE we replace anything
+      // (needed to correctly reverse the previous per-branch WAC contribution
+      //  so editing a purchase doesn't double-count its quantity)
+      const { data: oldPurchaseItems } = await supabase
+        .from("purchase_items")
+        .select("stock_item_id, quantity")
+        .eq("purchase_order_id", id!);
+      const oldQtyMap = new Map<string, number>();
+      for (const oi of oldPurchaseItems || []) {
+        if (oi.stock_item_id) {
+          oldQtyMap.set(
+            oi.stock_item_id,
+            (oldQtyMap.get(oi.stock_item_id) || 0) + (Number(oi.quantity) || 0),
+          );
+        }
+      }
+      const { data: oldOrder } = await supabase
+        .from("purchase_orders")
+        .select("branch_id, status")
+        .eq("id", id!)
+        .maybeSingle();
+      const oldBranchId = (oldOrder as any)?.branch_id || null;
+      const wasCompleted = (oldOrder as any)?.status === "مكتمل";
+
       const { error: orderErr } = await supabase.from("purchase_orders").update({
         supplier_id: supplierId,
         supplier_name: selectedSupplier?.name || "",
@@ -278,6 +303,28 @@ export const EditPurchaseInvoicePage: React.FC = () => {
               }).eq("id", item.stock_item_id);
 
               // PER-BRANCH avg cost
+              // FIRST: reverse the OLD purchase quantity from the previous branch row
+              // so the recomputed WAC below uses the pre-edit branch state.
+              if (wasCompleted && oldBranchId) {
+                const oldQty = oldQtyMap.get(item.stock_item_id) || 0;
+                if (oldQty > 0) {
+                  const { data: existingRow } = await supabase
+                    .from("stock_item_branch_costs")
+                    .select("id, current_stock")
+                    .eq("stock_item_id", item.stock_item_id)
+                    .eq("branch_id", oldBranchId)
+                    .maybeSingle();
+                  if (existingRow) {
+                    const newStock = Math.max((Number(existingRow.current_stock) || 0) - oldQty, 0);
+                    await supabase
+                      .from("stock_item_branch_costs")
+                      .update({ current_stock: newStock })
+                      .eq("id", existingRow.id);
+                  }
+                }
+              }
+
+              // THEN: apply the NEW purchase contribution to the (possibly different) branch
               if (receivingBranchId) {
                 try {
                   await applyBranchCostIn({

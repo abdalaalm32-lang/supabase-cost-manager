@@ -535,6 +535,12 @@ export const CostAnalysisPage: React.FC = () => {
       }
     }
 
+    const itemBelongsToSelectedDepartment = (stockItemId: string) => {
+      if (departmentFilter === "all") return true;
+      const allDepts = itemAllDepartments.get(stockItemId);
+      return !!allDepts && allDepts.has(departmentFilter);
+    };
+
     if (wasteData) {
       for (const wi of wasteData) {
         const wrDate = (wi as any).waste_records?.date;
@@ -544,8 +550,14 @@ export const CostAnalysisPage: React.FC = () => {
         if (!wrDate || !inDateRange(wrDate)) continue;
         if (branchFilter !== "all" && wrBranch !== branchFilter) continue;
         if (warehouseFilter !== "all" && wrWarehouse !== warehouseFilter) continue;
-        if (departmentFilter !== "all" && wrDept !== departmentFilter) continue;
         if (!wi.stock_item_id) continue;
+        if (departmentFilter !== "all") {
+          if (wrDept) {
+            if (wrDept !== departmentFilter) continue;
+          } else if (!itemBelongsToSelectedDepartment(wi.stock_item_id)) {
+            continue;
+          }
+        }
         const calc = map.get(wi.stock_item_id);
         if (calc) {
           calc.outQty += Number(wi.quantity);

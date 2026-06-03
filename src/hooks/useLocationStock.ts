@@ -19,14 +19,26 @@ export function useLocationStock(
   const enabled = !!companyId && !!locationId;
 
   const { data: purchaseItems = [] } = useQuery({
-    queryKey: ["loc-stock-purchases", companyId, "all-statuses-for-production"],
+    queryKey: ["loc-stock-purchases", companyId, "all-statuses-for-production-paginated"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("purchase_items")
-        .select("stock_item_id, quantity, purchase_orders!inner(id, status, date, branch_id, warehouse_id, company_id, department_id)")
-        .eq("purchase_orders.company_id", companyId!);
-      if (error) throw error;
-      return data as any[];
+      // Paginate to bypass Supabase's default 1000-row limit
+      const pageSize = 1000;
+      let from = 0;
+      const all: any[] = [];
+      // safety cap at 100k rows
+      while (from < 100000) {
+        const { data, error } = await supabase
+          .from("purchase_items")
+          .select("stock_item_id, quantity, purchase_orders!inner(id, status, date, branch_id, warehouse_id, company_id, department_id)")
+          .eq("purchase_orders.company_id", companyId!)
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        all.push(...data);
+        if (data.length < pageSize) break;
+        from += pageSize;
+      }
+      return all as any[];
     },
     enabled,
     staleTime: 30000,

@@ -448,6 +448,8 @@ export const WasteDetailPage: React.FC = () => {
 
     queryClient.invalidateQueries({ queryKey: ["waste-records"] });
     queryClient.invalidateQueries({ queryKey: ["waste-record", id] });
+    queryClient.invalidateQueries({ queryKey: ["waste-data-costing"] });
+    queryClient.invalidateQueries({ queryKey: ["pnl-waste"] });
     navigate("/waste");
   };
 

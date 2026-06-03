@@ -567,6 +567,34 @@ export const ProductionDetailPage: React.FC = () => {
               <Input type="date" value={date} onChange={e => setDate(e.target.value)} disabled={isLocked} />
             </div>
 
+            {/* Optional production period (for accurate balance when a mid-period stocktake exists) */}
+            <div className="rounded-md border border-dashed border-border/60 p-2 space-y-2">
+              <div className="text-xs text-muted-foreground">
+                فترة الإنتاج (اختيارية) — استخدمها لما يكون فيه جرد نص الفترة وعايز تحسب شهر كامل بدقة.
+                لو فاضية، يتم استخدام آخر جرد قبل تاريخ العملية + كل المشتريات بعده.
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] text-muted-foreground mb-1 block">من</label>
+                  <Input type="date" value={periodFrom} onChange={e => setPeriodFrom(e.target.value)} disabled={isLocked} className="h-8 text-xs" />
+                </div>
+                <div>
+                  <label className="text-[10px] text-muted-foreground mb-1 block">إلى</label>
+                  <Input type="date" value={periodTo} onChange={e => setPeriodTo(e.target.value)} disabled={isLocked} className="h-8 text-xs" />
+                </div>
+              </div>
+              {(periodFrom || periodTo) && !isLocked && (
+                <button
+                  type="button"
+                  onClick={() => { setPeriodFrom(""); setPeriodTo(""); }}
+                  className="text-[10px] text-muted-foreground hover:text-foreground underline"
+                >
+                  مسح الفترة
+                </button>
+              )}
+            </div>
+
+
             {/* Location */}
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">نوع الموقع</label>

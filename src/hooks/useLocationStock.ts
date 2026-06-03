@@ -417,5 +417,145 @@ export function useLocationStock(
     return productionAvailableMap.get(stockItemId) ?? 0;
   };
 
-  return { stockMap, getLocationStock, getProductionAvailable };
+  // ============================================================
+  // TRANSFER availability: balance at this location AS OF transferAsOfDate.
+  //   baseline = LATEST completed stocktake STRICTLY BEFORE transferAsOfDate
+  //   + all INs (purchases, production produced, transfers in) with date <= transferAsOfDate
+  //   - all OUTs (production ingredients, transfers out, waste, POS) with date <= transferAsOfDate
+  //   Skips the transfer currently being edited (excludeTransferId).
+  // Falls back to stockMap behavior when transferAsOfDate is not provided.
+  // ============================================================
+  const transferAvailableMap = useMemo(() => {
+    if (!locationId || !transferAsOfDate) return null as Map<string, number> | null;
+    const cutoff = transferAsOfDate; // YYYY-MM-DD compared lexicographically against record dates
+
+    const match = (branchId: string | null, warehouseId: string | null) =>
+      locationType === "branch" ? branchId === locationId : warehouseId === locationId;
+
+    // Baseline: latest stocktake strictly before cutoff
+    const baseline = new Map<string, { qty: number; date: string }>();
+    for (const st of stocktakes) {
+      if (!match(st.branch_id, st.warehouse_id)) continue;
+      if (departmentId && st.department_id && st.department_id !== departmentId) continue;
+      const stDate = (st.date as string) || (st.created_at as string) || "";
+      if (!stDate || stDate >= cutoff) continue; // strictly before
+      for (const si of (st.stocktake_items || [])) {
+        if (!si.stock_item_id) continue;
+        const existing = baseline.get(si.stock_item_id);
+        if (!existing || stDate > existing.date) {
+          baseline.set(si.stock_item_id, { qty: Number(si.counted_qty) || 0, date: stDate });
+        }
+      }
+    }
+
+    const map = new Map<string, number>();
+    for (const [id, v] of baseline) map.set(id, v.qty);
+
+    const afterBaseline = (stockItemId: string | null, recDate: string): boolean => {
+      if (!stockItemId) return false;
+      const base = baseline.get(stockItemId);
+      if (!base) return true;
+      if (!recDate) return false;
+      return recDate > base.date;
+    };
+    const within = (recDate: string) => !!recDate && recDate <= cutoff;
+    const add = (id: string | null, q: number) => { if (id) map.set(id, (map.get(id) ?? 0) + q); };
+    const sub = (id: string | null, q: number) => { if (id) map.set(id, (map.get(id) ?? 0) - q); };
+
+    // Purchases IN
+    for (const pi of purchaseItems) {
+      const po = pi.purchase_orders;
+      if (po.status !== "مكتمل") continue;
+      if (!match(po.branch_id, po.warehouse_id)) continue;
+      if (departmentId && po.department_id && po.department_id !== departmentId) continue;
+      const d = (po.date as string) || (po.created_at as string) || "";
+      if (!within(d)) continue;
+      if (!afterBaseline(pi.stock_item_id, d)) continue;
+      add(pi.stock_item_id, Number(pi.quantity));
+    }
+
+    // Production produced IN
+    for (const pr of productionRecords) {
+      if (!match(pr.branch_id, pr.warehouse_id)) continue;
+      if (departmentId && pr.department_id && pr.department_id !== departmentId) continue;
+      const d = (pr.date as string) || (pr.created_at as string) || "";
+      if (!within(d)) continue;
+      if (!afterBaseline(pr.product_id, d)) continue;
+      add(pr.product_id, Number(pr.produced_qty));
+    }
+
+    // Production ingredients OUT
+    for (const ing of productionIngredients) {
+      const pr = ing.production_records;
+      if (!match(pr.branch_id, pr.warehouse_id)) continue;
+      if (departmentId && pr.department_id && pr.department_id !== departmentId) continue;
+      const d = (pr.date as string) || (pr.created_at as string) || "";
+      if (!within(d)) continue;
+      if (!afterBaseline(ing.stock_item_id, d)) continue;
+      sub(ing.stock_item_id, Number(ing.required_qty));
+    }
+
+    // Transfers
+    for (const ti of transferItems) {
+      const t = ti.transfers;
+      if (excludeTransferId && t.id === excludeTransferId) continue;
+      const d = (t.date as string) || (t.created_at as string) || "";
+      if (!within(d)) continue;
+      if (t.source_id === locationId) {
+        if (!departmentId || t.source_department_id === departmentId) {
+          if (afterBaseline(ti.stock_item_id, d)) sub(ti.stock_item_id, Number(ti.quantity));
+        }
+      }
+      if (t.destination_id === locationId) {
+        if (!departmentId || t.destination_department_id === departmentId) {
+          if (afterBaseline(ti.stock_item_id, d)) add(ti.stock_item_id, Number(ti.quantity));
+        }
+      }
+    }
+
+    // Waste OUT
+    for (const wi of wasteItems) {
+      const wr = wi.waste_records;
+      if (!match(wr.branch_id, wr.warehouse_id)) continue;
+      if (departmentId && wr.department_id && wr.department_id !== departmentId) continue;
+      const d = (wr.date as string) || (wr.created_at as string) || "";
+      if (!within(d)) continue;
+      if (!afterBaseline(wi.stock_item_id, d)) continue;
+      sub(wi.stock_item_id, Number(wi.quantity));
+    }
+
+    // POS Sales OUT (branches only, via recipes)
+    if (locationType === "branch") {
+      const conversionMap = new Map<string, number>();
+      for (const si of stockItemsData) conversionMap.set(si.id, Number(si.conversion_factor) || 1);
+      const recipeMap = new Map<string, { stock_item_id: string; qty: number }[]>();
+      for (const r of recipes) {
+        recipeMap.set(r.menu_item_id, (r.recipe_ingredients || []).map((i: any) => ({
+          stock_item_id: i.stock_item_id, qty: Number(i.qty),
+        })));
+      }
+      for (const si of posSaleItems) {
+        const sale = si.pos_sales;
+        if (sale.branch_id !== locationId) continue;
+        const d = (sale.date as string) || (sale.created_at as string) || "";
+        if (!within(d)) continue;
+        const ings = recipeMap.get(si.pos_item_id);
+        if (!ings) continue;
+        for (const ing of ings) {
+          if (!afterBaseline(ing.stock_item_id, d)) continue;
+          const cf = conversionMap.get(ing.stock_item_id) || 1;
+          sub(ing.stock_item_id, (ing.qty / cf) * Number(si.quantity));
+        }
+      }
+    }
+
+    return map;
+  }, [locationId, locationType, departmentId, transferAsOfDate, excludeTransferId, stocktakes, purchaseItems, productionRecords, productionIngredients, transferItems, wasteItems, posSaleItems, recipes, stockItemsData]);
+
+  const getTransferAvailable = (stockItemId: string): number => {
+    if (transferAvailableMap) return transferAvailableMap.get(stockItemId) ?? 0;
+    return stockMap.get(stockItemId) ?? 0;
+  };
+
+  return { stockMap, getLocationStock, getProductionAvailable, getTransferAvailable };
 }

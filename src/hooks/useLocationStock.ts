@@ -337,44 +337,39 @@ export function useLocationStock(
     if (!locationId) return new Map<string, number>();
     const map = new Map<string, number>();
 
-    // Cutoff (asOfDate) — only include opening stocktake on/before cutoff and purchases on/before cutoff.
+    // Cutoff (asOfDate) — only used to pick baseline stocktake (latest on/before cutoff).
+    // Purchases are NOT capped by cutoff: we include ALL purchases dated after the baseline stocktake.
     const cutoff = asOfDate || null;
 
-    // Opening stock = EARLIEST completed stocktake per item at this location.
-    // Prefer records of type "جرد أول المدة" if present; otherwise fall back to the oldest record.
-    const opening = new Map<string, { qty: number; date: string; isOpening: boolean }>();
+    // Baseline = LATEST completed stocktake per item on/before cutoff at this location.
+    const baseline = new Map<string, { qty: number; date: string }>();
     for (const st of stocktakes) {
       if (locationType === "branch" ? st.branch_id !== locationId : st.warehouse_id !== locationId) continue;
       if (departmentId && st.department_id && st.department_id !== departmentId) continue;
       const stDate = st.date || st.created_at || "";
       if (cutoff && stDate && stDate > cutoff) continue;
-      const isOpening = st.type === "جرد أول المدة";
       for (const si of (st.stocktake_items || [])) {
         if (!si.stock_item_id) continue;
-        const existing = opening.get(si.stock_item_id);
-        const shouldReplace =
-          !existing ||
-          (isOpening && !existing.isOpening) ||
-          (isOpening === existing.isOpening && stDate < existing.date);
-        if (shouldReplace) {
-          opening.set(si.stock_item_id, { qty: Number(si.counted_qty), date: stDate, isOpening });
+        const existing = baseline.get(si.stock_item_id);
+        if (!existing || stDate > existing.date) {
+          baseline.set(si.stock_item_id, { qty: Number(si.counted_qty), date: stDate });
         }
       }
     }
-    for (const [id, v] of opening) {
+    for (const [id, v] of baseline) {
       map.set(id, (map.get(id) || 0) + v.qty);
     }
 
-    // Add purchases IN dated on/after the opening stocktake date for that item, and on/before cutoff.
+    // Add ALL purchases IN dated strictly after the baseline stocktake date (no upper cutoff).
+    // Items without a baseline stocktake include all completed purchases.
     for (const pi of purchaseItems) {
       const po = pi.purchase_orders;
       if (locationType === "branch" ? po.branch_id !== locationId : po.warehouse_id !== locationId) continue;
       if (departmentId && po.department_id !== departmentId) continue;
       if (!pi.stock_item_id) continue;
       const poDate = (po as any).date || "";
-      if (cutoff && poDate && poDate > cutoff) continue;
-      const op = opening.get(pi.stock_item_id);
-      if (op && poDate && poDate < op.date) continue;
+      const base = baseline.get(pi.stock_item_id);
+      if (base && poDate && poDate <= base.date) continue;
       map.set(pi.stock_item_id, (map.get(pi.stock_item_id) || 0) + Number(pi.quantity));
     }
 

@@ -331,7 +331,7 @@ export function useLocationStock(
 
   // Production-specific available balance:
   //   baseline = LATEST completed stocktake per item on/before production date (asOfDate),
-  //   + ALL purchases dated AFTER that baseline stocktake (no upper date cutoff).
+  //   + ALL purchases at the same location dated AFTER that baseline stocktake (no upper date cutoff).
   // Does NOT subtract production/waste/transfers/POS and ignores stocktake adjustments other than baseline.
   const productionAvailableMap = useMemo(() => {
     if (!locationId) return new Map<string, number>();
@@ -360,12 +360,13 @@ export function useLocationStock(
       map.set(id, (map.get(id) || 0) + v.qty);
     }
 
-    // Add ALL purchases IN dated strictly after the baseline stocktake date (no upper cutoff).
+    // Add ALL purchases IN for the same branch/warehouse dated strictly after the baseline
+    // stocktake date (no upper cutoff). Department is intentionally not used here because
+    // production availability requested by the user is: latest stocktake + all purchases after it.
     // Items without a baseline stocktake include all completed purchases.
     for (const pi of purchaseItems) {
       const po = pi.purchase_orders;
       if (locationType === "branch" ? po.branch_id !== locationId : po.warehouse_id !== locationId) continue;
-      if (departmentId && po.department_id !== departmentId) continue;
       if (!pi.stock_item_id) continue;
       const poDate = (po as any).date || "";
       const base = baseline.get(pi.stock_item_id);

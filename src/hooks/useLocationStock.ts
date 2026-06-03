@@ -19,7 +19,7 @@ export function useLocationStock(
   const enabled = !!companyId && !!locationId;
 
   const { data: purchaseItems = [] } = useQuery({
-    queryKey: ["loc-stock-purchases", companyId],
+    queryKey: ["loc-stock-purchases", companyId, "all-statuses-for-production"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("purchase_items")
@@ -357,7 +357,7 @@ export function useLocationStock(
       }
     }
     for (const [id, v] of baseline) {
-      map.set(id, (map.get(id) || 0) + v.qty);
+      map.set(id, (map.get(id) ?? 0) + v.qty);
     }
 
     // Add ALL purchases IN for the same branch/warehouse dated strictly after the baseline
@@ -372,14 +372,14 @@ export function useLocationStock(
       const poDate = (po as any).date || "";
       const base = baseline.get(pi.stock_item_id);
       if (base && poDate && poDate <= base.date) continue;
-      map.set(pi.stock_item_id, (map.get(pi.stock_item_id) || 0) + Number(pi.quantity));
+      map.set(pi.stock_item_id, (map.get(pi.stock_item_id) ?? 0) + Number(pi.quantity));
     }
 
     return map;
   }, [locationId, locationType, departmentId, asOfDate, stocktakes, purchaseItems]);
 
   const getProductionAvailable = (stockItemId: string): number => {
-    return productionAvailableMap.get(stockItemId) || 0;
+    return productionAvailableMap.get(stockItemId) ?? 0;
   };
 
   return { stockMap, getLocationStock, getProductionAvailable };

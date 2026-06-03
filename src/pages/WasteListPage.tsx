@@ -203,6 +203,8 @@ export const WasteListPage: React.FC = () => {
       await supabase.from("waste_records").delete().eq("id", deleteRecord.id);
       queryClient.invalidateQueries({ queryKey: ["waste-records"] });
       queryClient.invalidateQueries({ queryKey: ["stock-items"] });
+      queryClient.invalidateQueries({ queryKey: ["waste-data-costing"] });
+      queryClient.invalidateQueries({ queryKey: ["pnl-waste"] });
       toast({ title: "تم حذف سجل الهالك بنجاح" });
     } catch (err: any) {
       toast({ title: "خطأ", description: err.message, variant: "destructive" });

@@ -13,6 +13,8 @@ export function useLocationStock(
   locationType: "branch" | "warehouse",
   departmentId?: string | null,
   asOfDate?: string | null,
+  periodFrom?: string | null,
+  periodTo?: string | null,
 ) {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;

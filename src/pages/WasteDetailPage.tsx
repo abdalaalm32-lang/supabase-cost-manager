@@ -448,6 +448,8 @@ export const WasteDetailPage: React.FC = () => {
 
     queryClient.invalidateQueries({ queryKey: ["waste-records"] });
     queryClient.invalidateQueries({ queryKey: ["waste-record", id] });
+    queryClient.invalidateQueries({ queryKey: ["waste-data-costing"] });
+    queryClient.invalidateQueries({ queryKey: ["pnl-waste"] });
     navigate("/waste");
   };
 
@@ -455,6 +457,8 @@ export const WasteDetailPage: React.FC = () => {
     await supabase.from("waste_records").update({ status: "مؤرشف" }).eq("id", id!);
     queryClient.invalidateQueries({ queryKey: ["waste-records"] });
     queryClient.invalidateQueries({ queryKey: ["waste-record", id] });
+    queryClient.invalidateQueries({ queryKey: ["waste-data-costing"] });
+    queryClient.invalidateQueries({ queryKey: ["pnl-waste"] });
     toast({ title: "تم الأرشفة بنجاح" });
     navigate("/waste");
   };

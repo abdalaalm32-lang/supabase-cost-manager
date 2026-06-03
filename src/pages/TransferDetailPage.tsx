@@ -189,6 +189,18 @@ export const TransferDetailPage: React.FC = () => {
     }
   }, [existingRecord, allStockItems]);
 
+  // When date or source location/department changes on a draft, refresh
+  // each line's displayed available stock to reflect the new as-of date.
+  useEffect(() => {
+    if (!isNew && status !== "مسودة") return; // locked records keep their snapshot
+    if (!sourceId || !date) return;
+    setItems(prev => prev.map(it => ({
+      ...it,
+      current_stock: it.stock_item_id ? getSourceStock(it.stock_item_id) : it.current_stock,
+    })));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date, sourceId, sourceDepartmentId, getSourceStock]);
+
   // Materials modal
   const existingStockIds = useMemo(() => new Set(items.map(i => i.stock_item_id)), [items]);
 

@@ -135,7 +135,16 @@ export const TransferDetailPage: React.FC = () => {
     return "branch";
   }, [destinationId, warehouses]);
 
-  const { getLocationStock: getSourceStock } = useLocationStock(sourceId || null, sourceLocationType, sourceDepartmentId || null);
+  const { getTransferAvailable: getSourceStock } = useLocationStock(
+    sourceId || null,
+    sourceLocationType,
+    sourceDepartmentId || null,
+    null,
+    null,
+    null,
+    date || null,
+    !isNew ? (id || null) : null,
+  );
 
   // Load existing record
   const { data: existingRecord } = useQuery({

@@ -563,28 +563,82 @@ export const MenuEngineeringPage: React.FC = () => {
               { key: "التصنيف", label: "التصنيف" },
               { key: "القرار", label: "القرار" },
             ];
-            const rows = engineeringData.map((r, idx) => ({
-              "#": idx + 1,
-              "الصنف": r.name,
-              "كمية المبيعات": r.qty,
-              "سعر البيع": r.price.toFixed(2),
-              "التكلفة المباشرة": r.directCost.toFixed(2),
-              "إجمالي المبيعات": r.totalSales.toFixed(2),
-              "إجمالي تكلفة المبيعات": r.totalCostSales.toFixed(2),
-              "النسبة للتكلفة %": r.costRatio.toFixed(1),
-              "صافي ربح الصنف": r.netProfit.toFixed(2),
-              "إجمالي الربح": r.totalProfit.toFixed(2),
-              "نسبة الربح %": r.profitRatio.toFixed(1),
-              "% مبيعات الصنف": r.salesSharePct.toFixed(1),
-              "الربحية": r.profitLevel,
-              "الشعبية": r.popularityLevel,
-              "التصنيف": r.strategic,
-              "القرار": r.decision,
-            }));
-            // Add totals row
-            rows.push({
-              "#": "" as any,
-              "الصنف": "الإجمالي",
+            let theadHTML = "<tr>";
+            for (const col of cols) {
+              theadHTML += `<th style="border:1px solid #000;padding:3px 4px;font-size:7px;text-align:center;white-space:nowrap;">${col.label}</th>`;
+            }
+            theadHTML += "</tr>";
+
+            const colCount = cols.length;
+            let tbodyHTML = "";
+            let runningIdx = 0;
+            groupedEngineeringData.forEach((grp) => {
+              const groupSubtotal = {
+                qty: grp.rows.reduce((s, r) => s + r.qty, 0),
+                totalSales: grp.rows.reduce((s, r) => s + r.totalSales, 0),
+                totalCostSales: grp.rows.reduce((s, r) => s + r.totalCostSales, 0),
+                totalProfit: grp.rows.reduce((s, r) => s + r.totalProfit, 0),
+              };
+              // Group header row
+              tbodyHTML += `<tr><td colspan="${colCount}" style="border:1px solid #000;padding:4px 6px;font-size:9px;text-align:right;font-weight:bold;background:#d9e7ff;">📁 ${grp.categoryCode ? `[${grp.categoryCode}] ` : ""}${grp.categoryName} &nbsp;(${grp.rows.length} صنف)</td></tr>`;
+              // Item rows
+              grp.rows.forEach((r) => {
+                runningIdx++;
+                const cells: Record<string, any> = {
+                  "#": runningIdx,
+                  "الصنف": r.itemCode ? `${r.itemCode} - ${r.name}` : r.name,
+                  "كمية المبيعات": r.qty,
+                  "سعر البيع": r.price.toFixed(2),
+                  "التكلفة المباشرة": r.directCost.toFixed(2),
+                  "إجمالي المبيعات": r.totalSales.toFixed(2),
+                  "إجمالي تكلفة المبيعات": r.totalCostSales.toFixed(2),
+                  "النسبة للتكلفة %": r.costRatio.toFixed(1),
+                  "صافي ربح الصنف": r.netProfit.toFixed(2),
+                  "إجمالي الربح": r.totalProfit.toFixed(2),
+                  "نسبة الربح %": r.profitRatio.toFixed(1),
+                  "% مبيعات الصنف": r.salesSharePct.toFixed(1),
+                  "الربحية": r.profitLevel,
+                  "الشعبية": r.popularityLevel,
+                  "التصنيف": r.strategic,
+                  "القرار": r.decision,
+                };
+                tbodyHTML += "<tr>";
+                for (const col of cols) {
+                  const val = cells[col.key] !== null && cells[col.key] !== undefined ? String(cells[col.key]) : "—";
+                  tbodyHTML += `<td style="border:1px solid #000;padding:2px 3px;font-size:7px;text-align:center;">${val}</td>`;
+                }
+                tbodyHTML += "</tr>";
+              });
+              // Group subtotal row
+              const subCells: Record<string, any> = {
+                "#": "",
+                "الصنف": `إجمالي ${grp.categoryName}`,
+                "كمية المبيعات": groupSubtotal.qty,
+                "سعر البيع": "",
+                "التكلفة المباشرة": "",
+                "إجمالي المبيعات": groupSubtotal.totalSales.toFixed(2),
+                "إجمالي تكلفة المبيعات": groupSubtotal.totalCostSales.toFixed(2),
+                "النسبة للتكلفة %": "",
+                "صافي ربح الصنف": "",
+                "إجمالي الربح": groupSubtotal.totalProfit.toFixed(2),
+                "نسبة الربح %": "",
+                "% مبيعات الصنف": "",
+                "الربحية": "",
+                "الشعبية": "",
+                "التصنيف": "",
+                "القرار": "",
+              };
+              tbodyHTML += "<tr>";
+              for (const col of cols) {
+                const val = subCells[col.key] !== "" ? String(subCells[col.key]) : "—";
+                tbodyHTML += `<td style="border:1px solid #000;padding:2px 3px;font-size:7px;text-align:center;font-weight:bold;background:#f0f4ff;">${val}</td>`;
+              }
+              tbodyHTML += "</tr>";
+            });
+            // Grand total row
+            const grandCells: Record<string, any> = {
+              "#": "",
+              "الصنف": "الإجمالي العام",
               "كمية المبيعات": totals.qty,
               "سعر البيع": "",
               "التكلفة المباشرة": "",
@@ -599,24 +653,14 @@ export const MenuEngineeringPage: React.FC = () => {
               "الشعبية": "",
               "التصنيف": "",
               "القرار": "",
-            } as any);
-
-            let theadHTML = "<tr>";
+            };
+            tbodyHTML += "<tr>";
             for (const col of cols) {
-              theadHTML += `<th style="border:1px solid #000;padding:3px 4px;font-size:7px;text-align:center;white-space:nowrap;">${col.label}</th>`;
+              const val = grandCells[col.key] !== "" ? String(grandCells[col.key]) : "—";
+              tbodyHTML += `<td style="border:1px solid #000;padding:3px 4px;font-size:8px;text-align:center;font-weight:bold;background:#ffe9b3;">${val}</td>`;
             }
-            theadHTML += "</tr>";
+            tbodyHTML += "</tr>";
 
-            let tbodyHTML = "";
-            rows.forEach((row, i) => {
-              const isTotal = i === rows.length - 1;
-              tbodyHTML += "<tr>";
-              for (const col of cols) {
-                const val = (row as any)[col.key] !== null && (row as any)[col.key] !== undefined ? String((row as any)[col.key]) : "—";
-                tbodyHTML += `<td style="border:1px solid #000;padding:2px 3px;font-size:7px;text-align:center;${isTotal ? "font-weight:bold;background:#f0f0f0;" : ""}">${val}</td>`;
-              }
-              tbodyHTML += "</tr>";
-            });
 
             const printHTML = `<!DOCTYPE html>
 <html dir="rtl" lang="ar">

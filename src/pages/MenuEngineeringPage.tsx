@@ -161,7 +161,7 @@ export const MenuEngineeringPage: React.FC = () => {
       while (true) {
         let q = supabase
           .from("pos_sales")
-          .select("*, pos_sale_items(*, pos_items(name))")
+          .select("*, pos_sale_items(*, pos_items(id, name, price, branch_id, menu_engineering_class))")
           .eq("company_id", companyId!)
           .eq("status", "مكتمل");
         if (selectedBranch && selectedBranch !== "all") q = q.eq("branch_id", selectedBranch);
@@ -253,17 +253,19 @@ export const MenuEngineeringPage: React.FC = () => {
   // This ensures sales referencing items from another branch, or items that no longer exist in
   // this branch's pos_items list, are still counted in the total.
   const salesAggByName = useMemo(() => {
-    const map: Record<string, { qty: number; revenue: number }> = {};
+    const map: Record<string, { qty: number; revenue: number; sourceItem?: any }> = {};
     sales.forEach((sale: any) => {
       (sale.pos_sale_items || []).forEach((si: any) => {
         const name = normName(si?.pos_items?.name);
         if (!name) return;
-        const qty = Number(si.quantity) || 0;
-        const unitPrice = Number(si.unit_price) || 0;
-        const lineTotal = Number(si.total) || qty * unitPrice;
-        if (!map[name]) map[name] = { qty: 0, revenue: 0 };
+        const qty = Number(si.quantity ?? 0);
+        const unitPrice = Number(si.unit_price ?? 0);
+        const storedLineTotal = Number(si.total ?? NaN);
+        const lineTotal = Number.isFinite(storedLineTotal) ? storedLineTotal : qty * unitPrice;
+        if (!map[name]) map[name] = { qty: 0, revenue: 0, sourceItem: si.pos_items };
         map[name].qty += qty;
         map[name].revenue += lineTotal;
+        if (!map[name].sourceItem && si.pos_items) map[name].sourceItem = si.pos_items;
       });
     });
     return map;

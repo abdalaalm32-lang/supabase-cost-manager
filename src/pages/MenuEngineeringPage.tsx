@@ -40,6 +40,10 @@ type Strategic = "Stars" | "Puzzles" | "Plow Horses" | "Dogs";
 interface EngRow {
   id: string;
   name: string;
+  itemCode: string;
+  categoryId: string | null;
+  categoryCode: string;
+  categoryName: string;
   qty: number;
   price: number;
   directCost: number;

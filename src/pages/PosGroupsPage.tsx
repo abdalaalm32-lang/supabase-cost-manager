@@ -97,7 +97,7 @@ export const PosGroupsPage: React.FC = () => {
       }
 
       for (const bId of allBranchIds) {
-        const { data: codeData, error: codeError } = await supabase.rpc("generate_category_code", { p_company_id: companyId! });
+        const { data: codeData, error: codeError } = await supabase.rpc("generate_category_code", { p_company_id: companyId!, p_branch_id: bId });
         if (codeError) throw codeError;
         const { error } = await supabase.from("categories").insert({
           company_id: companyId!,

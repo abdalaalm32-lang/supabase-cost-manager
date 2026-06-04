@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -87,28 +88,27 @@ export const PosItemSalesPage: React.FC = () => {
   // Sales (filtered by date/branch/shift/cashier at server when possible)
   const { data: salesRaw, isLoading } = useQuery({
     queryKey: ["item-sales-data", companyId, branchFilter, shiftFilter, cashierFilter, dateFrom?.toISOString(), dateTo?.toISOString()],
-    queryFn: async () => {
-      let q = supabase
-        .from("pos_sales")
-        .select("id, branch_id, shift_id, assigned_cashier_id, created_at, status")
-        .eq("company_id", companyId!)
-        .eq("status", "مكتمل")
-        .order("created_at", { ascending: false })
-        .limit(5000);
-      if (branchFilter !== "all") q = q.eq("branch_id", branchFilter);
-      if (shiftFilter !== "all") q = q.eq("shift_id", shiftFilter);
-      if (cashierFilter !== "all") q = q.eq("assigned_cashier_id", cashierFilter);
-      if (dateFrom) {
-        const f = new Date(dateFrom); f.setHours(0, 0, 0, 0);
-        q = q.gte("created_at", f.toISOString());
-      }
-      if (dateTo) {
-        const t = new Date(dateTo); t.setHours(23, 59, 59, 999);
-        q = q.lte("created_at", t.toISOString());
-      }
-      const { data } = await q;
-      return data || [];
-    },
+    queryFn: async () =>
+      fetchAllRows<any>((from, to) => {
+        let q = supabase
+          .from("pos_sales")
+          .select("id, branch_id, shift_id, assigned_cashier_id, created_at, status")
+          .eq("company_id", companyId!)
+          .eq("status", "مكتمل")
+          .order("created_at", { ascending: false });
+        if (branchFilter !== "all") q = q.eq("branch_id", branchFilter);
+        if (shiftFilter !== "all") q = q.eq("shift_id", shiftFilter);
+        if (cashierFilter !== "all") q = q.eq("assigned_cashier_id", cashierFilter);
+        if (dateFrom) {
+          const f = new Date(dateFrom); f.setHours(0, 0, 0, 0);
+          q = q.gte("created_at", f.toISOString());
+        }
+        if (dateTo) {
+          const t = new Date(dateTo); t.setHours(23, 59, 59, 999);
+          q = q.lte("created_at", t.toISOString());
+        }
+        return q.range(from, to);
+      }),
     enabled: !!companyId,
   });
 
@@ -124,11 +124,14 @@ export const PosItemSalesPage: React.FC = () => {
       for (let i = 0; i < saleIds.length; i += 200) chunks.push(saleIds.slice(i, i + 200));
       const all: any[] = [];
       for (const chunk of chunks) {
-        const { data } = await supabase
-          .from("pos_sale_items")
-          .select("id, sale_id, pos_item_id, quantity, unit_price, total, pos_items:pos_item_id(id, name, category, category_id, categories:category_id(name))")
-          .in("sale_id", chunk);
-        if (data) all.push(...data);
+        const rows = await fetchAllRows<any>((from, to) =>
+          supabase
+            .from("pos_sale_items")
+            .select("id, sale_id, pos_item_id, quantity, unit_price, total, pos_items:pos_item_id(id, name, category, category_id, categories:category_id(name))")
+            .in("sale_id", chunk)
+            .order("id").range(from, to)
+        );
+        all.push(...rows);
       }
       return all;
     },

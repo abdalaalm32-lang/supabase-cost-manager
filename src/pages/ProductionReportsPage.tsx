@@ -4,6 +4,7 @@ import { PrintButton } from "@/components/PrintButton";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,31 +44,24 @@ export const ProductionReportsPage: React.FC = () => {
 
   const { data: productionRecords = [], isLoading } = useQuery({
     queryKey: ["production-records-report", companyId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("production_records")
-        .select("*")
-        .eq("status", "مكتمل")
-        .order("date", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
+    queryFn: async () =>
+      fetchAllRows<any>((from, to) =>
+        supabase.from("production_records").select("*").eq("status", "مكتمل")
+          .order("date", { ascending: false }).range(from, to)
+      ),
     enabled: !!companyId,
   });
 
   const { data: stockItems = [] } = useQuery({
     queryKey: ["stock-items-prod-report", companyId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("stock_items")
-        .select("*, inventory_categories:category_id(id, name)")
-        .eq("active", true)
-        .order("name");
-      if (error) throw error;
-      return data;
-    },
+    queryFn: async () =>
+      fetchAllRows<any>((from, to) =>
+        supabase.from("stock_items").select("*, inventory_categories:category_id(id, name)")
+          .eq("active", true).order("name").range(from, to)
+      ),
     enabled: !!companyId,
   });
+
 
   const { data: branches = [] } = useQuery({
     queryKey: ["branches-prod-report", companyId],

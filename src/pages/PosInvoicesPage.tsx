@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -80,15 +81,15 @@ export const PosInvoicesPage: React.FC = () => {
   // Fetch sales
   const { data: sales } = useQuery({
     queryKey: ["pos-sales", companyId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("pos_sales")
-        .select("*, branches:branch_id(name)")
-        .eq("company_id", companyId!)
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
+    queryFn: async () =>
+      fetchAllRows<any>((from, to) =>
+        supabase
+          .from("pos_sales")
+          .select("*, branches:branch_id(name)")
+          .eq("company_id", companyId!)
+          .order("created_at", { ascending: false })
+          .range(from, to)
+      ),
     enabled: !!companyId,
   });
 

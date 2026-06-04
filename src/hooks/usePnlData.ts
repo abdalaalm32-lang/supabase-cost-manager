@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 
 export interface CategoryCogs {
   category: string;
@@ -48,18 +49,18 @@ export function usePnlData(
   // 1. Sales
   const { data: sales, isLoading: l1 } = useQuery({
     queryKey: ["pnl-sales", companyId, dateFrom, dateTo, branchId],
-    queryFn: async () => {
-      let q = supabase
-        .from("pos_sales")
-        .select("id, total_amount, tax_amount, discount_amount, discount_in_pnl, date, branch_id")
-        .eq("company_id", companyId!)
-        .eq("status", "مكتمل")
-        .gte("date", `${dateFrom}T00:00:00`)
-        .lte("date", `${dateTo}T23:59:59`);
-      if (branchId && branchId !== "all") q = q.eq("branch_id", branchId);
-      const { data } = await q;
-      return (data as any[]) || [];
-    },
+    queryFn: async () =>
+      fetchAllRows<any>((from, to) => {
+        let q = supabase
+          .from("pos_sales")
+          .select("id, total_amount, tax_amount, discount_amount, discount_in_pnl, date, branch_id")
+          .eq("company_id", companyId!)
+          .eq("status", "مكتمل")
+          .gte("date", `${dateFrom}T00:00:00`)
+          .lte("date", `${dateTo}T23:59:59`);
+        if (branchId && branchId !== "all") q = q.eq("branch_id", branchId);
+        return q.order("id").range(from, to);
+      }),
     enabled,
   });
 
@@ -71,11 +72,15 @@ export function usePnlData(
       if (!saleIds.length) return [];
       const all: any[] = [];
       for (let i = 0; i < saleIds.length; i += 50) {
-        const { data } = await supabase
-          .from("pos_sale_items")
-          .select("pos_item_id, quantity, total")
-          .in("sale_id", saleIds.slice(i, i + 50));
-        if (data) all.push(...data);
+        const slice = saleIds.slice(i, i + 50);
+        const rows = await fetchAllRows<any>((from, to) =>
+          supabase
+            .from("pos_sale_items")
+            .select("pos_item_id, quantity, total")
+            .in("sale_id", slice)
+            .order("id").range(from, to)
+        );
+        all.push(...rows);
       }
       return all;
     },
@@ -85,26 +90,22 @@ export function usePnlData(
   // 3. POS items
   const { data: posItems } = useQuery({
     queryKey: ["pnl-pos-items", companyId],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("pos_items")
-        .select("id, name, category")
-        .eq("company_id", companyId!);
-      return data || [];
-    },
+    queryFn: async () =>
+      fetchAllRows<any>((from, to) =>
+        supabase.from("pos_items").select("id, name, category")
+          .eq("company_id", companyId!).order("id").range(from, to)
+      ),
     enabled: !!companyId,
   });
 
   // 4. Recipes
   const { data: recipes } = useQuery({
     queryKey: ["pnl-recipes", companyId],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("recipes")
-        .select("id, menu_item_id")
-        .eq("company_id", companyId!);
-      return data || [];
-    },
+    queryFn: async () =>
+      fetchAllRows<any>((from, to) =>
+        supabase.from("recipes").select("id, menu_item_id")
+          .eq("company_id", companyId!).order("id").range(from, to)
+      ),
     enabled: !!companyId,
   });
 
@@ -116,11 +117,15 @@ export function usePnlData(
       if (!ids.length) return [];
       const all: any[] = [];
       for (let i = 0; i < ids.length; i += 50) {
-        const { data } = await supabase
-          .from("recipe_ingredients")
-          .select("recipe_id, stock_item_id, qty")
-          .in("recipe_id", ids.slice(i, i + 50));
-        if (data) all.push(...data);
+        const slice = ids.slice(i, i + 50);
+        const rows = await fetchAllRows<any>((from, to) =>
+          supabase
+            .from("recipe_ingredients")
+            .select("recipe_id, stock_item_id, qty")
+            .in("recipe_id", slice)
+            .order("id").range(from, to)
+        );
+        all.push(...rows);
       }
       return all;
     },
@@ -130,13 +135,11 @@ export function usePnlData(
   // 6. Stock items
   const { data: stockItems } = useQuery({
     queryKey: ["pnl-stock-items", companyId],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("stock_items")
-        .select("id, avg_cost, conversion_factor")
-        .eq("company_id", companyId!);
-      return data || [];
-    },
+    queryFn: async () =>
+      fetchAllRows<any>((from, to) =>
+        supabase.from("stock_items").select("id, avg_cost, conversion_factor")
+          .eq("company_id", companyId!).order("id").range(from, to)
+      ),
     enabled: !!companyId,
   });
 
@@ -146,12 +149,14 @@ export function usePnlData(
     queryKey: ["pnl-branch-costs", companyId, branchCostFilter],
     queryFn: async () => {
       if (!branchCostFilter) return [];
-      const { data } = await supabase
-        .from("stock_item_branch_costs")
-        .select("stock_item_id, avg_cost")
-        .eq("company_id", companyId!)
-        .eq("branch_id", branchCostFilter);
-      return (data as { stock_item_id: string; avg_cost: number }[]) || [];
+      return fetchAllRows<{ stock_item_id: string; avg_cost: number }>((from, to) =>
+        supabase
+          .from("stock_item_branch_costs")
+          .select("stock_item_id, avg_cost")
+          .eq("company_id", companyId!)
+          .eq("branch_id", branchCostFilter)
+          .order("stock_item_id").range(from, to)
+      );
     },
     enabled: !!companyId && !!branchCostFilter,
   });
@@ -174,18 +179,18 @@ export function usePnlData(
   // 8. Waste
   const { data: wasteRecords, isLoading: l3 } = useQuery({
     queryKey: ["pnl-waste", companyId, dateFrom, dateTo, branchId],
-    queryFn: async () => {
-      let q = supabase
-        .from("waste_records" as any)
-        .select("total_cost")
-        .eq("company_id", companyId!)
-        .eq("status", "مكتمل")
-        .gte("date", dateFrom)
-        .lte("date", dateTo);
-      if (branchId && branchId !== "all") q = q.eq("branch_id", branchId);
-      const { data } = await q;
-      return (data as any[]) || [];
-    },
+    queryFn: async () =>
+      fetchAllRows<any>((from, to) => {
+        let q = supabase
+          .from("waste_records" as any)
+          .select("total_cost")
+          .eq("company_id", companyId!)
+          .eq("status", "مكتمل")
+          .gte("date", dateFrom)
+          .lte("date", dateTo);
+        if (branchId && branchId !== "all") q = q.eq("branch_id", branchId);
+        return q.order("id").range(from, to);
+      }),
     enabled,
   });
 

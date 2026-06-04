@@ -5,6 +5,7 @@ import { PrintButton } from "@/components/PrintButton";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -44,42 +45,38 @@ export const CostAdjustmentReportsPage: React.FC = () => {
 
   const { data: costAdjustments = [] } = useQuery({
     queryKey: ["cost-adj-report", companyId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("cost_adjustments")
-        .select("*")
-        .eq("status", "مكتمل")
-        .order("date", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
+    queryFn: async () =>
+      fetchAllRows<any>((from, to) =>
+        supabase.from("cost_adjustments").select("*").eq("status", "مكتمل")
+          .order("date", { ascending: false }).range(from, to)
+      ),
     enabled: !!companyId,
   });
 
   const { data: costAdjItems = [] } = useQuery({
     queryKey: ["cost-adj-items-report", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("cost_adjustment_items")
-        .select("*, cost_adjustments!inner(status, date, branch_id, branch_name, record_number, notes)");
-      if (error) throw error;
-      return (data || []).filter((d: any) => d.cost_adjustments?.status === "مكتمل");
+      const data = await fetchAllRows<any>((from, to) =>
+        supabase
+          .from("cost_adjustment_items")
+          .select("*, cost_adjustments!inner(status, date, branch_id, branch_name, record_number, notes)")
+          .order("id").range(from, to)
+      );
+      return data.filter((d: any) => d.cost_adjustments?.status === "مكتمل");
     },
     enabled: !!companyId,
   });
 
   const { data: stockItems = [] } = useQuery({
     queryKey: ["stock-items-cadj-report", companyId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("stock_items")
-        .select("*, inventory_categories:category_id(id, name)")
-        .eq("active", true).order("name");
-      if (error) throw error;
-      return data;
-    },
+    queryFn: async () =>
+      fetchAllRows<any>((from, to) =>
+        supabase.from("stock_items").select("*, inventory_categories:category_id(id, name)")
+          .eq("active", true).order("name").range(from, to)
+      ),
     enabled: !!companyId,
   });
+
 
   const { data: branches = [] } = useQuery({
     queryKey: ["branches-cadj-report", companyId],

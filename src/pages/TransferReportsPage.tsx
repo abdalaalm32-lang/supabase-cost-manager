@@ -5,6 +5,7 @@ import { PrintButton } from "@/components/PrintButton";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -46,42 +47,32 @@ export const TransferReportsPage: React.FC = () => {
 
   const { data: transfers = [], isLoading } = useQuery({
     queryKey: ["transfers-report", companyId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("transfers")
-        .select("*")
-        .eq("status", "مكتمل")
-        .order("date", { ascending: false });
-      if (error) throw error;
-      return data;
-    },
+    queryFn: async () =>
+      fetchAllRows<any>((from, to) =>
+        supabase.from("transfers").select("*").eq("status", "مكتمل").order("date", { ascending: false }).range(from, to)
+      ),
     enabled: !!companyId,
   });
 
   const { data: transferItems = [] } = useQuery({
     queryKey: ["transfer-items-report", companyId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("transfer_items")
-        .select("*, transfers!inner(status, date, record_number, source_id, source_name, destination_id, destination_name)")
-        .eq("transfers.status", "مكتمل");
-      if (error) throw error;
-      return data;
-    },
+    queryFn: async () =>
+      fetchAllRows<any>((from, to) =>
+        supabase
+          .from("transfer_items")
+          .select("*, transfers!inner(status, date, record_number, source_id, source_name, destination_id, destination_name)")
+          .eq("transfers.status", "مكتمل").order("id").range(from, to)
+      ),
     enabled: !!companyId,
   });
 
   const { data: stockItems = [] } = useQuery({
     queryKey: ["stock-items-transfer-report", companyId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("stock_items")
-        .select("*, inventory_categories:category_id(id, name)")
-        .eq("active", true)
-        .order("name");
-      if (error) throw error;
-      return data;
-    },
+    queryFn: async () =>
+      fetchAllRows<any>((from, to) =>
+        supabase.from("stock_items").select("*, inventory_categories:category_id(id, name)")
+          .eq("active", true).order("name").range(from, to)
+      ),
     enabled: !!companyId,
   });
 

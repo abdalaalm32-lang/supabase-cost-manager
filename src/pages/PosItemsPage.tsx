@@ -277,6 +277,15 @@ export const PosItemsPage: React.FC = () => {
     setEditMenuEngClass(item.menu_engineering_class || "");
     setEditLinkToOtherBranches(false);
     setEditAdditionalBranchIds([]);
+    setEditOriginalName(item.name || "");
+    setEditOriginalBranchId(item.branch_id || "");
+    const linked = items.filter((i: any) =>
+      i.id !== item.id &&
+      (i.name || "").trim() === (item.name || "").trim() &&
+      i.branch_id && i.branch_id !== item.branch_id
+    );
+    setLinkedUpdateBranchIds(linked.map((i: any) => i.branch_id));
+    setPropagateToLinked(linked.length > 0);
     setEditOpen(true);
   };
 

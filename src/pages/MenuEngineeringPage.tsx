@@ -157,7 +157,6 @@ export const MenuEngineeringPage: React.FC = () => {
       let from = 0;
       // Paginate to bypass the 1000-row default limit
       // and filter server-side by branch + date range
-      // eslint-disable-next-line no-constant-condition
       while (true) {
         let q = supabase
           .from("pos_sales")

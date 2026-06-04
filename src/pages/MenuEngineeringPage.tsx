@@ -388,9 +388,17 @@ export const MenuEngineeringPage: React.FC = () => {
       const popularityLevel = getPopularityLevel(salesSharePct, items.length);
       const strategic = getStrategic(profitLevel, popularityLevel);
 
+      const catInfo = pi.category_id ? categoryMap.get(pi.category_id) : undefined;
+      const categoryName = catInfo?.name || pi.category || "بدون مجموعة";
+      const categoryCode = catInfo?.code || "ZZZ";
+
       return {
         id: pi.id,
         name: pi.name,
+        itemCode: pi.code || "",
+        categoryId: pi.category_id || null,
+        categoryCode,
+        categoryName,
         qty,
         price,
         directCost,
@@ -408,8 +416,27 @@ export const MenuEngineeringPage: React.FC = () => {
       };
     });
 
-    return rows.sort((a, b) => b.totalProfit - a.totalProfit);
-  }, [displayPosItems, classifiedPosItems, activeTab, salesAggByName, salesQtyMap, salesRevenueMap, recipeCostMap, selectedBranch]);
+    // Sort by category code, then by item code, then by name — deterministic & professional
+    return rows.sort((a, b) => {
+      const c = a.categoryCode.localeCompare(b.categoryCode, "ar", { numeric: true });
+      if (c !== 0) return c;
+      const ic = a.itemCode.localeCompare(b.itemCode, "ar", { numeric: true });
+      if (ic !== 0) return ic;
+      return a.name.localeCompare(b.name, "ar");
+    });
+  }, [displayPosItems, classifiedPosItems, activeTab, salesAggByName, salesQtyMap, salesRevenueMap, recipeCostMap, selectedBranch, categoryMap]);
+
+  // Group rows by category for grouped rendering
+  const groupedEngineeringData = useMemo(() => {
+    const groups = new Map<string, { categoryCode: string; categoryName: string; rows: EngRow[] }>();
+    engineeringData.forEach((r) => {
+      const key = `${r.categoryCode}__${r.categoryName}`;
+      if (!groups.has(key)) groups.set(key, { categoryCode: r.categoryCode, categoryName: r.categoryName, rows: [] });
+      groups.get(key)!.rows.push(r);
+    });
+    return Array.from(groups.values());
+  }, [engineeringData]);
+
 
   // Totals
   const totals = useMemo(() => {

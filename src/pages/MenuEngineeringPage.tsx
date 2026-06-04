@@ -351,24 +351,27 @@ export const MenuEngineeringPage: React.FC = () => {
   // Build engineering rows for active tab
   const engineeringData = useMemo(() => {
     const relevantPosItemIds = classifiedPosItems[activeTab];
-    const items = posItems.filter((pi: any) => {
+    const items = displayPosItems.filter((pi: any) => {
       if (!relevantPosItemIds.has(pi.id)) return false;
       if (selectedBranch !== "all" && pi.branch_id && pi.branch_id !== selectedBranch) return false;
       return true;
     });
 
     const totalAllSales = items.reduce((sum: number, pi: any) => {
-      return sum + (salesRevenueMap[pi.id] || 0);
+      const name = normName(pi.name);
+      return sum + (salesAggByName[name]?.revenue || salesRevenueMap[pi.id] || 0);
     }, 0);
 
     const rows: EngRow[] = items.map((pi: any) => {
-      const qty = salesQtyMap[pi.id] || 0;
+      const name = normName(pi.name);
+      const qty = salesAggByName[name]?.qty || salesQtyMap[pi.id] || 0;
       const price = Number(pi.price);
-      const directCost = recipeCostMap[pi.id] || 0;
-      const totalSales = salesRevenueMap[pi.id] || 0;
+      const costKey = pi.__source_pos_item_id || pi.id;
+      const directCost = recipeCostMap[costKey] || recipeCostMap[pi.id] || 0;
+      const totalSales = salesAggByName[name]?.revenue || salesRevenueMap[pi.id] || 0;
       const totalCostSales = qty * directCost;
       const costRatio = totalCostSales > 0 ? (totalSales / totalCostSales) * 100 : 0;
-      const netProfit = recipeNetProfitMap[pi.id] || 0;
+      const netProfit = (price || 0) - directCost;
       const totalProfit = netProfit * qty;
       const profitRatio = totalSales > 0 ? (totalProfit / totalSales) * 100 : 0;
       const salesSharePct = totalAllSales > 0 ? (totalSales / totalAllSales) * 100 : 0;
@@ -398,7 +401,7 @@ export const MenuEngineeringPage: React.FC = () => {
     });
 
     return rows.sort((a, b) => b.totalProfit - a.totalProfit);
-  }, [posItems, classifiedPosItems, activeTab, salesQtyMap, recipeCostMap, recipeNetProfitMap, selectedBranch]);
+  }, [displayPosItems, classifiedPosItems, activeTab, salesAggByName, salesQtyMap, salesRevenueMap, recipeCostMap, selectedBranch]);
 
   // Totals
   const totals = useMemo(() => {

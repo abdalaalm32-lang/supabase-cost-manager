@@ -133,7 +133,7 @@ export const PosGroupsPage: React.FC = () => {
       if (editLinkToOtherBranches && editAdditionalBranchIds.length > 0) {
         for (const bId of editAdditionalBranchIds) {
           if (bId !== editBranchId) {
-            const { data: codeData, error: codeError } = await supabase.rpc("generate_category_code", { p_company_id: companyId! });
+            const { data: codeData, error: codeError } = await supabase.rpc("generate_category_code", { p_company_id: companyId!, p_branch_id: bId });
             if (codeError) throw codeError;
             const { error: insertError } = await supabase.from("categories").insert({
               company_id: companyId!,

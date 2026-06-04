@@ -177,11 +177,13 @@ export const CostAnalysisPage: React.FC = () => {
   const { data: stockItems } = useQuery({
     queryKey: ["stock-items-costing", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("stock_items").select("*, inventory_categories:category_id(id, name)")
-        .eq("company_id", companyId!).eq("active", true).order("created_at", { ascending: true });
-      if (error) throw error;
-      return data;
+      return fetchAllRows<any>((from, to) =>
+        supabase
+          .from("stock_items").select("*, inventory_categories:category_id(id, name)")
+          .eq("company_id", companyId!).eq("active", true)
+          .order("created_at", { ascending: true })
+          .range(from, to)
+      );
     },
     enabled: !!companyId,
   });

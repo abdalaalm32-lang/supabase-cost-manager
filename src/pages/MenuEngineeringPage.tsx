@@ -140,6 +140,23 @@ export const MenuEngineeringPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  const { data: categoriesList = [] } = useQuery({
+    queryKey: ["categories-eng", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("categories").select("id, code, name").eq("company_id", companyId!);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!companyId,
+  });
+
+  const categoryMap = useMemo(() => {
+    const m = new Map<string, { code: string; name: string }>();
+    (categoriesList as any[]).forEach((c) => m.set(c.id, { code: c.code || "", name: c.name || "" }));
+    return m;
+  }, [categoriesList]);
+
+
   const { data: recipes = [] } = useQuery({
     queryKey: ["recipes-with-ingredients", companyId],
     queryFn: async () => {

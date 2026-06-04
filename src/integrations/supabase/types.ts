@@ -3094,10 +3094,12 @@ export type Database = {
     Functions: {
       current_user_has_pos_password: { Args: never; Returns: boolean }
       generate_branch_code: { Args: { p_company_id: string }; Returns: string }
-      generate_category_code: {
-        Args: { p_company_id: string }
-        Returns: string
-      }
+      generate_category_code:
+        | { Args: { p_company_id: string }; Returns: string }
+        | {
+            Args: { p_branch_id: string; p_company_id: string }
+            Returns: string
+          }
       generate_cost_adjustment_number: {
         Args: { p_company_id: string }
         Returns: string

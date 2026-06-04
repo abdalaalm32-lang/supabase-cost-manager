@@ -182,12 +182,48 @@ export const PosItemsPage: React.FC = () => {
       }).eq("id", editId);
       if (error) throw error;
 
-      // Create copies in additional branches if requested
-      if (editLinkToOtherBranches && editAdditionalBranchIds.length > 0) {
-        let allCats: any[] = [];
+      // Fetch all active categories once (used by both propagation flows)
+      let allCats: any[] = [];
+      const needCats =
+        (editLinkToOtherBranches && editAdditionalBranchIds.length > 0) ||
+        (propagateToLinked && linkedUpdateBranchIds.length > 0);
+      if (needCats) {
         const { data } = await supabase.from("categories").select("*").eq("active", true);
         allCats = data || [];
+      }
 
+      // Propagate edits to existing linked items in other branches
+      let propagatedCount = 0;
+      if (propagateToLinked && linkedUpdateBranchIds.length > 0) {
+        const linkedItems = items.filter((i: any) =>
+          i.id !== editId &&
+          (i.name || "").trim() === (editOriginalName || "").trim() &&
+          i.branch_id && linkedUpdateBranchIds.includes(i.branch_id) &&
+          i.branch_id !== editOriginalBranchId
+        );
+        for (const sib of linkedItems) {
+          let sibCatId: string | null = null;
+          let sibCatName: string | null = null;
+          if (selectedCat) {
+            const matchId = findCategoryForBranch(sib.branch_id, selectedCat.name, allCats);
+            sibCatId = matchId;
+            sibCatName = matchId ? selectedCat.name : null;
+          }
+          const { error: upErr } = await supabase.from("pos_items").update({
+            name: editName,
+            price: parseFloat(editPrice) || 0,
+            category_id: sibCatId,
+            category: sibCatName,
+            menu_engineering_class: editMenuEngClass || null,
+          }).eq("id", sib.id);
+          if (upErr) throw upErr;
+          propagatedCount++;
+        }
+      }
+
+      // Create copies in additional NEW branches if requested
+      let createdCount = 0;
+      if (editLinkToOtherBranches && editAdditionalBranchIds.length > 0) {
         for (const bId of editAdditionalBranchIds) {
           if (bId !== editBranchId) {
             const { data: codeData, error: codeError } = await supabase.rpc("generate_item_code", { p_company_id: companyId! });
@@ -208,15 +244,24 @@ export const PosItemsPage: React.FC = () => {
               menu_engineering_class: editMenuEngClass || null,
             });
             if (insertError) throw insertError;
+            createdCount++;
           }
         }
       }
+
+      return { propagatedCount, createdCount };
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["pos-items"] });
-      const extraCount = editLinkToOtherBranches ? editAdditionalBranchIds.filter(b => b !== editBranchId).length : 0;
-      toast.success(extraCount > 0 ? `تم حفظ التعديلات وإضافة الصنف في ${extraCount} فرع إضافي` : "تم تعديل الصنف بنجاح");
-      setEditOpen(false); setEditLinkToOtherBranches(false); setEditAdditionalBranchIds([]);
+      const parts: string[] = ["تم تعديل الصنف"];
+      if (res?.propagatedCount) parts.push(`وتحديث ${res.propagatedCount} فرع مرتبط`);
+      if (res?.createdCount) parts.push(`وإضافة الصنف في ${res.createdCount} فرع إضافي`);
+      toast.success(parts.join(" "));
+      setEditOpen(false);
+      setEditLinkToOtherBranches(false);
+      setEditAdditionalBranchIds([]);
+      setPropagateToLinked(false);
+      setLinkedUpdateBranchIds([]);
     },
     onError: (e: any) => toast.error(e.message),
   });

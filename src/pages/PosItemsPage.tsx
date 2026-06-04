@@ -422,20 +422,53 @@ export const PosItemsPage: React.FC = () => {
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>تعديل الصنف</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
-            {/* Show linked branches */}
+            {/* Linked branches - propagate edits */}
             {(() => {
-              const editingItem = items.find((i: any) => i.id === editId);
-              if (!editingItem) return null;
-              const linked = items.filter((i: any) => i.id !== editId && i.name === editingItem.name && i.branch_id !== editingItem.branch_id);
+              const linked = items.filter((i: any) =>
+                i.id !== editId &&
+                (i.name || "").trim() === (editOriginalName || "").trim() &&
+                i.branch_id && i.branch_id !== editOriginalBranchId
+              );
               if (linked.length === 0) return null;
               return (
-                <div className="border rounded-lg p-3 bg-accent/20 space-y-2">
-                  <Label className="text-sm font-medium">الفروع المرتبطة بنفس الصنف</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {linked.map((i: any) => (
-                      <Badge key={i.id} variant="secondary">{i.branches?.name || "—"}</Badge>
-                    ))}
+                <div className="border rounded-lg p-3 bg-accent/20 space-y-3">
+                  <div className="flex items-start gap-2">
+                    <Checkbox
+                      id="propagate-linked"
+                      checked={propagateToLinked}
+                      onCheckedChange={(c) => {
+                        const v = !!c;
+                        setPropagateToLinked(v);
+                        if (!v) setLinkedUpdateBranchIds([]);
+                        else setLinkedUpdateBranchIds(linked.map((i: any) => i.branch_id));
+                      }}
+                    />
+                    <Label htmlFor="propagate-linked" className="cursor-pointer text-sm leading-5">
+                      هذا الصنف مرتبط بفروع أخرى — تطبيق التعديلات (الاسم / السعر / تصنيف المنيو / المجموعة المطابقة) على الفروع المحددة أيضًا
+                    </Label>
                   </div>
+                  {propagateToLinked && (
+                    <div className="space-y-2 pr-6">
+                      {linked.map((i: any) => (
+                        <div key={i.id} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`linked-br-${i.branch_id}`}
+                            checked={linkedUpdateBranchIds.includes(i.branch_id)}
+                            onCheckedChange={(c) => {
+                              setLinkedUpdateBranchIds(
+                                c
+                                  ? Array.from(new Set([...linkedUpdateBranchIds, i.branch_id]))
+                                  : linkedUpdateBranchIds.filter((id) => id !== i.branch_id)
+                              );
+                            }}
+                          />
+                          <Label htmlFor={`linked-br-${i.branch_id}`} className="cursor-pointer text-sm">
+                            {i.branches?.name || "—"}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })()}

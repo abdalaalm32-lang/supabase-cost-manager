@@ -40,6 +40,10 @@ type Strategic = "Stars" | "Puzzles" | "Plow Horses" | "Dogs";
 interface EngRow {
   id: string;
   name: string;
+  itemCode: string;
+  categoryId: string | null;
+  categoryCode: string;
+  categoryName: string;
   qty: number;
   price: number;
   directCost: number;
@@ -135,6 +139,23 @@ export const MenuEngineeringPage: React.FC = () => {
     },
     enabled: !!companyId,
   });
+
+  const { data: categoriesList = [] } = useQuery({
+    queryKey: ["categories-eng", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("categories").select("id, code, name").eq("company_id", companyId!);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!companyId,
+  });
+
+  const categoryMap = useMemo(() => {
+    const m = new Map<string, { code: string; name: string }>();
+    (categoriesList as any[]).forEach((c) => m.set(c.id, { code: c.code || "", name: c.name || "" }));
+    return m;
+  }, [categoriesList]);
+
 
   const { data: recipes = [] } = useQuery({
     queryKey: ["recipes-with-ingredients", companyId],
@@ -367,9 +388,17 @@ export const MenuEngineeringPage: React.FC = () => {
       const popularityLevel = getPopularityLevel(salesSharePct, items.length);
       const strategic = getStrategic(profitLevel, popularityLevel);
 
+      const catInfo = pi.category_id ? categoryMap.get(pi.category_id) : undefined;
+      const categoryName = catInfo?.name || pi.category || "بدون مجموعة";
+      const categoryCode = catInfo?.code || "ZZZ";
+
       return {
         id: pi.id,
         name: pi.name,
+        itemCode: pi.code || "",
+        categoryId: pi.category_id || null,
+        categoryCode,
+        categoryName,
         qty,
         price,
         directCost,
@@ -387,8 +416,27 @@ export const MenuEngineeringPage: React.FC = () => {
       };
     });
 
-    return rows.sort((a, b) => b.totalProfit - a.totalProfit);
-  }, [displayPosItems, classifiedPosItems, activeTab, salesAggByName, salesQtyMap, salesRevenueMap, recipeCostMap, selectedBranch]);
+    // Sort by category code, then by item code, then by name — deterministic & professional
+    return rows.sort((a, b) => {
+      const c = a.categoryCode.localeCompare(b.categoryCode, "ar", { numeric: true });
+      if (c !== 0) return c;
+      const ic = a.itemCode.localeCompare(b.itemCode, "ar", { numeric: true });
+      if (ic !== 0) return ic;
+      return a.name.localeCompare(b.name, "ar");
+    });
+  }, [displayPosItems, classifiedPosItems, activeTab, salesAggByName, salesQtyMap, salesRevenueMap, recipeCostMap, selectedBranch, categoryMap]);
+
+  // Group rows by category for grouped rendering
+  const groupedEngineeringData = useMemo(() => {
+    const groups = new Map<string, { categoryCode: string; categoryName: string; rows: EngRow[] }>();
+    engineeringData.forEach((r) => {
+      const key = `${r.categoryCode}__${r.categoryName}`;
+      if (!groups.has(key)) groups.set(key, { categoryCode: r.categoryCode, categoryName: r.categoryName, rows: [] });
+      groups.get(key)!.rows.push(r);
+    });
+    return Array.from(groups.values());
+  }, [engineeringData]);
+
 
   // Totals
   const totals = useMemo(() => {
@@ -515,28 +563,82 @@ export const MenuEngineeringPage: React.FC = () => {
               { key: "التصنيف", label: "التصنيف" },
               { key: "القرار", label: "القرار" },
             ];
-            const rows = engineeringData.map((r, idx) => ({
-              "#": idx + 1,
-              "الصنف": r.name,
-              "كمية المبيعات": r.qty,
-              "سعر البيع": r.price.toFixed(2),
-              "التكلفة المباشرة": r.directCost.toFixed(2),
-              "إجمالي المبيعات": r.totalSales.toFixed(2),
-              "إجمالي تكلفة المبيعات": r.totalCostSales.toFixed(2),
-              "النسبة للتكلفة %": r.costRatio.toFixed(1),
-              "صافي ربح الصنف": r.netProfit.toFixed(2),
-              "إجمالي الربح": r.totalProfit.toFixed(2),
-              "نسبة الربح %": r.profitRatio.toFixed(1),
-              "% مبيعات الصنف": r.salesSharePct.toFixed(1),
-              "الربحية": r.profitLevel,
-              "الشعبية": r.popularityLevel,
-              "التصنيف": r.strategic,
-              "القرار": r.decision,
-            }));
-            // Add totals row
-            rows.push({
-              "#": "" as any,
-              "الصنف": "الإجمالي",
+            let theadHTML = "<tr>";
+            for (const col of cols) {
+              theadHTML += `<th style="border:1px solid #000;padding:3px 4px;font-size:7px;text-align:center;white-space:nowrap;">${col.label}</th>`;
+            }
+            theadHTML += "</tr>";
+
+            const colCount = cols.length;
+            let tbodyHTML = "";
+            let runningIdx = 0;
+            groupedEngineeringData.forEach((grp) => {
+              const groupSubtotal = {
+                qty: grp.rows.reduce((s, r) => s + r.qty, 0),
+                totalSales: grp.rows.reduce((s, r) => s + r.totalSales, 0),
+                totalCostSales: grp.rows.reduce((s, r) => s + r.totalCostSales, 0),
+                totalProfit: grp.rows.reduce((s, r) => s + r.totalProfit, 0),
+              };
+              // Group header row
+              tbodyHTML += `<tr><td colspan="${colCount}" style="border:1px solid #000;padding:4px 6px;font-size:9px;text-align:right;font-weight:bold;background:#d9e7ff;">📁 ${grp.categoryCode ? `[${grp.categoryCode}] ` : ""}${grp.categoryName} &nbsp;(${grp.rows.length} صنف)</td></tr>`;
+              // Item rows
+              grp.rows.forEach((r) => {
+                runningIdx++;
+                const cells: Record<string, any> = {
+                  "#": runningIdx,
+                  "الصنف": r.itemCode ? `${r.itemCode} - ${r.name}` : r.name,
+                  "كمية المبيعات": r.qty,
+                  "سعر البيع": r.price.toFixed(2),
+                  "التكلفة المباشرة": r.directCost.toFixed(2),
+                  "إجمالي المبيعات": r.totalSales.toFixed(2),
+                  "إجمالي تكلفة المبيعات": r.totalCostSales.toFixed(2),
+                  "النسبة للتكلفة %": r.costRatio.toFixed(1),
+                  "صافي ربح الصنف": r.netProfit.toFixed(2),
+                  "إجمالي الربح": r.totalProfit.toFixed(2),
+                  "نسبة الربح %": r.profitRatio.toFixed(1),
+                  "% مبيعات الصنف": r.salesSharePct.toFixed(1),
+                  "الربحية": r.profitLevel,
+                  "الشعبية": r.popularityLevel,
+                  "التصنيف": r.strategic,
+                  "القرار": r.decision,
+                };
+                tbodyHTML += "<tr>";
+                for (const col of cols) {
+                  const val = cells[col.key] !== null && cells[col.key] !== undefined ? String(cells[col.key]) : "—";
+                  tbodyHTML += `<td style="border:1px solid #000;padding:2px 3px;font-size:7px;text-align:center;">${val}</td>`;
+                }
+                tbodyHTML += "</tr>";
+              });
+              // Group subtotal row
+              const subCells: Record<string, any> = {
+                "#": "",
+                "الصنف": `إجمالي ${grp.categoryName}`,
+                "كمية المبيعات": groupSubtotal.qty,
+                "سعر البيع": "",
+                "التكلفة المباشرة": "",
+                "إجمالي المبيعات": groupSubtotal.totalSales.toFixed(2),
+                "إجمالي تكلفة المبيعات": groupSubtotal.totalCostSales.toFixed(2),
+                "النسبة للتكلفة %": "",
+                "صافي ربح الصنف": "",
+                "إجمالي الربح": groupSubtotal.totalProfit.toFixed(2),
+                "نسبة الربح %": "",
+                "% مبيعات الصنف": "",
+                "الربحية": "",
+                "الشعبية": "",
+                "التصنيف": "",
+                "القرار": "",
+              };
+              tbodyHTML += "<tr>";
+              for (const col of cols) {
+                const val = subCells[col.key] !== "" ? String(subCells[col.key]) : "—";
+                tbodyHTML += `<td style="border:1px solid #000;padding:2px 3px;font-size:7px;text-align:center;font-weight:bold;background:#f0f4ff;">${val}</td>`;
+              }
+              tbodyHTML += "</tr>";
+            });
+            // Grand total row
+            const grandCells: Record<string, any> = {
+              "#": "",
+              "الصنف": "الإجمالي العام",
               "كمية المبيعات": totals.qty,
               "سعر البيع": "",
               "التكلفة المباشرة": "",
@@ -551,24 +653,14 @@ export const MenuEngineeringPage: React.FC = () => {
               "الشعبية": "",
               "التصنيف": "",
               "القرار": "",
-            } as any);
-
-            let theadHTML = "<tr>";
+            };
+            tbodyHTML += "<tr>";
             for (const col of cols) {
-              theadHTML += `<th style="border:1px solid #000;padding:3px 4px;font-size:7px;text-align:center;white-space:nowrap;">${col.label}</th>`;
+              const val = grandCells[col.key] !== "" ? String(grandCells[col.key]) : "—";
+              tbodyHTML += `<td style="border:1px solid #000;padding:3px 4px;font-size:8px;text-align:center;font-weight:bold;background:#ffe9b3;">${val}</td>`;
             }
-            theadHTML += "</tr>";
+            tbodyHTML += "</tr>";
 
-            let tbodyHTML = "";
-            rows.forEach((row, i) => {
-              const isTotal = i === rows.length - 1;
-              tbodyHTML += "<tr>";
-              for (const col of cols) {
-                const val = (row as any)[col.key] !== null && (row as any)[col.key] !== undefined ? String((row as any)[col.key]) : "—";
-                tbodyHTML += `<td style="border:1px solid #000;padding:2px 3px;font-size:7px;text-align:center;${isTotal ? "font-weight:bold;background:#f0f0f0;" : ""}">${val}</td>`;
-              }
-              tbodyHTML += "</tr>";
-            });
 
             const printHTML = `<!DOCTYPE html>
 <html dir="rtl" lang="ar">
@@ -740,35 +832,70 @@ export const MenuEngineeringPage: React.FC = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  engineeringData.map((row, idx) => (
-                    <TableRow key={row.id}>
-                      <TableCell className="text-xs">{idx + 1}</TableCell>
-                      <TableCell className="font-medium text-sm whitespace-nowrap">{row.name}</TableCell>
-                      <TableCell className="text-xs">{row.qty}</TableCell>
-                      <TableCell className="text-xs">{row.price.toFixed(2)}</TableCell>
-                      <TableCell className="text-xs">{row.directCost.toFixed(2)}</TableCell>
-                      <TableCell className="text-xs">{row.totalSales.toFixed(2)}</TableCell>
-                      <TableCell className="text-xs">{row.totalCostSales.toFixed(2)}</TableCell>
-                      <TableCell className="text-xs">{row.costRatio.toFixed(1)}%</TableCell>
-                      <TableCell className="text-xs">{row.netProfit.toFixed(2)}</TableCell>
-                      <TableCell className="text-xs font-semibold">{row.totalProfit.toFixed(2)}</TableCell>
-                      <TableCell className="text-xs">{row.profitRatio.toFixed(1)}%</TableCell>
-                      <TableCell className="text-xs">{row.salesSharePct.toFixed(1)}%</TableCell>
-                      <TableCell><Badge className={`text-[10px] ${levelBadgeClass[row.profitLevel]}`}>{row.profitLevel}</Badge></TableCell>
-                      <TableCell><Badge className={`text-[10px] ${levelBadgeClass[row.popularityLevel]}`}>{row.popularityLevel}</Badge></TableCell>
-                      <TableCell>
-                        <Badge className={`text-[10px] gap-1 ${strategicBadgeClass[row.strategic]}`}>
-                          {STRATEGIC_ICONS[row.strategic]}
-                          {row.strategic}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <span className={`text-[10px] font-semibold ${strategicBadgeClass[row.strategic].replace(/bg-\S+/g, '').trim()}`}>
-                          {row.decision}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  (() => {
+                    let runningIdx = 0;
+                    return groupedEngineeringData.map((grp) => {
+                      const groupSubtotal = {
+                        qty: grp.rows.reduce((s, r) => s + r.qty, 0),
+                        totalSales: grp.rows.reduce((s, r) => s + r.totalSales, 0),
+                        totalCostSales: grp.rows.reduce((s, r) => s + r.totalCostSales, 0),
+                        totalProfit: grp.rows.reduce((s, r) => s + r.totalProfit, 0),
+                      };
+                      return (
+                        <React.Fragment key={`${grp.categoryCode}-${grp.categoryName}`}>
+                          <TableRow className="bg-primary/10 hover:bg-primary/10">
+                            <TableCell colSpan={16} className="text-sm font-bold text-primary">
+                              📁 {grp.categoryCode ? `[${grp.categoryCode}] ` : ""}{grp.categoryName} <span className="text-xs text-muted-foreground font-normal">({grp.rows.length} صنف)</span>
+                            </TableCell>
+                          </TableRow>
+                          {grp.rows.map((row) => {
+                            runningIdx++;
+                            return (
+                              <TableRow key={row.id}>
+                                <TableCell className="text-xs">{runningIdx}</TableCell>
+                                <TableCell className="font-medium text-sm whitespace-nowrap">{row.itemCode ? `${row.itemCode} - ` : ""}{row.name}</TableCell>
+                                <TableCell className="text-xs">{row.qty}</TableCell>
+                                <TableCell className="text-xs">{row.price.toFixed(2)}</TableCell>
+                                <TableCell className="text-xs">{row.directCost.toFixed(2)}</TableCell>
+                                <TableCell className="text-xs">{row.totalSales.toFixed(2)}</TableCell>
+                                <TableCell className="text-xs">{row.totalCostSales.toFixed(2)}</TableCell>
+                                <TableCell className="text-xs">{row.costRatio.toFixed(1)}%</TableCell>
+                                <TableCell className="text-xs">{row.netProfit.toFixed(2)}</TableCell>
+                                <TableCell className="text-xs font-semibold">{row.totalProfit.toFixed(2)}</TableCell>
+                                <TableCell className="text-xs">{row.profitRatio.toFixed(1)}%</TableCell>
+                                <TableCell className="text-xs">{row.salesSharePct.toFixed(1)}%</TableCell>
+                                <TableCell><Badge className={`text-[10px] ${levelBadgeClass[row.profitLevel]}`}>{row.profitLevel}</Badge></TableCell>
+                                <TableCell><Badge className={`text-[10px] ${levelBadgeClass[row.popularityLevel]}`}>{row.popularityLevel}</Badge></TableCell>
+                                <TableCell>
+                                  <Badge className={`text-[10px] gap-1 ${strategicBadgeClass[row.strategic]}`}>
+                                    {STRATEGIC_ICONS[row.strategic]}
+                                    {row.strategic}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <span className={`text-[10px] font-semibold ${strategicBadgeClass[row.strategic].replace(/bg-\S+/g, '').trim()}`}>
+                                    {row.decision}
+                                  </span>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                          <TableRow className="bg-muted/20 font-semibold">
+                            <TableCell colSpan={2} className="text-xs text-muted-foreground">إجمالي المجموعة: {grp.categoryName}</TableCell>
+                            <TableCell className="text-xs">{groupSubtotal.qty}</TableCell>
+                            <TableCell className="text-xs">—</TableCell>
+                            <TableCell className="text-xs">—</TableCell>
+                            <TableCell className="text-xs">{groupSubtotal.totalSales.toFixed(2)}</TableCell>
+                            <TableCell className="text-xs">{groupSubtotal.totalCostSales.toFixed(2)}</TableCell>
+                            <TableCell className="text-xs">—</TableCell>
+                            <TableCell className="text-xs">—</TableCell>
+                            <TableCell className="text-xs">{groupSubtotal.totalProfit.toFixed(2)}</TableCell>
+                            <TableCell colSpan={6} className="text-xs">—</TableCell>
+                          </TableRow>
+                        </React.Fragment>
+                      );
+                    });
+                  })()
                 )}
                 {/* Totals row */}
                 {engineeringData.length > 0 && (

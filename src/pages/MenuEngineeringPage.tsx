@@ -246,19 +246,17 @@ export const MenuEngineeringPage: React.FC = () => {
     return map;
   }, [posItems, recipeCostMap]);
 
-  // Aggregate sales by pos_item NAME so sales referencing a different branch's pos_item row
-  // (same item replicated across branches) still match. Track real revenue from sale lines.
-  const posItemNameById = useMemo(() => {
-    const m: Record<string, string> = {};
-    posItems.forEach((pi: any) => { if (pi?.id) m[pi.id] = String(pi.name || "").trim(); });
-    return m;
-  }, [posItems]);
+  // Normalize names: trim + collapse internal whitespace so "كرسبي  L" matches "كرسبي L"
+  const normName = (s: any) => String(s || "").trim().replace(/\s+/g, " ");
 
+  // Aggregate sales by canonical pos_item NAME (from the joined pos_items row on the sale line).
+  // This ensures sales referencing items from another branch, or items that no longer exist in
+  // this branch's pos_items list, are still counted in the total.
   const salesAggByName = useMemo(() => {
     const map: Record<string, { qty: number; revenue: number }> = {};
     sales.forEach((sale: any) => {
       (sale.pos_sale_items || []).forEach((si: any) => {
-        const name = si.pos_item_id ? posItemNameById[si.pos_item_id] : "";
+        const name = normName(si?.pos_items?.name);
         if (!name) return;
         const qty = Number(si.quantity) || 0;
         const unitPrice = Number(si.unit_price) || 0;
@@ -269,12 +267,12 @@ export const MenuEngineeringPage: React.FC = () => {
       });
     });
     return map;
-  }, [sales, posItemNameById]);
+  }, [sales]);
 
   const salesQtyMap = useMemo(() => {
     const map: Record<string, number> = {};
     posItems.forEach((pi: any) => {
-      const name = String(pi.name || "").trim();
+      const name = normName(pi.name);
       map[pi.id] = salesAggByName[name]?.qty || 0;
     });
     return map;
@@ -283,11 +281,16 @@ export const MenuEngineeringPage: React.FC = () => {
   const salesRevenueMap = useMemo(() => {
     const map: Record<string, number> = {};
     posItems.forEach((pi: any) => {
-      const name = String(pi.name || "").trim();
+      const name = normName(pi.name);
       map[pi.id] = salesAggByName[name]?.revenue || 0;
     });
     return map;
   }, [posItems, salesAggByName]);
+
+  // Grand total = sum of ALL aggregated sales (even items not matched to current branch's pos_items)
+  const grandTotalSalesAll = useMemo(() => {
+    return Object.values(salesAggByName).reduce((s, v) => s + (v.revenue || 0), 0);
+  }, [salesAggByName]);
 
   // Get POS items classified as kitchen/bar, with recipe ingredients as fallback
   const classifiedPosItems = useMemo(() => {

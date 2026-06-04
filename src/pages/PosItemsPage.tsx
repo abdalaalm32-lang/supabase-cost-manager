@@ -140,7 +140,7 @@ export const PosItemsPage: React.FC = () => {
       }
 
       for (const bId of allBranchIds) {
-        const { data: codeData, error: codeError } = await supabase.rpc("generate_item_code", { p_company_id: companyId! });
+        const { data: codeData, error: codeError } = await supabase.rpc("generate_item_code", { p_company_id: companyId!, p_branch_id: bId ?? null });
         if (codeError) throw codeError;
 
         let catId = categoryId || null;

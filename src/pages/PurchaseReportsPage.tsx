@@ -129,11 +129,25 @@ export const PurchaseReportsPage: React.FC = () => {
   const { data: purchaseItems } = useQuery({
     queryKey: ["purchase-items-pr", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("purchase_items").select("*, purchase_orders!inner(id, date, status, company_id, supplier_name, supplier_id, branch_id, warehouse_id, invoice_number)")
-        .eq("purchase_orders.company_id", companyId!).eq("purchase_orders.status", "مكتمل");
-      if (error) throw error;
-      return data;
+      // Paginate to bypass Supabase's 1000-row default limit
+      const pageSize = 1000;
+      let from = 0;
+      const all: any[] = [];
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data, error } = await supabase
+          .from("purchase_items")
+          .select("*, purchase_orders!inner(id, date, status, company_id, supplier_name, supplier_id, branch_id, warehouse_id, invoice_number)")
+          .eq("purchase_orders.company_id", companyId!)
+          .eq("purchase_orders.status", "مكتمل")
+          .range(from, from + pageSize - 1);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        all.push(...data);
+        if (data.length < pageSize) break;
+        from += pageSize;
+      }
+      return all;
     },
     enabled: !!companyId,
   });

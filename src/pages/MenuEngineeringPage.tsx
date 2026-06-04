@@ -656,8 +656,9 @@ export const MenuEngineeringPage: React.FC = () => {
         </Card>
         <Card className="glass-card">
           <CardContent className="p-4 text-center">
-            <p className="text-xs text-muted-foreground">إجمالي المبيعات</p>
+            <p className="text-xs text-muted-foreground">إجمالي المبيعات ({activeTab === "kitchen" ? "مطبخ" : "بار"})</p>
             <p className="text-2xl font-bold text-primary">{totals.totalSales.toLocaleString("en", { minimumFractionDigits: 2 })}</p>
+            <p className="text-[10px] text-muted-foreground mt-1">إجمالي مبيعات الفرع: {grandTotalSalesAll.toLocaleString("en", { minimumFractionDigits: 2 })}</p>
           </CardContent>
         </Card>
         <Card className="glass-card">

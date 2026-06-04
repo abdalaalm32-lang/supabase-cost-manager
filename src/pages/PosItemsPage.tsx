@@ -55,6 +55,10 @@ export const PosItemsPage: React.FC = () => {
   const [editMenuEngClass, setEditMenuEngClass] = useState("");
   const [editLinkToOtherBranches, setEditLinkToOtherBranches] = useState(false);
   const [editAdditionalBranchIds, setEditAdditionalBranchIds] = useState<string[]>([]);
+  const [editOriginalName, setEditOriginalName] = useState("");
+  const [editOriginalBranchId, setEditOriginalBranchId] = useState("");
+  const [propagateToLinked, setPropagateToLinked] = useState(true);
+  const [linkedUpdateBranchIds, setLinkedUpdateBranchIds] = useState<string[]>([]);
 
   // Fetch branches
   const { data: branches = [] } = useQuery({
@@ -178,12 +182,48 @@ export const PosItemsPage: React.FC = () => {
       }).eq("id", editId);
       if (error) throw error;
 
-      // Create copies in additional branches if requested
-      if (editLinkToOtherBranches && editAdditionalBranchIds.length > 0) {
-        let allCats: any[] = [];
+      // Fetch all active categories once (used by both propagation flows)
+      let allCats: any[] = [];
+      const needCats =
+        (editLinkToOtherBranches && editAdditionalBranchIds.length > 0) ||
+        (propagateToLinked && linkedUpdateBranchIds.length > 0);
+      if (needCats) {
         const { data } = await supabase.from("categories").select("*").eq("active", true);
         allCats = data || [];
+      }
 
+      // Propagate edits to existing linked items in other branches
+      let propagatedCount = 0;
+      if (propagateToLinked && linkedUpdateBranchIds.length > 0) {
+        const linkedItems = items.filter((i: any) =>
+          i.id !== editId &&
+          (i.name || "").trim() === (editOriginalName || "").trim() &&
+          i.branch_id && linkedUpdateBranchIds.includes(i.branch_id) &&
+          i.branch_id !== editOriginalBranchId
+        );
+        for (const sib of linkedItems) {
+          let sibCatId: string | null = null;
+          let sibCatName: string | null = null;
+          if (selectedCat) {
+            const matchId = findCategoryForBranch(sib.branch_id, selectedCat.name, allCats);
+            sibCatId = matchId;
+            sibCatName = matchId ? selectedCat.name : null;
+          }
+          const { error: upErr } = await supabase.from("pos_items").update({
+            name: editName,
+            price: parseFloat(editPrice) || 0,
+            category_id: sibCatId,
+            category: sibCatName,
+            menu_engineering_class: editMenuEngClass || null,
+          }).eq("id", sib.id);
+          if (upErr) throw upErr;
+          propagatedCount++;
+        }
+      }
+
+      // Create copies in additional NEW branches if requested
+      let createdCount = 0;
+      if (editLinkToOtherBranches && editAdditionalBranchIds.length > 0) {
         for (const bId of editAdditionalBranchIds) {
           if (bId !== editBranchId) {
             const { data: codeData, error: codeError } = await supabase.rpc("generate_item_code", { p_company_id: companyId! });
@@ -204,15 +244,24 @@ export const PosItemsPage: React.FC = () => {
               menu_engineering_class: editMenuEngClass || null,
             });
             if (insertError) throw insertError;
+            createdCount++;
           }
         }
       }
+
+      return { propagatedCount, createdCount };
     },
-    onSuccess: () => {
+    onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ["pos-items"] });
-      const extraCount = editLinkToOtherBranches ? editAdditionalBranchIds.filter(b => b !== editBranchId).length : 0;
-      toast.success(extraCount > 0 ? `تم حفظ التعديلات وإضافة الصنف في ${extraCount} فرع إضافي` : "تم تعديل الصنف بنجاح");
-      setEditOpen(false); setEditLinkToOtherBranches(false); setEditAdditionalBranchIds([]);
+      const parts: string[] = ["تم تعديل الصنف"];
+      if (res?.propagatedCount) parts.push(`وتحديث ${res.propagatedCount} فرع مرتبط`);
+      if (res?.createdCount) parts.push(`وإضافة الصنف في ${res.createdCount} فرع إضافي`);
+      toast.success(parts.join(" "));
+      setEditOpen(false);
+      setEditLinkToOtherBranches(false);
+      setEditAdditionalBranchIds([]);
+      setPropagateToLinked(false);
+      setLinkedUpdateBranchIds([]);
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -273,6 +322,15 @@ export const PosItemsPage: React.FC = () => {
     setEditMenuEngClass(item.menu_engineering_class || "");
     setEditLinkToOtherBranches(false);
     setEditAdditionalBranchIds([]);
+    setEditOriginalName(item.name || "");
+    setEditOriginalBranchId(item.branch_id || "");
+    const linked = items.filter((i: any) =>
+      i.id !== item.id &&
+      (i.name || "").trim() === (item.name || "").trim() &&
+      i.branch_id && i.branch_id !== item.branch_id
+    );
+    setLinkedUpdateBranchIds(linked.map((i: any) => i.branch_id));
+    setPropagateToLinked(linked.length > 0);
     setEditOpen(true);
   };
 
@@ -409,20 +467,53 @@ export const PosItemsPage: React.FC = () => {
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>تعديل الصنف</DialogTitle></DialogHeader>
           <div className="space-y-4 pt-2">
-            {/* Show linked branches */}
+            {/* Linked branches - propagate edits */}
             {(() => {
-              const editingItem = items.find((i: any) => i.id === editId);
-              if (!editingItem) return null;
-              const linked = items.filter((i: any) => i.id !== editId && i.name === editingItem.name && i.branch_id !== editingItem.branch_id);
+              const linked = items.filter((i: any) =>
+                i.id !== editId &&
+                (i.name || "").trim() === (editOriginalName || "").trim() &&
+                i.branch_id && i.branch_id !== editOriginalBranchId
+              );
               if (linked.length === 0) return null;
               return (
-                <div className="border rounded-lg p-3 bg-accent/20 space-y-2">
-                  <Label className="text-sm font-medium">الفروع المرتبطة بنفس الصنف</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {linked.map((i: any) => (
-                      <Badge key={i.id} variant="secondary">{i.branches?.name || "—"}</Badge>
-                    ))}
+                <div className="border rounded-lg p-3 bg-accent/20 space-y-3">
+                  <div className="flex items-start gap-2">
+                    <Checkbox
+                      id="propagate-linked"
+                      checked={propagateToLinked}
+                      onCheckedChange={(c) => {
+                        const v = !!c;
+                        setPropagateToLinked(v);
+                        if (!v) setLinkedUpdateBranchIds([]);
+                        else setLinkedUpdateBranchIds(linked.map((i: any) => i.branch_id));
+                      }}
+                    />
+                    <Label htmlFor="propagate-linked" className="cursor-pointer text-sm leading-5">
+                      هذا الصنف مرتبط بفروع أخرى — تطبيق التعديلات (الاسم / السعر / تصنيف المنيو / المجموعة المطابقة) على الفروع المحددة أيضًا
+                    </Label>
                   </div>
+                  {propagateToLinked && (
+                    <div className="space-y-2 pr-6">
+                      {linked.map((i: any) => (
+                        <div key={i.id} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`linked-br-${i.branch_id}`}
+                            checked={linkedUpdateBranchIds.includes(i.branch_id)}
+                            onCheckedChange={(c) => {
+                              setLinkedUpdateBranchIds(
+                                c
+                                  ? Array.from(new Set([...linkedUpdateBranchIds, i.branch_id]))
+                                  : linkedUpdateBranchIds.filter((id) => id !== i.branch_id)
+                              );
+                            }}
+                          />
+                          <Label htmlFor={`linked-br-${i.branch_id}`} className="cursor-pointer text-sm">
+                            {i.branches?.name || "—"}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })()}

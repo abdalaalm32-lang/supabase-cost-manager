@@ -157,11 +157,10 @@ export const MenuEngineeringPage: React.FC = () => {
       let from = 0;
       // Paginate to bypass the 1000-row default limit
       // and filter server-side by branch + date range
-      // eslint-disable-next-line no-constant-condition
       while (true) {
         let q = supabase
           .from("pos_sales")
-          .select("*, pos_sale_items(*, pos_items(name))")
+          .select("*, pos_sale_items(*, pos_items(id, name, price, branch_id, menu_engineering_class))")
           .eq("company_id", companyId!)
           .eq("status", "مكتمل");
         if (selectedBranch && selectedBranch !== "all") q = q.eq("branch_id", selectedBranch);
@@ -236,16 +235,6 @@ export const MenuEngineeringPage: React.FC = () => {
     return map;
   }, [recipes, stockItems, branchCosts, branchFilter]);
 
-  // Build recipe net profit map: posItemId -> net profit
-  const recipeNetProfitMap = useMemo(() => {
-    const map: Record<string, number> = {};
-    posItems.forEach((pi: any) => {
-      const cost = recipeCostMap[pi.id] || 0;
-      map[pi.id] = Number(pi.price) - cost;
-    });
-    return map;
-  }, [posItems, recipeCostMap]);
-
   // Normalize names: trim + collapse internal whitespace so "كرسبي  L" matches "كرسبي L"
   const normName = (s: any) => String(s || "").trim().replace(/\s+/g, " ");
 
@@ -253,17 +242,19 @@ export const MenuEngineeringPage: React.FC = () => {
   // This ensures sales referencing items from another branch, or items that no longer exist in
   // this branch's pos_items list, are still counted in the total.
   const salesAggByName = useMemo(() => {
-    const map: Record<string, { qty: number; revenue: number }> = {};
+    const map: Record<string, { qty: number; revenue: number; sourceItem?: any }> = {};
     sales.forEach((sale: any) => {
       (sale.pos_sale_items || []).forEach((si: any) => {
         const name = normName(si?.pos_items?.name);
         if (!name) return;
-        const qty = Number(si.quantity) || 0;
-        const unitPrice = Number(si.unit_price) || 0;
-        const lineTotal = Number(si.total) || qty * unitPrice;
-        if (!map[name]) map[name] = { qty: 0, revenue: 0 };
+        const qty = Number(si.quantity ?? 0);
+        const unitPrice = Number(si.unit_price ?? 0);
+        const storedLineTotal = Number(si.total ?? NaN);
+        const lineTotal = Number.isFinite(storedLineTotal) ? storedLineTotal : qty * unitPrice;
+        if (!map[name]) map[name] = { qty: 0, revenue: 0, sourceItem: si.pos_items };
         map[name].qty += qty;
         map[name].revenue += lineTotal;
+        if (!map[name].sourceItem && si.pos_items) map[name].sourceItem = si.pos_items;
       });
     });
     return map;
@@ -292,11 +283,29 @@ export const MenuEngineeringPage: React.FC = () => {
     return Object.values(salesAggByName).reduce((s, v) => s + (v.revenue || 0), 0);
   }, [salesAggByName]);
 
+  const displayPosItems = useMemo(() => {
+    const byName = new Map<string, any>();
+    posItems.forEach((pi: any) => {
+      const name = normName(pi.name);
+      if (!name) return;
+      const isCurrentBranch = !pi.branch_id || pi.branch_id === branchFilter;
+      const existing = byName.get(name);
+      if (!existing || (branchFilter && isCurrentBranch)) byName.set(name, pi);
+    });
+
+    Object.entries(salesAggByName).forEach(([name, agg]) => {
+      if (byName.has(name) || !agg.sourceItem) return;
+      byName.set(name, { ...agg.sourceItem, id: `sold-${agg.sourceItem.id}`, name, branch_id: branchFilter ?? agg.sourceItem.branch_id, __source_pos_item_id: agg.sourceItem.id });
+    });
+
+    return Array.from(byName.values());
+  }, [posItems, salesAggByName, branchFilter]);
+
   // Get POS items classified as kitchen/bar, with recipe ingredients as fallback
   const classifiedPosItems = useMemo(() => {
     const result: Record<EngClass, Set<string>> = { kitchen: new Set(), bar: new Set() };
 
-    posItems.forEach((pi: any) => {
+    displayPosItems.forEach((pi: any) => {
       const cls = String(pi.menu_engineering_class || "").toLowerCase();
       if (cls === "kitchen" || cls === "bar") {
         result[cls as EngClass].add(pi.id);
@@ -318,34 +327,38 @@ export const MenuEngineeringPage: React.FC = () => {
         if (cls) classes.add(cls);
       });
 
-      if (classes.has("kitchen")) result.kitchen.add(r.menu_item_id);
-      if (classes.has("bar")) result.bar.add(r.menu_item_id);
+      const itemIds = displayPosItems.filter((pi: any) => pi.id === r.menu_item_id || pi.__source_pos_item_id === r.menu_item_id).map((pi: any) => pi.id);
+      if (classes.has("kitchen")) itemIds.forEach((id: string) => result.kitchen.add(id));
+      if (classes.has("bar")) itemIds.forEach((id: string) => result.bar.add(id));
     });
 
     return result;
-  }, [posItems, recipes, stockItems]);
+  }, [displayPosItems, recipes, stockItems]);
 
   // Build engineering rows for active tab
   const engineeringData = useMemo(() => {
     const relevantPosItemIds = classifiedPosItems[activeTab];
-    const items = posItems.filter((pi: any) => {
+    const items = displayPosItems.filter((pi: any) => {
       if (!relevantPosItemIds.has(pi.id)) return false;
       if (selectedBranch !== "all" && pi.branch_id && pi.branch_id !== selectedBranch) return false;
       return true;
     });
 
     const totalAllSales = items.reduce((sum: number, pi: any) => {
-      return sum + (salesRevenueMap[pi.id] || 0);
+      const name = normName(pi.name);
+      return sum + (salesAggByName[name]?.revenue || salesRevenueMap[pi.id] || 0);
     }, 0);
 
     const rows: EngRow[] = items.map((pi: any) => {
-      const qty = salesQtyMap[pi.id] || 0;
+      const name = normName(pi.name);
+      const qty = salesAggByName[name]?.qty || salesQtyMap[pi.id] || 0;
       const price = Number(pi.price);
-      const directCost = recipeCostMap[pi.id] || 0;
-      const totalSales = salesRevenueMap[pi.id] || 0;
+      const costKey = pi.__source_pos_item_id || pi.id;
+      const directCost = recipeCostMap[costKey] || recipeCostMap[pi.id] || 0;
+      const totalSales = salesAggByName[name]?.revenue || salesRevenueMap[pi.id] || 0;
       const totalCostSales = qty * directCost;
       const costRatio = totalCostSales > 0 ? (totalSales / totalCostSales) * 100 : 0;
-      const netProfit = recipeNetProfitMap[pi.id] || 0;
+      const netProfit = (price || 0) - directCost;
       const totalProfit = netProfit * qty;
       const profitRatio = totalSales > 0 ? (totalProfit / totalSales) * 100 : 0;
       const salesSharePct = totalAllSales > 0 ? (totalSales / totalAllSales) * 100 : 0;
@@ -375,7 +388,7 @@ export const MenuEngineeringPage: React.FC = () => {
     });
 
     return rows.sort((a, b) => b.totalProfit - a.totalProfit);
-  }, [posItems, classifiedPosItems, activeTab, salesQtyMap, recipeCostMap, recipeNetProfitMap, selectedBranch]);
+  }, [displayPosItems, classifiedPosItems, activeTab, salesAggByName, salesQtyMap, salesRevenueMap, recipeCostMap, selectedBranch]);
 
   // Totals
   const totals = useMemo(() => {

@@ -597,6 +597,12 @@ export const MenuEngineeringPage: React.FC = () => {
       <p>Cost Management System • ${dateStr}</p>
     </div>
   </div>
+  <div style="text-align:center;margin-bottom:8px;font-size:9px;font-weight:bold;border:1px solid #000;padding:4px 6px;">
+    الفرع: ${selectedBranch === "all" ? "كل الفروع" : (branches.find((b: any) => b.id === selectedBranch)?.name ?? "—")}
+    &nbsp;•&nbsp; من تاريخ: ${dateFrom ? format(dateFrom, "yyyy/MM/dd") : "—"}
+    &nbsp;•&nbsp; إلى تاريخ: ${dateTo ? format(dateTo, "yyyy/MM/dd") : "—"}
+    &nbsp;•&nbsp; القسم: ${activeTab === "kitchen" ? "المطبخ" : "البار"}
+  </div>
   <table>
     <thead>${theadHTML}</thead>
     <tbody>${tbodyHTML}</tbody>

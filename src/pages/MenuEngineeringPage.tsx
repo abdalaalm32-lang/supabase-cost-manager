@@ -246,18 +246,48 @@ export const MenuEngineeringPage: React.FC = () => {
     return map;
   }, [posItems, recipeCostMap]);
 
-  // Build sales qty map: posItemId -> total qty sold
-  const salesQtyMap = useMemo(() => {
-    const map: Record<string, number> = {};
+  // Aggregate sales by pos_item NAME so sales referencing a different branch's pos_item row
+  // (same item replicated across branches) still match. Track real revenue from sale lines.
+  const posItemNameById = useMemo(() => {
+    const m: Record<string, string> = {};
+    posItems.forEach((pi: any) => { if (pi?.id) m[pi.id] = String(pi.name || "").trim(); });
+    return m;
+  }, [posItems]);
+
+  const salesAggByName = useMemo(() => {
+    const map: Record<string, { qty: number; revenue: number }> = {};
     sales.forEach((sale: any) => {
       (sale.pos_sale_items || []).forEach((si: any) => {
-        if (si.pos_item_id) {
-          map[si.pos_item_id] = (map[si.pos_item_id] || 0) + Number(si.quantity);
-        }
+        const name = si.pos_item_id ? posItemNameById[si.pos_item_id] : "";
+        if (!name) return;
+        const qty = Number(si.quantity) || 0;
+        const unitPrice = Number(si.unit_price) || 0;
+        const lineTotal = Number(si.total) || qty * unitPrice;
+        if (!map[name]) map[name] = { qty: 0, revenue: 0 };
+        map[name].qty += qty;
+        map[name].revenue += lineTotal;
       });
     });
     return map;
-  }, [sales]);
+  }, [sales, posItemNameById]);
+
+  const salesQtyMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    posItems.forEach((pi: any) => {
+      const name = String(pi.name || "").trim();
+      map[pi.id] = salesAggByName[name]?.qty || 0;
+    });
+    return map;
+  }, [posItems, salesAggByName]);
+
+  const salesRevenueMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    posItems.forEach((pi: any) => {
+      const name = String(pi.name || "").trim();
+      map[pi.id] = salesAggByName[name]?.revenue || 0;
+    });
+    return map;
+  }, [posItems, salesAggByName]);
 
   // Get POS items classified as kitchen/bar, with recipe ingredients as fallback
   const classifiedPosItems = useMemo(() => {

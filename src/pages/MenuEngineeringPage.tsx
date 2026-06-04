@@ -146,12 +146,35 @@ export const MenuEngineeringPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  const dateFromStr = dateFrom ? format(dateFrom, "yyyy-MM-dd") : null;
+  const dateToStr = dateTo ? format(dateTo, "yyyy-MM-dd") : null;
+
   const { data: sales = [] } = useQuery({
-    queryKey: ["pos-sales-with-items", companyId],
+    queryKey: ["pos-sales-with-items", companyId, selectedBranch, dateFromStr, dateToStr],
     queryFn: async () => {
-      const { data, error } = await supabase.from("pos_sales").select("*, pos_sale_items(*)").eq("status", "مكتمل");
-      if (error) throw error;
-      return data;
+      const all: any[] = [];
+      const pageSize = 1000;
+      let from = 0;
+      // Paginate to bypass the 1000-row default limit
+      // and filter server-side by branch + date range
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        let q = supabase
+          .from("pos_sales")
+          .select("*, pos_sale_items(*)")
+          .eq("company_id", companyId!)
+          .eq("status", "مكتمل");
+        if (selectedBranch && selectedBranch !== "all") q = q.eq("branch_id", selectedBranch);
+        if (dateFromStr) q = q.gte("date", `${dateFromStr}T00:00:00`);
+        if (dateToStr) q = q.lte("date", `${dateToStr}T23:59:59`);
+        const { data, error } = await q.range(from, from + pageSize - 1);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        all.push(...data);
+        if (data.length < pageSize) break;
+        from += pageSize;
+      }
+      return all;
     },
     enabled: !!companyId,
   });
@@ -227,10 +250,6 @@ export const MenuEngineeringPage: React.FC = () => {
   const salesQtyMap = useMemo(() => {
     const map: Record<string, number> = {};
     sales.forEach((sale: any) => {
-      if (selectedBranch !== "all" && sale.branch_id !== selectedBranch) return;
-      // Date filter
-      if (dateFrom && sale.date < format(dateFrom, "yyyy-MM-dd")) return;
-      if (dateTo && sale.date > format(dateTo, "yyyy-MM-dd")) return;
       (sale.pos_sale_items || []).forEach((si: any) => {
         if (si.pos_item_id) {
           map[si.pos_item_id] = (map[si.pos_item_id] || 0) + Number(si.quantity);
@@ -238,7 +257,7 @@ export const MenuEngineeringPage: React.FC = () => {
       });
     });
     return map;
-  }, [sales, selectedBranch, dateFrom, dateTo]);
+  }, [sales]);
 
   // Get POS items classified as kitchen/bar, with recipe ingredients as fallback
   const classifiedPosItems = useMemo(() => {

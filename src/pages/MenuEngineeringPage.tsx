@@ -332,15 +332,14 @@ export const MenuEngineeringPage: React.FC = () => {
     });
 
     const totalAllSales = items.reduce((sum: number, pi: any) => {
-      const qty = salesQtyMap[pi.id] || 0;
-      return sum + qty * Number(pi.price);
+      return sum + (salesRevenueMap[pi.id] || 0);
     }, 0);
 
     const rows: EngRow[] = items.map((pi: any) => {
       const qty = salesQtyMap[pi.id] || 0;
       const price = Number(pi.price);
       const directCost = recipeCostMap[pi.id] || 0;
-      const totalSales = qty * price;
+      const totalSales = salesRevenueMap[pi.id] || 0;
       const totalCostSales = qty * directCost;
       const costRatio = totalCostSales > 0 ? (totalSales / totalCostSales) * 100 : 0;
       const netProfit = recipeNetProfitMap[pi.id] || 0;

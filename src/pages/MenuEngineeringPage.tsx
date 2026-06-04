@@ -285,20 +285,18 @@ export const MenuEngineeringPage: React.FC = () => {
   }, [salesAggByName]);
 
   const displayPosItems = useMemo(() => {
-    if (!branchFilter) return posItems;
-
     const byName = new Map<string, any>();
     posItems.forEach((pi: any) => {
       const name = normName(pi.name);
       if (!name) return;
       const isCurrentBranch = !pi.branch_id || pi.branch_id === branchFilter;
       const existing = byName.get(name);
-      if (!existing || isCurrentBranch) byName.set(name, pi);
+      if (!existing || (branchFilter && isCurrentBranch)) byName.set(name, pi);
     });
 
     Object.entries(salesAggByName).forEach(([name, agg]) => {
       if (byName.has(name) || !agg.sourceItem) return;
-      byName.set(name, { ...agg.sourceItem, id: `sold-${agg.sourceItem.id}`, name, branch_id: branchFilter, __source_pos_item_id: agg.sourceItem.id });
+      byName.set(name, { ...agg.sourceItem, id: `sold-${agg.sourceItem.id}`, name, branch_id: branchFilter ?? agg.sourceItem.branch_id, __source_pos_item_id: agg.sourceItem.id });
     });
 
     return Array.from(byName.values());

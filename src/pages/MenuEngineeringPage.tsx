@@ -294,11 +294,31 @@ export const MenuEngineeringPage: React.FC = () => {
     return Object.values(salesAggByName).reduce((s, v) => s + (v.revenue || 0), 0);
   }, [salesAggByName]);
 
+  const displayPosItems = useMemo(() => {
+    if (!branchFilter) return posItems;
+
+    const byName = new Map<string, any>();
+    posItems.forEach((pi: any) => {
+      const name = normName(pi.name);
+      if (!name) return;
+      const isCurrentBranch = !pi.branch_id || pi.branch_id === branchFilter;
+      const existing = byName.get(name);
+      if (!existing || isCurrentBranch) byName.set(name, pi);
+    });
+
+    Object.entries(salesAggByName).forEach(([name, agg]) => {
+      if (byName.has(name) || !agg.sourceItem) return;
+      byName.set(name, { ...agg.sourceItem, id: `sold-${agg.sourceItem.id}`, name, branch_id: branchFilter, __source_pos_item_id: agg.sourceItem.id });
+    });
+
+    return Array.from(byName.values());
+  }, [posItems, salesAggByName, branchFilter]);
+
   // Get POS items classified as kitchen/bar, with recipe ingredients as fallback
   const classifiedPosItems = useMemo(() => {
     const result: Record<EngClass, Set<string>> = { kitchen: new Set(), bar: new Set() };
 
-    posItems.forEach((pi: any) => {
+    displayPosItems.forEach((pi: any) => {
       const cls = String(pi.menu_engineering_class || "").toLowerCase();
       if (cls === "kitchen" || cls === "bar") {
         result[cls as EngClass].add(pi.id);
@@ -320,12 +340,13 @@ export const MenuEngineeringPage: React.FC = () => {
         if (cls) classes.add(cls);
       });
 
-      if (classes.has("kitchen")) result.kitchen.add(r.menu_item_id);
-      if (classes.has("bar")) result.bar.add(r.menu_item_id);
+      const itemIds = displayPosItems.filter((pi: any) => pi.id === r.menu_item_id || pi.__source_pos_item_id === r.menu_item_id).map((pi: any) => pi.id);
+      if (classes.has("kitchen")) itemIds.forEach((id: string) => result.kitchen.add(id));
+      if (classes.has("bar")) itemIds.forEach((id: string) => result.bar.add(id));
     });
 
     return result;
-  }, [posItems, recipes, stockItems]);
+  }, [displayPosItems, recipes, stockItems]);
 
   // Build engineering rows for active tab
   const engineeringData = useMemo(() => {

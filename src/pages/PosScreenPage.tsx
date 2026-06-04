@@ -933,7 +933,13 @@ export const PosScreenPage: React.FC = () => {
 
               <div className="flex gap-2">
                 <div className="flex-1">
-                  <Select value={branchId} onValueChange={setBranchId}>
+                  <Select value={branchId} onValueChange={(v) => {
+                    if (v !== branchId && cart.length > 0 && !editingSaleId) {
+                      setCart([]);
+                      toast.info("تم تفريغ السلة تلقائيًا لأن الأصناف مرتبطة بالفرع السابق");
+                    }
+                    setBranchId(v);
+                  }}>
                     <SelectTrigger className={cn("glass-input h-8 text-xs", !branchId && "border-destructive/50")}>
                       <Store className="h-3.5 w-3.5 ml-1 text-muted-foreground" />
                       <SelectValue placeholder="الفرع *" />

@@ -236,16 +236,6 @@ export const MenuEngineeringPage: React.FC = () => {
     return map;
   }, [recipes, stockItems, branchCosts, branchFilter]);
 
-  // Build recipe net profit map: posItemId -> net profit
-  const recipeNetProfitMap = useMemo(() => {
-    const map: Record<string, number> = {};
-    posItems.forEach((pi: any) => {
-      const cost = recipeCostMap[pi.id] || 0;
-      map[pi.id] = Number(pi.price) - cost;
-    });
-    return map;
-  }, [posItems, recipeCostMap]);
-
   // Normalize names: trim + collapse internal whitespace so "كرسبي  L" matches "كرسبي L"
   const normName = (s: any) => String(s || "").trim().replace(/\s+/g, " ");
 

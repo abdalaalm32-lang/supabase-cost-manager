@@ -3116,7 +3116,12 @@ export type Database = {
         Args: { p_company_id: string }
         Returns: string
       }
-      generate_item_code: { Args: { p_company_id: string }; Returns: string }
+      generate_item_code:
+        | { Args: { p_company_id: string }; Returns: string }
+        | {
+            Args: { p_branch_id?: string; p_company_id: string }
+            Returns: string
+          }
       generate_offer_code: { Args: { p_company_id: string }; Returns: string }
       generate_production_record_number: {
         Args: { p_company_id: string }

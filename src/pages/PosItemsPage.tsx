@@ -140,7 +140,7 @@ export const PosItemsPage: React.FC = () => {
       }
 
       for (const bId of allBranchIds) {
-        const { data: codeData, error: codeError } = await supabase.rpc("generate_item_code", { p_company_id: companyId! });
+        const { data: codeData, error: codeError } = await supabase.rpc("generate_item_code", { p_company_id: companyId!, p_branch_id: bId ?? null });
         if (codeError) throw codeError;
 
         let catId = categoryId || null;
@@ -226,7 +226,7 @@ export const PosItemsPage: React.FC = () => {
       if (editLinkToOtherBranches && editAdditionalBranchIds.length > 0) {
         for (const bId of editAdditionalBranchIds) {
           if (bId !== editBranchId) {
-            const { data: codeData, error: codeError } = await supabase.rpc("generate_item_code", { p_company_id: companyId! });
+            const { data: codeData, error: codeError } = await supabase.rpc("generate_item_code", { p_company_id: companyId!, p_branch_id: bId ?? null });
             if (codeError) throw codeError;
 
             let catId: string | null = null;

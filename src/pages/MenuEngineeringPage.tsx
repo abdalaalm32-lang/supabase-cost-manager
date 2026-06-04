@@ -250,10 +250,6 @@ export const MenuEngineeringPage: React.FC = () => {
   const salesQtyMap = useMemo(() => {
     const map: Record<string, number> = {};
     sales.forEach((sale: any) => {
-      if (selectedBranch !== "all" && sale.branch_id !== selectedBranch) return;
-      // Date filter
-      if (dateFrom && sale.date < format(dateFrom, "yyyy-MM-dd")) return;
-      if (dateTo && sale.date > format(dateTo, "yyyy-MM-dd")) return;
       (sale.pos_sale_items || []).forEach((si: any) => {
         if (si.pos_item_id) {
           map[si.pos_item_id] = (map[si.pos_item_id] || 0) + Number(si.quantity);
@@ -261,7 +257,7 @@ export const MenuEngineeringPage: React.FC = () => {
       });
     });
     return map;
-  }, [sales, selectedBranch, dateFrom, dateTo]);
+  }, [sales]);
 
   // Get POS items classified as kitchen/bar, with recipe ingredients as fallback
   const classifiedPosItems = useMemo(() => {

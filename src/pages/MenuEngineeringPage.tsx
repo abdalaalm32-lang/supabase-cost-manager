@@ -161,7 +161,7 @@ export const MenuEngineeringPage: React.FC = () => {
       while (true) {
         let q = supabase
           .from("pos_sales")
-          .select("*, pos_sale_items(*)")
+          .select("*, pos_sale_items(*, pos_items(name))")
           .eq("company_id", companyId!)
           .eq("status", "مكتمل");
         if (selectedBranch && selectedBranch !== "all") q = q.eq("branch_id", selectedBranch);

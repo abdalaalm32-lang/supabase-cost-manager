@@ -788,35 +788,70 @@ export const MenuEngineeringPage: React.FC = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  engineeringData.map((row, idx) => (
-                    <TableRow key={row.id}>
-                      <TableCell className="text-xs">{idx + 1}</TableCell>
-                      <TableCell className="font-medium text-sm whitespace-nowrap">{row.name}</TableCell>
-                      <TableCell className="text-xs">{row.qty}</TableCell>
-                      <TableCell className="text-xs">{row.price.toFixed(2)}</TableCell>
-                      <TableCell className="text-xs">{row.directCost.toFixed(2)}</TableCell>
-                      <TableCell className="text-xs">{row.totalSales.toFixed(2)}</TableCell>
-                      <TableCell className="text-xs">{row.totalCostSales.toFixed(2)}</TableCell>
-                      <TableCell className="text-xs">{row.costRatio.toFixed(1)}%</TableCell>
-                      <TableCell className="text-xs">{row.netProfit.toFixed(2)}</TableCell>
-                      <TableCell className="text-xs font-semibold">{row.totalProfit.toFixed(2)}</TableCell>
-                      <TableCell className="text-xs">{row.profitRatio.toFixed(1)}%</TableCell>
-                      <TableCell className="text-xs">{row.salesSharePct.toFixed(1)}%</TableCell>
-                      <TableCell><Badge className={`text-[10px] ${levelBadgeClass[row.profitLevel]}`}>{row.profitLevel}</Badge></TableCell>
-                      <TableCell><Badge className={`text-[10px] ${levelBadgeClass[row.popularityLevel]}`}>{row.popularityLevel}</Badge></TableCell>
-                      <TableCell>
-                        <Badge className={`text-[10px] gap-1 ${strategicBadgeClass[row.strategic]}`}>
-                          {STRATEGIC_ICONS[row.strategic]}
-                          {row.strategic}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <span className={`text-[10px] font-semibold ${strategicBadgeClass[row.strategic].replace(/bg-\S+/g, '').trim()}`}>
-                          {row.decision}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  (() => {
+                    let runningIdx = 0;
+                    return groupedEngineeringData.map((grp) => {
+                      const groupSubtotal = {
+                        qty: grp.rows.reduce((s, r) => s + r.qty, 0),
+                        totalSales: grp.rows.reduce((s, r) => s + r.totalSales, 0),
+                        totalCostSales: grp.rows.reduce((s, r) => s + r.totalCostSales, 0),
+                        totalProfit: grp.rows.reduce((s, r) => s + r.totalProfit, 0),
+                      };
+                      return (
+                        <React.Fragment key={`${grp.categoryCode}-${grp.categoryName}`}>
+                          <TableRow className="bg-primary/10 hover:bg-primary/10">
+                            <TableCell colSpan={16} className="text-sm font-bold text-primary">
+                              📁 {grp.categoryCode ? `[${grp.categoryCode}] ` : ""}{grp.categoryName} <span className="text-xs text-muted-foreground font-normal">({grp.rows.length} صنف)</span>
+                            </TableCell>
+                          </TableRow>
+                          {grp.rows.map((row) => {
+                            runningIdx++;
+                            return (
+                              <TableRow key={row.id}>
+                                <TableCell className="text-xs">{runningIdx}</TableCell>
+                                <TableCell className="font-medium text-sm whitespace-nowrap">{row.itemCode ? `${row.itemCode} - ` : ""}{row.name}</TableCell>
+                                <TableCell className="text-xs">{row.qty}</TableCell>
+                                <TableCell className="text-xs">{row.price.toFixed(2)}</TableCell>
+                                <TableCell className="text-xs">{row.directCost.toFixed(2)}</TableCell>
+                                <TableCell className="text-xs">{row.totalSales.toFixed(2)}</TableCell>
+                                <TableCell className="text-xs">{row.totalCostSales.toFixed(2)}</TableCell>
+                                <TableCell className="text-xs">{row.costRatio.toFixed(1)}%</TableCell>
+                                <TableCell className="text-xs">{row.netProfit.toFixed(2)}</TableCell>
+                                <TableCell className="text-xs font-semibold">{row.totalProfit.toFixed(2)}</TableCell>
+                                <TableCell className="text-xs">{row.profitRatio.toFixed(1)}%</TableCell>
+                                <TableCell className="text-xs">{row.salesSharePct.toFixed(1)}%</TableCell>
+                                <TableCell><Badge className={`text-[10px] ${levelBadgeClass[row.profitLevel]}`}>{row.profitLevel}</Badge></TableCell>
+                                <TableCell><Badge className={`text-[10px] ${levelBadgeClass[row.popularityLevel]}`}>{row.popularityLevel}</Badge></TableCell>
+                                <TableCell>
+                                  <Badge className={`text-[10px] gap-1 ${strategicBadgeClass[row.strategic]}`}>
+                                    {STRATEGIC_ICONS[row.strategic]}
+                                    {row.strategic}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <span className={`text-[10px] font-semibold ${strategicBadgeClass[row.strategic].replace(/bg-\S+/g, '').trim()}`}>
+                                    {row.decision}
+                                  </span>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                          <TableRow className="bg-muted/20 font-semibold">
+                            <TableCell colSpan={2} className="text-xs text-muted-foreground">إجمالي المجموعة: {grp.categoryName}</TableCell>
+                            <TableCell className="text-xs">{groupSubtotal.qty}</TableCell>
+                            <TableCell className="text-xs">—</TableCell>
+                            <TableCell className="text-xs">—</TableCell>
+                            <TableCell className="text-xs">{groupSubtotal.totalSales.toFixed(2)}</TableCell>
+                            <TableCell className="text-xs">{groupSubtotal.totalCostSales.toFixed(2)}</TableCell>
+                            <TableCell className="text-xs">—</TableCell>
+                            <TableCell className="text-xs">—</TableCell>
+                            <TableCell className="text-xs">{groupSubtotal.totalProfit.toFixed(2)}</TableCell>
+                            <TableCell colSpan={6} className="text-xs">—</TableCell>
+                          </TableRow>
+                        </React.Fragment>
+                      );
+                    });
+                  })()
                 )}
                 {/* Totals row */}
                 {engineeringData.length > 0 && (

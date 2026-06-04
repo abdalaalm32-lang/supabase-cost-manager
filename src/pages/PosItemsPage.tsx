@@ -55,6 +55,10 @@ export const PosItemsPage: React.FC = () => {
   const [editMenuEngClass, setEditMenuEngClass] = useState("");
   const [editLinkToOtherBranches, setEditLinkToOtherBranches] = useState(false);
   const [editAdditionalBranchIds, setEditAdditionalBranchIds] = useState<string[]>([]);
+  const [editOriginalName, setEditOriginalName] = useState("");
+  const [editOriginalBranchId, setEditOriginalBranchId] = useState("");
+  const [propagateToLinked, setPropagateToLinked] = useState(true);
+  const [linkedUpdateBranchIds, setLinkedUpdateBranchIds] = useState<string[]>([]);
 
   // Fetch branches
   const { data: branches = [] } = useQuery({

@@ -338,6 +338,7 @@ export const IndirectExpensesPage: React.FC = () => {
       branch_id: p.branch_id || "",
       consumables_kitchen_categories: Array.isArray((p as any).consumables_kitchen_categories) ? (p as any).consumables_kitchen_categories : [],
       consumables_bar_categories: Array.isArray((p as any).consumables_bar_categories) ? (p as any).consumables_bar_categories : [],
+      venue_type: ((p as any).venue_type === "تيك اواي" ? "تيك اواي" : "صالة") as "صالة" | "تيك اواي",
     });
     setDialogOpen(true);
   };

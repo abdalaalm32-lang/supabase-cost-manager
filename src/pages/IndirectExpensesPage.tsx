@@ -548,8 +548,11 @@ export const IndirectExpensesPage: React.FC = () => {
 
     <h3>بيانات التشغيل</h3>
     <table><tbody>
-      <tr><td>السعة (عدد الكراسي)</td><td style="font-weight:bold">${selectedPeriod.capacity}</td></tr>
-      <tr><td>معدل الدوران</td><td style="font-weight:bold">${selectedPeriod.turn_over}</td></tr>
+      <tr><td>نوع المكان</td><td style="font-weight:bold">${(selectedPeriod as any).venue_type === "تيك اواي" ? "تيك اواي" : "صالة"}</td></tr>
+      ${(selectedPeriod as any).venue_type === "تيك اواي"
+        ? `<tr><td>عدد الطلبات اليومي (عدد الزوار)</td><td style="font-weight:bold">${selectedPeriod.capacity}</td></tr>`
+        : `<tr><td>السعة (عدد الكراسي)</td><td style="font-weight:bold">${selectedPeriod.capacity}</td></tr>
+           <tr><td>معدل الدوران</td><td style="font-weight:bold">${selectedPeriod.turn_over}</td></tr>`}
       <tr><td>متوسط الفاتورة</td><td style="font-weight:bold">${selectedPeriod.avg_check.toLocaleString()}</td></tr>
       <tr><td>المبيعات اليومية المتوقعة</td><td style="font-weight:bold">${expectedDailySales(selectedPeriod).toLocaleString()}</td></tr>
       <tr><td>المبيعات الشهرية المتوقعة</td><td style="font-weight:bold">${monthSales.toLocaleString()}</td></tr>

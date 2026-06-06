@@ -694,10 +694,46 @@ export const IndirectExpensesPage: React.FC = () => {
 
               <div className="border-t pt-4">
                 <h3 className="font-semibold mb-3">بيانات التشغيل</h3>
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div>
+                    <Label>نوع المكان</Label>
+                    <Select
+                      value={form.venue_type}
+                      onValueChange={(v) => setForm({ ...form, venue_type: v as "صالة" | "تيك اواي" })}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="صالة">صالة (Dine-in)</SelectItem>
+                        <SelectItem value="تيك اواي">تيك اواي (Take Away)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><Label>المبيعات المتوقعة (تلقائي)</Label><Input type="number" value={form.capacity * form.turn_over * form.avg_check} readOnly className="bg-muted" /></div>
-                  <div><Label>السعة (عدد الكراسي)</Label><Input type="number" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: parseFloat(e.target.value) || 0 })} /></div>
-                  <div><Label>معدل الدوران</Label><Input type="number" step="0.1" value={form.turn_over} onChange={(e) => setForm({ ...form, turn_over: parseFloat(e.target.value) || 0 })} /></div>
+                  <div>
+                    <Label>المبيعات المتوقعة (تلقائي)</Label>
+                    <Input
+                      type="number"
+                      value={
+                        form.venue_type === "تيك اواي"
+                          ? form.capacity * form.avg_check
+                          : form.capacity * form.turn_over * form.avg_check
+                      }
+                      readOnly
+                      className="bg-muted"
+                    />
+                  </div>
+                  {form.venue_type === "تيك اواي" ? (
+                    <div>
+                      <Label>عدد الطلبات اليومي (عدد الزوار)</Label>
+                      <Input type="number" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: parseFloat(e.target.value) || 0 })} />
+                    </div>
+                  ) : (
+                    <>
+                      <div><Label>السعة (عدد الكراسي)</Label><Input type="number" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: parseFloat(e.target.value) || 0 })} /></div>
+                      <div><Label>معدل الدوران</Label><Input type="number" step="0.1" value={form.turn_over} onChange={(e) => setForm({ ...form, turn_over: parseFloat(e.target.value) || 0 })} /></div>
+                    </>
+                  )}
                   <div><Label>متوسط الفاتورة</Label><Input type="number" value={form.avg_check} onChange={(e) => setForm({ ...form, avg_check: parseFloat(e.target.value) || 0 })} /></div>
                 </div>
               </div>

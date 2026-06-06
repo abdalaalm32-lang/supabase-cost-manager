@@ -729,6 +729,7 @@ export type Database = {
           status: string
           tax_rate: number
           turn_over: number
+          venue_type: string
         }
         Insert: {
           avg_check?: number
@@ -756,6 +757,7 @@ export type Database = {
           status?: string
           tax_rate?: number
           turn_over?: number
+          venue_type?: string
         }
         Update: {
           avg_check?: number
@@ -783,6 +785,7 @@ export type Database = {
           status?: string
           tax_rate?: number
           turn_over?: number
+          venue_type?: string
         }
         Relationships: [
           {

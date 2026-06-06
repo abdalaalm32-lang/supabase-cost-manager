@@ -47,6 +47,7 @@ interface CostingPeriod {
   branch_id: string | null;
   consumables_kitchen_categories: string[];
   consumables_bar_categories: string[];
+  venue_type: string;
 }
 
 const emptyForm = {
@@ -71,6 +72,7 @@ const emptyForm = {
   branch_id: "" as string,
   consumables_kitchen_categories: [] as string[],
   consumables_bar_categories: [] as string[],
+  venue_type: "صالة" as "صالة" | "تيك اواي",
 };
 
 const getDaysInPeriod = (start: string, end: string) => {
@@ -216,8 +218,11 @@ export const IndirectExpensesPage: React.FC = () => {
     return base + customTotal;
   };
 
-  const expectedDailySales = (p: CostingPeriod) =>
-    p.capacity * p.turn_over * p.avg_check;
+  const expectedDailySales = (p: CostingPeriod) => {
+    const isTakeaway = (p as any).venue_type === "تيك اواي";
+    if (isTakeaway) return p.capacity * p.avg_check; // capacity = عدد الطلبات اليومي
+    return p.capacity * p.turn_over * p.avg_check;
+  };
 
   const monthlyExpectedSales = (p: CostingPeriod) => {
     const days = getDaysInPeriod(p.start_date, p.end_date);
@@ -266,14 +271,20 @@ export const IndirectExpensesPage: React.FC = () => {
       return;
     }
 
+    const isTakeaway = form.venue_type === "تيك اواي";
+    const effectiveTurnOver = isTakeaway ? 1 : form.turn_over;
+    const expSales = isTakeaway
+      ? form.capacity * form.avg_check
+      : form.capacity * form.turn_over * form.avg_check;
+
     const payload = {
       company_id: companyId,
       name: form.name,
       start_date: format(form.start_date, "yyyy-MM-dd"),
       end_date: format(form.end_date, "yyyy-MM-dd"),
-      expected_sales: form.capacity * form.turn_over * form.avg_check,
+      expected_sales: expSales,
       capacity: form.capacity,
-      turn_over: form.turn_over,
+      turn_over: effectiveTurnOver,
       avg_check: form.avg_check,
       media: form.media,
       bills: form.bills,
@@ -289,6 +300,7 @@ export const IndirectExpensesPage: React.FC = () => {
       branch_id: form.branch_id || null,
       consumables_kitchen_categories: form.consumables_kitchen_categories as any,
       consumables_bar_categories: form.consumables_bar_categories as any,
+      venue_type: form.venue_type,
     };
 
     let error;
@@ -333,6 +345,7 @@ export const IndirectExpensesPage: React.FC = () => {
       branch_id: p.branch_id || "",
       consumables_kitchen_categories: Array.isArray((p as any).consumables_kitchen_categories) ? (p as any).consumables_kitchen_categories : [],
       consumables_bar_categories: Array.isArray((p as any).consumables_bar_categories) ? (p as any).consumables_bar_categories : [],
+      venue_type: ((p as any).venue_type === "تيك اواي" ? "تيك اواي" : "صالة") as "صالة" | "تيك اواي",
     });
     setDialogOpen(true);
   };
@@ -447,8 +460,14 @@ export const IndirectExpensesPage: React.FC = () => {
       }
       rows.push({ __rowType: "grand-total", label: "الإجمالي", value: total.toLocaleString(), pct: monthSales > 0 ? `${(total / monthSales * 100).toFixed(2)}%` : "0%" });
       rows.push({ __rowType: "group-total", label: "بيانات التشغيل", value: "", pct: "" });
-      rows.push({ label: "السعة (عدد الكراسي)", value: String(selectedPeriod.capacity), pct: "" });
-      rows.push({ label: "معدل الدوران", value: String(selectedPeriod.turn_over), pct: "" });
+      const isTakeawayX = (selectedPeriod as any).venue_type === "تيك اواي";
+      rows.push({ label: "نوع المكان", value: isTakeawayX ? "تيك اواي" : "صالة", pct: "" });
+      if (isTakeawayX) {
+        rows.push({ label: "عدد الطلبات اليومي (عدد الزوار)", value: String(selectedPeriod.capacity), pct: "" });
+      } else {
+        rows.push({ label: "السعة (عدد الكراسي)", value: String(selectedPeriod.capacity), pct: "" });
+        rows.push({ label: "معدل الدوران", value: String(selectedPeriod.turn_over), pct: "" });
+      }
       rows.push({ label: "متوسط الفاتورة", value: selectedPeriod.avg_check.toLocaleString(), pct: "" });
       rows.push({ label: "المبيعات اليومية المتوقعة", value: expectedDailySales(selectedPeriod).toLocaleString(), pct: "" });
       rows.push({ label: "المبيعات الشهرية المتوقعة", value: monthSales.toLocaleString(), pct: "" });
@@ -529,8 +548,11 @@ export const IndirectExpensesPage: React.FC = () => {
 
     <h3>بيانات التشغيل</h3>
     <table><tbody>
-      <tr><td>السعة (عدد الكراسي)</td><td style="font-weight:bold">${selectedPeriod.capacity}</td></tr>
-      <tr><td>معدل الدوران</td><td style="font-weight:bold">${selectedPeriod.turn_over}</td></tr>
+      <tr><td>نوع المكان</td><td style="font-weight:bold">${(selectedPeriod as any).venue_type === "تيك اواي" ? "تيك اواي" : "صالة"}</td></tr>
+      ${(selectedPeriod as any).venue_type === "تيك اواي"
+        ? `<tr><td>عدد الطلبات اليومي (عدد الزوار)</td><td style="font-weight:bold">${selectedPeriod.capacity}</td></tr>`
+        : `<tr><td>السعة (عدد الكراسي)</td><td style="font-weight:bold">${selectedPeriod.capacity}</td></tr>
+           <tr><td>معدل الدوران</td><td style="font-weight:bold">${selectedPeriod.turn_over}</td></tr>`}
       <tr><td>متوسط الفاتورة</td><td style="font-weight:bold">${selectedPeriod.avg_check.toLocaleString()}</td></tr>
       <tr><td>المبيعات اليومية المتوقعة</td><td style="font-weight:bold">${expectedDailySales(selectedPeriod).toLocaleString()}</td></tr>
       <tr><td>المبيعات الشهرية المتوقعة</td><td style="font-weight:bold">${monthSales.toLocaleString()}</td></tr>
@@ -681,10 +703,46 @@ export const IndirectExpensesPage: React.FC = () => {
 
               <div className="border-t pt-4">
                 <h3 className="font-semibold mb-3">بيانات التشغيل</h3>
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  <div>
+                    <Label>نوع المكان</Label>
+                    <Select
+                      value={form.venue_type}
+                      onValueChange={(v) => setForm({ ...form, venue_type: v as "صالة" | "تيك اواي" })}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="صالة">صالة (Dine-in)</SelectItem>
+                        <SelectItem value="تيك اواي">تيك اواي (Take Away)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><Label>المبيعات المتوقعة (تلقائي)</Label><Input type="number" value={form.capacity * form.turn_over * form.avg_check} readOnly className="bg-muted" /></div>
-                  <div><Label>السعة (عدد الكراسي)</Label><Input type="number" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: parseFloat(e.target.value) || 0 })} /></div>
-                  <div><Label>معدل الدوران</Label><Input type="number" step="0.1" value={form.turn_over} onChange={(e) => setForm({ ...form, turn_over: parseFloat(e.target.value) || 0 })} /></div>
+                  <div>
+                    <Label>المبيعات المتوقعة (تلقائي)</Label>
+                    <Input
+                      type="number"
+                      value={
+                        form.venue_type === "تيك اواي"
+                          ? form.capacity * form.avg_check
+                          : form.capacity * form.turn_over * form.avg_check
+                      }
+                      readOnly
+                      className="bg-muted"
+                    />
+                  </div>
+                  {form.venue_type === "تيك اواي" ? (
+                    <div>
+                      <Label>عدد الطلبات اليومي (عدد الزوار)</Label>
+                      <Input type="number" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: parseFloat(e.target.value) || 0 })} />
+                    </div>
+                  ) : (
+                    <>
+                      <div><Label>السعة (عدد الكراسي)</Label><Input type="number" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: parseFloat(e.target.value) || 0 })} /></div>
+                      <div><Label>معدل الدوران</Label><Input type="number" step="0.1" value={form.turn_over} onChange={(e) => setForm({ ...form, turn_over: parseFloat(e.target.value) || 0 })} /></div>
+                    </>
+                  )}
                   <div><Label>متوسط الفاتورة</Label><Input type="number" value={form.avg_check} onChange={(e) => setForm({ ...form, avg_check: parseFloat(e.target.value) || 0 })} /></div>
                 </div>
               </div>
@@ -920,18 +978,27 @@ export const IndirectExpensesPage: React.FC = () => {
               <CardHeader><CardTitle className="text-lg">بيانات التشغيل</CardTitle></CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {[
-                    { label: "السعة (عدد الكراسي)", value: selectedPeriod.capacity },
-                    { label: "معدل الدوران", value: selectedPeriod.turn_over },
-                    { label: "متوسط الفاتورة", value: selectedPeriod.avg_check.toLocaleString() },
-                    { label: "المبيعات اليومية المتوقعة", value: expectedDailySales(selectedPeriod).toLocaleString() },
-                    { label: "المبيعات الشهرية المتوقعة", value: monthSales.toLocaleString() },
-                  ].map((item) => (
-                    <div key={item.label} className="flex items-center justify-between border-b pb-2 last:border-0">
-                      <span className="text-sm text-muted-foreground">{item.label}</span>
-                      <span className="font-semibold">{item.value}</span>
-                    </div>
-                  ))}
+                  {(() => {
+                    const isTakeaway = (selectedPeriod as any).venue_type === "تيك اواي";
+                    const opItems = [
+                      { label: "نوع المكان", value: isTakeaway ? "تيك اواي" : "صالة" },
+                      ...(isTakeaway
+                        ? [{ label: "عدد الطلبات اليومي (عدد الزوار)", value: selectedPeriod.capacity }]
+                        : [
+                            { label: "السعة (عدد الكراسي)", value: selectedPeriod.capacity },
+                            { label: "معدل الدوران", value: selectedPeriod.turn_over },
+                          ]),
+                      { label: "متوسط الفاتورة", value: selectedPeriod.avg_check.toLocaleString() },
+                      { label: "المبيعات اليومية المتوقعة", value: expectedDailySales(selectedPeriod).toLocaleString() },
+                      { label: "المبيعات الشهرية المتوقعة", value: monthSales.toLocaleString() },
+                    ];
+                    return opItems.map((item) => (
+                      <div key={item.label} className="flex items-center justify-between border-b pb-2 last:border-0">
+                        <span className="text-sm text-muted-foreground">{item.label}</span>
+                        <span className="font-semibold">{item.value}</span>
+                      </div>
+                    ));
+                  })()}
                 </div>
               </CardContent>
             </Card>

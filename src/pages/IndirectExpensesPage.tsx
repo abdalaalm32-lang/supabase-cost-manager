@@ -760,7 +760,7 @@ export const IndirectExpensesPage: React.FC = () => {
                   const branchScopedItems = form.branch_id
                     ? posItems.filter(i => i.branch_id === form.branch_id)
                     : posItems.filter(i => !i.branch_id);
-                  const uniqueCats = [...new Set(branchScopedItems.map(i => (i.category || "").trim()).filter(Boolean))].sort();
+                  const uniqueCats = [...new Set(branchScopedItems.map(i => (i.category || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ar"));
                   const kitchenCats = uniqueCats.filter(cat => categoryClassMap.get(cat) === "kitchen");
                   const barCats = uniqueCats.filter(cat => categoryClassMap.get(cat) === "bar");
                   if (kitchenCats.length === 0 && barCats.length === 0) return (

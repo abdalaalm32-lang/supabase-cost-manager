@@ -762,8 +762,9 @@ export const IndirectExpensesPage: React.FC = () => {
                     ? posItems.filter(i => i.branch_id === form.branch_id)
                     : posItems.filter(i => !i.branch_id);
                   const uniqueCats = [...new Set(branchScopedItems.map(i => (i.category || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ar"));
-                  const kitchenCats = uniqueCats.filter(cat => categoryClassMap.get(cat) === "kitchen");
-                  const barCats = uniqueCats.filter(cat => categoryClassMap.get(cat) === "bar");
+                  const classFor = (cat: string) => categoryClassMap.get(`${form.branch_id || ""}::${cat}`) ?? categoryClassMap.get(`::${cat}`);
+                  const kitchenCats = uniqueCats.filter(cat => classFor(cat) === "kitchen");
+                  const barCats = uniqueCats.filter(cat => classFor(cat) === "bar");
                   if (kitchenCats.length === 0 && barCats.length === 0) return (
                     <p className="text-xs text-muted-foreground mt-2">لا توجد مجموعات مصنفة كـ Kitchen أو Bar. يرجى تحديد التصنيف في صفحة المجموعات أولاً.</p>
                   );

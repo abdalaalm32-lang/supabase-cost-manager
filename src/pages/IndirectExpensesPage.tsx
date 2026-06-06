@@ -47,6 +47,7 @@ interface CostingPeriod {
   branch_id: string | null;
   consumables_kitchen_categories: string[];
   consumables_bar_categories: string[];
+  venue_type: string;
 }
 
 const emptyForm = {
@@ -71,6 +72,7 @@ const emptyForm = {
   branch_id: "" as string,
   consumables_kitchen_categories: [] as string[],
   consumables_bar_categories: [] as string[],
+  venue_type: "صالة" as "صالة" | "تيك اواي",
 };
 
 const getDaysInPeriod = (start: string, end: string) => {

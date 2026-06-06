@@ -460,8 +460,14 @@ export const IndirectExpensesPage: React.FC = () => {
       }
       rows.push({ __rowType: "grand-total", label: "الإجمالي", value: total.toLocaleString(), pct: monthSales > 0 ? `${(total / monthSales * 100).toFixed(2)}%` : "0%" });
       rows.push({ __rowType: "group-total", label: "بيانات التشغيل", value: "", pct: "" });
-      rows.push({ label: "السعة (عدد الكراسي)", value: String(selectedPeriod.capacity), pct: "" });
-      rows.push({ label: "معدل الدوران", value: String(selectedPeriod.turn_over), pct: "" });
+      const isTakeawayX = (selectedPeriod as any).venue_type === "تيك اواي";
+      rows.push({ label: "نوع المكان", value: isTakeawayX ? "تيك اواي" : "صالة", pct: "" });
+      if (isTakeawayX) {
+        rows.push({ label: "عدد الطلبات اليومي (عدد الزوار)", value: String(selectedPeriod.capacity), pct: "" });
+      } else {
+        rows.push({ label: "السعة (عدد الكراسي)", value: String(selectedPeriod.capacity), pct: "" });
+        rows.push({ label: "معدل الدوران", value: String(selectedPeriod.turn_over), pct: "" });
+      }
       rows.push({ label: "متوسط الفاتورة", value: selectedPeriod.avg_check.toLocaleString(), pct: "" });
       rows.push({ label: "المبيعات اليومية المتوقعة", value: expectedDailySales(selectedPeriod).toLocaleString(), pct: "" });
       rows.push({ label: "المبيعات الشهرية المتوقعة", value: monthSales.toLocaleString(), pct: "" });

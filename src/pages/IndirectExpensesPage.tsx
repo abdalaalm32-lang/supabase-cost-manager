@@ -154,12 +154,13 @@ export const IndirectExpensesPage: React.FC = () => {
       supabase.from("pos_items").select("*, categories:category_id(name, menu_engineering_class)").eq("company_id", companyId).eq("active", true),
       supabase.from("recipes").select("id, menu_item_id, recipe_ingredients(stock_item_id, qty, stock_items:stock_item_id(avg_cost, conversion_factor))").eq("company_id", companyId),
       supabase.from("pos_item_cost_settings").select("*").eq("company_id", companyId),
-      supabase.from("categories").select("name, menu_engineering_class").eq("company_id", companyId).eq("active", true),
+      supabase.from("categories").select("name, branch_id, menu_engineering_class").eq("company_id", companyId).eq("active", true),
     ]);
     if (catsRes.data) {
       const map = new Map<string, string | null>();
       for (const c of catsRes.data as any[]) {
-        map.set(c.name, c.menu_engineering_class || null);
+        // Key by branch+name so the same category name in different branches doesn't overwrite each other
+        map.set(`${c.branch_id || ""}::${c.name}`, c.menu_engineering_class || null);
       }
       setCategoryClassMap(map);
     }
@@ -389,7 +390,7 @@ export const IndirectExpensesPage: React.FC = () => {
     if (costScope !== "all") {
       items = items.filter(i => {
         const catName = i.category || "";
-        const catClass = categoryClassMap.get(catName);
+        const catClass = categoryClassMap.get(`${i.branch_id || ""}::${catName}`) ?? categoryClassMap.get(`::${catName}`);
         return catClass === costScope;
       });
     }
@@ -761,8 +762,9 @@ export const IndirectExpensesPage: React.FC = () => {
                     ? posItems.filter(i => i.branch_id === form.branch_id)
                     : posItems.filter(i => !i.branch_id);
                   const uniqueCats = [...new Set(branchScopedItems.map(i => (i.category || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ar"));
-                  const kitchenCats = uniqueCats.filter(cat => categoryClassMap.get(cat) === "kitchen");
-                  const barCats = uniqueCats.filter(cat => categoryClassMap.get(cat) === "bar");
+                  const classFor = (cat: string) => categoryClassMap.get(`${form.branch_id || ""}::${cat}`) ?? categoryClassMap.get(`::${cat}`);
+                  const kitchenCats = uniqueCats.filter(cat => classFor(cat) === "kitchen");
+                  const barCats = uniqueCats.filter(cat => classFor(cat) === "bar");
                   if (kitchenCats.length === 0 && barCats.length === 0) return (
                     <p className="text-xs text-muted-foreground mt-2">لا توجد مجموعات مصنفة كـ Kitchen أو Bar. يرجى تحديد التصنيف في صفحة المجموعات أولاً.</p>
                   );

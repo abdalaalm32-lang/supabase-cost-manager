@@ -154,12 +154,13 @@ export const IndirectExpensesPage: React.FC = () => {
       supabase.from("pos_items").select("*, categories:category_id(name, menu_engineering_class)").eq("company_id", companyId).eq("active", true),
       supabase.from("recipes").select("id, menu_item_id, recipe_ingredients(stock_item_id, qty, stock_items:stock_item_id(avg_cost, conversion_factor))").eq("company_id", companyId),
       supabase.from("pos_item_cost_settings").select("*").eq("company_id", companyId),
-      supabase.from("categories").select("name, menu_engineering_class").eq("company_id", companyId).eq("active", true),
+      supabase.from("categories").select("name, branch_id, menu_engineering_class").eq("company_id", companyId).eq("active", true),
     ]);
     if (catsRes.data) {
       const map = new Map<string, string | null>();
       for (const c of catsRes.data as any[]) {
-        map.set(c.name, c.menu_engineering_class || null);
+        // Key by branch+name so the same category name in different branches doesn't overwrite each other
+        map.set(`${c.branch_id || ""}::${c.name}`, c.menu_engineering_class || null);
       }
       setCategoryClassMap(map);
     }

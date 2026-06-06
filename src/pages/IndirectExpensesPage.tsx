@@ -390,7 +390,7 @@ export const IndirectExpensesPage: React.FC = () => {
     if (costScope !== "all") {
       items = items.filter(i => {
         const catName = i.category || "";
-        const catClass = categoryClassMap.get(catName);
+        const catClass = categoryClassMap.get(`${i.branch_id || ""}::${catName}`) ?? categoryClassMap.get(`::${catName}`);
         return catClass === costScope;
       });
     }

@@ -271,14 +271,20 @@ export const IndirectExpensesPage: React.FC = () => {
       return;
     }
 
+    const isTakeaway = form.venue_type === "تيك اواي";
+    const effectiveTurnOver = isTakeaway ? 1 : form.turn_over;
+    const expSales = isTakeaway
+      ? form.capacity * form.avg_check
+      : form.capacity * form.turn_over * form.avg_check;
+
     const payload = {
       company_id: companyId,
       name: form.name,
       start_date: format(form.start_date, "yyyy-MM-dd"),
       end_date: format(form.end_date, "yyyy-MM-dd"),
-      expected_sales: form.capacity * form.turn_over * form.avg_check,
+      expected_sales: expSales,
       capacity: form.capacity,
-      turn_over: form.turn_over,
+      turn_over: effectiveTurnOver,
       avg_check: form.avg_check,
       media: form.media,
       bills: form.bills,
@@ -294,6 +300,7 @@ export const IndirectExpensesPage: React.FC = () => {
       branch_id: form.branch_id || null,
       consumables_kitchen_categories: form.consumables_kitchen_categories as any,
       consumables_bar_categories: form.consumables_bar_categories as any,
+      venue_type: form.venue_type,
     };
 
     let error;

@@ -978,18 +978,27 @@ export const IndirectExpensesPage: React.FC = () => {
               <CardHeader><CardTitle className="text-lg">بيانات التشغيل</CardTitle></CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {[
-                    { label: "السعة (عدد الكراسي)", value: selectedPeriod.capacity },
-                    { label: "معدل الدوران", value: selectedPeriod.turn_over },
-                    { label: "متوسط الفاتورة", value: selectedPeriod.avg_check.toLocaleString() },
-                    { label: "المبيعات اليومية المتوقعة", value: expectedDailySales(selectedPeriod).toLocaleString() },
-                    { label: "المبيعات الشهرية المتوقعة", value: monthSales.toLocaleString() },
-                  ].map((item) => (
-                    <div key={item.label} className="flex items-center justify-between border-b pb-2 last:border-0">
-                      <span className="text-sm text-muted-foreground">{item.label}</span>
-                      <span className="font-semibold">{item.value}</span>
-                    </div>
-                  ))}
+                  {(() => {
+                    const isTakeaway = (selectedPeriod as any).venue_type === "تيك اواي";
+                    const opItems = [
+                      { label: "نوع المكان", value: isTakeaway ? "تيك اواي" : "صالة" },
+                      ...(isTakeaway
+                        ? [{ label: "عدد الطلبات اليومي (عدد الزوار)", value: selectedPeriod.capacity }]
+                        : [
+                            { label: "السعة (عدد الكراسي)", value: selectedPeriod.capacity },
+                            { label: "معدل الدوران", value: selectedPeriod.turn_over },
+                          ]),
+                      { label: "متوسط الفاتورة", value: selectedPeriod.avg_check.toLocaleString() },
+                      { label: "المبيعات اليومية المتوقعة", value: expectedDailySales(selectedPeriod).toLocaleString() },
+                      { label: "المبيعات الشهرية المتوقعة", value: monthSales.toLocaleString() },
+                    ];
+                    return opItems.map((item) => (
+                      <div key={item.label} className="flex items-center justify-between border-b pb-2 last:border-0">
+                        <span className="text-sm text-muted-foreground">{item.label}</span>
+                        <span className="font-semibold">{item.value}</span>
+                      </div>
+                    ));
+                  })()}
                 </div>
               </CardContent>
             </Card>

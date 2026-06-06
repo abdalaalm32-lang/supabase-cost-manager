@@ -756,7 +756,11 @@ export const IndirectExpensesPage: React.FC = () => {
                 </div>
 
                 {(() => {
-                  const uniqueCats = [...new Set(posItems.map(i => i.category).filter(Boolean))].sort();
+                  // Filter pos items by selected branch in the form, so categories shown match the period's branch
+                  const branchScopedItems = form.branch_id
+                    ? posItems.filter(i => i.branch_id === form.branch_id)
+                    : posItems.filter(i => !i.branch_id);
+                  const uniqueCats = [...new Set(branchScopedItems.map(i => (i.category || "").trim()).filter(Boolean))].sort();
                   const kitchenCats = uniqueCats.filter(cat => categoryClassMap.get(cat) === "kitchen");
                   const barCats = uniqueCats.filter(cat => categoryClassMap.get(cat) === "bar");
                   if (kitchenCats.length === 0 && barCats.length === 0) return (

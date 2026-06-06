@@ -218,8 +218,11 @@ export const IndirectExpensesPage: React.FC = () => {
     return base + customTotal;
   };
 
-  const expectedDailySales = (p: CostingPeriod) =>
-    p.capacity * p.turn_over * p.avg_check;
+  const expectedDailySales = (p: CostingPeriod) => {
+    const isTakeaway = (p as any).venue_type === "تيك اواي";
+    if (isTakeaway) return p.capacity * p.avg_check; // capacity = عدد الطلبات اليومي
+    return p.capacity * p.turn_over * p.avg_check;
+  };
 
   const monthlyExpectedSales = (p: CostingPeriod) => {
     const days = getDaysInPeriod(p.start_date, p.end_date);

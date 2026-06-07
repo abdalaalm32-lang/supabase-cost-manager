@@ -111,6 +111,13 @@ const strategicBadgeClass: Record<Strategic, string> = {
   Dogs: "bg-red-500/15 text-red-400 border-red-500/30",
 };
 
+const strategicRowBg: Record<Strategic, string> = {
+  Stars: "bg-green-500/5 hover:bg-green-500/10",
+  Puzzles: "bg-yellow-500/5 hover:bg-yellow-500/10",
+  "Plow Horses": "bg-blue-500/5 hover:bg-blue-500/10",
+  Dogs: "bg-red-500/5 hover:bg-red-500/10",
+};
+
 export const MenuEngineeringPage: React.FC = () => {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;

@@ -127,6 +127,7 @@ export const MenuEngineeringPage: React.FC = () => {
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [strategicFilter, setStrategicFilter] = useState<Strategic | "all">("all");
+  const [detailItem, setDetailItem] = useState<EngRow | null>(null);
 
   // Queries
   const { data: branches = [] } = useQuery({

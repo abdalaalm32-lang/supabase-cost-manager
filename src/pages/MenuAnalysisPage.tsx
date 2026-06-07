@@ -94,6 +94,9 @@ interface SideCostItem {
 interface ItemAnalysis {
   id: string;
   name: string;
+  code: string;
+  categoryName: string;
+  classification: string;
   price: number;
   mainCost: number;
   sideCost: number;

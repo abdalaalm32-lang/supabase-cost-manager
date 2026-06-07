@@ -10,7 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Edit2, Trash2, TrendingUp, DollarSign, Percent, Target, Building2, Zap, Users, Megaphone, Wrench, MoreHorizontal, Calendar as CalendarIcon, X, Printer, FileSpreadsheet, Loader2 } from "lucide-react";
+import { Plus, Edit2, Trash2, TrendingUp, DollarSign, Percent, Target, Building2, Zap, Users, Megaphone, Wrench, MoreHorizontal, Calendar as CalendarIcon, X, Printer, FileSpreadsheet, Loader2, GitCompareArrows } from "lucide-react";
+import { PeriodComparisonDialog } from "@/components/menu-analysis/PeriodComparisonDialog";
 import { exportToExcel } from "@/lib/exportUtils";
 import { toast as sonnerToast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -115,6 +116,7 @@ export const IndirectExpensesPage: React.FC = () => {
   const [categoryClassMap, setCategoryClassMap] = useState<Map<string, string | null>>(new Map());
   const [costScope, setCostScope] = useState<"all" | "kitchen" | "bar">("all");
   const [excelLoading, setExcelLoading] = useState(false);
+  const [compareOpen, setCompareOpen] = useState(false);
 
   const companyId = auth.profile?.company_id;
 
@@ -569,11 +571,22 @@ export const IndirectExpensesPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in-up" dir="rtl">
+      <PeriodComparisonDialog
+        open={compareOpen}
+        onOpenChange={setCompareOpen}
+        periods={periods as any}
+        branches={branches}
+        defaultPeriodId={selectedPeriod?.id || null}
+      />
       <div className="flex items-center justify-between flex-wrap gap-4">
         <h1 className="text-2xl font-bold">تحليل المصاريف الغير مباشرة</h1>
         <div className="flex items-center gap-3 flex-wrap">
           {selectedPeriod && (
             <>
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => setCompareOpen(true)} disabled={periods.length < 2}>
+                <GitCompareArrows size={14} className="text-blue-500" />
+                قارن مع فترة سابقة
+              </Button>
               <Button variant="outline" size="sm" className="gap-2" onClick={handleExcelExport} disabled={excelLoading}>
                 {excelLoading ? <Loader2 size={14} className="animate-spin" /> : <FileSpreadsheet size={14} className="text-green-600" />}
                 Excel

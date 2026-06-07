@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { AlertTriangle, Package, Printer, FileSpreadsheet, Loader2 } from "lucide-react";
 import { exportToExcel } from "@/lib/exportUtils";
@@ -17,6 +18,16 @@ import { CategoryPackingTable } from "@/components/menu-analysis/CategoryPacking
 import { CategorySummaryTable } from "@/components/menu-analysis/CategorySummaryTable";
 import { CategorySideCostTable } from "@/components/menu-analysis/CategorySideCostTable";
 import { CategoryFinancialTable } from "@/components/menu-analysis/CategoryFinancialTable";
+
+interface RecipeIngredientDetail {
+  name: string;
+  code: string;
+  qty: number;
+  recipeUnit: string;
+  stockUnit: string;
+  unitCost: number;
+  totalCost: number;
+}
 
 interface PosItem {
   id: string;

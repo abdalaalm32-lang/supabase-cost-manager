@@ -711,6 +711,7 @@ export const MenuEngineeringPage: React.FC = () => {
     &nbsp;•&nbsp; من تاريخ: ${dateFrom ? format(dateFrom, "yyyy/MM/dd") : "—"}
     &nbsp;•&nbsp; إلى تاريخ: ${dateTo ? format(dateTo, "yyyy/MM/dd") : "—"}
     &nbsp;•&nbsp; القسم: ${activeTab === "kitchen" ? "المطبخ" : "البار"}
+    &nbsp;•&nbsp; التصنيف: ${strategicFilter === "all" ? "الكل" : strategicFilter}
   </div>
   <table>
     <thead>${theadHTML}</thead>

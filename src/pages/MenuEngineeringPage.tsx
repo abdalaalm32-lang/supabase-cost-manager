@@ -118,6 +118,7 @@ export const MenuEngineeringPage: React.FC = () => {
   const [selectedBranch, setSelectedBranch] = useState("all");
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+  const [strategicFilter, setStrategicFilter] = useState<Strategic | "all">("all");
 
   // Queries
   const { data: branches = [] } = useQuery({

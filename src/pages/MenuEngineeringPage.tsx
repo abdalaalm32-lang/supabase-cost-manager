@@ -443,6 +443,7 @@ export const MenuEngineeringPage: React.FC = () => {
 
       return {
         id: pi.id,
+        sourcePosItemId: pi.__source_pos_item_id || pi.id,
         name: pi.name,
         itemCode: pi.code || "",
         categoryId: pi.category_id || null,

@@ -948,7 +948,15 @@ export const MenuEngineeringPage: React.FC = () => {
                             return (
                               <TableRow key={row.id} className={strategicRowBg[row.strategic]}>
                                 <TableCell className="text-xs">{runningIdx}</TableCell>
-                                <TableCell className="font-medium text-sm whitespace-nowrap">{row.itemCode ? `${row.itemCode} - ` : ""}{row.name}</TableCell>
+                                <TableCell className="font-medium text-sm whitespace-nowrap">
+                                  <button
+                                    type="button"
+                                    onClick={() => setDetailItem(row)}
+                                    className="text-right hover:text-primary hover:underline transition-colors"
+                                  >
+                                    {row.itemCode ? `${row.itemCode} - ` : ""}{row.name}
+                                  </button>
+                                </TableCell>
                                 <TableCell className="text-xs">{row.qty}</TableCell>
                                 <TableCell className="text-xs">{row.price.toFixed(2)}</TableCell>
                                 <TableCell className="text-xs">{row.directCost.toFixed(2)}</TableCell>

@@ -838,11 +838,10 @@ export const MenuAnalysisPage: React.FC = () => {
   };
 
   const costRecommendation = (pct: number) => {
-    if (pct < 0 || !isFinite(pct)) return { label: "بيانات غير صحيحة", color: "#6b7280", advice: "راجع السعر أو التكلفة" };
-    if (pct > 40) return { label: "تكلفة مرتفعة جداً", color: "#ef4444", advice: "🔴 راجع تكلفة الوصفة، قلل الفاقد، أو ارفع سعر البيع" };
-    if (pct > 30) return { label: "تكلفة مرتفعة", color: "#f59e0b", advice: "🟠 حاول تخفيض التكلفة أو زيادة هامش الربح" };
-    if (pct > 20) return { label: "تكلفة مقبولة", color: "#3b82f6", advice: "🔵 نسبة تكلفة في المعدل المقبول" };
-    return { label: "هامش ممتاز", color: "#10b981", advice: "🟢 هامش ربح ممتاز، حافظ على جودة المنتج" };
+    if (!isFinite(pct)) return { label: "بيانات غير صحيحة", color: "#6b7280", advice: "راجع السعر أو التكلفة" };
+    if (pct < 20) return { label: "هامش ربح ضعيف", color: "#ef4444", advice: "🔴 نسبة الربح أقل من 20% — راجع تكلفة الوصفة، قلّل الفاقد، أو ارفع سعر البيع" };
+    if (pct <= 30) return { label: "وضع مقبول", color: "#3b82f6", advice: "🔵 نسبة الربح بين 20% و30% — الوضع تمام، مفيش مشكلة" };
+    return { label: "هامش ربح ممتاز", color: "#10b981", advice: "🟢 نسبة الربح أعلى من 30% — هامش ربح ممتاز، حافظ على جودة المنتج" };
   };
 
   const handlePrintDetail = (item: ItemAnalysis) => {
@@ -851,7 +850,7 @@ export const MenuAnalysisPage: React.FC = () => {
     const logoSrc = `${window.location.origin}/logo.png`;
     const branchName = selectedBranchId !== "all" ? branches.find(b => b.id === selectedBranchId)?.name : "كل الفروع";
     const cls = classificationLabel(item.classification);
-    const rec = costRecommendation(item.finalCostPct);
+    const rec = costRecommendation(item.finalNetPct);
 
     const ingredientsHTML = ingredients.length > 0
       ? `<table style="width:100%;border-collapse:collapse;margin-top:6px;">
@@ -1044,7 +1043,7 @@ export const MenuAnalysisPage: React.FC = () => {
           {detailItem && (() => {
             const ingredients = recipeDetails.get(detailItem.id) || [];
             const cls = classificationLabel(detailItem.classification);
-            const rec = costRecommendation(detailItem.finalCostPct);
+            const rec = costRecommendation(detailItem.finalNetPct);
             const taxRate = selectedPeriod?.tax_rate || 0;
             const netAfterTax = detailItem.price * (1 - taxRate / 100);
             const rows: { label: string; value: number; pct: number; bold?: boolean; color?: string }[] = [

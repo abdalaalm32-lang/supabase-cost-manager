@@ -266,6 +266,44 @@ export const MenuEngineeringPage: React.FC = () => {
     return map;
   }, [recipes, stockItems, branchCosts, branchFilter]);
 
+  // Build detailed ingredients map: posItemId -> ingredient[]
+  const recipeDetailsMap = useMemo(() => {
+    const branchCostMap = new Map<string, number>();
+    (branchCosts as any[]).forEach((bc) => {
+      if (bc.stock_item_id && bc.avg_cost != null) {
+        branchCostMap.set(bc.stock_item_id, Number(bc.avg_cost));
+      }
+    });
+    const resolveCost = (stockItemId: string, globalCost: number): number => {
+      if (!branchFilter) return globalCost;
+      const bc = branchCostMap.get(stockItemId);
+      return bc != null ? bc : globalCost;
+    };
+    const map: Record<string, Array<{ name: string; code: string; qty: number; unit: string; stockUnit: string; unitCost: number; totalCost: number }>> = {};
+    recipes.forEach((r: any) => {
+      const ings: Array<any> = [];
+      (r.recipe_ingredients || []).forEach((ri: any) => {
+        const si = ri.stock_items || stockItems.find((s: any) => s.id === ri.stock_item_id);
+        if (!si) return;
+        const qty = Number(ri.qty) || 0;
+        const qtyInStockUnit = qty / (Number(si.conversion_factor) || 1);
+        const unitCost = resolveCost(ri.stock_item_id, Number(si.avg_cost || 0));
+        const totalCost = qtyInStockUnit * unitCost;
+        ings.push({
+          name: si.name || "—",
+          code: si.code || "",
+          qty,
+          unit: ri.unit || si.recipe_unit || si.unit || "",
+          stockUnit: si.unit || "",
+          unitCost,
+          totalCost,
+        });
+      });
+      map[r.menu_item_id] = ings;
+    });
+    return map;
+  }, [recipes, stockItems, branchCosts, branchFilter]);
+
   // Normalize names: trim + collapse internal whitespace so "كرسبي  L" matches "كرسبي L"
   const normName = (s: any) => String(s || "").trim().replace(/\s+/g, " ");
 

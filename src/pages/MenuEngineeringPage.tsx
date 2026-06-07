@@ -1141,6 +1141,116 @@ export const MenuEngineeringPage: React.FC = () => {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Item Detail Modal */}
+      <Dialog open={!!detailItem} onOpenChange={(o) => !o && setDetailItem(null)}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-right flex items-center gap-2 flex-wrap">
+              <span>{detailItem?.itemCode ? `${detailItem.itemCode} - ` : ""}{detailItem?.name}</span>
+              {detailItem && (
+                <Badge className={`text-[10px] gap-1 ${strategicBadgeClass[detailItem.strategic]}`}>
+                  {STRATEGIC_ICONS[detailItem.strategic]}
+                  {detailItem.strategic}
+                </Badge>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          {detailItem && (() => {
+            const ings =
+              recipeDetailsMap[detailItem.sourcePosItemId || detailItem.id] ||
+              recipeDetailsMap[detailItem.id] ||
+              [];
+            const ingTotal = ings.reduce((s, i) => s + i.totalCost, 0);
+            return (
+              <div className="space-y-4 text-right">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="rounded-lg border border-border bg-muted/30 p-3">
+                    <div className="text-[11px] text-muted-foreground">سعر البيع</div>
+                    <div className="text-base font-bold">{detailItem.price.toFixed(2)} ج.م</div>
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/30 p-3">
+                    <div className="text-[11px] text-muted-foreground">التكلفة المباشرة</div>
+                    <div className="text-base font-bold">{detailItem.directCost.toFixed(2)} ج.م</div>
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/30 p-3">
+                    <div className="text-[11px] text-muted-foreground">صافي ربح الصنف</div>
+                    <div className="text-base font-bold text-green-500">{detailItem.netProfit.toFixed(2)} ج.م</div>
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/30 p-3">
+                    <div className="text-[11px] text-muted-foreground">نسبة الربح</div>
+                    <div className="text-base font-bold">{detailItem.profitRatio.toFixed(1)}%</div>
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/30 p-3">
+                    <div className="text-[11px] text-muted-foreground">كمية المبيعات</div>
+                    <div className="text-base font-bold">{detailItem.qty}</div>
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/30 p-3">
+                    <div className="text-[11px] text-muted-foreground">إجمالي المبيعات</div>
+                    <div className="text-base font-bold">{detailItem.totalSales.toFixed(2)} ج.م</div>
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/30 p-3">
+                    <div className="text-[11px] text-muted-foreground">إجمالي الربح</div>
+                    <div className="text-base font-bold text-green-500">{detailItem.totalProfit.toFixed(2)} ج.م</div>
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/30 p-3">
+                    <div className="text-[11px] text-muted-foreground">% مبيعات الصنف</div>
+                    <div className="text-base font-bold">{detailItem.salesSharePct.toFixed(1)}%</div>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-bold mb-2">مكونات الوصفة ({ings.length})</h3>
+                  {ings.length === 0 ? (
+                    <div className="text-sm text-muted-foreground text-center py-6 border border-dashed border-border rounded-lg">
+                      لا توجد وصفة مرتبطة بهذا الصنف
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-border overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="text-right text-xs">الخامة</TableHead>
+                            <TableHead className="text-right text-xs">الكمية</TableHead>
+                            <TableHead className="text-right text-xs">الوحدة</TableHead>
+                            <TableHead className="text-right text-xs">سعر الوحدة</TableHead>
+                            <TableHead className="text-right text-xs">الإجمالي</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {ings.map((ing, idx) => (
+                            <TableRow key={idx}>
+                              <TableCell className="text-xs font-medium">
+                                {ing.code ? `${ing.code} - ` : ""}{ing.name}
+                              </TableCell>
+                              <TableCell className="text-xs">{ing.qty}</TableCell>
+                              <TableCell className="text-xs">{ing.unit || "—"}</TableCell>
+                              <TableCell className="text-xs">{ing.unitCost.toFixed(2)}</TableCell>
+                              <TableCell className="text-xs font-semibold">{ing.totalCost.toFixed(2)}</TableCell>
+                            </TableRow>
+                          ))}
+                          <TableRow className="bg-muted/30 font-bold">
+                            <TableCell colSpan={4} className="text-xs">الإجمالي</TableCell>
+                            <TableCell className="text-xs">{ingTotal.toFixed(2)} ج.م</TableCell>
+                          </TableRow>
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-lg border border-border bg-muted/20 p-3">
+                  <div className="text-[11px] text-muted-foreground mb-1">القرار الاستراتيجي</div>
+                  <div className={`text-sm font-semibold ${strategicBadgeClass[detailItem.strategic].replace(/bg-\S+/g, "").trim()}`}>
+                    {detailItem.decision}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

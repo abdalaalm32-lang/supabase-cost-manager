@@ -576,6 +576,10 @@ export const IndirectExpensesPage: React.FC = () => {
         <div className="flex items-center gap-3 flex-wrap">
           {selectedPeriod && (
             <>
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => setCompareOpen(true)} disabled={periods.length < 2}>
+                <GitCompareArrows size={14} className="text-blue-500" />
+                قارن مع فترة سابقة
+              </Button>
               <Button variant="outline" size="sm" className="gap-2" onClick={handleExcelExport} disabled={excelLoading}>
                 {excelLoading ? <Loader2 size={14} className="animate-spin" /> : <FileSpreadsheet size={14} className="text-green-600" />}
                 Excel

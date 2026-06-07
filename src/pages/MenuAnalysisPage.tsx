@@ -123,6 +123,8 @@ export const MenuAnalysisPage: React.FC = () => {
   const [selectedPeriodId, setSelectedPeriodIdRaw] = useState<string>(() => sessionStorage.getItem("menu_period") || "");
   const [posItems, setPosItems] = useState<PosItem[]>([]);
   const [recipes, setRecipes] = useState<Map<string, number>>(new Map());
+  const [recipeDetails, setRecipeDetails] = useState<Map<string, RecipeIngredientDetail[]>>(new Map());
+  const [detailItem, setDetailItem] = useState<ItemAnalysis | null>(null);
   const [costOverrides, setCostOverrides] = useState<Map<string, CostOverride>>(new Map());
   const [categoryPackingItems, setCategoryPackingItems] = useState<PackingItem[]>([]);
   const [categorySideCostItems, setCategorySideCostItems] = useState<SideCostItem[]>([]);

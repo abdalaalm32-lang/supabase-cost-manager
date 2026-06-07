@@ -1043,7 +1043,7 @@ export const MenuAnalysisPage: React.FC = () => {
           {detailItem && (() => {
             const ingredients = recipeDetails.get(detailItem.id) || [];
             const cls = classificationLabel(detailItem.classification);
-            const rec = costRecommendation(detailItem.finalCostPct);
+            const rec = costRecommendation(detailItem.finalNetPct);
             const taxRate = selectedPeriod?.tax_rate || 0;
             const netAfterTax = detailItem.price * (1 - taxRate / 100);
             const rows: { label: string; value: number; pct: number; bold?: boolean; color?: string }[] = [

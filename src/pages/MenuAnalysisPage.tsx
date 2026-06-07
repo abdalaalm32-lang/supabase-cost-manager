@@ -368,7 +368,9 @@ export const MenuAnalysisPage: React.FC = () => {
       const finalNetPct = item.price > 0 ? (netProfit / item.price) * 100 : 0;
 
       categoryMap.get(catName)!.items.push({
-        id: item.id, name: item.name, price: item.price, mainCost, sideCost: sideCost + categorySideCost, consumables, packingCost,
+        id: item.id, name: item.name, code: item.code || "", categoryName: catName,
+        classification: (item as any).categories?.menu_engineering_class || item.menu_engineering_class || "",
+        price: item.price, mainCost, sideCost: sideCost + categorySideCost, consumables, packingCost,
         finalDirectCost, directCostPct, netTakeAway, indirectExpenses, totalCost, netProfit, finalCostPct, finalNetPct,
       });
     }

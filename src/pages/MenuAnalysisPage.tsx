@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { AlertTriangle, Package, Printer, FileSpreadsheet, Loader2 } from "lucide-react";
 import { exportToExcel } from "@/lib/exportUtils";
@@ -17,6 +18,16 @@ import { CategoryPackingTable } from "@/components/menu-analysis/CategoryPacking
 import { CategorySummaryTable } from "@/components/menu-analysis/CategorySummaryTable";
 import { CategorySideCostTable } from "@/components/menu-analysis/CategorySideCostTable";
 import { CategoryFinancialTable } from "@/components/menu-analysis/CategoryFinancialTable";
+
+interface RecipeIngredientDetail {
+  name: string;
+  code: string;
+  qty: number;
+  recipeUnit: string;
+  stockUnit: string;
+  unitCost: number;
+  totalCost: number;
+}
 
 interface PosItem {
   id: string;
@@ -83,6 +94,9 @@ interface SideCostItem {
 interface ItemAnalysis {
   id: string;
   name: string;
+  code: string;
+  categoryName: string;
+  classification: string;
   price: number;
   mainCost: number;
   sideCost: number;
@@ -109,6 +123,8 @@ export const MenuAnalysisPage: React.FC = () => {
   const [selectedPeriodId, setSelectedPeriodIdRaw] = useState<string>(() => sessionStorage.getItem("menu_period") || "");
   const [posItems, setPosItems] = useState<PosItem[]>([]);
   const [recipes, setRecipes] = useState<Map<string, number>>(new Map());
+  const [recipeDetails, setRecipeDetails] = useState<Map<string, RecipeIngredientDetail[]>>(new Map());
+  const [detailItem, setDetailItem] = useState<ItemAnalysis | null>(null);
   const [costOverrides, setCostOverrides] = useState<Map<string, CostOverride>>(new Map());
   const [categoryPackingItems, setCategoryPackingItems] = useState<PackingItem[]>([]);
   const [categorySideCostItems, setCategorySideCostItems] = useState<SideCostItem[]>([]);
@@ -170,7 +186,7 @@ export const MenuAnalysisPage: React.FC = () => {
     const [periodsRes, itemsRes, recipesRes, overridesRes, branchesRes, companyRes, branchCostsRes] = await Promise.all([
       supabase.from("menu_costing_periods").select("*").eq("company_id", companyId!).order("created_at", { ascending: false }),
       supabase.from("pos_items").select("*, categories:category_id(name, code, menu_engineering_class)").eq("company_id", companyId!).eq("active", true),
-      supabase.from("recipes").select("id, menu_item_id, recipe_ingredients(stock_item_id, qty, stock_items:stock_item_id(avg_cost, conversion_factor, recipe_unit, stock_unit))").eq("company_id", companyId!),
+      supabase.from("recipes").select("id, menu_item_id, recipe_ingredients(stock_item_id, qty, stock_items:stock_item_id(name, code, avg_cost, conversion_factor, recipe_unit, stock_unit))").eq("company_id", companyId!),
       supabase.from("pos_item_cost_settings").select("*").eq("company_id", companyId!),
       supabase.from("branches").select("id, name").eq("company_id", companyId!).eq("active", true),
       supabase.from("companies").select("name").eq("id", companyId!).single(),
@@ -208,22 +224,36 @@ export const MenuAnalysisPage: React.FC = () => {
     };
 
     const recipeCostMap = new Map<string, number>();
+    const recipeDetailsMap = new Map<string, RecipeIngredientDetail[]>();
     if (recipesRes.data) {
       for (const recipe of recipesRes.data as any[]) {
         let totalCost = 0;
+        const details: RecipeIngredientDetail[] = [];
         for (const ing of recipe.recipe_ingredients || []) {
           const stockItem = ing.stock_items;
           if (stockItem) {
             const convFactor = stockItem.conversion_factor || 1;
             const unitCost = resolveCost(ing.stock_item_id, Number(stockItem.avg_cost || 0));
             const costPerRecipeUnit = unitCost / convFactor;
-            totalCost += ing.qty * costPerRecipeUnit;
+            const lineCost = ing.qty * costPerRecipeUnit;
+            totalCost += lineCost;
+            details.push({
+              name: stockItem.name || "—",
+              code: stockItem.code || "",
+              qty: Number(ing.qty) || 0,
+              recipeUnit: stockItem.recipe_unit || "",
+              stockUnit: stockItem.stock_unit || "",
+              unitCost: costPerRecipeUnit,
+              totalCost: lineCost,
+            });
           }
         }
         recipeCostMap.set(recipe.menu_item_id, totalCost);
+        recipeDetailsMap.set(recipe.menu_item_id, details);
       }
     }
     setRecipes(recipeCostMap);
+    setRecipeDetails(recipeDetailsMap);
 
     const overrideMap = new Map<string, CostOverride>();
     if (overridesRes.data) {
@@ -338,7 +368,9 @@ export const MenuAnalysisPage: React.FC = () => {
       const finalNetPct = item.price > 0 ? (netProfit / item.price) * 100 : 0;
 
       categoryMap.get(catName)!.items.push({
-        id: item.id, name: item.name, price: item.price, mainCost, sideCost: sideCost + categorySideCost, consumables, packingCost,
+        id: item.id, name: item.name, code: item.code || "", categoryName: catName,
+        classification: (item as any).categories?.menu_engineering_class || item.menu_engineering_class || "",
+        price: item.price, mainCost, sideCost: sideCost + categorySideCost, consumables, packingCost,
         finalDirectCost, directCostPct, netTakeAway, indirectExpenses, totalCost, netProfit, finalCostPct, finalNetPct,
       });
     }
@@ -483,7 +515,15 @@ export const MenuAnalysisPage: React.FC = () => {
                       {cat.items.map((item, idx) => (
                         <TableRow key={item.id} className={item.netProfit < 0 ? "bg-red-500/5" : ""}>
                           <TableCell className="text-center text-xs">{idx + 1}</TableCell>
-                          <TableCell className="text-sm font-medium">{item.name}</TableCell>
+                          <TableCell className="text-sm font-medium">
+                            <button
+                              type="button"
+                              onClick={() => setDetailItem(item)}
+                              className="text-right hover:text-primary hover:underline transition-colors cursor-pointer"
+                            >
+                              {item.name}
+                            </button>
+                          </TableCell>
                           <TableCell className="text-center text-sm">{formatNum(item.price)}</TableCell>
                           <TableCell className="text-center text-sm">{formatNum(item.mainCost)}</TableCell>
                           <TableCell className="text-center text-sm">{formatNum(item.sideCost)}</TableCell>
@@ -788,6 +828,151 @@ export const MenuAnalysisPage: React.FC = () => {
     if (w) { w.document.write(printHTML); w.document.close(); }
   };
 
+  const classificationLabel = (cls: string) => {
+    const c = (cls || "").toLowerCase();
+    if (c === "stars") return { label: "Stars ⭐ (نجم)", color: "#10b981" };
+    if (c === "plow horses" || c === "plowhorses" || c === "plow_horses") return { label: "Plow Horses 🐎 (حصان شغّال)", color: "#3b82f6" };
+    if (c === "puzzles") return { label: "Puzzles 🧩 (لغز)", color: "#f59e0b" };
+    if (c === "dogs") return { label: "Dogs 🐕 (كلب)", color: "#ef4444" };
+    return { label: cls || "—", color: "#6b7280" };
+  };
+
+  const costRecommendation = (pct: number) => {
+    if (pct < 0 || !isFinite(pct)) return { label: "بيانات غير صحيحة", color: "#6b7280", advice: "راجع السعر أو التكلفة" };
+    if (pct > 40) return { label: "تكلفة مرتفعة جداً", color: "#ef4444", advice: "🔴 راجع تكلفة الوصفة، قلل الفاقد، أو ارفع سعر البيع" };
+    if (pct > 30) return { label: "تكلفة مرتفعة", color: "#f59e0b", advice: "🟠 حاول تخفيض التكلفة أو زيادة هامش الربح" };
+    if (pct > 20) return { label: "تكلفة مقبولة", color: "#3b82f6", advice: "🔵 نسبة تكلفة في المعدل المقبول" };
+    return { label: "هامش ممتاز", color: "#10b981", advice: "🟢 هامش ربح ممتاز، حافظ على جودة المنتج" };
+  };
+
+  const handlePrintDetail = (item: ItemAnalysis) => {
+    const ingredients = recipeDetails.get(item.id) || [];
+    const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
+    const logoSrc = `${window.location.origin}/logo.png`;
+    const branchName = selectedBranchId !== "all" ? branches.find(b => b.id === selectedBranchId)?.name : "كل الفروع";
+    const cls = classificationLabel(item.classification);
+    const rec = costRecommendation(item.finalCostPct);
+
+    const ingredientsHTML = ingredients.length > 0
+      ? `<table style="width:100%;border-collapse:collapse;margin-top:6px;">
+          <thead><tr>
+            <th style="border:1px solid #000;padding:5px;background:#eee;font-size:10px;">#</th>
+            <th style="border:1px solid #000;padding:5px;background:#eee;font-size:10px;">الكود</th>
+            <th style="border:1px solid #000;padding:5px;background:#eee;font-size:10px;">اسم الخامة</th>
+            <th style="border:1px solid #000;padding:5px;background:#eee;font-size:10px;">الكمية</th>
+            <th style="border:1px solid #000;padding:5px;background:#eee;font-size:10px;">الوحدة</th>
+            <th style="border:1px solid #000;padding:5px;background:#eee;font-size:10px;">سعر الوحدة</th>
+            <th style="border:1px solid #000;padding:5px;background:#eee;font-size:10px;">الإجمالي</th>
+          </tr></thead><tbody>
+          ${ingredients.map((ing, i) => `<tr>
+            <td style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;">${i + 1}</td>
+            <td style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;">${ing.code}</td>
+            <td style="border:1px solid #000;padding:4px;text-align:right;font-size:10px;">${ing.name}</td>
+            <td style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;">${formatNum(ing.qty)}</td>
+            <td style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;">${ing.recipeUnit}</td>
+            <td style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;">${formatNum(ing.unitCost)}</td>
+            <td style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;font-weight:bold;">${formatNum(ing.totalCost)}</td>
+          </tr>`).join("")}
+          <tr style="background:#f5f5f5;font-weight:bold;">
+            <td colspan="6" style="border:1px solid #000;padding:5px;text-align:right;font-size:11px;">إجمالي تكلفة الوصفة الأساسية</td>
+            <td style="border:1px solid #000;padding:5px;text-align:center;font-size:11px;">${formatNum(item.mainCost)}</td>
+          </tr>
+        </tbody></table>`
+      : `<p style="text-align:center;padding:15px;color:#888;font-size:11px;">لا توجد مكونات وصفة مسجلة لهذا الصنف</p>`;
+
+    const printHTML = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تفاصيل ${item.name}</title>
+    <style>
+      @font-face { font-family:'CairoLocal'; src:url('${window.location.origin}/fonts/Cairo-Regular.ttf') format('truetype'); }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      body { font-family:'CairoLocal',sans-serif; direction:rtl; padding:20px; color:#000; background:#fff; }
+      @media print { @page { size:A4 portrait; margin:10mm; } body { padding:0; } }
+      .header { text-align:center; border-bottom:2px solid #000; padding-bottom:12px; margin-bottom:15px; }
+      .header-top { display:flex; align-items:center; justify-content:center; gap:14px; }
+      .logo { width:70px; height:70px; object-fit:contain; }
+      .company-name { font-size:18px; font-weight:bold; }
+      .item-title { font-size:16px; font-weight:bold; margin-top:4px; }
+      .item-code { font-size:11px; color:#555; }
+      .meta { display:flex; justify-content:space-between; flex-wrap:wrap; font-size:10px; color:#444; margin-top:6px; padding:0 10px; }
+      .classification-banner { background:${cls.color}; color:#fff; text-align:center; padding:8px; font-weight:bold; font-size:13px; border-radius:6px; margin-bottom:15px; }
+      h3 { font-size:13px; font-weight:bold; margin:15px 0 6px; border-bottom:1px solid #000; padding-bottom:3px; }
+      .kpi-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:10px; }
+      .kpi { border:1px solid #000; padding:7px; text-align:center; border-radius:4px; }
+      .kpi-label { font-size:9px; color:#555; margin-bottom:3px; }
+      .kpi-value { font-size:13px; font-weight:bold; }
+      .breakdown-table { width:100%; border-collapse:collapse; margin-top:6px; }
+      .breakdown-table th, .breakdown-table td { border:1px solid #000; padding:5px 7px; font-size:10px; }
+      .breakdown-table th { background:#eee; text-align:center; }
+      .breakdown-table td.right { text-align:right; }
+      .breakdown-table td.center { text-align:center; }
+      .breakdown-table tr.total { background:#f5f5f5; font-weight:bold; }
+      .recommend { border:2px solid ${rec.color}; border-radius:6px; padding:10px; margin-top:12px; }
+      .recommend-title { font-weight:bold; color:${rec.color}; font-size:12px; margin-bottom:4px; }
+      .recommend-text { font-size:11px; }
+      .footer { text-align:center; margin-top:18px; font-size:9px; border-top:1px solid #000; padding-top:6px; }
+    </style></head><body>
+    <div class="header">
+      <div class="header-top">
+        <img src="${logoSrc}" alt="Logo" class="logo"/>
+        <div>
+          <div class="company-name">${companyName}</div>
+          <div class="item-title">${item.name}</div>
+          <div class="item-code">كود: ${item.code || "—"}</div>
+        </div>
+      </div>
+      <div class="meta">
+        <span>الفرع: ${branchName || "كل الفروع"}</span>
+        <span>القسم: ${activeTab === "kitchen" ? "المطبخ" : "البار"}</span>
+        <span>الفئة: ${item.categoryName}</span>
+        <span>الفترة: ${selectedPeriod?.name || ""}</span>
+        <span>${dateStr}</span>
+      </div>
+    </div>
+
+    <div class="classification-banner">التصنيف الاستراتيجي: ${cls.label}</div>
+
+    <h3>المؤشرات الأساسية</h3>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-label">سعر البيع</div><div class="kpi-value">${formatNum(item.price)}</div></div>
+      <div class="kpi"><div class="kpi-label">صافي السعر بعد الضريبة</div><div class="kpi-value">${formatNum(item.price * (1 - (selectedPeriod?.tax_rate || 0) / 100))}</div></div>
+      <div class="kpi"><div class="kpi-label">إجمالي التكلفة المباشرة</div><div class="kpi-value">${formatNum(item.finalDirectCost)}</div></div>
+      <div class="kpi"><div class="kpi-label">نسبة التكلفة المباشرة</div><div class="kpi-value">${formatPct(item.directCostPct)}</div></div>
+      <div class="kpi"><div class="kpi-label">إجمالي التكلفة النهائية</div><div class="kpi-value">${formatNum(item.totalCost)}</div></div>
+      <div class="kpi"><div class="kpi-label">نسبة التكلفة النهائية</div><div class="kpi-value">${formatPct(item.finalCostPct)}</div></div>
+      <div class="kpi"><div class="kpi-label">صافي الربح</div><div class="kpi-value" style="color:${item.netProfit >= 0 ? '#10b981' : '#ef4444'}">${formatNum(item.netProfit)}</div></div>
+      <div class="kpi"><div class="kpi-label">نسبة صافي الربح</div><div class="kpi-value" style="color:${item.finalNetPct >= 0 ? '#10b981' : '#ef4444'}">${formatPct(item.finalNetPct)}</div></div>
+    </div>
+
+    <h3>تشريح التكلفة (Cost Breakdown)</h3>
+    <table class="breakdown-table">
+      <thead><tr><th>البند</th><th>القيمة</th><th>النسبة من السعر</th></tr></thead>
+      <tbody>
+        <tr><td class="right">تكلفة الوصفة الأساسية (Main Cost)</td><td class="center">${formatNum(item.mainCost)}</td><td class="center">${item.price > 0 ? formatPct(item.mainCost / item.price * 100) : "0%"}</td></tr>
+        <tr><td class="right">تكلفة جانبية (Side Cost)</td><td class="center">${formatNum(item.sideCost)}</td><td class="center">${item.price > 0 ? formatPct(item.sideCost / item.price * 100) : "0%"}</td></tr>
+        <tr><td class="right">استهلاكيات (Consumables)</td><td class="center">${formatNum(item.consumables)}</td><td class="center">${item.price > 0 ? formatPct(item.consumables / item.price * 100) : "0%"}</td></tr>
+        <tr><td class="right">تغليف (Packing)</td><td class="center">${formatNum(item.packingCost)}</td><td class="center">${item.price > 0 ? formatPct(item.packingCost / item.price * 100) : "0%"}</td></tr>
+        <tr class="total"><td class="right">إجمالي التكلفة المباشرة</td><td class="center">${formatNum(item.finalDirectCost)}</td><td class="center">${formatPct(item.directCostPct)}</td></tr>
+        <tr><td class="right">مصاريف غير مباشرة (حصة الصنف)</td><td class="center">${formatNum(item.indirectExpenses)}</td><td class="center">${item.price > 0 ? formatPct(item.indirectExpenses / item.price * 100) : "0%"}</td></tr>
+        <tr class="total"><td class="right">إجمالي التكلفة النهائية</td><td class="center">${formatNum(item.totalCost)}</td><td class="center">${formatPct(item.finalCostPct)}</td></tr>
+      </tbody>
+    </table>
+
+    <h3>مكونات الوصفة (Recipe Ingredients)</h3>
+    ${ingredientsHTML}
+
+    <div class="recommend">
+      <div class="recommend-title">التقييم: ${rec.label}</div>
+      <div class="recommend-text">${rec.advice}</div>
+    </div>
+
+    <div class="footer">Powered by Mohamed Abdel Aal</div>
+    <script>(async()=>{try{if(document.fonts&&document.fonts.ready)await document.fonts.ready}catch(e){}window.print();window.onafterprint=()=>window.close();})()</script>
+    </body></html>`;
+
+    const w = window.open("", "_blank");
+    if (w) { w.document.write(printHTML); w.document.close(); }
+  };
+
+
   return (
     <div className="space-y-6 animate-fade-in-up" dir="rtl">
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -852,6 +1037,155 @@ export const MenuAnalysisPage: React.FC = () => {
           </TabsContent>
         </Tabs>
       )}
+
+      {/* Item Detail Modal */}
+      <Dialog open={!!detailItem} onOpenChange={(o) => !o && setDetailItem(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" dir="rtl">
+          {detailItem && (() => {
+            const ingredients = recipeDetails.get(detailItem.id) || [];
+            const cls = classificationLabel(detailItem.classification);
+            const rec = costRecommendation(detailItem.finalCostPct);
+            const taxRate = selectedPeriod?.tax_rate || 0;
+            const netAfterTax = detailItem.price * (1 - taxRate / 100);
+            const rows: { label: string; value: number; pct: number; bold?: boolean; color?: string }[] = [
+              { label: "تكلفة الوصفة الأساسية (Main Cost)", value: detailItem.mainCost, pct: detailItem.price > 0 ? detailItem.mainCost / detailItem.price * 100 : 0 },
+              { label: "تكلفة جانبية (Side Cost)", value: detailItem.sideCost, pct: detailItem.price > 0 ? detailItem.sideCost / detailItem.price * 100 : 0 },
+              { label: "استهلاكيات (Consumables)", value: detailItem.consumables, pct: detailItem.price > 0 ? detailItem.consumables / detailItem.price * 100 : 0 },
+              { label: "تغليف (Packing)", value: detailItem.packingCost, pct: detailItem.price > 0 ? detailItem.packingCost / detailItem.price * 100 : 0 },
+              { label: "إجمالي التكلفة المباشرة", value: detailItem.finalDirectCost, pct: detailItem.directCostPct, bold: true },
+              { label: "مصاريف غير مباشرة (حصة الصنف)", value: detailItem.indirectExpenses, pct: detailItem.price > 0 ? detailItem.indirectExpenses / detailItem.price * 100 : 0, color: "text-orange-600" },
+              { label: "إجمالي التكلفة النهائية", value: detailItem.totalCost, pct: detailItem.finalCostPct, bold: true },
+            ];
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="text-xl flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <span>{detailItem.name}</span>
+                      <Badge variant="outline" className="text-xs">{detailItem.code || "—"}</Badge>
+                    </div>
+                    <Button size="sm" variant="outline" className="gap-2" onClick={() => handlePrintDetail(detailItem)}>
+                      <Printer size={14} /> طباعة التفاصيل
+                    </Button>
+                  </DialogTitle>
+                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground pt-2">
+                    <Badge variant="secondary">القسم: {activeTab === "kitchen" ? "المطبخ" : "البار"}</Badge>
+                    <Badge variant="secondary">الفئة: {detailItem.categoryName}</Badge>
+                    <Badge style={{ background: cls.color, color: "#fff" }}>{cls.label}</Badge>
+                  </div>
+                </DialogHeader>
+
+                {/* KPIs */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
+                  <Card><CardContent className="p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">سعر البيع</p>
+                    <p className="text-base font-bold text-primary">{formatNum(detailItem.price)}</p>
+                  </CardContent></Card>
+                  <Card><CardContent className="p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">صافي بعد الضريبة</p>
+                    <p className="text-base font-bold">{formatNum(netAfterTax)}</p>
+                  </CardContent></Card>
+                  <Card><CardContent className="p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">إجمالي تكلفة مباشرة</p>
+                    <p className="text-base font-bold">{formatNum(detailItem.finalDirectCost)}</p>
+                    <Badge variant="secondary" className="text-[10px]">{formatPct(detailItem.directCostPct)}</Badge>
+                  </CardContent></Card>
+                  <Card><CardContent className="p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">إجمالي تكلفة نهائية</p>
+                    <p className="text-base font-bold">{formatNum(detailItem.totalCost)}</p>
+                    <Badge variant="secondary" className="text-[10px]">{formatPct(detailItem.finalCostPct)}</Badge>
+                  </CardContent></Card>
+                  <Card><CardContent className="p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">صافي الربح</p>
+                    <p className={`text-base font-bold ${detailItem.netProfit >= 0 ? "text-emerald-600" : "text-red-500"}`}>{formatNum(detailItem.netProfit)}</p>
+                  </CardContent></Card>
+                  <Card><CardContent className="p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">نسبة صافي الربح</p>
+                    <p className={`text-base font-bold ${profitColor(detailItem.finalNetPct)}`}>{formatPct(detailItem.finalNetPct)}</p>
+                  </CardContent></Card>
+                  <Card><CardContent className="p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">مصاريف غير مباشرة</p>
+                    <p className="text-base font-bold text-orange-600">{formatNum(detailItem.indirectExpenses)}</p>
+                  </CardContent></Card>
+                  <Card><CardContent className="p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">عدد مكونات الوصفة</p>
+                    <p className="text-base font-bold">{ingredients.length}</p>
+                  </CardContent></Card>
+                </div>
+
+                {/* Cost Breakdown */}
+                <div className="mt-4">
+                  <h3 className="text-sm font-bold mb-2 border-b pb-1">تشريح التكلفة (Cost Breakdown)</h3>
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/40">
+                        <TableHead>البند</TableHead>
+                        <TableHead className="text-center">القيمة</TableHead>
+                        <TableHead className="text-center">النسبة من السعر</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {rows.map((r, i) => (
+                        <TableRow key={i} className={r.bold ? "bg-muted/30 font-bold" : ""}>
+                          <TableCell className={`${r.color || ""} text-sm`}>{r.label}</TableCell>
+                          <TableCell className={`text-center text-sm ${r.color || ""}`}>{formatNum(r.value)}</TableCell>
+                          <TableCell className={`text-center text-sm ${r.color || ""}`}>{formatPct(r.pct)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Recipe Ingredients */}
+                <div className="mt-4">
+                  <h3 className="text-sm font-bold mb-2 border-b pb-1">مكونات الوصفة ({ingredients.length})</h3>
+                  {ingredients.length === 0 ? (
+                    <p className="text-center text-sm text-muted-foreground py-4">لا توجد مكونات وصفة مسجلة لهذا الصنف</p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/40">
+                          <TableHead className="w-10 text-center">#</TableHead>
+                          <TableHead>الخامة</TableHead>
+                          <TableHead className="text-center">الكمية</TableHead>
+                          <TableHead className="text-center">الوحدة</TableHead>
+                          <TableHead className="text-center">سعر الوحدة</TableHead>
+                          <TableHead className="text-center">الإجمالي</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {ingredients.map((ing, i) => (
+                          <TableRow key={i}>
+                            <TableCell className="text-center text-xs">{i + 1}</TableCell>
+                            <TableCell className="text-sm">
+                              <div className="font-medium">{ing.name}</div>
+                              {ing.code && <div className="text-[10px] text-muted-foreground">{ing.code}</div>}
+                            </TableCell>
+                            <TableCell className="text-center text-sm">{formatNum(ing.qty)}</TableCell>
+                            <TableCell className="text-center text-sm">{ing.recipeUnit}</TableCell>
+                            <TableCell className="text-center text-sm">{formatNum(ing.unitCost)}</TableCell>
+                            <TableCell className="text-center text-sm font-semibold">{formatNum(ing.totalCost)}</TableCell>
+                          </TableRow>
+                        ))}
+                        <TableRow className="bg-muted/40 font-bold">
+                          <TableCell colSpan={5} className="text-sm">إجمالي تكلفة الوصفة الأساسية</TableCell>
+                          <TableCell className="text-center text-sm">{formatNum(detailItem.mainCost)}</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
+
+                {/* Recommendation */}
+                <div className="mt-4 p-3 rounded-lg border-2" style={{ borderColor: rec.color }}>
+                  <div className="font-bold text-sm mb-1" style={{ color: rec.color }}>التقييم: {rec.label}</div>
+                  <div className="text-xs">{rec.advice}</div>
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

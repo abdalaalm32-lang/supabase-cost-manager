@@ -1037,6 +1037,155 @@ export const MenuAnalysisPage: React.FC = () => {
           </TabsContent>
         </Tabs>
       )}
+
+      {/* Item Detail Modal */}
+      <Dialog open={!!detailItem} onOpenChange={(o) => !o && setDetailItem(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" dir="rtl">
+          {detailItem && (() => {
+            const ingredients = recipeDetails.get(detailItem.id) || [];
+            const cls = classificationLabel(detailItem.classification);
+            const rec = costRecommendation(detailItem.finalCostPct);
+            const taxRate = selectedPeriod?.tax_rate || 0;
+            const netAfterTax = detailItem.price * (1 - taxRate / 100);
+            const rows: { label: string; value: number; pct: number; bold?: boolean; color?: string }[] = [
+              { label: "تكلفة الوصفة الأساسية (Main Cost)", value: detailItem.mainCost, pct: detailItem.price > 0 ? detailItem.mainCost / detailItem.price * 100 : 0 },
+              { label: "تكلفة جانبية (Side Cost)", value: detailItem.sideCost, pct: detailItem.price > 0 ? detailItem.sideCost / detailItem.price * 100 : 0 },
+              { label: "استهلاكيات (Consumables)", value: detailItem.consumables, pct: detailItem.price > 0 ? detailItem.consumables / detailItem.price * 100 : 0 },
+              { label: "تغليف (Packing)", value: detailItem.packingCost, pct: detailItem.price > 0 ? detailItem.packingCost / detailItem.price * 100 : 0 },
+              { label: "إجمالي التكلفة المباشرة", value: detailItem.finalDirectCost, pct: detailItem.directCostPct, bold: true },
+              { label: "مصاريف غير مباشرة (حصة الصنف)", value: detailItem.indirectExpenses, pct: detailItem.price > 0 ? detailItem.indirectExpenses / detailItem.price * 100 : 0, color: "text-orange-600" },
+              { label: "إجمالي التكلفة النهائية", value: detailItem.totalCost, pct: detailItem.finalCostPct, bold: true },
+            ];
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="text-xl flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <span>{detailItem.name}</span>
+                      <Badge variant="outline" className="text-xs">{detailItem.code || "—"}</Badge>
+                    </div>
+                    <Button size="sm" variant="outline" className="gap-2" onClick={() => handlePrintDetail(detailItem)}>
+                      <Printer size={14} /> طباعة التفاصيل
+                    </Button>
+                  </DialogTitle>
+                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground pt-2">
+                    <Badge variant="secondary">القسم: {activeTab === "kitchen" ? "المطبخ" : "البار"}</Badge>
+                    <Badge variant="secondary">الفئة: {detailItem.categoryName}</Badge>
+                    <Badge style={{ background: cls.color, color: "#fff" }}>{cls.label}</Badge>
+                  </div>
+                </DialogHeader>
+
+                {/* KPIs */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
+                  <Card><CardContent className="p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">سعر البيع</p>
+                    <p className="text-base font-bold text-primary">{formatNum(detailItem.price)}</p>
+                  </CardContent></Card>
+                  <Card><CardContent className="p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">صافي بعد الضريبة</p>
+                    <p className="text-base font-bold">{formatNum(netAfterTax)}</p>
+                  </CardContent></Card>
+                  <Card><CardContent className="p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">إجمالي تكلفة مباشرة</p>
+                    <p className="text-base font-bold">{formatNum(detailItem.finalDirectCost)}</p>
+                    <Badge variant="secondary" className="text-[10px]">{formatPct(detailItem.directCostPct)}</Badge>
+                  </CardContent></Card>
+                  <Card><CardContent className="p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">إجمالي تكلفة نهائية</p>
+                    <p className="text-base font-bold">{formatNum(detailItem.totalCost)}</p>
+                    <Badge variant="secondary" className="text-[10px]">{formatPct(detailItem.finalCostPct)}</Badge>
+                  </CardContent></Card>
+                  <Card><CardContent className="p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">صافي الربح</p>
+                    <p className={`text-base font-bold ${detailItem.netProfit >= 0 ? "text-emerald-600" : "text-red-500"}`}>{formatNum(detailItem.netProfit)}</p>
+                  </CardContent></Card>
+                  <Card><CardContent className="p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">نسبة صافي الربح</p>
+                    <p className={`text-base font-bold ${profitColor(detailItem.finalNetPct)}`}>{formatPct(detailItem.finalNetPct)}</p>
+                  </CardContent></Card>
+                  <Card><CardContent className="p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">مصاريف غير مباشرة</p>
+                    <p className="text-base font-bold text-orange-600">{formatNum(detailItem.indirectExpenses)}</p>
+                  </CardContent></Card>
+                  <Card><CardContent className="p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">عدد مكونات الوصفة</p>
+                    <p className="text-base font-bold">{ingredients.length}</p>
+                  </CardContent></Card>
+                </div>
+
+                {/* Cost Breakdown */}
+                <div className="mt-4">
+                  <h3 className="text-sm font-bold mb-2 border-b pb-1">تشريح التكلفة (Cost Breakdown)</h3>
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/40">
+                        <TableHead>البند</TableHead>
+                        <TableHead className="text-center">القيمة</TableHead>
+                        <TableHead className="text-center">النسبة من السعر</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {rows.map((r, i) => (
+                        <TableRow key={i} className={r.bold ? "bg-muted/30 font-bold" : ""}>
+                          <TableCell className={`${r.color || ""} text-sm`}>{r.label}</TableCell>
+                          <TableCell className={`text-center text-sm ${r.color || ""}`}>{formatNum(r.value)}</TableCell>
+                          <TableCell className={`text-center text-sm ${r.color || ""}`}>{formatPct(r.pct)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Recipe Ingredients */}
+                <div className="mt-4">
+                  <h3 className="text-sm font-bold mb-2 border-b pb-1">مكونات الوصفة ({ingredients.length})</h3>
+                  {ingredients.length === 0 ? (
+                    <p className="text-center text-sm text-muted-foreground py-4">لا توجد مكونات وصفة مسجلة لهذا الصنف</p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/40">
+                          <TableHead className="w-10 text-center">#</TableHead>
+                          <TableHead>الخامة</TableHead>
+                          <TableHead className="text-center">الكمية</TableHead>
+                          <TableHead className="text-center">الوحدة</TableHead>
+                          <TableHead className="text-center">سعر الوحدة</TableHead>
+                          <TableHead className="text-center">الإجمالي</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {ingredients.map((ing, i) => (
+                          <TableRow key={i}>
+                            <TableCell className="text-center text-xs">{i + 1}</TableCell>
+                            <TableCell className="text-sm">
+                              <div className="font-medium">{ing.name}</div>
+                              {ing.code && <div className="text-[10px] text-muted-foreground">{ing.code}</div>}
+                            </TableCell>
+                            <TableCell className="text-center text-sm">{formatNum(ing.qty)}</TableCell>
+                            <TableCell className="text-center text-sm">{ing.recipeUnit}</TableCell>
+                            <TableCell className="text-center text-sm">{formatNum(ing.unitCost)}</TableCell>
+                            <TableCell className="text-center text-sm font-semibold">{formatNum(ing.totalCost)}</TableCell>
+                          </TableRow>
+                        ))}
+                        <TableRow className="bg-muted/40 font-bold">
+                          <TableCell colSpan={5} className="text-sm">إجمالي تكلفة الوصفة الأساسية</TableCell>
+                          <TableCell className="text-center text-sm">{formatNum(detailItem.mainCost)}</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
+
+                {/* Recommendation */}
+                <div className="mt-4 p-3 rounded-lg border-2" style={{ borderColor: rec.color }}>
+                  <div className="font-bold text-sm mb-1" style={{ color: rec.color }}>التقييم: {rec.label}</div>
+                  <div className="text-xs">{rec.advice}</div>
+                </div>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -1031,6 +1031,8 @@ export const MenuEngineeringPage: React.FC = () => {
                       <XAxis dataKey="x" name="% مبيعات" tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 10 }} label={{ value: "شعبية (%)", position: "bottom", offset: 15, fill: "hsl(215, 20%, 55%)", fontSize: 11 }} tickMargin={10} />
                       <YAxis dataKey="y" name="% ربح" tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 10 }} label={{ value: "ربحية (%)", angle: -90, position: "insideLeft", offset: -5, fill: "hsl(215, 20%, 55%)", fontSize: 11 }} tickMargin={10} />
                       <ZAxis dataKey="z" range={[40, 400]} name="المبيعات" />
+                      <ReferenceLine y={t.medium} stroke="hsl(145, 65%, 45%)" strokeDasharray="4 4" label={{ value: `حد الربحية ${t.medium}%`, position: "insideTopRight", fill: "hsl(145, 65%, 45%)", fontSize: 10 }} />
+                      <ReferenceLine x={engineeringData.length > 0 ? (100 / engineeringData.length) * 0.8 : 0} stroke="hsl(199, 89%, 60%)" strokeDasharray="4 4" label={{ value: "حد الشعبية", position: "insideTopLeft", fill: "hsl(199, 89%, 60%)", fontSize: 10 }} />
                       <Tooltip
                         contentStyle={{ backgroundColor: "hsl(222, 47%, 8%)", border: "1px solid hsl(217, 33%, 18%)", borderRadius: "8px", color: "#000" }}
                         formatter={(val: any, name: string) => [typeof val === 'number' ? val.toFixed(1) : val, name]}

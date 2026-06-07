@@ -40,6 +40,7 @@ type Strategic = "Stars" | "Puzzles" | "Plow Horses" | "Dogs";
 
 interface EngRow {
   id: string;
+  sourcePosItemId?: string;
   name: string;
   itemCode: string;
   categoryId: string | null;

@@ -224,22 +224,36 @@ export const MenuAnalysisPage: React.FC = () => {
     };
 
     const recipeCostMap = new Map<string, number>();
+    const recipeDetailsMap = new Map<string, RecipeIngredientDetail[]>();
     if (recipesRes.data) {
       for (const recipe of recipesRes.data as any[]) {
         let totalCost = 0;
+        const details: RecipeIngredientDetail[] = [];
         for (const ing of recipe.recipe_ingredients || []) {
           const stockItem = ing.stock_items;
           if (stockItem) {
             const convFactor = stockItem.conversion_factor || 1;
             const unitCost = resolveCost(ing.stock_item_id, Number(stockItem.avg_cost || 0));
             const costPerRecipeUnit = unitCost / convFactor;
-            totalCost += ing.qty * costPerRecipeUnit;
+            const lineCost = ing.qty * costPerRecipeUnit;
+            totalCost += lineCost;
+            details.push({
+              name: stockItem.name || "—",
+              code: stockItem.code || "",
+              qty: Number(ing.qty) || 0,
+              recipeUnit: stockItem.recipe_unit || "",
+              stockUnit: stockItem.stock_unit || "",
+              unitCost: costPerRecipeUnit,
+              totalCost: lineCost,
+            });
           }
         }
         recipeCostMap.set(recipe.menu_item_id, totalCost);
+        recipeDetailsMap.set(recipe.menu_item_id, details);
       }
     }
     setRecipes(recipeCostMap);
+    setRecipeDetails(recipeDetailsMap);
 
     const overrideMap = new Map<string, CostOverride>();
     if (overridesRes.data) {

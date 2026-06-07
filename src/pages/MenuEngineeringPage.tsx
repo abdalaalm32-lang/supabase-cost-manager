@@ -578,20 +578,29 @@ export const MenuEngineeringPage: React.FC = () => {
             theadHTML += "</tr>";
 
             const colCount = cols.length;
+            const strategicBgPrint: Record<Strategic, string> = {
+              Stars: "#e6f7ec",
+              Puzzles: "#fff8e1",
+              "Plow Horses": "#e3f2fd",
+              Dogs: "#fdecea",
+            };
             let tbodyHTML = "";
             let runningIdx = 0;
             groupedEngineeringData.forEach((grp) => {
+              const filteredRows = strategicFilter === "all" ? grp.rows : grp.rows.filter((r) => r.strategic === strategicFilter);
+              if (filteredRows.length === 0) return;
               const groupSubtotal = {
-                qty: grp.rows.reduce((s, r) => s + r.qty, 0),
-                totalSales: grp.rows.reduce((s, r) => s + r.totalSales, 0),
-                totalCostSales: grp.rows.reduce((s, r) => s + r.totalCostSales, 0),
-                totalProfit: grp.rows.reduce((s, r) => s + r.totalProfit, 0),
+                qty: filteredRows.reduce((s, r) => s + r.qty, 0),
+                totalSales: filteredRows.reduce((s, r) => s + r.totalSales, 0),
+                totalCostSales: filteredRows.reduce((s, r) => s + r.totalCostSales, 0),
+                totalProfit: filteredRows.reduce((s, r) => s + r.totalProfit, 0),
               };
               // Group header row
-              tbodyHTML += `<tr><td colspan="${colCount}" style="border:1px solid #000;padding:4px 6px;font-size:9px;text-align:right;font-weight:bold;background:#d9e7ff;">📁 ${grp.categoryCode ? `[${grp.categoryCode}] ` : ""}${grp.categoryName} &nbsp;(${grp.rows.length} صنف)</td></tr>`;
+              tbodyHTML += `<tr><td colspan="${colCount}" style="border:1px solid #000;padding:4px 6px;font-size:9px;text-align:right;font-weight:bold;background:#d9e7ff;-webkit-print-color-adjust:exact;print-color-adjust:exact;">📁 ${grp.categoryCode ? `[${grp.categoryCode}] ` : ""}${grp.categoryName} &nbsp;(${filteredRows.length} صنف)</td></tr>`;
               // Item rows
-              grp.rows.forEach((r) => {
+              filteredRows.forEach((r) => {
                 runningIdx++;
+                const rowBg = strategicBgPrint[r.strategic];
                 const cells: Record<string, any> = {
                   "#": runningIdx,
                   "الصنف": r.itemCode ? `${r.itemCode} - ${r.name}` : r.name,
@@ -613,7 +622,7 @@ export const MenuEngineeringPage: React.FC = () => {
                 tbodyHTML += "<tr>";
                 for (const col of cols) {
                   const val = cells[col.key] !== null && cells[col.key] !== undefined ? String(cells[col.key]) : "—";
-                  tbodyHTML += `<td style="border:1px solid #000;padding:2px 3px;font-size:7px;text-align:center;">${val}</td>`;
+                  tbodyHTML += `<td style="border:1px solid #000;padding:2px 3px;font-size:7px;text-align:center;background:${rowBg};-webkit-print-color-adjust:exact;print-color-adjust:exact;">${val}</td>`;
                 }
                 tbodyHTML += "</tr>";
               });
@@ -639,7 +648,7 @@ export const MenuEngineeringPage: React.FC = () => {
               tbodyHTML += "<tr>";
               for (const col of cols) {
                 const val = subCells[col.key] !== "" ? String(subCells[col.key]) : "—";
-                tbodyHTML += `<td style="border:1px solid #000;padding:2px 3px;font-size:7px;text-align:center;font-weight:bold;background:#f0f4ff;">${val}</td>`;
+                tbodyHTML += `<td style="border:1px solid #000;padding:2px 3px;font-size:7px;text-align:center;font-weight:bold;background:#f0f4ff;-webkit-print-color-adjust:exact;print-color-adjust:exact;">${val}</td>`;
               }
               tbodyHTML += "</tr>";
             });
@@ -702,6 +711,7 @@ export const MenuEngineeringPage: React.FC = () => {
     &nbsp;•&nbsp; من تاريخ: ${dateFrom ? format(dateFrom, "yyyy/MM/dd") : "—"}
     &nbsp;•&nbsp; إلى تاريخ: ${dateTo ? format(dateTo, "yyyy/MM/dd") : "—"}
     &nbsp;•&nbsp; القسم: ${activeTab === "kitchen" ? "المطبخ" : "البار"}
+    &nbsp;•&nbsp; التصنيف: ${strategicFilter === "all" ? "الكل" : strategicFilter}
   </div>
   <table>
     <thead>${theadHTML}</thead>

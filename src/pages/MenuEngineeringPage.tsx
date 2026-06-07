@@ -808,6 +808,36 @@ export const MenuEngineeringPage: React.FC = () => {
         </TabsList>
 
         <TabsContent value={activeTab}>
+          {/* Quick strategic filters */}
+          {engineeringData.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <span className="text-xs text-muted-foreground">تصفية سريعة:</span>
+              <Button
+                variant={strategicFilter === "all" ? "default" : "outline"}
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setStrategicFilter("all")}
+              >
+                الكل ({engineeringData.length})
+              </Button>
+              {(["Stars", "Puzzles", "Plow Horses", "Dogs"] as Strategic[]).map((s) => {
+                const count = engineeringData.filter((r) => r.strategic === s).length;
+                return (
+                  <Button
+                    key={s}
+                    variant={strategicFilter === s ? "default" : "outline"}
+                    size="sm"
+                    className="h-7 text-xs gap-1"
+                    onClick={() => setStrategicFilter(s)}
+                  >
+                    {STRATEGIC_ICONS[s]}
+                    {s} ({count})
+                  </Button>
+                );
+              })}
+            </div>
+          )}
+
           {/* Analysis Table */}
           <div className="glass-card overflow-x-auto">
             <Table>

@@ -850,7 +850,7 @@ export const MenuAnalysisPage: React.FC = () => {
     const logoSrc = `${window.location.origin}/logo.png`;
     const branchName = selectedBranchId !== "all" ? branches.find(b => b.id === selectedBranchId)?.name : "كل الفروع";
     const cls = classificationLabel(item.classification);
-    const rec = costRecommendation(item.finalCostPct);
+    const rec = costRecommendation(item.finalNetPct);
 
     const ingredientsHTML = ingredients.length > 0
       ? `<table style="width:100%;border-collapse:collapse;margin-top:6px;">

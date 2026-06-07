@@ -515,7 +515,15 @@ export const MenuAnalysisPage: React.FC = () => {
                       {cat.items.map((item, idx) => (
                         <TableRow key={item.id} className={item.netProfit < 0 ? "bg-red-500/5" : ""}>
                           <TableCell className="text-center text-xs">{idx + 1}</TableCell>
-                          <TableCell className="text-sm font-medium">{item.name}</TableCell>
+                          <TableCell className="text-sm font-medium">
+                            <button
+                              type="button"
+                              onClick={() => setDetailItem(item)}
+                              className="text-right hover:text-primary hover:underline transition-colors cursor-pointer"
+                            >
+                              {item.name}
+                            </button>
+                          </TableCell>
                           <TableCell className="text-center text-sm">{formatNum(item.price)}</TableCell>
                           <TableCell className="text-center text-sm">{formatNum(item.mainCost)}</TableCell>
                           <TableCell className="text-center text-sm">{formatNum(item.sideCost)}</TableCell>

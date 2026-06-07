@@ -571,6 +571,13 @@ export const IndirectExpensesPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in-up" dir="rtl">
+      <PeriodComparisonDialog
+        open={compareOpen}
+        onOpenChange={setCompareOpen}
+        periods={periods as any}
+        branches={branches}
+        defaultPeriodId={selectedPeriod?.id || null}
+      />
       <div className="flex items-center justify-between flex-wrap gap-4">
         <h1 className="text-2xl font-bold">تحليل المصاريف الغير مباشرة</h1>
         <div className="flex items-center gap-3 flex-wrap">

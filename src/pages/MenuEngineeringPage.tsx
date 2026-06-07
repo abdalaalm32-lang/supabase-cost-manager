@@ -871,7 +871,13 @@ export const MenuEngineeringPage: React.FC = () => {
                 ) : (
                   (() => {
                     let runningIdx = 0;
-                    return groupedEngineeringData.map((grp) => {
+                    const filteredGroups = groupedEngineeringData
+                      .map((grp) => ({
+                        ...grp,
+                        rows: strategicFilter === "all" ? grp.rows : grp.rows.filter((r) => r.strategic === strategicFilter),
+                      }))
+                      .filter((grp) => grp.rows.length > 0);
+                    return filteredGroups.map((grp) => {
                       const groupSubtotal = {
                         qty: grp.rows.reduce((s, r) => s + r.qty, 0),
                         totalSales: grp.rows.reduce((s, r) => s + r.totalSales, 0),
@@ -888,7 +894,7 @@ export const MenuEngineeringPage: React.FC = () => {
                           {grp.rows.map((row) => {
                             runningIdx++;
                             return (
-                              <TableRow key={row.id}>
+                              <TableRow key={row.id} className={strategicRowBg[row.strategic]}>
                                 <TableCell className="text-xs">{runningIdx}</TableCell>
                                 <TableCell className="font-medium text-sm whitespace-nowrap">{row.itemCode ? `${row.itemCode} - ` : ""}{row.name}</TableCell>
                                 <TableCell className="text-xs">{row.qty}</TableCell>

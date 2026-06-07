@@ -1163,8 +1163,134 @@ export const MenuEngineeringPage: React.FC = () => {
               recipeDetailsMap[detailItem.id] ||
               [];
             const ingTotal = ings.reduce((s, i) => s + i.totalCost, 0);
+            const handlePrintDetail = () => {
+              if (!detailItem) return;
+              const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
+              const logoSrc = `${window.location.origin}/logo.png`;
+              const branchName = selectedBranch === "all" ? "كل الفروع" : (branches.find((b: any) => b.id === selectedBranch)?.name ?? "—");
+              const deptName = activeTab === "kitchen" ? "المطبخ" : "البار";
+              const stratColor: Record<Strategic, string> = {
+                Stars: "#16a34a", Puzzles: "#ca8a04", "Plow Horses": "#2563eb", Dogs: "#dc2626",
+              };
+              const kpis: Array<{ label: string; value: string; accent?: string }> = [
+                { label: "سعر البيع", value: `${detailItem.price.toFixed(2)} ج.م` },
+                { label: "التكلفة المباشرة", value: `${detailItem.directCost.toFixed(2)} ج.م` },
+                { label: "صافي ربح الصنف", value: `${detailItem.netProfit.toFixed(2)} ج.م`, accent: "#16a34a" },
+                { label: "نسبة الربح", value: `${detailItem.profitRatio.toFixed(1)}%` },
+                { label: "كمية المبيعات", value: String(detailItem.qty) },
+                { label: "إجمالي المبيعات", value: `${detailItem.totalSales.toFixed(2)} ج.م` },
+                { label: "إجمالي الربح", value: `${detailItem.totalProfit.toFixed(2)} ج.م`, accent: "#16a34a" },
+                { label: "% مبيعات الصنف", value: `${detailItem.salesSharePct.toFixed(1)}%` },
+              ];
+              const kpisHTML = kpis.map(k => `
+                <div style="border:1px solid #000;padding:8px 10px;text-align:center;">
+                  <div style="font-size:10px;color:#555;margin-bottom:4px;">${k.label}</div>
+                  <div style="font-size:13px;font-weight:bold;color:${k.accent || "#000"};">${k.value}</div>
+                </div>`).join("");
+              const ingRowsHTML = ings.length === 0
+                ? `<tr><td colspan="5" style="border:1px solid #000;padding:10px;text-align:center;font-size:10px;color:#666;">لا توجد وصفة مرتبطة بهذا الصنف</td></tr>`
+                : ings.map((ing, i) => `
+                    <tr>
+                      <td style="border:1px solid #000;padding:4px 6px;font-size:9px;text-align:center;">${i + 1}</td>
+                      <td style="border:1px solid #000;padding:4px 6px;font-size:9px;text-align:right;">${ing.code ? `[${ing.code}] ` : ""}${ing.name}</td>
+                      <td style="border:1px solid #000;padding:4px 6px;font-size:9px;text-align:center;">${ing.qty}</td>
+                      <td style="border:1px solid #000;padding:4px 6px;font-size:9px;text-align:center;">${ing.unit || "—"}</td>
+                      <td style="border:1px solid #000;padding:4px 6px;font-size:9px;text-align:center;">${ing.unitCost.toFixed(2)}</td>
+                      <td style="border:1px solid #000;padding:4px 6px;font-size:9px;text-align:center;font-weight:bold;">${ing.totalCost.toFixed(2)}</td>
+                    </tr>`).join("");
+              const titleText = `تفاصيل الصنف: ${detailItem.itemCode ? `${detailItem.itemCode} - ` : ""}${detailItem.name}`;
+              const printHTML = `<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>${titleText}</title>
+  <style>
+    @font-face { font-family: 'CairoLocal'; src: url('${window.location.origin}/fonts/Cairo-Regular.ttf') format('truetype'); font-display: swap; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'CairoLocal', sans-serif; direction: rtl; padding: 15px; color: #000; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    @media print { @page { size: A4 portrait; margin: 10mm; } body { padding: 0; } }
+    .header { text-align: center; margin-bottom: 12px; border-bottom: 2px solid #000; padding-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+    .logo { width: 55px; height: 55px; object-fit: contain; }
+    .header h1 { font-size: 15px; font-weight: bold; margin-bottom: 2px; }
+    .header p { font-size: 10px; color: #000; }
+    .meta { text-align:center; font-size:10px; border:1px solid #000; padding:5px 8px; margin-bottom:12px; font-weight:bold; }
+    .section-title { font-size:12px; font-weight:bold; margin:10px 0 6px; padding:5px 8px; background:#000; color:#fff; }
+    .kpis { display:grid; grid-template-columns: repeat(4, 1fr); gap:0; }
+    .strategic-banner { border:2px solid ${stratColor[detailItem.strategic]}; padding:8px; margin-bottom:10px; text-align:center; }
+    .strategic-banner .label { font-size:10px; color:#555; }
+    .strategic-banner .value { font-size:14px; font-weight:bold; color:${stratColor[detailItem.strategic]}; margin-top:2px; }
+    table { width:100%; border-collapse: collapse; }
+    th { background:#000; color:#fff; padding:5px 6px; font-size:10px; border:1px solid #000; }
+    .decision-box { border:1px solid #000; padding:8px 10px; margin-top:10px; background:#f5f5f5; }
+    .decision-box .label { font-size:10px; color:#555; margin-bottom:3px; }
+    .decision-box .value { font-size:12px; font-weight:bold; color:${stratColor[detailItem.strategic]}; }
+    .footer { text-align:center; margin-top:15px; font-size:8px; color:#000; border-top:1px solid #000; padding-top:5px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="${logoSrc}" alt="Logo" class="logo" />
+    <div>
+      <h1>${titleText}</h1>
+      <p>Cost Management System • ${dateStr}</p>
+    </div>
+  </div>
+  <div class="meta">
+    الفرع: ${branchName} &nbsp;•&nbsp; القسم: ${deptName} &nbsp;•&nbsp; المجموعة: ${detailItem.categoryName}
+    ${dateFrom ? ` &nbsp;•&nbsp; من: ${format(dateFrom, "yyyy/MM/dd")}` : ""}
+    ${dateTo ? ` &nbsp;•&nbsp; إلى: ${format(dateTo, "yyyy/MM/dd")}` : ""}
+  </div>
+  <div class="strategic-banner">
+    <div class="label">التصنيف الاستراتيجي</div>
+    <div class="value">${detailItem.strategic} — ${detailItem.profitLevel} ربحية / ${detailItem.popularityLevel} شعبية</div>
+  </div>
+  <div class="section-title">المؤشرات المالية</div>
+  <div class="kpis">${kpisHTML}</div>
+  <div class="section-title">مكونات الوصفة (${ings.length})</div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:30px;">#</th>
+        <th>الخامة</th>
+        <th style="width:70px;">الكمية</th>
+        <th style="width:70px;">الوحدة</th>
+        <th style="width:80px;">سعر الوحدة</th>
+        <th style="width:80px;">الإجمالي</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${ingRowsHTML}
+      ${ings.length > 0 ? `<tr style="background:#e8e8e8;">
+        <td colspan="5" style="border:1px solid #000;padding:6px 8px;font-size:10px;text-align:left;font-weight:bold;">إجمالي تكلفة الوصفة</td>
+        <td style="border:1px solid #000;padding:6px 8px;font-size:11px;text-align:center;font-weight:bold;">${ingTotal.toFixed(2)} ج.م</td>
+      </tr>` : ""}
+    </tbody>
+  </table>
+  <div class="decision-box">
+    <div class="label">القرار الاستراتيجي المقترح</div>
+    <div class="value">${detailItem.decision}</div>
+  </div>
+  <div class="footer">Powered by Mohamed Abdel Aal</div>
+  <script>
+    (async function () {
+      try { if (document.fonts && document.fonts.ready) await document.fonts.ready; } catch (e) {}
+      window.print();
+      window.onafterprint = function() { window.close(); };
+    })();
+  </script>
+</body>
+</html>`;
+              const w = window.open("", "_blank");
+              if (w) { w.document.write(printHTML); w.document.close(); }
+            };
             return (
               <div className="space-y-4 text-right">
+                <div className="flex justify-start">
+                  <Button variant="outline" size="sm" className="gap-2" onClick={handlePrintDetail}>
+                    <Printer size={14} />
+                    طباعة التفاصيل
+                  </Button>
+                </div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div className="rounded-lg border border-border bg-muted/30 p-3">
                     <div className="text-[11px] text-muted-foreground">سعر البيع</div>

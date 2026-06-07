@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, ScatterChart, Scatter, ZAxis, Legend,
+  PieChart, Pie, Cell, ScatterChart, Scatter, ZAxis, Legend, ReferenceLine,
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
 } from "recharts";
 import {
@@ -111,6 +111,13 @@ const strategicBadgeClass: Record<Strategic, string> = {
   Dogs: "bg-red-500/15 text-red-400 border-red-500/30",
 };
 
+const strategicRowBg: Record<Strategic, string> = {
+  Stars: "bg-green-500/5 hover:bg-green-500/10",
+  Puzzles: "bg-yellow-500/5 hover:bg-yellow-500/10",
+  "Plow Horses": "bg-blue-500/5 hover:bg-blue-500/10",
+  Dogs: "bg-red-500/5 hover:bg-red-500/10",
+};
+
 export const MenuEngineeringPage: React.FC = () => {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;
@@ -118,6 +125,7 @@ export const MenuEngineeringPage: React.FC = () => {
   const [selectedBranch, setSelectedBranch] = useState("all");
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+  const [strategicFilter, setStrategicFilter] = useState<Strategic | "all">("all");
 
   // Queries
   const { data: branches = [] } = useQuery({
@@ -769,7 +777,6 @@ export const MenuEngineeringPage: React.FC = () => {
           <CardContent className="p-4 text-center">
             <p className="text-xs text-muted-foreground">إجمالي المبيعات ({activeTab === "kitchen" ? "مطبخ" : "بار"})</p>
             <p className="text-2xl font-bold text-primary">{totals.totalSales.toLocaleString("en", { minimumFractionDigits: 2 })}</p>
-            <p className="text-[10px] text-muted-foreground mt-1">إجمالي مبيعات الفرع: {grandTotalSalesAll.toLocaleString("en", { minimumFractionDigits: 2 })}</p>
           </CardContent>
         </Card>
         <Card className="glass-card">
@@ -801,6 +808,36 @@ export const MenuEngineeringPage: React.FC = () => {
         </TabsList>
 
         <TabsContent value={activeTab}>
+          {/* Quick strategic filters */}
+          {engineeringData.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <span className="text-xs text-muted-foreground">تصفية سريعة:</span>
+              <Button
+                variant={strategicFilter === "all" ? "default" : "outline"}
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setStrategicFilter("all")}
+              >
+                الكل ({engineeringData.length})
+              </Button>
+              {(["Stars", "Puzzles", "Plow Horses", "Dogs"] as Strategic[]).map((s) => {
+                const count = engineeringData.filter((r) => r.strategic === s).length;
+                return (
+                  <Button
+                    key={s}
+                    variant={strategicFilter === s ? "default" : "outline"}
+                    size="sm"
+                    className="h-7 text-xs gap-1"
+                    onClick={() => setStrategicFilter(s)}
+                  >
+                    {STRATEGIC_ICONS[s]}
+                    {s} ({count})
+                  </Button>
+                );
+              })}
+            </div>
+          )}
+
           {/* Analysis Table */}
           <div className="glass-card overflow-x-auto">
             <Table>
@@ -834,7 +871,13 @@ export const MenuEngineeringPage: React.FC = () => {
                 ) : (
                   (() => {
                     let runningIdx = 0;
-                    return groupedEngineeringData.map((grp) => {
+                    const filteredGroups = groupedEngineeringData
+                      .map((grp) => ({
+                        ...grp,
+                        rows: strategicFilter === "all" ? grp.rows : grp.rows.filter((r) => r.strategic === strategicFilter),
+                      }))
+                      .filter((grp) => grp.rows.length > 0);
+                    return filteredGroups.map((grp) => {
                       const groupSubtotal = {
                         qty: grp.rows.reduce((s, r) => s + r.qty, 0),
                         totalSales: grp.rows.reduce((s, r) => s + r.totalSales, 0),
@@ -851,7 +894,7 @@ export const MenuEngineeringPage: React.FC = () => {
                           {grp.rows.map((row) => {
                             runningIdx++;
                             return (
-                              <TableRow key={row.id}>
+                              <TableRow key={row.id} className={strategicRowBg[row.strategic]}>
                                 <TableCell className="text-xs">{runningIdx}</TableCell>
                                 <TableCell className="font-medium text-sm whitespace-nowrap">{row.itemCode ? `${row.itemCode} - ` : ""}{row.name}</TableCell>
                                 <TableCell className="text-xs">{row.qty}</TableCell>
@@ -988,6 +1031,8 @@ export const MenuEngineeringPage: React.FC = () => {
                       <XAxis dataKey="x" name="% مبيعات" tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 10 }} label={{ value: "شعبية (%)", position: "bottom", offset: 15, fill: "hsl(215, 20%, 55%)", fontSize: 11 }} tickMargin={10} />
                       <YAxis dataKey="y" name="% ربح" tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 10 }} label={{ value: "ربحية (%)", angle: -90, position: "insideLeft", offset: -5, fill: "hsl(215, 20%, 55%)", fontSize: 11 }} tickMargin={10} />
                       <ZAxis dataKey="z" range={[40, 400]} name="المبيعات" />
+                      <ReferenceLine y={t.medium} stroke="hsl(145, 65%, 45%)" strokeDasharray="4 4" label={{ value: `حد الربحية ${t.medium}%`, position: "insideTopRight", fill: "hsl(145, 65%, 45%)", fontSize: 10 }} />
+                      <ReferenceLine x={engineeringData.length > 0 ? (100 / engineeringData.length) * 0.8 : 0} stroke="hsl(199, 89%, 60%)" strokeDasharray="4 4" label={{ value: "حد الشعبية", position: "insideTopLeft", fill: "hsl(199, 89%, 60%)", fontSize: 10 }} />
                       <Tooltip
                         contentStyle={{ backgroundColor: "hsl(222, 47%, 8%)", border: "1px solid hsl(217, 33%, 18%)", borderRadius: "8px", color: "#000" }}
                         formatter={(val: any, name: string) => [typeof val === 'number' ? val.toFixed(1) : val, name]}

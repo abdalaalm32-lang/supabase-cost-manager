@@ -828,6 +828,151 @@ export const MenuAnalysisPage: React.FC = () => {
     if (w) { w.document.write(printHTML); w.document.close(); }
   };
 
+  const classificationLabel = (cls: string) => {
+    const c = (cls || "").toLowerCase();
+    if (c === "stars") return { label: "Stars ⭐ (نجم)", color: "#10b981" };
+    if (c === "plow horses" || c === "plowhorses" || c === "plow_horses") return { label: "Plow Horses 🐎 (حصان شغّال)", color: "#3b82f6" };
+    if (c === "puzzles") return { label: "Puzzles 🧩 (لغز)", color: "#f59e0b" };
+    if (c === "dogs") return { label: "Dogs 🐕 (كلب)", color: "#ef4444" };
+    return { label: cls || "—", color: "#6b7280" };
+  };
+
+  const costRecommendation = (pct: number) => {
+    if (pct < 0 || !isFinite(pct)) return { label: "بيانات غير صحيحة", color: "#6b7280", advice: "راجع السعر أو التكلفة" };
+    if (pct > 40) return { label: "تكلفة مرتفعة جداً", color: "#ef4444", advice: "🔴 راجع تكلفة الوصفة، قلل الفاقد، أو ارفع سعر البيع" };
+    if (pct > 30) return { label: "تكلفة مرتفعة", color: "#f59e0b", advice: "🟠 حاول تخفيض التكلفة أو زيادة هامش الربح" };
+    if (pct > 20) return { label: "تكلفة مقبولة", color: "#3b82f6", advice: "🔵 نسبة تكلفة في المعدل المقبول" };
+    return { label: "هامش ممتاز", color: "#10b981", advice: "🟢 هامش ربح ممتاز، حافظ على جودة المنتج" };
+  };
+
+  const handlePrintDetail = (item: ItemAnalysis) => {
+    const ingredients = recipeDetails.get(item.id) || [];
+    const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
+    const logoSrc = `${window.location.origin}/logo.png`;
+    const branchName = selectedBranchId !== "all" ? branches.find(b => b.id === selectedBranchId)?.name : "كل الفروع";
+    const cls = classificationLabel(item.classification);
+    const rec = costRecommendation(item.finalCostPct);
+
+    const ingredientsHTML = ingredients.length > 0
+      ? `<table style="width:100%;border-collapse:collapse;margin-top:6px;">
+          <thead><tr>
+            <th style="border:1px solid #000;padding:5px;background:#eee;font-size:10px;">#</th>
+            <th style="border:1px solid #000;padding:5px;background:#eee;font-size:10px;">الكود</th>
+            <th style="border:1px solid #000;padding:5px;background:#eee;font-size:10px;">اسم الخامة</th>
+            <th style="border:1px solid #000;padding:5px;background:#eee;font-size:10px;">الكمية</th>
+            <th style="border:1px solid #000;padding:5px;background:#eee;font-size:10px;">الوحدة</th>
+            <th style="border:1px solid #000;padding:5px;background:#eee;font-size:10px;">سعر الوحدة</th>
+            <th style="border:1px solid #000;padding:5px;background:#eee;font-size:10px;">الإجمالي</th>
+          </tr></thead><tbody>
+          ${ingredients.map((ing, i) => `<tr>
+            <td style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;">${i + 1}</td>
+            <td style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;">${ing.code}</td>
+            <td style="border:1px solid #000;padding:4px;text-align:right;font-size:10px;">${ing.name}</td>
+            <td style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;">${formatNum(ing.qty)}</td>
+            <td style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;">${ing.recipeUnit}</td>
+            <td style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;">${formatNum(ing.unitCost)}</td>
+            <td style="border:1px solid #000;padding:4px;text-align:center;font-size:10px;font-weight:bold;">${formatNum(ing.totalCost)}</td>
+          </tr>`).join("")}
+          <tr style="background:#f5f5f5;font-weight:bold;">
+            <td colspan="6" style="border:1px solid #000;padding:5px;text-align:right;font-size:11px;">إجمالي تكلفة الوصفة الأساسية</td>
+            <td style="border:1px solid #000;padding:5px;text-align:center;font-size:11px;">${formatNum(item.mainCost)}</td>
+          </tr>
+        </tbody></table>`
+      : `<p style="text-align:center;padding:15px;color:#888;font-size:11px;">لا توجد مكونات وصفة مسجلة لهذا الصنف</p>`;
+
+    const printHTML = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تفاصيل ${item.name}</title>
+    <style>
+      @font-face { font-family:'CairoLocal'; src:url('${window.location.origin}/fonts/Cairo-Regular.ttf') format('truetype'); }
+      * { margin:0; padding:0; box-sizing:border-box; }
+      body { font-family:'CairoLocal',sans-serif; direction:rtl; padding:20px; color:#000; background:#fff; }
+      @media print { @page { size:A4 portrait; margin:10mm; } body { padding:0; } }
+      .header { text-align:center; border-bottom:2px solid #000; padding-bottom:12px; margin-bottom:15px; }
+      .header-top { display:flex; align-items:center; justify-content:center; gap:14px; }
+      .logo { width:70px; height:70px; object-fit:contain; }
+      .company-name { font-size:18px; font-weight:bold; }
+      .item-title { font-size:16px; font-weight:bold; margin-top:4px; }
+      .item-code { font-size:11px; color:#555; }
+      .meta { display:flex; justify-content:space-between; flex-wrap:wrap; font-size:10px; color:#444; margin-top:6px; padding:0 10px; }
+      .classification-banner { background:${cls.color}; color:#fff; text-align:center; padding:8px; font-weight:bold; font-size:13px; border-radius:6px; margin-bottom:15px; }
+      h3 { font-size:13px; font-weight:bold; margin:15px 0 6px; border-bottom:1px solid #000; padding-bottom:3px; }
+      .kpi-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:10px; }
+      .kpi { border:1px solid #000; padding:7px; text-align:center; border-radius:4px; }
+      .kpi-label { font-size:9px; color:#555; margin-bottom:3px; }
+      .kpi-value { font-size:13px; font-weight:bold; }
+      .breakdown-table { width:100%; border-collapse:collapse; margin-top:6px; }
+      .breakdown-table th, .breakdown-table td { border:1px solid #000; padding:5px 7px; font-size:10px; }
+      .breakdown-table th { background:#eee; text-align:center; }
+      .breakdown-table td.right { text-align:right; }
+      .breakdown-table td.center { text-align:center; }
+      .breakdown-table tr.total { background:#f5f5f5; font-weight:bold; }
+      .recommend { border:2px solid ${rec.color}; border-radius:6px; padding:10px; margin-top:12px; }
+      .recommend-title { font-weight:bold; color:${rec.color}; font-size:12px; margin-bottom:4px; }
+      .recommend-text { font-size:11px; }
+      .footer { text-align:center; margin-top:18px; font-size:9px; border-top:1px solid #000; padding-top:6px; }
+    </style></head><body>
+    <div class="header">
+      <div class="header-top">
+        <img src="${logoSrc}" alt="Logo" class="logo"/>
+        <div>
+          <div class="company-name">${companyName}</div>
+          <div class="item-title">${item.name}</div>
+          <div class="item-code">كود: ${item.code || "—"}</div>
+        </div>
+      </div>
+      <div class="meta">
+        <span>الفرع: ${branchName || "كل الفروع"}</span>
+        <span>القسم: ${activeTab === "kitchen" ? "المطبخ" : "البار"}</span>
+        <span>الفئة: ${item.categoryName}</span>
+        <span>الفترة: ${selectedPeriod?.name || ""}</span>
+        <span>${dateStr}</span>
+      </div>
+    </div>
+
+    <div class="classification-banner">التصنيف الاستراتيجي: ${cls.label}</div>
+
+    <h3>المؤشرات الأساسية</h3>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-label">سعر البيع</div><div class="kpi-value">${formatNum(item.price)}</div></div>
+      <div class="kpi"><div class="kpi-label">صافي السعر بعد الضريبة</div><div class="kpi-value">${formatNum(item.price * (1 - (selectedPeriod?.tax_rate || 0) / 100))}</div></div>
+      <div class="kpi"><div class="kpi-label">إجمالي التكلفة المباشرة</div><div class="kpi-value">${formatNum(item.finalDirectCost)}</div></div>
+      <div class="kpi"><div class="kpi-label">نسبة التكلفة المباشرة</div><div class="kpi-value">${formatPct(item.directCostPct)}</div></div>
+      <div class="kpi"><div class="kpi-label">إجمالي التكلفة النهائية</div><div class="kpi-value">${formatNum(item.totalCost)}</div></div>
+      <div class="kpi"><div class="kpi-label">نسبة التكلفة النهائية</div><div class="kpi-value">${formatPct(item.finalCostPct)}</div></div>
+      <div class="kpi"><div class="kpi-label">صافي الربح</div><div class="kpi-value" style="color:${item.netProfit >= 0 ? '#10b981' : '#ef4444'}">${formatNum(item.netProfit)}</div></div>
+      <div class="kpi"><div class="kpi-label">نسبة صافي الربح</div><div class="kpi-value" style="color:${item.finalNetPct >= 0 ? '#10b981' : '#ef4444'}">${formatPct(item.finalNetPct)}</div></div>
+    </div>
+
+    <h3>تشريح التكلفة (Cost Breakdown)</h3>
+    <table class="breakdown-table">
+      <thead><tr><th>البند</th><th>القيمة</th><th>النسبة من السعر</th></tr></thead>
+      <tbody>
+        <tr><td class="right">تكلفة الوصفة الأساسية (Main Cost)</td><td class="center">${formatNum(item.mainCost)}</td><td class="center">${item.price > 0 ? formatPct(item.mainCost / item.price * 100) : "0%"}</td></tr>
+        <tr><td class="right">تكلفة جانبية (Side Cost)</td><td class="center">${formatNum(item.sideCost)}</td><td class="center">${item.price > 0 ? formatPct(item.sideCost / item.price * 100) : "0%"}</td></tr>
+        <tr><td class="right">استهلاكيات (Consumables)</td><td class="center">${formatNum(item.consumables)}</td><td class="center">${item.price > 0 ? formatPct(item.consumables / item.price * 100) : "0%"}</td></tr>
+        <tr><td class="right">تغليف (Packing)</td><td class="center">${formatNum(item.packingCost)}</td><td class="center">${item.price > 0 ? formatPct(item.packingCost / item.price * 100) : "0%"}</td></tr>
+        <tr class="total"><td class="right">إجمالي التكلفة المباشرة</td><td class="center">${formatNum(item.finalDirectCost)}</td><td class="center">${formatPct(item.directCostPct)}</td></tr>
+        <tr><td class="right">مصاريف غير مباشرة (حصة الصنف)</td><td class="center">${formatNum(item.indirectExpenses)}</td><td class="center">${item.price > 0 ? formatPct(item.indirectExpenses / item.price * 100) : "0%"}</td></tr>
+        <tr class="total"><td class="right">إجمالي التكلفة النهائية</td><td class="center">${formatNum(item.totalCost)}</td><td class="center">${formatPct(item.finalCostPct)}</td></tr>
+      </tbody>
+    </table>
+
+    <h3>مكونات الوصفة (Recipe Ingredients)</h3>
+    ${ingredientsHTML}
+
+    <div class="recommend">
+      <div class="recommend-title">التقييم: ${rec.label}</div>
+      <div class="recommend-text">${rec.advice}</div>
+    </div>
+
+    <div class="footer">Powered by Mohamed Abdel Aal</div>
+    <script>(async()=>{try{if(document.fonts&&document.fonts.ready)await document.fonts.ready}catch(e){}window.print();window.onafterprint=()=>window.close();})()</script>
+    </body></html>`;
+
+    const w = window.open("", "_blank");
+    if (w) { w.document.write(printHTML); w.document.close(); }
+  };
+
+
   return (
     <div className="space-y-6 animate-fade-in-up" dir="rtl">
       <div className="flex items-center justify-between flex-wrap gap-4">

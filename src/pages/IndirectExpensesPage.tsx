@@ -471,52 +471,93 @@ export const IndirectExpensesPage: React.FC = () => {
   const indirectPctValue = selectedPeriod ? indirectCostPct(selectedPeriod) : 0;
   const netProfitPct = 100 - indirectPctValue - avgDirectCostPct;
 
+  // ─── Executive Summary & Recommendations ──────────────────────────
+  const summaryData = (() => {
+    if (!selectedPeriod) return null;
+    const expItems = getExpenseItems(selectedPeriod);
+    const topExpense = [...expItems].sort((a, b) => b.value - a.value)[0];
+    const topExpensePct = topExpense && monthSales > 0 ? (topExpense.value / monthSales * 100) : 0;
+    const rentPct = monthSales > 0 ? (selectedPeriod.rent / monthSales * 100) : 0;
+    const salariesPct = monthSales > 0 ? (selectedPeriod.salaries / monthSales * 100) : 0;
+    const bep = breakEvenPoint(selectedPeriod);
+    const dailySales = expectedDailySales(selectedPeriod);
+    const bepCoverage = dailySales > 0 ? (bep / dailySales * 100) : 0;
+
+    const recommendations: { type: "success" | "warning" | "danger" | "info"; text: string }[] = [];
+
+    if (netProfitPct < 0) recommendations.push({ type: "danger", text: `الربح الصافي سالب (${netProfitPct.toFixed(1)}%) — المنشأة تعمل بخسارة. يجب مراجعة الأسعار أو تقليل المصاريف فوراً.` });
+    else if (netProfitPct < 10) recommendations.push({ type: "warning", text: `هامش الربح منخفض (${netProfitPct.toFixed(1)}%) — حاول رفع الأسعار أو تقليل التكاليف للوصول لـ 15% على الأقل.` });
+    else if (netProfitPct < 20) recommendations.push({ type: "info", text: `هامش الربح مقبول (${netProfitPct.toFixed(1)}%) — هناك مجال للتحسين للوصول للنطاق الصحي (20%+).` });
+    else recommendations.push({ type: "success", text: `هامش ربح ممتاز (${netProfitPct.toFixed(1)}%) — استمر في هذا الأداء.` });
+
+    if (avgDirectCostPct > 40) recommendations.push({ type: "warning", text: `تكلفة الأصناف المباشرة مرتفعة (${avgDirectCostPct.toFixed(1)}%) — راجع أسعار البيع أو تكاليف المكونات.` });
+    if (indirectPctValue > 40) recommendations.push({ type: "warning", text: `نسبة المصاريف الغير مباشرة مرتفعة (${indirectPctValue.toFixed(1)}%) — راجع البنود الأكبر.` });
+    if (rentPct > 12) recommendations.push({ type: "warning", text: `الإيجار يمثل ${rentPct.toFixed(1)}% من المبيعات (المُوصى به أقل من 10%).` });
+    if (salariesPct > 30) recommendations.push({ type: "warning", text: `المرتبات تمثل ${salariesPct.toFixed(1)}% من المبيعات (المُوصى به أقل من 25%).` });
+    if (bepCoverage > 90) recommendations.push({ type: "danger", text: `نقطة التعادل تستهلك ${bepCoverage.toFixed(1)}% من مبيعاتك اليومية — هامش الأمان ضعيف جداً.` });
+    else if (bepCoverage > 70) recommendations.push({ type: "warning", text: `نقطة التعادل تستهلك ${bepCoverage.toFixed(1)}% من مبيعاتك اليومية — هامش الأمان منخفض.` });
+    if (topExpense && topExpensePct > 25) recommendations.push({ type: "info", text: `أكبر بند مصروفات: "${topExpense.label}" يمثل ${topExpensePct.toFixed(1)}% من المبيعات.` });
+
+    return { topExpense, topExpensePct, rentPct, salariesPct, bep, dailySales, bepCoverage, recommendations };
+  })();
+
+  // ─── Shared exporter rows ─────────────────────────────────────────
+  const buildExportRows = () => {
+    if (!selectedPeriod) return [] as Record<string, any>[];
+    const expItems = getExpenseItems(selectedPeriod);
+    const rows: Record<string, any>[] = [];
+    rows.push({ __rowType: "group-total", label: "المؤشرات الرئيسية", value: "", pct: "" });
+    rows.push({ label: "المبيعات الشهرية المتوقعة", value: monthSales.toLocaleString(), pct: "" });
+    rows.push({ label: "إجمالي المصاريف الغير مباشرة", value: total.toLocaleString(), pct: monthSales > 0 ? `${(total / monthSales * 100).toFixed(2)}%` : "0%" });
+    rows.push({ label: "نقطة التعادل اليومية", value: breakEvenPoint(selectedPeriod).toLocaleString(undefined, { maximumFractionDigits: 2 }), pct: "" });
+    rows.push({ __rowType: "group-total", label: "جدول الربحية", value: "", pct: "" });
+    rows.push({ label: "Indirect Cost Per.", value: `${indirectPctValue.toFixed(2)}%`, pct: "" });
+    rows.push({ label: "Avg Direct Cost Per.", value: `${avgDirectCostPct.toFixed(2)}%`, pct: "" });
+    rows.push({ label: "Net Profit Per.", value: `${netProfitPct.toFixed(2)}%`, pct: "" });
+    rows.push({ label: "Break-Even Point (Daily)", value: breakEvenPoint(selectedPeriod).toLocaleString(undefined, { maximumFractionDigits: 2 }), pct: "" });
+    rows.push({ __rowType: "group-total", label: "توزيع المصاريف", value: "", pct: "" });
+    for (const item of expItems) {
+      const pct = monthSales > 0 ? (item.value / monthSales * 100) : 0;
+      rows.push({ label: item.label, value: item.value.toLocaleString(), pct: `${pct.toFixed(2)}%` });
+    }
+    rows.push({ __rowType: "grand-total", label: "الإجمالي", value: total.toLocaleString(), pct: monthSales > 0 ? `${(total / monthSales * 100).toFixed(2)}%` : "0%" });
+    rows.push({ __rowType: "group-total", label: "بيانات التشغيل", value: "", pct: "" });
+    const isTakeawayX = (selectedPeriod as any).venue_type === "تيك اواي";
+    rows.push({ label: "نوع المكان", value: isTakeawayX ? "تيك اواي" : "صالة", pct: "" });
+    if (isTakeawayX) {
+      rows.push({ label: "عدد الطلبات اليومي (عدد الزوار)", value: String(selectedPeriod.capacity), pct: "" });
+    } else {
+      rows.push({ label: "السعة (عدد الكراسي)", value: String(selectedPeriod.capacity), pct: "" });
+      rows.push({ label: "معدل الدوران", value: String(selectedPeriod.turn_over), pct: "" });
+    }
+    rows.push({ label: "متوسط الفاتورة", value: selectedPeriod.avg_check.toLocaleString(), pct: "" });
+    rows.push({ label: "المبيعات اليومية المتوقعة", value: expectedDailySales(selectedPeriod).toLocaleString(), pct: "" });
+    rows.push({ label: "المبيعات الشهرية المتوقعة", value: monthSales.toLocaleString(), pct: "" });
+    if (summaryData && summaryData.recommendations.length > 0) {
+      rows.push({ __rowType: "group-total", label: "الملخص والتوصيات", value: "", pct: "" });
+      summaryData.recommendations.forEach((r, idx) => {
+        const prefix = r.type === "danger" ? "⚠️ تحذير" : r.type === "warning" ? "⚠️ انتباه" : r.type === "success" ? "✅ ممتاز" : "💡 معلومة";
+        rows.push({ label: `${idx + 1}. ${prefix}`, value: r.text, pct: "" });
+      });
+    }
+    return rows;
+  };
+
   const handleExcelExport = async () => {
     if (!selectedPeriod) return;
     setExcelLoading(true);
     try {
       const branchName = selectedBranchId !== "all" ? branches.find(b => b.id === selectedBranchId)?.name : "كل الفروع";
       const periodBranchName = selectedPeriod.branch_id ? branches.find(b => b.id === selectedPeriod.branch_id)?.name : null;
-      const expItems = getExpenseItems(selectedPeriod);
-      const columns = [
-        { key: "label", label: "البند" },
-        { key: "value", label: "القيمة" },
-        { key: "pct", label: "النسبة من المبيعات" },
-      ];
-      const rows: Record<string, any>[] = [];
-      // KPIs
-      rows.push({ label: "المبيعات الشهرية المتوقعة", value: monthSales.toLocaleString(), pct: "" });
-      rows.push({ label: "إجمالي المصاريف الغير مباشرة", value: total.toLocaleString(), pct: monthSales > 0 ? `${(total / monthSales * 100).toFixed(2)}%` : "0%" });
-      rows.push({ label: "نقطة التعادل اليومية", value: breakEvenPoint(selectedPeriod).toLocaleString(undefined, { maximumFractionDigits: 2 }), pct: "" });
-      rows.push({ __rowType: "group-total", label: "جدول الربحية", value: "", pct: "" });
-      rows.push({ label: "Indirect Cost Per.", value: `${indirectPctValue.toFixed(2)}%`, pct: "" });
-      rows.push({ label: "Avg Direct Cost Per.", value: `${avgDirectCostPct.toFixed(2)}%`, pct: "" });
-      rows.push({ label: "Net Profit Per.", value: `${netProfitPct.toFixed(2)}%`, pct: "" });
-      rows.push({ label: "Break-Even Point (Daily)", value: breakEvenPoint(selectedPeriod).toLocaleString(undefined, { maximumFractionDigits: 2 }), pct: "" });
-      rows.push({ __rowType: "group-total", label: "توزيع المصاريف", value: "", pct: "" });
-      for (const item of expItems) {
-        const pct = monthSales > 0 ? (item.value / monthSales * 100) : 0;
-        rows.push({ label: item.label, value: item.value.toLocaleString(), pct: `${pct.toFixed(2)}%` });
-      }
-      rows.push({ __rowType: "grand-total", label: "الإجمالي", value: total.toLocaleString(), pct: monthSales > 0 ? `${(total / monthSales * 100).toFixed(2)}%` : "0%" });
-      rows.push({ __rowType: "group-total", label: "بيانات التشغيل", value: "", pct: "" });
-      const isTakeawayX = (selectedPeriod as any).venue_type === "تيك اواي";
-      rows.push({ label: "نوع المكان", value: isTakeawayX ? "تيك اواي" : "صالة", pct: "" });
-      if (isTakeawayX) {
-        rows.push({ label: "عدد الطلبات اليومي (عدد الزوار)", value: String(selectedPeriod.capacity), pct: "" });
-      } else {
-        rows.push({ label: "السعة (عدد الكراسي)", value: String(selectedPeriod.capacity), pct: "" });
-        rows.push({ label: "معدل الدوران", value: String(selectedPeriod.turn_over), pct: "" });
-      }
-      rows.push({ label: "متوسط الفاتورة", value: selectedPeriod.avg_check.toLocaleString(), pct: "" });
-      rows.push({ label: "المبيعات اليومية المتوقعة", value: expectedDailySales(selectedPeriod).toLocaleString(), pct: "" });
-      rows.push({ label: "المبيعات الشهرية المتوقعة", value: monthSales.toLocaleString(), pct: "" });
-
       await exportToExcel({
         title: `تحليل المصاريف الغير مباشرة - ${periodBranchName || branchName} - ${selectedPeriod.name}`,
         filename: `indirect-expenses-${selectedPeriod.name}`,
-        columns,
-        data: rows,
+        columns: [
+          { key: "label", label: "البند" },
+          { key: "value", label: "القيمة" },
+          { key: "pct", label: "النسبة من المبيعات" },
+        ],
+        data: buildExportRows(),
       });
       sonnerToast.success("تم تصدير Excel بنجاح");
     } catch (err) {
@@ -524,6 +565,31 @@ export const IndirectExpensesPage: React.FC = () => {
       sonnerToast.error("حدث خطأ أثناء التصدير");
     } finally {
       setExcelLoading(false);
+    }
+  };
+
+  const handlePdfExport = async () => {
+    if (!selectedPeriod) return;
+    setPdfLoading(true);
+    try {
+      const branchName = selectedBranchId !== "all" ? branches.find(b => b.id === selectedBranchId)?.name : "كل الفروع";
+      const periodBranchName = selectedPeriod.branch_id ? branches.find(b => b.id === selectedPeriod.branch_id)?.name : null;
+      await exportToPDF({
+        title: `تحليل المصاريف الغير مباشرة - ${periodBranchName || branchName} - ${selectedPeriod.name}`,
+        filename: `indirect-expenses-${selectedPeriod.name}`,
+        columns: [
+          { key: "label", label: "البند" },
+          { key: "value", label: "القيمة" },
+          { key: "pct", label: "النسبة من المبيعات" },
+        ],
+        data: buildExportRows(),
+      });
+      sonnerToast.success("تم تصدير PDF بنجاح");
+    } catch (err) {
+      console.error(err);
+      sonnerToast.error("حدث خطأ أثناء التصدير");
+    } finally {
+      setPdfLoading(false);
     }
   };
 

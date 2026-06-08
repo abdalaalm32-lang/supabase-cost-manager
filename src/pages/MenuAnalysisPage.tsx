@@ -11,13 +11,14 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { AlertTriangle, Package, Printer, FileSpreadsheet, Loader2 } from "lucide-react";
-import { exportToExcel } from "@/lib/exportUtils";
+import { AlertTriangle, Package, Printer, FileSpreadsheet, Loader2, GitCompareArrows, FileText, Zap } from "lucide-react";
+import { exportToExcel, exportToPDF } from "@/lib/exportUtils";
 import { toast as sonnerToast } from "sonner";
 import { CategoryPackingTable } from "@/components/menu-analysis/CategoryPackingTable";
 import { CategorySummaryTable } from "@/components/menu-analysis/CategorySummaryTable";
 import { CategorySideCostTable } from "@/components/menu-analysis/CategorySideCostTable";
 import { CategoryFinancialTable } from "@/components/menu-analysis/CategoryFinancialTable";
+import { PeriodComparisonDialog } from "@/components/menu-analysis/PeriodComparisonDialog";
 
 interface RecipeIngredientDetail {
   name: string;

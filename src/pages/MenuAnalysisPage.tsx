@@ -1123,14 +1123,14 @@ export const MenuAnalysisPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in-up" dir="rtl">
-      <PeriodComparisonDialog
+      <MenuAnalysisComparisonDialog
         open={compareOpen}
         onOpenChange={setCompareOpen}
-        periods={periods as any}
-        branches={branches}
+        periods={periods.map(p => ({ id: p.id, name: p.name, start_date: p.start_date }))}
         defaultPeriodId={selectedPeriod?.id || null}
-        avgDirectCostPct={grandTotals.totalPrice > 0 ? (grandTotals.totalDirectCost / grandTotals.totalPrice) * 100 : 0}
+        loadBreakdown={loadBreakdown}
       />
+
 
       <div className="flex items-center justify-between flex-wrap gap-4">
         <h1 className="text-2xl font-bold">تحليل المنيو</h1>

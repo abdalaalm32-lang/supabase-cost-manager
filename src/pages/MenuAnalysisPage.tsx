@@ -812,6 +812,79 @@ export const MenuAnalysisPage: React.FC = () => {
     }
   };
 
+  const handlePdfExport = async () => {
+    if (!selectedPeriod || categorizedData.length === 0) return;
+    setPdfLoading(true);
+    try {
+      const tabLabel = activeTab === "kitchen" ? "المطبخ" : "البار";
+      const branchName = selectedBranchId !== "all" ? branches.find(b => b.id === selectedBranchId)?.name : "كل الفروع";
+      const columns = [
+        { key: "catName", label: "التصنيف" },
+        { key: "idx", label: "#" },
+        { key: "name", label: "اسم الصنف" },
+        { key: "price", label: "السعر" },
+        { key: "finalDirectCost", label: "إجمالي مباشر" },
+        { key: "directCostPct", label: "% مباشرة" },
+        { key: "indirectExpenses", label: "غير مباشرة" },
+        { key: "totalCost", label: "إجمالي التكلفة" },
+        { key: "netProfit", label: "صافي الربح" },
+        { key: "finalNetPct", label: "% الربح" },
+      ];
+      const rows: Record<string, any>[] = [];
+      for (const cat of categorizedData) {
+        cat.items.forEach((item, idx) => {
+          rows.push({
+            catName: cat.name, idx: idx + 1, name: item.name,
+            price: formatNum(item.price),
+            finalDirectCost: formatNum(item.finalDirectCost),
+            directCostPct: formatPct(item.directCostPct),
+            indirectExpenses: formatNum(item.indirectExpenses),
+            totalCost: formatNum(item.totalCost),
+            netProfit: formatNum(item.netProfit),
+            finalNetPct: formatPct(item.finalNetPct),
+          });
+        });
+        const catTotalPrice = cat.items.reduce((s, i) => s + i.price, 0);
+        const catTotalDirect = cat.items.reduce((s, i) => s + i.finalDirectCost, 0);
+        const catTotalProfit = cat.items.reduce((s, i) => s + i.netProfit, 0);
+        rows.push({
+          __rowType: "group-total",
+          catName: `إجمالي ${cat.name}`, idx: "", name: "",
+          price: formatNum(catTotalPrice),
+          finalDirectCost: formatNum(catTotalDirect),
+          directCostPct: catTotalPrice > 0 ? formatPct(catTotalDirect / catTotalPrice * 100) : "0%",
+          indirectExpenses: formatNum(cat.items.reduce((s, i) => s + i.indirectExpenses, 0)),
+          totalCost: formatNum(cat.items.reduce((s, i) => s + i.totalCost, 0)),
+          netProfit: formatNum(catTotalProfit),
+          finalNetPct: catTotalPrice > 0 ? formatPct(catTotalProfit / catTotalPrice * 100) : "0%",
+        });
+      }
+      rows.push({
+        __rowType: "grand-total",
+        catName: "الإجمالي الكلي", idx: "", name: `${grandTotals.itemCount} صنف`,
+        price: formatNum(grandTotals.totalPrice),
+        finalDirectCost: formatNum(grandTotals.totalDirectCost),
+        directCostPct: grandTotals.totalPrice > 0 ? formatPct(grandTotals.totalDirectCost / grandTotals.totalPrice * 100) : "0%",
+        indirectExpenses: formatNum(grandTotals.totalIndirect),
+        totalCost: "",
+        netProfit: formatNum(grandTotals.totalProfit),
+        finalNetPct: grandTotals.totalPrice > 0 ? formatPct(grandTotals.totalProfit / grandTotals.totalPrice * 100) : "0%",
+      });
+      await exportToPDF({
+        title: `تحليل المنيو - ${tabLabel} - ${branchName} - ${selectedPeriod.name}`,
+        filename: `menu-analysis-${tabLabel}-${selectedPeriod.name}`,
+        columns,
+        data: rows,
+      });
+      sonnerToast.success("تم تصدير PDF بنجاح");
+    } catch (err) {
+      console.error(err);
+      sonnerToast.error("حدث خطأ أثناء تصدير PDF");
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
   const handlePrint = () => {
     if (!selectedPeriod || categorizedData.length === 0) return;
     const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });

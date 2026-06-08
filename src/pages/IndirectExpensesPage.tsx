@@ -154,11 +154,15 @@ export const IndirectExpensesPage: React.FC = () => {
 
   const fetchCostData = async () => {
     if (!companyId) return;
-    const [itemsRes, recipesRes, overridesRes, catsRes] = await Promise.all([
+    const branchFilter = selectedBranchId !== "all" ? selectedBranchId : null;
+    const [itemsRes, recipesRes, overridesRes, catsRes, branchCostsRes] = await Promise.all([
       supabase.from("pos_items").select("*, categories:category_id(name, menu_engineering_class)").eq("company_id", companyId).eq("active", true),
       supabase.from("recipes").select("id, menu_item_id, recipe_ingredients(stock_item_id, qty, stock_items:stock_item_id(avg_cost, conversion_factor))").eq("company_id", companyId),
       supabase.from("pos_item_cost_settings").select("*").eq("company_id", companyId),
       supabase.from("categories").select("name, branch_id, menu_engineering_class").eq("company_id", companyId).eq("active", true),
+      branchFilter
+        ? supabase.from("stock_item_branch_costs").select("stock_item_id, avg_cost").eq("company_id", companyId).eq("branch_id", branchFilter)
+        : Promise.resolve({ data: [] as any[] }),
     ]);
     if (catsRes.data) {
       const map = new Map<string, string | null>();
@@ -171,13 +175,30 @@ export const IndirectExpensesPage: React.FC = () => {
     if (itemsRes.data) {
       setPosItems((itemsRes.data as any[]).map(item => ({ ...item, category: item.categories?.name || item.category || null })));
     }
+
+    // Build per-branch cost map (fallback to global avg_cost) — matches MenuAnalysisPage logic
+    const branchCostMap = new Map<string, number>();
+    ((branchCostsRes as any).data || []).forEach((bc: any) => {
+      if (bc.stock_item_id && bc.avg_cost != null) {
+        branchCostMap.set(bc.stock_item_id, Number(bc.avg_cost));
+      }
+    });
+    const resolveCost = (stockItemId: string, globalCost: number): number => {
+      if (!branchFilter) return globalCost;
+      const bc = branchCostMap.get(stockItemId);
+      return bc != null ? bc : globalCost;
+    };
+
     const recipeCostMap = new Map<string, number>();
     if (recipesRes.data) {
       for (const recipe of recipesRes.data as any[]) {
         let totalCost = 0;
         for (const ing of recipe.recipe_ingredients || []) {
           const si = ing.stock_items;
-          if (si) totalCost += ing.qty * (si.avg_cost / (si.conversion_factor || 1));
+          if (si) {
+            const unitCost = resolveCost(ing.stock_item_id, Number(si.avg_cost || 0));
+            totalCost += ing.qty * (unitCost / (si.conversion_factor || 1));
+          }
         }
         recipeCostMap.set(recipe.menu_item_id, totalCost);
       }
@@ -214,8 +235,19 @@ export const IndirectExpensesPage: React.FC = () => {
   }, [companyId]);
 
   useEffect(() => {
+    if (!companyId) return;
+    fetchCostData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBranchId, companyId]);
+
+  useEffect(() => {
     fetchPackingSideCosts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPeriod?.id, companyId]);
+
+
+
+
 
   const totalIndirectCost = (p: CostingPeriod) => {
     const base = p.media + p.bills + p.salaries + p.other_expenses + p.maintenance + p.rent;

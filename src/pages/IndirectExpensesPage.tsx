@@ -235,8 +235,12 @@ export const IndirectExpensesPage: React.FC = () => {
   }, [companyId]);
 
   useEffect(() => {
-    fetchPackingSideCosts();
-  }, [selectedPeriod?.id, companyId]);
+    if (!companyId) return;
+    fetchCostData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBranchId, companyId]);
+
+
 
   const totalIndirectCost = (p: CostingPeriod) => {
     const base = p.media + p.bills + p.salaries + p.other_expenses + p.maintenance + p.rent;

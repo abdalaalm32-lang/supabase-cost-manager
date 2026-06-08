@@ -603,6 +603,38 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
 
             {A && B && aId !== bId && analysis && (
               <>
+                {/* Executive Summary */}
+                <Card className="border-primary/40 bg-primary/5">
+                  <CardHeader className="pb-2"><CardTitle className="text-sm">📝 الملخص التنفيذي</CardTitle></CardHeader>
+                  <CardContent>
+                    <p className="text-sm leading-7">{analysis.executiveSummary}</p>
+                  </CardContent>
+                </Card>
+
+                {/* Marginal Efficiency KPI */}
+                {analysis.expensePerExtraSale !== null && (
+                  <Card className="border-emerald-500/40 bg-emerald-500/5">
+                    <CardHeader className="pb-2"><CardTitle className="text-sm">⚡ المصروفات الإضافية لكل جنيه مبيعات إضافية</CardTitle></CardHeader>
+                    <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                      <div>
+                        <div className="text-muted-foreground text-xs mb-1">مبيعات إضافية</div>
+                        <div className="font-bold text-base">{fmt(analysis.extraSales)}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground text-xs mb-1">مصاريف إضافية</div>
+                        <div className="font-bold text-base">{fmt(analysis.extraExpenses)}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground text-xs mb-1">تكلفة كل 1 جنيه مبيعات إضافية</div>
+                        <div className="font-bold text-base text-emerald-600">
+                          {analysis.expensePerExtraSale.toFixed(2)} جنيه
+                          <span className="text-xs text-muted-foreground mr-2">(تم الاحتفاظ بـ {(analysis.salesRetentionPct ?? 0).toFixed(1)}% من نمو المبيعات)</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* KPI Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
                   {[

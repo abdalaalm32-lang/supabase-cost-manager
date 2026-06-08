@@ -260,8 +260,8 @@ export const MenuAnalysisComparisonDialog: React.FC<Props> = ({
                     <TableHeader>
                       <TableRow>
                         <TableHead>المؤشر</TableHead>
-                        <TableHead className="text-center">(أ) {aName}</TableHead>
-                        <TableHead className="text-center">(ب) {bName}</TableHead>
+                        <TableHead className="text-center">(حالياً) {aName}</TableHead>
+                        <TableHead className="text-center">(قديماً) {bName}</TableHead>
                         <TableHead className="text-center">الفرق</TableHead>
                       </TableRow>
                     </TableHeader>

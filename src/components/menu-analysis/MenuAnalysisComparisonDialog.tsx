@@ -75,11 +75,12 @@ const fmt = (n: number) =>
   (Number.isFinite(n) ? n : 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const pct = (n: number) => `${(Number.isFinite(n) ? n : 0).toFixed(2)}%`;
 
+// a = current period, b = old period. diff = current - old (موجب = ارتفع، سالب = انخفض)
 const Diff: React.FC<{ a: number; b: number; positiveIsGood?: boolean; isPct?: boolean }> = ({
   a, b, positiveIsGood = true, isPct = false,
 }) => {
-  const diff = b - a;
-  const p = a !== 0 ? (diff / Math.abs(a)) * 100 : (b === 0 ? 0 : 100);
+  const diff = a - b;
+  const p = b !== 0 ? (diff / Math.abs(b)) * 100 : (a === 0 ? 0 : 100);
   const good = positiveIsGood ? diff >= 0 : diff <= 0;
   const color = diff === 0 ? "text-muted-foreground" : good ? "text-emerald-600" : "text-red-500";
   const Icon = diff > 0 ? TrendingUp : diff < 0 ? TrendingDown : Minus;
@@ -191,8 +192,7 @@ export const MenuAnalysisComparisonDialog: React.FC<Props> = ({
     const removed = rows.filter(r => r.isRemoved);
     const top = rows
       .filter(r => !r.isNew && !r.isRemoved)
-      .sort((x, y) => Math.abs(y.directPctDiff) - Math.abs(x.directPctDiff))
-      .slice(0, 15);
+      .sort((x, y) => Math.abs(y.directPctDiff) - Math.abs(x.directPctDiff));
     return { top, added, removed };
   }, [A, B]);
 
@@ -288,10 +288,10 @@ export const MenuAnalysisComparisonDialog: React.FC<Props> = ({
       );
     });
 
-    // Top items
+    // All items
     itemRows.top.forEach(it => {
       push(
-        "أعلى 15 صنف تغيراً",
+        "الأصناف (مرتبة بحجم تغير التكلفة)",
         `${it.name} (${it.category})`,
         `${fmt(it.aPrice)} | ${pct(it.aDirectPct)}`,
         `${fmt(it.bPrice)} | ${pct(it.bDirectPct)}`,
@@ -627,7 +627,7 @@ export const MenuAnalysisComparisonDialog: React.FC<Props> = ({
             <TabsContent value="items" className="space-y-4">
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-base">أكبر 15 صنف تغيّرت نسبة تكلفته المباشرة</CardTitle>
+                  <CardTitle className="text-base">جميع الأصناف — مرتبة حسب حجم تغير نسبة التكلفة المباشرة</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="overflow-x-auto">

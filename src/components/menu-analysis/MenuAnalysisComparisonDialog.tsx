@@ -216,7 +216,7 @@ export const MenuAnalysisComparisonDialog: React.FC<Props> = ({
         {/* Period pickers */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="rounded-lg border bg-muted/30 p-3">
-            <p className="text-xs text-muted-foreground mb-2">الفترة الأساسية (أ)</p>
+            <p className="text-xs text-muted-foreground mb-2">الفترة الحالية</p>
             <Select value={aId} onValueChange={setAId}>
               <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="اختر الفترة" /></SelectTrigger>
               <SelectContent>
@@ -225,7 +225,7 @@ export const MenuAnalysisComparisonDialog: React.FC<Props> = ({
             </Select>
           </div>
           <div className="rounded-lg border bg-muted/30 p-3">
-            <p className="text-xs text-muted-foreground mb-2">فترة المقارنة (ب)</p>
+            <p className="text-xs text-muted-foreground mb-2">الفترة القديمة</p>
             <Select value={bId} onValueChange={setBId}>
               <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="اختر فترة للمقارنة" /></SelectTrigger>
               <SelectContent>
@@ -260,8 +260,8 @@ export const MenuAnalysisComparisonDialog: React.FC<Props> = ({
                     <TableHeader>
                       <TableRow>
                         <TableHead>المؤشر</TableHead>
-                        <TableHead className="text-center">(أ) {aName}</TableHead>
-                        <TableHead className="text-center">(ب) {bName}</TableHead>
+                        <TableHead className="text-center">(حالياً) {aName}</TableHead>
+                        <TableHead className="text-center">(قديماً) {bName}</TableHead>
                         <TableHead className="text-center">الفرق</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -299,13 +299,13 @@ export const MenuAnalysisComparisonDialog: React.FC<Props> = ({
                         <TableRow>
                           <TableHead>التصنيف</TableHead>
                           <TableHead className="text-center">القسم</TableHead>
-                          <TableHead className="text-center">سعر البيع (أ)</TableHead>
-                          <TableHead className="text-center">سعر البيع (ب)</TableHead>
-                          <TableHead className="text-center">% تكلفة مباشرة (أ)</TableHead>
-                          <TableHead className="text-center">% تكلفة مباشرة (ب)</TableHead>
+                          <TableHead className="text-center">سعر البيع (حالياً)</TableHead>
+                          <TableHead className="text-center">سعر البيع (قديماً)</TableHead>
+                          <TableHead className="text-center">% تكلفة مباشرة (حالياً)</TableHead>
+                          <TableHead className="text-center">% تكلفة مباشرة (قديماً)</TableHead>
                           <TableHead className="text-center">فرق %</TableHead>
-                          <TableHead className="text-center">% صافي ربح (أ)</TableHead>
-                          <TableHead className="text-center">% صافي ربح (ب)</TableHead>
+                          <TableHead className="text-center">% صافي ربح (حالياً)</TableHead>
+                          <TableHead className="text-center">% صافي ربح (قديماً)</TableHead>
                           <TableHead className="text-center">فرق %</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -348,12 +348,12 @@ export const MenuAnalysisComparisonDialog: React.FC<Props> = ({
                         <TableRow>
                           <TableHead>الصنف</TableHead>
                           <TableHead className="text-center">التصنيف</TableHead>
-                          <TableHead className="text-center">سعر (أ)</TableHead>
-                          <TableHead className="text-center">سعر (ب)</TableHead>
-                          <TableHead className="text-center">% مباشرة (أ)</TableHead>
-                          <TableHead className="text-center">% مباشرة (ب)</TableHead>
+                          <TableHead className="text-center">سعر (حالياً)</TableHead>
+                          <TableHead className="text-center">سعر (قديماً)</TableHead>
+                          <TableHead className="text-center">% مباشرة (حالياً)</TableHead>
+                          <TableHead className="text-center">% مباشرة (قديماً)</TableHead>
                           <TableHead className="text-center">فرق %</TableHead>
-                          <TableHead className="text-center">% صافي (ب)</TableHead>
+                          <TableHead className="text-center">% صافي (قديماً)</TableHead>
                           <TableHead className="text-center">فرق صافي %</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -385,7 +385,7 @@ export const MenuAnalysisComparisonDialog: React.FC<Props> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-blue-500">🆕 أصناف جديدة في (ب)</CardTitle>
+                    <CardTitle className="text-sm text-blue-500">🆕 أصناف جديدة في القديمة</CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
                     {itemRows.added.length === 0 ? (
@@ -420,7 +420,7 @@ export const MenuAnalysisComparisonDialog: React.FC<Props> = ({
 
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-purple-500">✖ أصناف اختفت في (ب)</CardTitle>
+                    <CardTitle className="text-sm text-purple-500">✖ أصناف اختفت في القديمة</CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
                     {itemRows.removed.length === 0 ? (

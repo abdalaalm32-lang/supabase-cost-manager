@@ -1170,6 +1170,72 @@ export const IndirectExpensesPage: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Direct Cost Status Assessment */}
+                {(() => {
+                  const actual = avgDirectCostPct;
+                  const target = directCostAlertThreshold;
+                  const tol = directCostTolerance;
+                  const diff = actual - target; // + means over target
+                  let status: { label: string; tone: string; icon: any; desc: string };
+                  if (diff <= 0) {
+                    status = { label: "مقبولة ✅", tone: "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400", icon: CheckCircle2, desc: `أقل من المستهدف بمقدار ${Math.abs(diff).toFixed(2)}% — أداء ممتاز.` };
+                  } else if (diff <= tol) {
+                    status = { label: "مقبولة بحذر ⚠️", tone: "border-warning/40 bg-warning/10 text-warning-foreground", icon: AlertTriangle, desc: `تجاوزت المستهدف بـ ${diff.toFixed(2)}% لكنها ضمن نسبة السماح (${tol}%).` };
+                  } else {
+                    status = { label: "مرفوضة ❌", tone: "border-destructive/40 bg-destructive/10 text-destructive", icon: AlertTriangle, desc: `تجاوزت المستهدف بـ ${diff.toFixed(2)}% وخارج نسبة السماح (${tol}%) — مطلوب تدخل فوري.` };
+                  }
+                  const excess = Math.max(0, diff);
+                  const profitEatenEgp = (excess / 100) * totalSellingPrice;
+                  const baseProfitPct = Math.max(0.0001, netProfitPct + excess); // profit if we were at target
+                  const profitEatenPctOfProfit = baseProfitPct > 0 ? (excess / baseProfitPct) * 100 : 0;
+                  const StatusIcon = status.icon;
+                  return (
+                    <div className={`rounded-lg border p-4 ${status.tone}`}>
+                      <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
+                        <div className="flex items-center gap-2">
+                          <StatusIcon size={18} />
+                          <span className="font-bold text-base">{status.label}</span>
+                        </div>
+                        <div className="text-xs opacity-90">{status.desc}</div>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="rounded-md bg-background/60 p-2 text-center">
+                          <p className="text-[11px] text-muted-foreground">التكلفة الفعلية</p>
+                          <p className="text-sm font-bold">{actual.toFixed(2)}%</p>
+                        </div>
+                        <div className="rounded-md bg-background/60 p-2 text-center">
+                          <p className="text-[11px] text-muted-foreground">المستهدف</p>
+                          <p className="text-sm font-bold">{target.toFixed(2)}%</p>
+                        </div>
+                        <div className="rounded-md bg-background/60 p-2 text-center">
+                          <p className="text-[11px] text-muted-foreground">الانحراف</p>
+                          <p className={`text-sm font-bold ${diff > tol ? 'text-destructive' : diff > 0 ? 'text-warning' : 'text-emerald-600'}`}>
+                            {diff > 0 ? '+' : ''}{diff.toFixed(2)}%
+                          </p>
+                        </div>
+                        <div className="rounded-md bg-background/60 p-2 text-center">
+                          <p className="text-[11px] text-muted-foreground">المأكول من الربح</p>
+                          <p className={`text-sm font-bold ${excess > 0 ? 'text-destructive' : 'text-emerald-600'}`}>
+                            {profitEatenEgp.toLocaleString(undefined, { maximumFractionDigits: 0 })} ج.م
+                          </p>
+                          {excess > 0 && (
+                            <p className="text-[10px] text-muted-foreground mt-0.5">≈ {profitEatenPctOfProfit.toFixed(1)}% من صافي الربح</p>
+                          )}
+                        </div>
+                      </div>
+                      {excess > 0 && (
+                        <p className="text-xs mt-3 leading-relaxed opacity-90">
+                          💡 لو رجّعت التكلفة المباشرة للمستهدف ({target}%) هتوفر تقريبًا{" "}
+                          <span className="font-bold">{profitEatenEgp.toLocaleString(undefined, { maximumFractionDigits: 0 })} ج.م</span>{" "}
+                          من إجمالي المبيعات الحالية، وده هيرفع صافي الربح من{" "}
+                          <span className="font-bold">{netProfitPct.toFixed(2)}%</span> إلى{" "}
+                          <span className="font-bold">{(netProfitPct + excess).toFixed(2)}%</span>.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 {/* Recommendations */}
                 <div className="space-y-2">
                   <p className="text-sm font-semibold flex items-center gap-2">

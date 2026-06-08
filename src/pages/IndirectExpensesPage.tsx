@@ -125,6 +125,10 @@ export const IndirectExpensesPage: React.FC = () => {
     const saved = localStorage.getItem("direct_cost_alert_threshold");
     return saved ? parseFloat(saved) : 40;
   });
+  const [directCostTolerance, setDirectCostTolerance] = useState<number>(() => {
+    const saved = localStorage.getItem("direct_cost_tolerance");
+    return saved ? parseFloat(saved) : 2;
+  });
 
   const companyId = auth.profile?.company_id;
 

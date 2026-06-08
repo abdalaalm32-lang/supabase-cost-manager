@@ -125,6 +125,10 @@ export const IndirectExpensesPage: React.FC = () => {
     const saved = localStorage.getItem("direct_cost_alert_threshold");
     return saved ? parseFloat(saved) : 40;
   });
+  const [directCostTolerance, setDirectCostTolerance] = useState<number>(() => {
+    const saved = localStorage.getItem("direct_cost_tolerance");
+    return saved ? parseFloat(saved) : 2;
+  });
 
   const companyId = auth.profile?.company_id;
 
@@ -494,7 +498,15 @@ export const IndirectExpensesPage: React.FC = () => {
     else if (netProfitPct < 20) recommendations.push({ type: "info", text: `هامش الربح مقبول (${netProfitPct.toFixed(1)}%) — هناك مجال للتحسين للوصول للنطاق الصحي (20%+).` });
     else recommendations.push({ type: "success", text: `هامش ربح ممتاز (${netProfitPct.toFixed(1)}%) — استمر في هذا الأداء.` });
 
-    if (avgDirectCostPct > directCostAlertThreshold) recommendations.push({ type: "warning", text: `تكلفة الأصناف المباشرة مرتفعة (${avgDirectCostPct.toFixed(1)}%) — راجع أسعار البيع أو تكاليف المكونات.` });
+    const dcDiff = avgDirectCostPct - directCostAlertThreshold;
+    if (dcDiff > directCostTolerance) {
+      const eaten = (dcDiff / 100) * totalSellingPrice;
+      recommendations.push({ type: "danger", text: `التكلفة المباشرة (${avgDirectCostPct.toFixed(1)}%) تجاوزت المستهدف (${directCostAlertThreshold}%) خارج نسبة السماح — تأكل تقريبًا ${eaten.toLocaleString(undefined, { maximumFractionDigits: 0 })} ج.م من ربحك.` });
+    } else if (dcDiff > 0) {
+      recommendations.push({ type: "warning", text: `التكلفة المباشرة (${avgDirectCostPct.toFixed(1)}%) أعلى من المستهدف (${directCostAlertThreshold}%) لكنها ضمن نسبة السماح (±${directCostTolerance}%).` });
+    } else {
+      recommendations.push({ type: "success", text: `التكلفة المباشرة (${avgDirectCostPct.toFixed(1)}%) ضمن المستهدف (${directCostAlertThreshold}%) — أداء جيد.` });
+    }
     if (indirectPctValue > 40) recommendations.push({ type: "warning", text: `نسبة المصاريف الغير مباشرة مرتفعة (${indirectPctValue.toFixed(1)}%) — راجع البنود الأكبر.` });
     if (rentPct > 12) recommendations.push({ type: "warning", text: `الإيجار يمثل ${rentPct.toFixed(1)}% من المبيعات (المُوصى به أقل من 10%).` });
     if (salariesPct > 30) recommendations.push({ type: "warning", text: `المرتبات تمثل ${salariesPct.toFixed(1)}% من المبيعات (المُوصى به أقل من 25%).` });
@@ -1095,23 +1107,43 @@ export const IndirectExpensesPage: React.FC = () => {
                     <Lightbulb className="text-yellow-500" size={20} />
                     الملخص التنفيذي والتوصيات
                   </CardTitle>
-                  <div className="flex items-center gap-2">
-                    <Label className="text-xs text-muted-foreground whitespace-nowrap">نسبة تنبيه التكلفة المباشرة (%)</Label>
-                    <Input
-                      type="number"
-                      step="0.1"
-                      min={0}
-                      max={100}
-                      value={directCostAlertThreshold}
-                      onChange={(e) => {
-                        const val = parseFloat(e.target.value);
-                        if (!isNaN(val)) {
-                          setDirectCostAlertThreshold(val);
-                          localStorage.setItem("direct_cost_alert_threshold", String(val));
-                        }
-                      }}
-                      className="w-20 h-8 text-xs text-center"
-                    />
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs text-muted-foreground whitespace-nowrap">الحد المستهدف للتكلفة المباشرة (%)</Label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        min={0}
+                        max={100}
+                        value={directCostAlertThreshold}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          if (!isNaN(val)) {
+                            setDirectCostAlertThreshold(val);
+                            localStorage.setItem("direct_cost_alert_threshold", String(val));
+                          }
+                        }}
+                        className="w-20 h-8 text-xs text-center"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs text-muted-foreground whitespace-nowrap">نسبة السماح (±%)</Label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        min={0}
+                        max={50}
+                        value={directCostTolerance}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          if (!isNaN(val)) {
+                            setDirectCostTolerance(val);
+                            localStorage.setItem("direct_cost_tolerance", String(val));
+                          }
+                        }}
+                        className="w-20 h-8 text-xs text-center"
+                      />
+                    </div>
                   </div>
                 </div>
               </CardHeader>
@@ -1145,6 +1177,72 @@ export const IndirectExpensesPage: React.FC = () => {
                     <p className="text-xs text-muted-foreground">من المبيعات اليومية</p>
                   </div>
                 </div>
+
+                {/* Direct Cost Status Assessment */}
+                {(() => {
+                  const actual = avgDirectCostPct;
+                  const target = directCostAlertThreshold;
+                  const tol = directCostTolerance;
+                  const diff = actual - target; // + means over target
+                  let status: { label: string; tone: string; icon: any; desc: string };
+                  if (diff <= 0) {
+                    status = { label: "مقبولة ✅", tone: "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400", icon: CheckCircle2, desc: `أقل من المستهدف بمقدار ${Math.abs(diff).toFixed(2)}% — أداء ممتاز.` };
+                  } else if (diff <= tol) {
+                    status = { label: "مقبولة بحذر ⚠️", tone: "border-warning/40 bg-warning/10 text-warning-foreground", icon: AlertTriangle, desc: `تجاوزت المستهدف بـ ${diff.toFixed(2)}% لكنها ضمن نسبة السماح (${tol}%).` };
+                  } else {
+                    status = { label: "مرفوضة ❌", tone: "border-destructive/40 bg-destructive/10 text-destructive", icon: AlertTriangle, desc: `تجاوزت المستهدف بـ ${diff.toFixed(2)}% وخارج نسبة السماح (${tol}%) — مطلوب تدخل فوري.` };
+                  }
+                  const excess = Math.max(0, diff);
+                  const profitEatenEgp = (excess / 100) * totalSellingPrice;
+                  const baseProfitPct = Math.max(0.0001, netProfitPct + excess); // profit if we were at target
+                  const profitEatenPctOfProfit = baseProfitPct > 0 ? (excess / baseProfitPct) * 100 : 0;
+                  const StatusIcon = status.icon;
+                  return (
+                    <div className={`rounded-lg border p-4 ${status.tone}`}>
+                      <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
+                        <div className="flex items-center gap-2">
+                          <StatusIcon size={18} />
+                          <span className="font-bold text-base">{status.label}</span>
+                        </div>
+                        <div className="text-xs opacity-90">{status.desc}</div>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="rounded-md bg-background/60 p-2 text-center">
+                          <p className="text-[11px] text-muted-foreground">التكلفة الفعلية</p>
+                          <p className="text-sm font-bold">{actual.toFixed(2)}%</p>
+                        </div>
+                        <div className="rounded-md bg-background/60 p-2 text-center">
+                          <p className="text-[11px] text-muted-foreground">المستهدف</p>
+                          <p className="text-sm font-bold">{target.toFixed(2)}%</p>
+                        </div>
+                        <div className="rounded-md bg-background/60 p-2 text-center">
+                          <p className="text-[11px] text-muted-foreground">الانحراف</p>
+                          <p className={`text-sm font-bold ${diff > tol ? 'text-destructive' : diff > 0 ? 'text-warning' : 'text-emerald-600'}`}>
+                            {diff > 0 ? '+' : ''}{diff.toFixed(2)}%
+                          </p>
+                        </div>
+                        <div className="rounded-md bg-background/60 p-2 text-center">
+                          <p className="text-[11px] text-muted-foreground">المأكول من الربح</p>
+                          <p className={`text-sm font-bold ${excess > 0 ? 'text-destructive' : 'text-emerald-600'}`}>
+                            {profitEatenEgp.toLocaleString(undefined, { maximumFractionDigits: 0 })} ج.م
+                          </p>
+                          {excess > 0 && (
+                            <p className="text-[10px] text-muted-foreground mt-0.5">≈ {profitEatenPctOfProfit.toFixed(1)}% من صافي الربح</p>
+                          )}
+                        </div>
+                      </div>
+                      {excess > 0 && (
+                        <p className="text-xs mt-3 leading-relaxed opacity-90">
+                          💡 لو رجّعت التكلفة المباشرة للمستهدف ({target}%) هتوفر تقريبًا{" "}
+                          <span className="font-bold">{profitEatenEgp.toLocaleString(undefined, { maximumFractionDigits: 0 })} ج.م</span>{" "}
+                          من إجمالي المبيعات الحالية، وده هيرفع صافي الربح من{" "}
+                          <span className="font-bold">{netProfitPct.toFixed(2)}%</span> إلى{" "}
+                          <span className="font-bold">{(netProfitPct + excess).toFixed(2)}%</span>.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Recommendations */}
                 <div className="space-y-2">

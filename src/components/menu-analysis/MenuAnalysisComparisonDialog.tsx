@@ -5,7 +5,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TrendingDown, TrendingUp, Minus, Loader2, Info } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  TrendingDown, TrendingUp, Minus, Loader2, Info, Printer, FileSpreadsheet, FileText,
+  Lightbulb, AlertTriangle, CheckCircle2,
+} from "lucide-react";
+import { exportToExcel, exportToPDF, type ExportColumn } from "@/lib/exportUtils";
+import { toast } from "sonner";
 
 export interface MenuBreakdownItem {
   id: string;
@@ -62,7 +68,6 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   periods: ComparablePeriodLite[];
   defaultPeriodId?: string | null;
-  /** Loads a complete breakdown (totals + categories + items) for a given period id. */
   loadBreakdown: (periodId: string) => Promise<MenuBreakdown | null>;
 }
 
@@ -105,6 +110,7 @@ export const MenuAnalysisComparisonDialog: React.FC<Props> = ({
   const [B, setB] = useState<MenuBreakdown | null>(null);
   const [loadingA, setLoadingA] = useState(false);
   const [loadingB, setLoadingB] = useState(false);
+  const [exporting, setExporting] = useState<null | "excel" | "pdf">(null);
 
   useEffect(() => {
     if (!open || !aId) { setA(null); return; }
@@ -125,7 +131,6 @@ export const MenuAnalysisComparisonDialog: React.FC<Props> = ({
   const aName = sorted.find(p => p.id === aId)?.name || "—";
   const bName = sorted.find(p => p.id === bId)?.name || "—";
 
-  // === KPIs ===
   const KPIRow: React.FC<{ label: string; a: number; b: number; isPct?: boolean; positiveIsGood?: boolean }> = ({ label, a, b, isPct, positiveIsGood = true }) => (
     <TableRow>
       <TableCell className="font-medium">{label}</TableCell>
@@ -135,7 +140,6 @@ export const MenuAnalysisComparisonDialog: React.FC<Props> = ({
     </TableRow>
   );
 
-  // === Category comparison rows ===
   const categoryRows = useMemo(() => {
     if (!A || !B) return [];
     const names = Array.from(new Set([...A.categories.map(c => c.name), ...B.categories.map(c => c.name)]));
@@ -161,7 +165,6 @@ export const MenuAnalysisComparisonDialog: React.FC<Props> = ({
     });
   }, [A, B]);
 
-  // === Item-level: top changes ===
   const itemRows = useMemo(() => {
     if (!A || !B) return { top: [] as any[], added: [] as any[], removed: [] as any[] };
     const aMap = new Map(A.items.map(i => [i.id, i] as const));
@@ -176,23 +179,12 @@ export const MenuAnalysisComparisonDialog: React.FC<Props> = ({
       const aNP = ai?.netPct ?? 0;
       const bNP = bi?.netPct ?? 0;
       return {
-        id,
-        name: ref.name,
-        code: ref.code,
-        category: ref.category,
-        classification: ref.classification,
-        aPrice: ai?.price ?? 0,
-        bPrice: bi?.price ?? 0,
-        aDirect: ai?.finalDirectCost ?? 0,
-        bDirect: bi?.finalDirectCost ?? 0,
-        aDirectPct: aDP,
-        bDirectPct: bDP,
-        aNetPct: aNP,
-        bNetPct: bNP,
-        directPctDiff: bDP - aDP,
-        netPctDiff: bNP - aNP,
-        isNew: !ai && !!bi,
-        isRemoved: !!ai && !bi,
+        id, name: ref.name, code: ref.code, category: ref.category, classification: ref.classification,
+        aPrice: ai?.price ?? 0, bPrice: bi?.price ?? 0,
+        aDirect: ai?.finalDirectCost ?? 0, bDirect: bi?.finalDirectCost ?? 0,
+        aDirectPct: aDP, bDirectPct: bDP, aNetPct: aNP, bNetPct: bNP,
+        directPctDiff: bDP - aDP, netPctDiff: bNP - aNP,
+        isNew: !ai && !!bi, isRemoved: !!ai && !bi,
       };
     });
     const added = rows.filter(r => r.isNew);
@@ -204,13 +196,246 @@ export const MenuAnalysisComparisonDialog: React.FC<Props> = ({
     return { top, added, removed };
   }, [A, B]);
 
+  // ===== Executive Summary & Recommendations =====
+  const summary = useMemo(() => {
+    if (!A || !B) return null;
+    const directDiff = A.totals.directPct - B.totals.directPct; // current - old
+    const profitDiff = A.totals.netPct - B.totals.netPct;
+    const priceDiff = A.totals.price - B.totals.price;
+    const itemsDiff = A.totals.itemCount - B.totals.itemCount;
+
+    const recs: { type: "success" | "warning" | "danger" | "info"; text: string }[] = [];
+
+    if (directDiff > 2) recs.push({ type: "danger", text: `ارتفعت نسبة التكلفة المباشرة بمقدار ${directDiff.toFixed(2)}% مقارنة بالفترة القديمة — راجع أسعار المواد والوصفات الأعلى تأثيراً.` });
+    else if (directDiff < -2) recs.push({ type: "success", text: `انخفضت نسبة التكلفة المباشرة بمقدار ${Math.abs(directDiff).toFixed(2)}% — أداء ممتاز في ضبط التكاليف.` });
+    else recs.push({ type: "info", text: `نسبة التكلفة المباشرة مستقرة (تغير ${directDiff.toFixed(2)}%).` });
+
+    if (profitDiff > 2) recs.push({ type: "success", text: `تحسن صافي الربح بمقدار ${profitDiff.toFixed(2)}% — استمر في نفس الاستراتيجية.` });
+    else if (profitDiff < -2) recs.push({ type: "danger", text: `تراجع صافي الربح بمقدار ${Math.abs(profitDiff).toFixed(2)}% — راجع التسعير والمصاريف.` });
+
+    if (A.totals.netPct < 0) recs.push({ type: "danger", text: `صافي الربح الحالي سالب (${pct(A.totals.netPct)}) — مطلوب إجراء فوري لإعادة هيكلة التكاليف أو الأسعار.` });
+    else if (A.totals.netPct < 10) recs.push({ type: "warning", text: `هامش الربح الحالي منخفض (${pct(A.totals.netPct)}) — يفضل أن يكون أعلى من 15%.` });
+
+    if (A.totals.directPct > 40) recs.push({ type: "warning", text: `نسبة التكلفة المباشرة الحالية ${pct(A.totals.directPct)} تتجاوز المعدل المقبول (35-40%).` });
+
+    // أكبر تصنيف تأثر بزيادة التكلفة
+    const worstCat = [...categoryRows]
+      .filter(c => !c.isNew && !c.isRemoved)
+      .sort((x, y) => (x.bDirectPct - x.aDirectPct) - (y.bDirectPct - y.aDirectPct))[0];
+    if (worstCat) {
+      const d = worstCat.aDirectPct - worstCat.bDirectPct;
+      if (d > 2) recs.push({ type: "warning", text: `تصنيف "${worstCat.name}" زادت نسبة تكلفته المباشرة بمقدار ${d.toFixed(2)}% — أعلى تصنيف تأثراً.` });
+    }
+    const bestCat = [...categoryRows]
+      .filter(c => !c.isNew && !c.isRemoved)
+      .sort((x, y) => (y.bDirectPct - y.aDirectPct) - (x.bDirectPct - x.aDirectPct))[0];
+    if (bestCat) {
+      const d = bestCat.bDirectPct - bestCat.aDirectPct;
+      if (d > 2) recs.push({ type: "success", text: `تصنيف "${bestCat.name}" انخفضت نسبة تكلفته المباشرة بمقدار ${d.toFixed(2)}% — أفضل تصنيف تحسناً.` });
+    }
+
+    // أعلى صنف تأثر
+    const worstItem = itemRows.top[0];
+    if (worstItem && Math.abs(worstItem.directPctDiff) > 5) {
+      if (worstItem.directPctDiff < 0) {
+        recs.push({ type: "warning", text: `الصنف "${worstItem.name}" زادت نسبة تكلفته بمقدار ${Math.abs(worstItem.directPctDiff).toFixed(2)}% — أكبر تغير على مستوى الأصناف.` });
+      } else {
+        recs.push({ type: "success", text: `الصنف "${worstItem.name}" تحسنت نسبة تكلفته بمقدار ${worstItem.directPctDiff.toFixed(2)}%.` });
+      }
+    }
+
+    if (itemRows.added.length > 0) recs.push({ type: "info", text: `تم إضافة ${itemRows.added.length} صنف جديد في الفترة الحالية لم يكن موجوداً في القديمة.` });
+    if (itemRows.removed.length > 0) recs.push({ type: "info", text: `تم حذف/إيقاف ${itemRows.removed.length} صنف من الفترة القديمة.` });
+
+    return { directDiff, profitDiff, priceDiff, itemsDiff, recs };
+  }, [A, B, categoryRows, itemRows]);
+
+  const filename = `مقارنة_تحليل_المنيو_${aName}_vs_${bName}`.replace(/\s+/g, "_");
+  const title = `مقارنة تحليل المنيو: ${aName} (حالياً) vs ${bName} (قديماً)`;
+
+  // ===== Build export rows =====
+  const buildExportRows = () => {
+    if (!A || !B || !summary) return { columns: [] as ExportColumn[], rows: [] as any[] };
+    const columns: ExportColumn[] = [
+      { key: "section", label: "القسم" },
+      { key: "label", label: "البيان" },
+      { key: "current", label: `حالياً (${aName})` },
+      { key: "old", label: `قديماً (${bName})` },
+      { key: "diff", label: "الفرق" },
+    ];
+    const rows: any[] = [];
+    const push = (section: string, label: string, current: string, old: string, diff: string, type?: string) =>
+      rows.push({ section, label, current, old, diff, __rowType: type });
+
+    // KPIs
+    push("المؤشرات الإجمالية", "إجمالي أسعار البيع", fmt(A.totals.price), fmt(B.totals.price), fmt(A.totals.price - B.totals.price));
+    push("المؤشرات الإجمالية", "إجمالي التكلفة المباشرة", fmt(A.totals.direct), fmt(B.totals.direct), fmt(A.totals.direct - B.totals.direct));
+    push("المؤشرات الإجمالية", "نسبة التكلفة المباشرة %", pct(A.totals.directPct), pct(B.totals.directPct), `${(A.totals.directPct - B.totals.directPct).toFixed(2)}%`);
+    push("المؤشرات الإجمالية", "إجمالي المصاريف غير المباشرة", fmt(A.totals.indirect), fmt(B.totals.indirect), fmt(A.totals.indirect - B.totals.indirect));
+    push("المؤشرات الإجمالية", "نسبة المصاريف غير المباشرة %", pct(A.totals.indirectPct), pct(B.totals.indirectPct), `${(A.totals.indirectPct - B.totals.indirectPct).toFixed(2)}%`);
+    push("المؤشرات الإجمالية", "صافي الربح", fmt(A.totals.profit), fmt(B.totals.profit), fmt(A.totals.profit - B.totals.profit), "grand-total");
+    push("المؤشرات الإجمالية", "نسبة صافي الربح %", pct(A.totals.netPct), pct(B.totals.netPct), `${(A.totals.netPct - B.totals.netPct).toFixed(2)}%`, "grand-total");
+    push("المؤشرات الإجمالية", "عدد الأصناف", String(A.totals.itemCount), String(B.totals.itemCount), String(A.totals.itemCount - B.totals.itemCount));
+
+    // Categories
+    categoryRows.forEach(c => {
+      push(
+        "التصنيفات",
+        `${c.name}${c.isNew ? " (جديد)" : c.isRemoved ? " (محذوف)" : ""}`,
+        `سعر: ${fmt(c.aPrice)} | تكلفة: ${pct(c.aDirectPct)} | صافي: ${pct(c.aNetPct)}`,
+        `سعر: ${fmt(c.bPrice)} | تكلفة: ${pct(c.bDirectPct)} | صافي: ${pct(c.bNetPct)}`,
+        `تكلفة: ${(c.aDirectPct - c.bDirectPct).toFixed(2)}% | صافي: ${(c.aNetPct - c.bNetPct).toFixed(2)}%`,
+      );
+    });
+
+    // Top items
+    itemRows.top.forEach(it => {
+      push(
+        "أعلى 15 صنف تغيراً",
+        `${it.name} (${it.category})`,
+        `${fmt(it.aPrice)} | ${pct(it.aDirectPct)}`,
+        `${fmt(it.bPrice)} | ${pct(it.bDirectPct)}`,
+        `${(it.aDirectPct - it.bDirectPct).toFixed(2)}%`,
+      );
+    });
+
+    itemRows.added.forEach(it => push("أصناف جديدة في الحالية", it.name, `${fmt(it.bPrice)} | ${pct(it.bDirectPct)}`, "—", "جديد"));
+    itemRows.removed.forEach(it => push("أصناف اختفت من الحالية", it.name, "—", `${fmt(it.aPrice)} | ${pct(it.aDirectPct)}`, "محذوف"));
+
+    // Recommendations
+    summary.recs.forEach(r => push("الملخص والتوصيات", r.type === "danger" ? "⚠ تحذير" : r.type === "warning" ? "⚡ ملاحظة" : r.type === "success" ? "✓ إنجاز" : "ℹ معلومة", r.text, "", ""));
+
+    return { columns, rows };
+  };
+
+  const handleExcel = async () => {
+    if (!A || !B) return;
+    try {
+      setExporting("excel");
+      const { columns, rows } = buildExportRows();
+      await exportToExcel({ title, filename, columns, data: rows });
+      toast.success("تم تصدير ملف Excel");
+    } catch (e: any) {
+      toast.error("فشل التصدير: " + (e?.message || ""));
+    } finally { setExporting(null); }
+  };
+
+  const handlePdf = async () => {
+    if (!A || !B) return;
+    try {
+      setExporting("pdf");
+      const { columns, rows } = buildExportRows();
+      await exportToPDF({ title, filename, columns, data: rows });
+      toast.success("تم تصدير ملف PDF");
+    } catch (e: any) {
+      toast.error("فشل التصدير: " + (e?.message || ""));
+    } finally { setExporting(null); }
+  };
+
+  const handlePrint = () => {
+    if (!A || !B || !summary) return;
+    const win = window.open("", "_blank", "width=1200,height=800");
+    if (!win) return;
+
+    const recIcon = (t: string) => t === "danger" ? "⚠" : t === "warning" ? "⚡" : t === "success" ? "✓" : "ℹ";
+    const recColor = (t: string) => t === "danger" ? "#dc2626" : t === "warning" ? "#d97706" : t === "success" ? "#059669" : "#2563eb";
+
+    const kpiRow = (label: string, a: number, b: number, isPct = false) => {
+      const diff = a - b;
+      const dStr = isPct ? `${diff.toFixed(2)}%` : fmt(diff);
+      return `<tr><td>${label}</td><td>${isPct ? pct(a) : fmt(a)}</td><td>${isPct ? pct(b) : fmt(b)}</td><td style="color:${diff >= 0 ? "#059669" : "#dc2626"}">${diff > 0 ? "+" : ""}${dStr}</td></tr>`;
+    };
+
+    win.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>${title}</title>
+      <style>
+        @page { size: A4 landscape; margin: 10mm; }
+        * { box-sizing: border-box; font-family: 'Cairo', Arial, sans-serif; }
+        body { padding: 8px; color: #111; }
+        h1 { font-size: 16px; text-align: center; margin: 0 0 4px; }
+        h2 { font-size: 13px; margin: 14px 0 6px; border-bottom: 2px solid #333; padding-bottom: 3px; }
+        .sub { text-align: center; font-size: 10px; color: #555; margin-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 10px; }
+        th, td { border: 1px solid #999; padding: 4px 6px; text-align: center; }
+        th { background: #f0f0f0; font-weight: 700; }
+        .rec { border: 1px solid #ddd; border-right: 4px solid; padding: 6px 10px; margin: 4px 0; font-size: 11px; border-radius: 3px; }
+        .footer { text-align: center; font-size: 9px; color: #666; margin-top: 12px; border-top: 1px solid #ccc; padding-top: 6px; }
+      </style></head><body>
+      <h1>${title}</h1>
+      <div class="sub">تاريخ التقرير: ${new Date().toLocaleDateString("ar-EG")}</div>
+
+      <h2>📊 المؤشرات الإجمالية</h2>
+      <table>
+        <thead><tr><th>المؤشر</th><th>حالياً (${aName})</th><th>قديماً (${bName})</th><th>الفرق</th></tr></thead>
+        <tbody>
+          ${kpiRow("إجمالي أسعار البيع", A.totals.price, B.totals.price)}
+          ${kpiRow("إجمالي التكلفة المباشرة", A.totals.direct, B.totals.direct)}
+          ${kpiRow("نسبة التكلفة المباشرة %", A.totals.directPct, B.totals.directPct, true)}
+          ${kpiRow("إجمالي المصاريف غير المباشرة", A.totals.indirect, B.totals.indirect)}
+          ${kpiRow("نسبة المصاريف غير المباشرة %", A.totals.indirectPct, B.totals.indirectPct, true)}
+          ${kpiRow("صافي الربح", A.totals.profit, B.totals.profit)}
+          ${kpiRow("نسبة صافي الربح %", A.totals.netPct, B.totals.netPct, true)}
+          ${kpiRow("عدد الأصناف", A.totals.itemCount, B.totals.itemCount)}
+        </tbody>
+      </table>
+
+      <h2>📁 مقارنة التصنيفات</h2>
+      <table>
+        <thead><tr><th>التصنيف</th><th>سعر حالياً</th><th>سعر قديماً</th><th>% مباشرة حالياً</th><th>% مباشرة قديماً</th><th>فرق %</th><th>% صافي حالياً</th><th>% صافي قديماً</th></tr></thead>
+        <tbody>
+          ${categoryRows.map(c => `<tr>
+            <td>${c.name}${c.isNew ? " 🆕" : c.isRemoved ? " ✖" : ""}</td>
+            <td>${fmt(c.aPrice)}</td><td>${fmt(c.bPrice)}</td>
+            <td>${pct(c.aDirectPct)}</td><td>${pct(c.bDirectPct)}</td>
+            <td style="color:${(c.aDirectPct - c.bDirectPct) <= 0 ? "#059669" : "#dc2626"}">${(c.aDirectPct - c.bDirectPct).toFixed(2)}%</td>
+            <td>${pct(c.aNetPct)}</td><td>${pct(c.bNetPct)}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table>
+
+      <h2>🍽 أكبر 15 صنف تغيرت نسبة تكلفته</h2>
+      <table>
+        <thead><tr><th>الصنف</th><th>التصنيف</th><th>سعر حالياً</th><th>سعر قديماً</th><th>% مباشرة حالياً</th><th>% مباشرة قديماً</th><th>فرق %</th></tr></thead>
+        <tbody>
+          ${itemRows.top.map(it => `<tr>
+            <td>${it.name}</td><td>${it.category}</td>
+            <td>${fmt(it.aPrice)}</td><td>${fmt(it.bPrice)}</td>
+            <td>${pct(it.aDirectPct)}</td><td>${pct(it.bDirectPct)}</td>
+            <td style="color:${(it.aDirectPct - it.bDirectPct) <= 0 ? "#059669" : "#dc2626"}">${(it.aDirectPct - it.bDirectPct).toFixed(2)}%</td>
+          </tr>`).join("")}
+        </tbody>
+      </table>
+
+      <h2>💡 الملخص التنفيذي والتوصيات</h2>
+      ${summary.recs.map(r => `<div class="rec" style="border-right-color:${recColor(r.type)}"><strong style="color:${recColor(r.type)}">${recIcon(r.type)}</strong> ${r.text}</div>`).join("")}
+
+      <div class="footer">Powered by Mohamed Abdel Aal — نظام إدارة التكاليف</div>
+      <script>window.onload = () => { window.print(); setTimeout(() => window.close(), 500); };</script>
+    </body></html>`);
+    win.document.close();
+  };
+
   const ready = !!A && !!B && !loadingA && !loadingB;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto" dir="rtl">
         <DialogHeader>
-          <DialogTitle>مقارنة تحليل المنيو بين فترتين</DialogTitle>
+          <DialogTitle className="flex items-center justify-between flex-wrap gap-2">
+            <span>مقارنة تحليل المنيو بين فترتين</span>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" onClick={handlePrint} disabled={!ready}>
+                <Printer size={14} className="ml-1" /> طباعة
+              </Button>
+              <Button size="sm" variant="outline" onClick={handleExcel} disabled={!ready || exporting !== null}>
+                {exporting === "excel" ? <Loader2 size={14} className="ml-1 animate-spin" /> : <FileSpreadsheet size={14} className="ml-1" />}
+                Excel
+              </Button>
+              <Button size="sm" variant="outline" onClick={handlePdf} disabled={!ready || exporting !== null}>
+                {exporting === "pdf" ? <Loader2 size={14} className="ml-1 animate-spin" /> : <FileText size={14} className="ml-1" />}
+                PDF
+              </Button>
+            </div>
+          </DialogTitle>
         </DialogHeader>
 
         {/* Period pickers */}
@@ -241,13 +466,76 @@ export const MenuAnalysisComparisonDialog: React.FC<Props> = ({
           </div>
         )}
 
-        {ready && A && B && (
-          <Tabs defaultValue="overview" className="space-y-4">
+        {ready && A && B && summary && (
+          <Tabs defaultValue="summary" className="space-y-4">
             <TabsList>
+              <TabsTrigger value="summary">الملخص</TabsTrigger>
               <TabsTrigger value="overview">نظرة عامة</TabsTrigger>
               <TabsTrigger value="categories">التصنيفات</TabsTrigger>
               <TabsTrigger value="items">الأصناف</TabsTrigger>
             </TabsList>
+
+            {/* === Summary === */}
+            <TabsContent value="summary" className="space-y-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2"><Lightbulb size={16} className="text-amber-500" /> الملخص التنفيذي</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="rounded-lg border p-3 bg-muted/20">
+                      <p className="text-[11px] text-muted-foreground">تغير نسبة التكلفة المباشرة</p>
+                      <p className={`text-lg font-bold ${summary.directDiff <= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                        {summary.directDiff > 0 ? "+" : ""}{summary.directDiff.toFixed(2)}%
+                      </p>
+                    </div>
+                    <div className="rounded-lg border p-3 bg-muted/20">
+                      <p className="text-[11px] text-muted-foreground">تغير نسبة صافي الربح</p>
+                      <p className={`text-lg font-bold ${summary.profitDiff >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                        {summary.profitDiff > 0 ? "+" : ""}{summary.profitDiff.toFixed(2)}%
+                      </p>
+                    </div>
+                    <div className="rounded-lg border p-3 bg-muted/20">
+                      <p className="text-[11px] text-muted-foreground">تغير إجمالي الأسعار</p>
+                      <p className={`text-lg font-bold ${summary.priceDiff >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                        {summary.priceDiff > 0 ? "+" : ""}{fmt(summary.priceDiff)}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border p-3 bg-muted/20">
+                      <p className="text-[11px] text-muted-foreground">تغير عدد الأصناف</p>
+                      <p className={`text-lg font-bold ${summary.itemsDiff >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                        {summary.itemsDiff > 0 ? "+" : ""}{summary.itemsDiff}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2"><AlertTriangle size={16} className="text-amber-500" /> 💡 توصيات وتحذيرات</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {summary.recs.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">لا توجد توصيات.</p>}
+                  {summary.recs.map((r, i) => {
+                    const Icon = r.type === "danger" ? AlertTriangle : r.type === "warning" ? AlertTriangle : r.type === "success" ? CheckCircle2 : Info;
+                    const colors = r.type === "danger"
+                      ? "border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-300"
+                      : r.type === "warning"
+                      ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                      : r.type === "success"
+                      ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                      : "border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-300";
+                    return (
+                      <div key={i} className={`flex items-start gap-2 p-3 rounded-md border-r-4 ${colors}`}>
+                        <Icon size={16} className="mt-0.5 flex-shrink-0" />
+                        <span className="text-sm">{r.text}</span>
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            </TabsContent>
 
             {/* === Overview === */}
             <TabsContent value="overview" className="space-y-4">

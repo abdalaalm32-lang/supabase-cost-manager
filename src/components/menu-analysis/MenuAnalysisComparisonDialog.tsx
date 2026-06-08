@@ -420,7 +420,7 @@ export const MenuAnalysisComparisonDialog: React.FC<Props> = ({
 
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-purple-500">✖ أصناف اختفت في (ب)</CardTitle>
+                    <CardTitle className="text-sm text-purple-500">✖ أصناف اختفت في القديمة</CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
                     {itemRows.removed.length === 0 ? (

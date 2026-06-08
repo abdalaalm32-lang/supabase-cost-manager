@@ -263,8 +263,8 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
     }
 
     // Items added / removed
-    const added = rows.filter(r => r.type.label === "مصروف جديد");
-    const removed = rows.filter(r => r.type.label === "تم إلغاؤه");
+    const added = rows.filter(r => r.isNew);
+    const removed = rows.filter(r => r.isRemoved);
     if (added.length) recs.push({ type: "info", text: `مصاريف جديدة ظهرت: ${added.map(x => x.label).join("، ")}` });
     if (removed.length) recs.push({ type: "success", text: `مصاريف تم إلغاؤها: ${removed.map(x => x.label).join("، ")}` });
 
@@ -275,6 +275,30 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
     }
 
     if (recs.length === 0) recs.push({ type: "info", text: "مفيش تغييرات جوهرية بين الفترات — الأداء مستقر." });
+
+    // Marginal expense per extra EGP of sales (only meaningful when sales grew)
+    const extraSales = bSales - aSales;
+    const extraExpenses = bTotal - aTotal;
+    const expensePerExtraSale = extraSales > 0 ? extraExpenses / extraSales : null;
+    const salesRetentionPct = expensePerExtraSale !== null ? (1 - expensePerExtraSale) * 100 : null;
+
+    // Executive summary
+    const topUp = [...rows].filter(r => r.diff > 0).sort((x, y) => y.diff - x.diff)[0];
+    const topDown = [...rows].filter(r => r.diff < 0).sort((x, y) => x.diff - y.diff)[0];
+    const execParts: string[] = [];
+    execParts.push(`ارتفعت المبيعات بنسبة ${salesGrowthPct.toFixed(1)}% مقابل تغير في المصاريف قدره ${totalDiffPct > 0 ? "+" : ""}${totalDiffPct.toFixed(1)}%`);
+    execParts.push(`مما أدى إلى ${bPct < aPct ? "تحسن" : "تغير"} نسبة المصاريف من المبيعات من ${aPct.toFixed(2)}% إلى ${bPct.toFixed(2)}%`);
+    execParts.push(`وحركة صافي الربح من ${aNetProfitPct.toFixed(2)}% إلى ${bNetProfitPct.toFixed(2)}%.`);
+    if (topUp && topUp.diff > 0) {
+      execParts.push(`أكبر مساهم في زيادة المصاريف كان بند "${topUp.label}" (${topUp.contribution.toFixed(0)}% من إجمالي الزيادة).`);
+    }
+    if (topDown && topDown.diff < 0) {
+      execParts.push(`بينما ساهم انخفاض "${topDown.label}" في تعويض جزء من الزيادة (${fmt(Math.abs(topDown.diff))}).`);
+    }
+    if (expensePerExtraSale !== null) {
+      execParts.push(`كل 1 جنيه مبيعات إضافية احتاج ${expensePerExtraSale.toFixed(2)} جنيه مصروف إضافي فقط، وتم الاحتفاظ بـ ${(salesRetentionPct ?? 0).toFixed(1)}% من نمو المبيعات قبل احتساب تكلفة البضاعة.`);
+    }
+    const executiveSummary = execParts.join(" ");
 
     // Chart data
     const chartData = [
@@ -288,7 +312,9 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
       aNetProfitPct, bNetProfitPct, cNetProfitPct,
       aBreakEven, bBreakEven, cBreakEven,
       aEfficiency, bEfficiency, cEfficiency,
-      salesGrowthPct, totalIncrease,
+      salesGrowthPct, totalIncrease, totalDiffPct,
+      extraSales, extraExpenses, expensePerExtraSale, salesRetentionPct,
+      executiveSummary,
       increased, decreased, recs, chartData,
     };
   }, [A, B, C, avgDirectCostPct]);

@@ -469,22 +469,37 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
 
     const detailHead = `<tr>
       <th>البند</th><th>A</th><th>B</th>${hasC ? "<th>C</th>" : ""}<th>B عن A</th>${hasC ? "<th>C عن B</th>" : ""}
+      <th>المتوقع</th><th>الفرق عن المتوقع</th>
       <th>% من مبيعات A</th><th>% من مبيعات B</th><th>vs نمو المبيعات</th><th>المساهمة %</th><th>التصنيف</th><th>الخطر</th>
     </tr>`;
-    const detailBody = analysis.rows.map(r => `<tr>
+    const detailBody = analysis.rows.map(r => {
+      const changeBa = r.isNew ? `<span style="color:#1976d2;">جديد +${fmt(r.b)}</span>`
+        : r.isRemoved ? `<span style="color:#7b1fa2;">ملغي −${fmt(r.a)}</span>`
+        : fmtChange(r.a, r.b);
+      const expectedCell = r.isNew ? "—" : fmt(r.expected);
+      const varianceCell = r.isNew || r.isRemoved ? "—" : `${r.variance > 0 ? "+" : ""}${fmt(r.variance)}`;
+      const vsSalesCell = r.isNew || r.isRemoved ? "—" : `${r.vsSales > 0 ? "+" : ""}${r.vsSales.toFixed(1)}%`;
+      return `<tr>
       <td style="text-align:right;">${r.label}</td>
       <td>${fmt(r.a)}</td><td><b>${fmt(r.b)}</b></td>${hasC ? `<td><b>${fmt(r.c)}</b></td>` : ""}
-      <td>${fmtChange(r.a, r.b)}</td>${hasC ? `<td>${fmtChange(r.b, r.c)}</td>` : ""}
+      <td>${changeBa}</td>${hasC ? `<td>${fmtChange(r.b, r.c)}</td>` : ""}
+      <td>${expectedCell}</td><td>${varianceCell}</td>
       <td>${r.shareA.toFixed(2)}%</td><td>${r.shareB.toFixed(2)}%</td>
-      <td>${r.vsSales > 0 ? "+" : ""}${r.vsSales.toFixed(1)}%</td>
+      <td>${vsSalesCell}</td>
       <td>${r.contribution.toFixed(1)}%</td>
       <td>${r.type.label}</td><td>${r.risk.label}</td>
-    </tr>`).join("") + `<tr style="font-weight:bold;background:#f0f0f0;">
+    </tr>`;
+    }).join("") + (() => {
+      const expectedT = analysis.aTotal * (1 + analysis.salesGrowthPct / 100);
+      const varianceT = analysis.bTotal - expectedT;
+      return `<tr style="font-weight:bold;background:#f0f0f0;">
       <td style="text-align:right;">الإجمالي</td>
       <td>${fmt(analysis.aTotal)}</td><td>${fmt(analysis.bTotal)}</td>${hasC ? `<td>${fmt(analysis.cTotal)}</td>` : ""}
       <td>${fmtChange(analysis.aTotal, analysis.bTotal)}</td>${hasC ? `<td>${fmtChange(analysis.bTotal, analysis.cTotal)}</td>` : ""}
+      <td>${fmt(expectedT)}</td><td>${varianceT > 0 ? "+" : ""}${fmt(varianceT)}</td>
       <td>${analysis.aPct.toFixed(2)}%</td><td>${analysis.bPct.toFixed(2)}%</td><td>—</td><td>100%</td><td>—</td><td>—</td>
     </tr>`;
+    })();
 
     const increasedHTML = analysis.increased.length
       ? `<ul>${analysis.increased.map(r => `<li>${r.label} <span style="color:#666;">(مساهمة ${r.contribution.toFixed(0)}%)</span> — <b style="color:#c0392b;">+${fmt(r.diff)} (${r.pct.toFixed(1)}%)</b></li>`).join("")}</ul>`

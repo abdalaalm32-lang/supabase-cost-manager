@@ -772,6 +772,8 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
                             {hasC && <TableHead className="text-center">C</TableHead>}
                             <TableHead className="text-center">B عن A</TableHead>
                             {hasC && <TableHead className="text-center">C عن B</TableHead>}
+                            <TableHead className="text-center">المتوقع (وفق نمو المبيعات)</TableHead>
+                            <TableHead className="text-center">الفرق عن المتوقع</TableHead>
                             <TableHead className="text-center">% من مبيعات A</TableHead>
                             <TableHead className="text-center">% من مبيعات B</TableHead>
                             <TableHead className="text-center">vs نمو المبيعات</TableHead>
@@ -783,17 +785,30 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
                         <TableBody>
                           {analysis.rows.map(r => {
                             const vsColor = r.vsSales > 5 ? "text-red-500" : r.vsSales < -5 ? "text-emerald-600" : "text-muted-foreground";
+                            const varColor = r.variance > 0 ? "text-red-500" : r.variance < 0 ? "text-emerald-600" : "text-muted-foreground";
                             return (
                               <TableRow key={r.label}>
                                 <TableCell className="font-medium">{r.label}</TableCell>
                                 <TableCell className="text-center">{fmt(r.a)}</TableCell>
                                 <TableCell className="text-center font-bold">{fmt(r.b)}</TableCell>
                                 {hasC && <TableCell className="text-center font-bold">{fmt(r.c)}</TableCell>}
-                                <TableCell className="text-center"><ChangeCell a={r.a} b={r.b} /></TableCell>
+                                <TableCell className="text-center">
+                                  {r.isNew ? (
+                                    <span className="font-semibold text-blue-500">جديد +{fmt(r.b)}</span>
+                                  ) : r.isRemoved ? (
+                                    <span className="font-semibold text-purple-500">ملغي −{fmt(r.a)}</span>
+                                  ) : (
+                                    <ChangeCell a={r.a} b={r.b} />
+                                  )}
+                                </TableCell>
                                 {hasC && <TableCell className="text-center"><ChangeCell a={r.b} b={r.c} /></TableCell>}
+                                <TableCell className="text-center text-xs">{r.isNew ? "—" : fmt(r.expected)}</TableCell>
+                                <TableCell className={`text-center text-xs font-bold ${varColor}`}>
+                                  {r.isNew || r.isRemoved ? "—" : `${r.variance > 0 ? "+" : ""}${fmt(r.variance)}`}
+                                </TableCell>
                                 <TableCell className="text-center text-xs">{r.shareA.toFixed(2)}%</TableCell>
                                 <TableCell className="text-center text-xs font-bold">{r.shareB.toFixed(2)}%</TableCell>
-                                <TableCell className={`text-center text-xs font-bold ${vsColor}`}>{r.vsSales > 0 ? "+" : ""}{r.vsSales.toFixed(1)}%</TableCell>
+                                <TableCell className={`text-center text-xs font-bold ${vsColor}`}>{r.isNew || r.isRemoved ? "—" : `${r.vsSales > 0 ? "+" : ""}${r.vsSales.toFixed(1)}%`}</TableCell>
                                 <TableCell className="text-center text-xs font-bold">{r.contribution.toFixed(1)}%</TableCell>
                                 <TableCell className="text-center"><Badge variant={r.type.variant} className={r.type.className}>{r.type.label}</Badge></TableCell>
                                 <TableCell className="text-center"><Badge variant="outline" className={r.risk.className}>{r.risk.label}</Badge></TableCell>
@@ -807,6 +822,8 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
                             {hasC && <TableCell className="text-center">{fmt(analysis.cTotal)}</TableCell>}
                             <TableCell className="text-center"><ChangeCell a={analysis.aTotal} b={analysis.bTotal} /></TableCell>
                             {hasC && <TableCell className="text-center"><ChangeCell a={analysis.bTotal} b={analysis.cTotal} /></TableCell>}
+                            <TableCell className="text-center text-xs">{fmt(analysis.aTotal * (1 + analysis.salesGrowthPct / 100))}</TableCell>
+                            <TableCell className="text-center text-xs">{(analysis.bTotal - analysis.aTotal * (1 + analysis.salesGrowthPct / 100)) > 0 ? "+" : ""}{fmt(analysis.bTotal - analysis.aTotal * (1 + analysis.salesGrowthPct / 100))}</TableCell>
                             <TableCell className="text-center text-xs">{analysis.aPct.toFixed(2)}%</TableCell>
                             <TableCell className="text-center text-xs">{analysis.bPct.toFixed(2)}%</TableCell>
                             <TableCell />

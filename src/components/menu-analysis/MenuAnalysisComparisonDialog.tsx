@@ -216,7 +216,7 @@ export const MenuAnalysisComparisonDialog: React.FC<Props> = ({
         {/* Period pickers */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="rounded-lg border bg-muted/30 p-3">
-            <p className="text-xs text-muted-foreground mb-2">الفترة الأساسية (أ)</p>
+            <p className="text-xs text-muted-foreground mb-2">الفترة الحالية</p>
             <Select value={aId} onValueChange={setAId}>
               <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="اختر الفترة" /></SelectTrigger>
               <SelectContent>
@@ -225,7 +225,7 @@ export const MenuAnalysisComparisonDialog: React.FC<Props> = ({
             </Select>
           </div>
           <div className="rounded-lg border bg-muted/30 p-3">
-            <p className="text-xs text-muted-foreground mb-2">فترة المقارنة (ب)</p>
+            <p className="text-xs text-muted-foreground mb-2">الفترة القديمة</p>
             <Select value={bId} onValueChange={setBId}>
               <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="اختر فترة للمقارنة" /></SelectTrigger>
               <SelectContent>

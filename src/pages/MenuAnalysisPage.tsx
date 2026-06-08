@@ -400,6 +400,75 @@ export const MenuAnalysisPage: React.FC = () => {
     return { totalPrice, totalDirectCost, totalIndirect, totalProfit, itemCount };
   }, [categorizedData]);
 
+  // ===== Period A/B metrics for in-page efficiency comparison =====
+  const periodAResolved = useMemo(() => periods.find(p => p.id === efficiencyPeriodAId) ?? selectedPeriod ?? null, [periods, efficiencyPeriodAId, selectedPeriod]);
+  const periodBResolved = useMemo(() => periods.find(p => p.id === efficiencyPeriodBId) ?? null, [periods, efficiencyPeriodBId]);
+
+  // Load packing/side cost items for Period B when chosen
+  useEffect(() => {
+    if (!companyId || !efficiencyPeriodBId) {
+      setPeriodBPacking([]);
+      setPeriodBSideCost([]);
+      return;
+    }
+    (async () => {
+      const [p, s] = await Promise.all([
+        supabase.from("category_packing_items").select("*").eq("company_id", companyId).eq("period_id", efficiencyPeriodBId),
+        supabase.from("category_side_costs" as any).select("*").eq("company_id", companyId).eq("period_id", efficiencyPeriodBId),
+      ]);
+      setPeriodBPacking((p.data as PackingItem[]) || []);
+      setPeriodBSideCost((s.data as unknown as SideCostItem[]) || []);
+    })();
+  }, [companyId, efficiencyPeriodBId]);
+
+  // Reusable: compute period metrics from a period + its packing/side cost items
+  const computeMetrics = useCallback((period: CostingPeriod | null, packing: PackingItem[], sideCosts: SideCostItem[]) => {
+    if (!period) return null;
+    const start = new Date(period.start_date);
+    const end = new Date(period.end_date);
+    const days = Math.max(1, Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+    const monthly = period.expected_sales * days;
+    const fixedExp = period.media + period.bills + period.salaries + period.other_expenses + period.maintenance + period.rent;
+    const customExp = (period.custom_expenses || []).reduce((s, e) => s + e.value, 0);
+    const indirect = fixedExp + customExp;
+    const indirectPct = monthly > 0 ? indirect / monthly : 0;
+
+    let totalPrice = 0, totalDirect = 0, totalProfit = 0;
+    for (const item of filteredPosItems) {
+      const catName = item.category || "بدون تصنيف";
+      const mainCost = recipes.get(item.id) || 0;
+      const override = costOverrides.get(item.id);
+      const sideCost = override?.side_cost || 0;
+      const categorySideCost = sideCosts.filter(p => p.category_name === catName).reduce((s, p) => s + p.cost, 0);
+      const kitchenCats = Array.isArray(period.consumables_kitchen_categories) ? period.consumables_kitchen_categories : [];
+      const barCats = Array.isArray(period.consumables_bar_categories) ? period.consumables_bar_categories : [];
+      const isInBar = barCats.includes(catName);
+      const isInKitchen = kitchenCats.length === 0 || kitchenCats.includes(catName);
+      let defaultPct = 0;
+      if (isInBar) defaultPct = period.default_consumables_pct_bar ?? period.default_consumables_pct;
+      else if (isInKitchen) defaultPct = period.default_consumables_pct;
+      const consumablesPct = override?.consumables_pct ?? defaultPct;
+      const consumables = (item.price * consumablesPct) / 100;
+      const categoryPacking = packing.filter(p => p.category_name === catName).reduce((s, p) => s + p.cost, 0);
+      const itemPacking = override?.packing_cost || 0;
+      const packingCost = categoryPacking + itemPacking;
+      const finalDirectCost = mainCost + sideCost + categorySideCost + consumables + packingCost;
+      const indirectExp = item.price * indirectPct;
+      const totalCost = finalDirectCost + indirectExp;
+      const netProfit = item.price - totalCost;
+      totalPrice += item.price;
+      totalDirect += finalDirectCost;
+      totalProfit += netProfit;
+    }
+    const avgDirectPct = totalPrice > 0 ? (totalDirect / totalPrice) * 100 : 0;
+    const netProfitPct = totalPrice > 0 ? (totalProfit / totalPrice) * 100 : 0;
+    return { monthlySales: monthly, indirectCost: indirect, indirectPct: indirectPct * 100, totalPrice, totalDirect, totalProfit, avgDirectPct, netProfitPct };
+  }, [filteredPosItems, recipes, costOverrides]);
+
+  const metricsA = useMemo(() => computeMetrics(periodAResolved, categoryPackingItems, categorySideCostItems), [computeMetrics, periodAResolved, categoryPackingItems, categorySideCostItems]);
+  const metricsB = useMemo(() => computeMetrics(periodBResolved, periodBPacking, periodBSideCost), [computeMetrics, periodBResolved, periodBPacking, periodBSideCost]);
+
+
   const formatNum = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const formatPct = (n: number) => n.toFixed(2) + "%";
 

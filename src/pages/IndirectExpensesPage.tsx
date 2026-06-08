@@ -664,6 +664,17 @@ export const IndirectExpensesPage: React.FC = () => {
       <tr><td>المبيعات الشهرية المتوقعة</td><td style="font-weight:bold">${monthSales.toLocaleString()}</td></tr>
     </tbody></table>
 
+    ${summaryData && summaryData.recommendations.length > 0 ? `
+    <h3>💡 الملخص التنفيذي والتوصيات</h3>
+    <table><tbody>
+      ${summaryData.recommendations.map((r, i) => {
+        const bg = r.type === "danger" ? "#fee" : r.type === "warning" ? "#fff8e6" : r.type === "success" ? "#eaf7ea" : "#eef4fb";
+        const icon = r.type === "danger" ? "⚠️" : r.type === "warning" ? "⚠️" : r.type === "success" ? "✅" : "💡";
+        return `<tr style="background:${bg};"><td style="width:30px;font-size:14px;">${icon}</td><td style="text-align:right;">${i + 1}. ${r.text}</td></tr>`;
+      }).join("")}
+    </tbody></table>
+    ` : ""}
+
     <div class="footer">Powered by Mohamed Abdel Aal</div>
     <script>(async()=>{try{if(document.fonts&&document.fonts.ready)await document.fonts.ready}catch(e){}window.print();window.onafterprint=()=>window.close();})()</script>
     </body></html>`;

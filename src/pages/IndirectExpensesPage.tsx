@@ -577,6 +577,7 @@ export const IndirectExpensesPage: React.FC = () => {
         periods={periods as any}
         branches={branches}
         defaultPeriodId={selectedPeriod?.id || null}
+        avgDirectCostPct={avgDirectCostPct}
       />
       <div className="flex items-center justify-between flex-wrap gap-4">
         <h1 className="text-2xl font-bold">تحليل المصاريف الغير مباشرة</h1>

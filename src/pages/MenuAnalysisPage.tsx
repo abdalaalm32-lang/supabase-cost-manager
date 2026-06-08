@@ -1160,9 +1160,17 @@ export const MenuAnalysisPage: React.FC = () => {
           </Select>
           {selectedPeriod && categorizedData.length > 0 && (
             <>
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => setCompareOpen(true)} disabled={periods.length < 2}>
+                <GitCompareArrows size={14} className="text-blue-500" />
+                قارن مع فترة سابقة
+              </Button>
               <Button variant="outline" size="sm" className="gap-2" onClick={handleExcelExport} disabled={excelLoading}>
                 {excelLoading ? <Loader2 size={14} className="animate-spin" /> : <FileSpreadsheet size={14} className="text-green-600" />}
                 Excel
+              </Button>
+              <Button variant="outline" size="sm" className="gap-2" onClick={handlePdfExport} disabled={pdfLoading}>
+                {pdfLoading ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} className="text-red-500" />}
+                PDF
               </Button>
               <Button variant="outline" size="sm" className="gap-2" onClick={handlePrint}>
                 <Printer size={14} /> طباعة
@@ -1171,6 +1179,7 @@ export const MenuAnalysisPage: React.FC = () => {
           )}
         </div>
       </div>
+
 
       {!selectedPeriod && (
         <Card className="p-12 text-center">

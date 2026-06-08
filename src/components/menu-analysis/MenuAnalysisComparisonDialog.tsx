@@ -288,10 +288,10 @@ export const MenuAnalysisComparisonDialog: React.FC<Props> = ({
       );
     });
 
-    // Top items
+    // All items
     itemRows.top.forEach(it => {
       push(
-        "أعلى 15 صنف تغيراً",
+        "الأصناف (مرتبة بحجم تغير التكلفة)",
         `${it.name} (${it.category})`,
         `${fmt(it.aPrice)} | ${pct(it.aDirectPct)}`,
         `${fmt(it.bPrice)} | ${pct(it.bDirectPct)}`,

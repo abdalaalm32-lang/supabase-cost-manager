@@ -121,6 +121,10 @@ export const IndirectExpensesPage: React.FC = () => {
   const [compareOpen, setCompareOpen] = useState(false);
   const [efficiencyPeriodAId, setEfficiencyPeriodAId] = useState<string>("");
   const [efficiencyPeriodBId, setEfficiencyPeriodBId] = useState<string>("");
+  const [directCostAlertThreshold, setDirectCostAlertThreshold] = useState<number>(() => {
+    const saved = localStorage.getItem("direct_cost_alert_threshold");
+    return saved ? parseFloat(saved) : 40;
+  });
 
   const companyId = auth.profile?.company_id;
 
@@ -490,7 +494,7 @@ export const IndirectExpensesPage: React.FC = () => {
     else if (netProfitPct < 20) recommendations.push({ type: "info", text: `هامش الربح مقبول (${netProfitPct.toFixed(1)}%) — هناك مجال للتحسين للوصول للنطاق الصحي (20%+).` });
     else recommendations.push({ type: "success", text: `هامش ربح ممتاز (${netProfitPct.toFixed(1)}%) — استمر في هذا الأداء.` });
 
-    if (avgDirectCostPct > 40) recommendations.push({ type: "warning", text: `تكلفة الأصناف المباشرة مرتفعة (${avgDirectCostPct.toFixed(1)}%) — راجع أسعار البيع أو تكاليف المكونات.` });
+    if (avgDirectCostPct > directCostAlertThreshold) recommendations.push({ type: "warning", text: `تكلفة الأصناف المباشرة مرتفعة (${avgDirectCostPct.toFixed(1)}%) — راجع أسعار البيع أو تكاليف المكونات.` });
     if (indirectPctValue > 40) recommendations.push({ type: "warning", text: `نسبة المصاريف الغير مباشرة مرتفعة (${indirectPctValue.toFixed(1)}%) — راجع البنود الأكبر.` });
     if (rentPct > 12) recommendations.push({ type: "warning", text: `الإيجار يمثل ${rentPct.toFixed(1)}% من المبيعات (المُوصى به أقل من 10%).` });
     if (salariesPct > 30) recommendations.push({ type: "warning", text: `المرتبات تمثل ${salariesPct.toFixed(1)}% من المبيعات (المُوصى به أقل من 25%).` });
@@ -1086,10 +1090,30 @@ export const IndirectExpensesPage: React.FC = () => {
           {summaryData && (
             <Card className="border-primary/20">
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Lightbulb className="text-yellow-500" size={20} />
-                  الملخص التنفيذي والتوصيات
-                </CardTitle>
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Lightbulb className="text-yellow-500" size={20} />
+                    الملخص التنفيذي والتوصيات
+                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs text-muted-foreground whitespace-nowrap">نسبة تنبيه التكلفة المباشرة (%)</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      min={0}
+                      max={100}
+                      value={directCostAlertThreshold}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        if (!isNaN(val)) {
+                          setDirectCostAlertThreshold(val);
+                          localStorage.setItem("direct_cost_alert_threshold", String(val));
+                        }
+                      }}
+                      className="w-20 h-8 text-xs text-center"
+                    />
+                  </div>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Executive snapshot */}

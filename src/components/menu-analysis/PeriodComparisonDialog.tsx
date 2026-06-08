@@ -551,6 +551,18 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
 
   ${periodsInfoHTML}
 
+  <h2>📝 الملخص التنفيذي</h2>
+  <div style="border:1px solid #000;padding:8px;background:#f8fbff;font-size:11px;line-height:1.8;margin-bottom:8px;">
+    ${analysis.executiveSummary}
+  </div>
+
+  ${analysis.expensePerExtraSale !== null ? `
+  <h2>⚡ المصروفات الإضافية لكل جنيه مبيعات إضافية</h2>
+  <table>
+    <thead><tr><th>مبيعات إضافية</th><th>مصاريف إضافية</th><th>تكلفة كل 1 جنيه مبيعات إضافية</th><th>نسبة الاحتفاظ بنمو المبيعات</th></tr></thead>
+    <tbody><tr><td>${fmt(analysis.extraSales)}</td><td>${fmt(analysis.extraExpenses)}</td><td><b>${analysis.expensePerExtraSale.toFixed(2)} جنيه</b></td><td><b>${(analysis.salesRetentionPct ?? 0).toFixed(1)}%</b></td></tr></tbody>
+  </table>` : ""}
+
   <h2>المؤشرات الرئيسية (KPIs)</h2>
   <table>
     <thead><tr><th>المؤشر</th><th>A</th><th>B</th>${hasC ? "<th>C</th>" : ""}<th>التغيير (B عن A)</th></tr></thead>

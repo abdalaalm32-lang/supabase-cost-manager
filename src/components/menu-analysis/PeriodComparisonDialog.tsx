@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrendingDown, TrendingUp, Minus, AlertTriangle, CheckCircle2, Info } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
-import { PrintButton } from "@/components/PrintButton";
+
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
@@ -377,6 +377,144 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
     return list;
   }, [A, B, C, hasC, avgDirectCostPct]);
 
+  const handlePrintFull = () => {
+    if (!analysis || !A || !B) return;
+    const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
+    const logoSrc = `${window.location.origin}/logo.png`;
+    const venueOf = (p: ComparablePeriod) => p.venue_type === "تيك اواي" ? "تيك اواي" : "صالة";
+
+    const kpiRows = [
+      { title: "المبيعات الشهرية المتوقعة", a: fmt(analysis.aSales), b: fmt(analysis.bSales), c: hasC ? fmt(analysis.cSales) : "", diff: fmtChange(analysis.aSales, analysis.bSales) },
+      { title: "إجمالي المصاريف", a: fmt(analysis.aTotal), b: fmt(analysis.bTotal), c: hasC ? fmt(analysis.cTotal) : "", diff: fmtChange(analysis.aTotal, analysis.bTotal) },
+      { title: "نسبة المصاريف من المبيعات %", a: analysis.aPct.toFixed(2)+"%", b: analysis.bPct.toFixed(2)+"%", c: hasC ? analysis.cPct.toFixed(2)+"%" : "", diff: (analysis.bPct-analysis.aPct).toFixed(2)+"%" },
+      { title: "نقطة التعادل اليومية", a: fmt(analysis.aBreakEven), b: fmt(analysis.bBreakEven), c: hasC ? fmt(analysis.cBreakEven) : "", diff: fmtChange(analysis.aBreakEven, analysis.bBreakEven) },
+      { title: "صافي الربح %", a: analysis.aNetProfitPct.toFixed(2)+"%", b: analysis.bNetProfitPct.toFixed(2)+"%", c: hasC ? analysis.cNetProfitPct.toFixed(2)+"%" : "", diff: (analysis.bNetProfitPct-analysis.aNetProfitPct).toFixed(2)+"%" },
+    ];
+
+    const cellOrDash = (p: ComparablePeriod | undefined, val: number, hideForTakeaway = false) => {
+      if (!p) return "—";
+      if (hideForTakeaway && p.venue_type === "تيك اواي") return "—";
+      return val.toLocaleString(undefined, { maximumFractionDigits: 2 });
+    };
+
+    const opRows = [
+      { label: "نوع المكان", a: venueOf(A), b: venueOf(B), c: C ? venueOf(C) : "—", diff: "—" },
+      { label: A.venue_type === "تيك اواي" || B.venue_type === "تيك اواي" ? "السعة / عدد الطلبات اليومي" : "السعة (Capacity)",
+        a: cellOrDash(A, A.capacity), b: cellOrDash(B, B.capacity), c: C ? cellOrDash(C, C.capacity) : "", diff: fmtChange(A.capacity, B.capacity) },
+      { label: "معدل الدوران", a: cellOrDash(A, A.turn_over, true), b: cellOrDash(B, B.turn_over, true), c: C ? cellOrDash(C, C.turn_over, true) : "",
+        diff: (A.venue_type === "تيك اواي" || B.venue_type === "تيك اواي") ? "—" : fmtChange(A.turn_over, B.turn_over) },
+      { label: "متوسط الفاتورة", a: fmt(A.avg_check), b: fmt(B.avg_check), c: C ? fmt(C.avg_check) : "", diff: fmtChange(A.avg_check, B.avg_check) },
+      { label: "عدد الأيام", a: String(getDays(A.start_date, A.end_date)), b: String(getDays(B.start_date, B.end_date)), c: C ? String(getDays(C.start_date, C.end_date)) : "", diff: fmtChange(getDays(A.start_date, A.end_date), getDays(B.start_date, B.end_date)) },
+      { label: "مبيعات يومية متوقعة", a: fmt(expectedDailySales(A)), b: fmt(expectedDailySales(B)), c: C ? fmt(expectedDailySales(C)) : "", diff: fmtChange(expectedDailySales(A), expectedDailySales(B)) },
+      { label: "مؤشر الكفاءة (مصاريف/مبيعات)", a: analysis.aEfficiency.toFixed(4), b: analysis.bEfficiency.toFixed(4), c: hasC ? analysis.cEfficiency.toFixed(4) : "", diff: fmtChange(analysis.aEfficiency, analysis.bEfficiency) },
+    ];
+
+    const detailHead = `<tr>
+      <th>البند</th><th>A</th><th>B</th>${hasC ? "<th>C</th>" : ""}<th>B عن A</th>${hasC ? "<th>C عن B</th>" : ""}
+      <th>% من مبيعات A</th><th>% من مبيعات B</th><th>vs نمو المبيعات</th><th>المساهمة %</th><th>التصنيف</th><th>الخطر</th>
+    </tr>`;
+    const detailBody = analysis.rows.map(r => `<tr>
+      <td style="text-align:right;">${r.label}</td>
+      <td>${fmt(r.a)}</td><td><b>${fmt(r.b)}</b></td>${hasC ? `<td><b>${fmt(r.c)}</b></td>` : ""}
+      <td>${fmtChange(r.a, r.b)}</td>${hasC ? `<td>${fmtChange(r.b, r.c)}</td>` : ""}
+      <td>${r.shareA.toFixed(2)}%</td><td>${r.shareB.toFixed(2)}%</td>
+      <td>${r.vsSales > 0 ? "+" : ""}${r.vsSales.toFixed(1)}%</td>
+      <td>${r.contribution.toFixed(1)}%</td>
+      <td>${r.type.label}</td><td>${r.risk.label}</td>
+    </tr>`).join("") + `<tr style="font-weight:bold;background:#f0f0f0;">
+      <td style="text-align:right;">الإجمالي</td>
+      <td>${fmt(analysis.aTotal)}</td><td>${fmt(analysis.bTotal)}</td>${hasC ? `<td>${fmt(analysis.cTotal)}</td>` : ""}
+      <td>${fmtChange(analysis.aTotal, analysis.bTotal)}</td>${hasC ? `<td>${fmtChange(analysis.bTotal, analysis.cTotal)}</td>` : ""}
+      <td>${analysis.aPct.toFixed(2)}%</td><td>${analysis.bPct.toFixed(2)}%</td><td>—</td><td>100%</td><td>—</td><td>—</td>
+    </tr>`;
+
+    const increasedHTML = analysis.increased.length
+      ? `<ul>${analysis.increased.map(r => `<li>${r.label} <span style="color:#666;">(مساهمة ${r.contribution.toFixed(0)}%)</span> — <b style="color:#c0392b;">+${fmt(r.diff)} (${r.pct.toFixed(1)}%)</b></li>`).join("")}</ul>`
+      : "<p>لا يوجد</p>";
+    const decreasedHTML = analysis.decreased.length
+      ? `<ul>${analysis.decreased.map(r => `<li>${r.label} — <b style="color:#1e8449;">${fmt(r.diff)} (${r.pct.toFixed(1)}%)</b></li>`).join("")}</ul>`
+      : "<p>لا يوجد</p>";
+
+    const recsHTML = `<ul>${analysis.recs.map(r => {
+      const icon = r.type === "danger" ? "⚠️" : r.type === "warning" ? "⚠️" : r.type === "success" ? "✅" : "ℹ️";
+      const bg = r.type === "danger" ? "#fdecea" : r.type === "warning" ? "#fff8e1" : r.type === "success" ? "#e8f5e9" : "#e3f2fd";
+      return `<li style="padding:8px;margin:4px 0;background:${bg};border-radius:4px;list-style:none;">${icon} ${r.text}</li>`;
+    }).join("")}</ul>`;
+
+    const periodsInfoHTML = `
+      <div style="display:flex;gap:10px;margin-bottom:12px;font-size:11px;">
+        <div style="flex:1;border:1px solid #000;padding:6px;"><b>A:</b> ${A.name} <br/>${A.start_date} → ${A.end_date} <br/>نوع المكان: ${venueOf(A)}</div>
+        <div style="flex:1;border:1px solid #000;padding:6px;"><b>B:</b> ${B.name} <br/>${B.start_date} → ${B.end_date} <br/>نوع المكان: ${venueOf(B)}</div>
+        ${C ? `<div style="flex:1;border:1px solid #000;padding:6px;"><b>C:</b> ${C.name} <br/>${C.start_date} → ${C.end_date} <br/>نوع المكان: ${venueOf(C)}</div>` : ""}
+      </div>`;
+
+    const html = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>مقارنة المصاريف الغير مباشرة</title>
+<style>
+  @font-face { font-family:'CairoLocal'; src:url('${window.location.origin}/fonts/Cairo-Regular.ttf') format('truetype'); font-display:swap; }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'CairoLocal',sans-serif;direction:rtl;padding:15px;color:#000;background:#fff;font-size:11px;}
+  @media print{@page{size:A4 landscape;margin:8mm;}body{padding:0;}}
+  .header{display:flex;align-items:center;justify-content:center;gap:10px;border-bottom:1px solid #000;padding-bottom:8px;margin-bottom:10px;}
+  .header img{width:60px;height:60px;object-fit:contain;}
+  .header h1{font-size:16px;}.header p{font-size:10px;}
+  h2{font-size:13px;margin:12px 0 6px;border-bottom:1px solid #999;padding-bottom:3px;}
+  table{width:100%;border-collapse:collapse;margin-bottom:8px;}
+  th,td{border:1px solid #000;padding:3px 5px;font-size:9.5px;text-align:center;}
+  th{background:#eee;font-weight:bold;}
+  .footer{text-align:center;margin-top:10px;font-size:8px;border-top:1px solid #000;padding-top:4px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .grid2 > div{border:1px solid #000;padding:6px;}
+  .grid2 h3{font-size:11px;margin-bottom:4px;}
+  ul{padding-right:18px;font-size:10px;}
+  li{margin-bottom:3px;}
+</style></head><body>
+  <div class="header">
+    <img src="${logoSrc}" />
+    <div>
+      <h1>📊 مقارنة بين الفترات — المصاريف الغير مباشرة</h1>
+      <p>Cost Management System • ${dateStr}</p>
+    </div>
+  </div>
+
+  ${periodsInfoHTML}
+
+  <h2>المؤشرات الرئيسية (KPIs)</h2>
+  <table>
+    <thead><tr><th>المؤشر</th><th>A</th><th>B</th>${hasC ? "<th>C</th>" : ""}<th>التغيير (B عن A)</th></tr></thead>
+    <tbody>${kpiRows.map(k => `<tr><td style="text-align:right;font-weight:bold;">${k.title}</td><td>${k.a}</td><td><b>${k.b}</b></td>${hasC ? `<td><b>${k.c}</b></td>` : ""}<td>${k.diff}</td></tr>`).join("")}</tbody>
+  </table>
+
+  <h2>⚙️ بيانات التشغيل</h2>
+  <table>
+    <thead><tr><th>البيان</th><th>A</th><th>B</th>${hasC ? "<th>C</th>" : ""}<th>B عن A</th></tr></thead>
+    <tbody>${opRows.map(r => `<tr><td style="text-align:right;font-weight:bold;">${r.label}</td><td>${r.a}</td><td><b>${r.b}</b></td>${hasC ? `<td><b>${r.c}</b></td>` : ""}<td>${r.diff}</td></tr>`).join("")}</tbody>
+  </table>
+
+  <h2>تفاصيل البنود — نمو المبيعات: ${analysis.salesGrowthPct > 0 ? "+" : ""}${analysis.salesGrowthPct.toFixed(1)}% | إجمالي زيادة المصاريف: ${analysis.totalIncrease > 0 ? "+" : ""}${fmt(analysis.totalIncrease)}</h2>
+  <table><thead>${detailHead}</thead><tbody>${detailBody}</tbody></table>
+
+  <div class="grid2">
+    <div><h3 style="color:#c0392b;">🔺 أعلى 3 بنود زادت (B عن A)</h3>${increasedHTML}</div>
+    <div><h3 style="color:#1e8449;">🔻 أعلى 3 بنود قلت (B عن A)</h3>${decreasedHTML}</div>
+  </div>
+
+  <h2>💡 توصيات وتحذيرات</h2>
+  ${recsHTML}
+
+  <div class="footer">Powered by Mohamed Abdel Aal</div>
+  <script>
+    (async function(){
+      try{if(document.fonts&&document.fonts.ready)await document.fonts.ready;}catch(e){}
+      window.print();
+      window.onafterprint=function(){window.close();};
+    })();
+  </script>
+</body></html>`;
+
+    const w = window.open("", "_blank");
+    if (w) { w.document.write(html); w.document.close(); }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto" dir="rtl">
@@ -385,7 +523,9 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
             <span>📊 مقارنة بين الفترات</span>
             {analysis && A && B && aId !== bId && (
               <div className="flex items-center gap-2">
-                <PrintButton data={exportData} columns={exportColumns} title="مقارنة المصاريف الغير مباشرة" filters={exportFilters} />
+                <button onClick={handlePrintFull} className="inline-flex items-center gap-1.5 h-9 px-3 text-sm border border-input bg-background hover:bg-accent rounded-md">
+                  🖨️ طباعة شاملة
+                </button>
                 <ExportButtons data={exportData} columns={exportColumns} filename="period_comparison" title="مقارنة المصاريف الغير مباشرة" filters={exportFilters} />
               </div>
             )}
@@ -464,22 +604,80 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {[
-                            { label: "السعة (Capacity)", a: A.capacity, b: B.capacity, c: C?.capacity || 0 },
-                            { label: "معدل الدوران", a: A.turn_over, b: B.turn_over, c: C?.turn_over || 0 },
-                            { label: "متوسط الفاتورة", a: A.avg_check, b: B.avg_check, c: C?.avg_check || 0 },
-                            { label: "عدد الأيام", a: getDays(A.start_date, A.end_date), b: getDays(B.start_date, B.end_date), c: C ? getDays(C.start_date, C.end_date) : 0 },
-                            { label: "مبيعات يومية متوقعة", a: expectedDailySales(A), b: expectedDailySales(B), c: C ? expectedDailySales(C) : 0 },
-                            { label: "مؤشر الكفاءة (مصاريف/مبيعات)", a: analysis.aEfficiency, b: analysis.bEfficiency, c: analysis.cEfficiency, decimal: 4 },
-                          ].map(r => (
-                            <TableRow key={r.label}>
-                              <TableCell className="font-medium">{r.label}</TableCell>
-                              <TableCell className="text-center">{r.a.toLocaleString(undefined, { maximumFractionDigits: (r as any).decimal || 2 })}</TableCell>
-                              <TableCell className="text-center font-bold">{r.b.toLocaleString(undefined, { maximumFractionDigits: (r as any).decimal || 2 })}</TableCell>
-                              {hasC && <TableCell className="text-center font-bold">{r.c.toLocaleString(undefined, { maximumFractionDigits: (r as any).decimal || 2 })}</TableCell>}
-                              <TableCell className="text-center"><ChangeCell a={r.a} b={r.b} /></TableCell>
-                            </TableRow>
-                          ))}
+                          {(() => {
+                            const venueOf = (p?: ComparablePeriod) => p ? (p.venue_type === "تيك اواي" ? "تيك اواي" : "صالة") : "—";
+                            const isTake = (p?: ComparablePeriod) => p?.venue_type === "تيك اواي";
+                            const anyTake = isTake(A) || isTake(B) || (hasC && isTake(C));
+                            const cap = (p?: ComparablePeriod) => p ? p.capacity : 0;
+                            const to = (p?: ComparablePeriod) => p ? p.turn_over : 0;
+                            const ac = (p?: ComparablePeriod) => p ? p.avg_check : 0;
+                            const days = (p?: ComparablePeriod) => p ? getDays(p.start_date, p.end_date) : 0;
+                            const ds = (p?: ComparablePeriod) => p ? expectedDailySales(p) : 0;
+
+                            const dashCell = (txt: string = "—") => <TableCell className="text-center text-muted-foreground">{txt}</TableCell>;
+                            const numCell = (v: number, bold = false, dec = 2) => (
+                              <TableCell className={`text-center ${bold ? "font-bold" : ""}`}>{v.toLocaleString(undefined, { maximumFractionDigits: dec })}</TableCell>
+                            );
+
+                            return (
+                              <>
+                                {/* Venue type row */}
+                                <TableRow>
+                                  <TableCell className="font-medium">نوع المكان</TableCell>
+                                  <TableCell className="text-center">
+                                    <Badge variant="outline" className={isTake(A) ? "text-orange-500 border-orange-500/40" : "text-blue-500 border-blue-500/40"}>{venueOf(A)}</Badge>
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <Badge variant="outline" className={isTake(B) ? "text-orange-500 border-orange-500/40" : "text-blue-500 border-blue-500/40"}>{venueOf(B)}</Badge>
+                                  </TableCell>
+                                  {hasC && <TableCell className="text-center">
+                                    <Badge variant="outline" className={isTake(C) ? "text-orange-500 border-orange-500/40" : "text-blue-500 border-blue-500/40"}>{venueOf(C)}</Badge>
+                                  </TableCell>}
+                                  <TableCell className="text-center text-xs text-muted-foreground">
+                                    {venueOf(A) === venueOf(B) ? "نفس النوع" : "⚠️ نوعين مختلفين"}
+                                  </TableCell>
+                                </TableRow>
+                                {/* Capacity */}
+                                <TableRow>
+                                  <TableCell className="font-medium">{anyTake ? "السعة / عدد الطلبات اليومي" : "السعة (Capacity)"}</TableCell>
+                                  {numCell(cap(A))}{numCell(cap(B), true)}{hasC && numCell(cap(C), true)}
+                                  <TableCell className="text-center"><ChangeCell a={cap(A)} b={cap(B)} /></TableCell>
+                                </TableRow>
+                                {/* Turn over — hidden value if takeaway */}
+                                <TableRow>
+                                  <TableCell className="font-medium">معدل الدوران {anyTake && <span className="text-xs text-muted-foreground">(للصالة فقط)</span>}</TableCell>
+                                  {isTake(A) ? dashCell() : numCell(to(A))}
+                                  {isTake(B) ? dashCell() : numCell(to(B), true)}
+                                  {hasC && (isTake(C) ? dashCell() : numCell(to(C), true))}
+                                  {(isTake(A) || isTake(B)) ? dashCell("—") : <TableCell className="text-center"><ChangeCell a={to(A)} b={to(B)} /></TableCell>}
+                                </TableRow>
+                                {/* Avg check */}
+                                <TableRow>
+                                  <TableCell className="font-medium">متوسط الفاتورة</TableCell>
+                                  {numCell(ac(A))}{numCell(ac(B), true)}{hasC && numCell(ac(C), true)}
+                                  <TableCell className="text-center"><ChangeCell a={ac(A)} b={ac(B)} /></TableCell>
+                                </TableRow>
+                                {/* Days */}
+                                <TableRow>
+                                  <TableCell className="font-medium">عدد الأيام</TableCell>
+                                  {numCell(days(A))}{numCell(days(B), true)}{hasC && numCell(days(C), true)}
+                                  <TableCell className="text-center"><ChangeCell a={days(A)} b={days(B)} /></TableCell>
+                                </TableRow>
+                                {/* Daily expected sales */}
+                                <TableRow>
+                                  <TableCell className="font-medium">مبيعات يومية متوقعة</TableCell>
+                                  {numCell(ds(A))}{numCell(ds(B), true)}{hasC && numCell(ds(C), true)}
+                                  <TableCell className="text-center"><ChangeCell a={ds(A)} b={ds(B)} /></TableCell>
+                                </TableRow>
+                                {/* Efficiency */}
+                                <TableRow>
+                                  <TableCell className="font-medium">مؤشر الكفاءة (مصاريف/مبيعات)</TableCell>
+                                  {numCell(analysis.aEfficiency, false, 4)}{numCell(analysis.bEfficiency, true, 4)}{hasC && numCell(analysis.cEfficiency, true, 4)}
+                                  <TableCell className="text-center"><ChangeCell a={analysis.aEfficiency} b={analysis.bEfficiency} /></TableCell>
+                                </TableRow>
+                              </>
+                            );
+                          })()}
                         </TableBody>
                       </Table>
                     </div>

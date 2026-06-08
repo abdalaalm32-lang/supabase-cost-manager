@@ -494,7 +494,7 @@ export const IndirectExpensesPage: React.FC = () => {
     else if (netProfitPct < 20) recommendations.push({ type: "info", text: `هامش الربح مقبول (${netProfitPct.toFixed(1)}%) — هناك مجال للتحسين للوصول للنطاق الصحي (20%+).` });
     else recommendations.push({ type: "success", text: `هامش ربح ممتاز (${netProfitPct.toFixed(1)}%) — استمر في هذا الأداء.` });
 
-    if (avgDirectCostPct > 40) recommendations.push({ type: "warning", text: `تكلفة الأصناف المباشرة مرتفعة (${avgDirectCostPct.toFixed(1)}%) — راجع أسعار البيع أو تكاليف المكونات.` });
+    if (avgDirectCostPct > directCostAlertThreshold) recommendations.push({ type: "warning", text: `تكلفة الأصناف المباشرة مرتفعة (${avgDirectCostPct.toFixed(1)}%) — راجع أسعار البيع أو تكاليف المكونات.` });
     if (indirectPctValue > 40) recommendations.push({ type: "warning", text: `نسبة المصاريف الغير مباشرة مرتفعة (${indirectPctValue.toFixed(1)}%) — راجع البنود الأكبر.` });
     if (rentPct > 12) recommendations.push({ type: "warning", text: `الإيجار يمثل ${rentPct.toFixed(1)}% من المبيعات (المُوصى به أقل من 10%).` });
     if (salariesPct > 30) recommendations.push({ type: "warning", text: `المرتبات تمثل ${salariesPct.toFixed(1)}% من المبيعات (المُوصى به أقل من 25%).` });

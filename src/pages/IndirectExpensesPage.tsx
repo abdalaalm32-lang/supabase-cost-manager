@@ -1082,6 +1082,77 @@ export const IndirectExpensesPage: React.FC = () => {
             </CardContent>
           </Card>
 
+          {/* Executive Summary & Recommendations */}
+          {summaryData && (
+            <Card className="border-primary/20">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Lightbulb className="text-yellow-500" size={20} />
+                  الملخص التنفيذي والتوصيات
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Executive snapshot */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="rounded-lg border bg-card p-3 text-center">
+                    <p className="text-[11px] text-muted-foreground mb-1">أكبر بند مصروف</p>
+                    <p className="text-sm font-bold">{summaryData.topExpense?.label || "—"}</p>
+                    <p className="text-xs text-muted-foreground">{summaryData.topExpensePct.toFixed(1)}% من المبيعات</p>
+                  </div>
+                  <div className="rounded-lg border bg-card p-3 text-center">
+                    <p className="text-[11px] text-muted-foreground mb-1">الإيجار / المبيعات</p>
+                    <p className={`text-sm font-bold ${summaryData.rentPct > 12 ? 'text-destructive' : summaryData.rentPct > 8 ? 'text-warning' : 'text-emerald-500'}`}>
+                      {summaryData.rentPct.toFixed(1)}%
+                    </p>
+                    <p className="text-xs text-muted-foreground">المستهدف &lt; 10%</p>
+                  </div>
+                  <div className="rounded-lg border bg-card p-3 text-center">
+                    <p className="text-[11px] text-muted-foreground mb-1">المرتبات / المبيعات</p>
+                    <p className={`text-sm font-bold ${summaryData.salariesPct > 30 ? 'text-destructive' : summaryData.salariesPct > 25 ? 'text-warning' : 'text-emerald-500'}`}>
+                      {summaryData.salariesPct.toFixed(1)}%
+                    </p>
+                    <p className="text-xs text-muted-foreground">المستهدف &lt; 25%</p>
+                  </div>
+                  <div className="rounded-lg border bg-card p-3 text-center">
+                    <p className="text-[11px] text-muted-foreground mb-1">تغطية نقطة التعادل</p>
+                    <p className={`text-sm font-bold ${summaryData.bepCoverage > 90 ? 'text-destructive' : summaryData.bepCoverage > 70 ? 'text-warning' : 'text-emerald-500'}`}>
+                      {summaryData.bepCoverage.toFixed(1)}%
+                    </p>
+                    <p className="text-xs text-muted-foreground">من المبيعات اليومية</p>
+                  </div>
+                </div>
+
+                {/* Recommendations */}
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold flex items-center gap-2">
+                    <Lightbulb size={14} className="text-yellow-500" />
+                    توصيات وتحذيرات
+                  </p>
+                  {summaryData.recommendations.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">لا توجد توصيات.</p>
+                  ) : (
+                    summaryData.recommendations.map((r, i) => {
+                      const Icon = r.type === "danger" ? AlertTriangle : r.type === "warning" ? AlertTriangle : r.type === "success" ? CheckCircle2 : Info;
+                      const styles = r.type === "danger"
+                        ? "border-destructive/30 bg-destructive/10 text-destructive"
+                        : r.type === "warning"
+                        ? "border-warning/30 bg-warning/10 text-warning-foreground"
+                        : r.type === "success"
+                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                        : "border-primary/20 bg-primary/5 text-foreground";
+                      return (
+                        <div key={i} className={`flex items-start gap-2 rounded-lg border p-3 text-sm ${styles}`}>
+                          <Icon size={16} className="mt-0.5 flex-shrink-0" />
+                          <span className="leading-relaxed">{r.text}</span>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Sales Growth Efficiency Card */}
           {(() => {
             const periodA = periods.find(p => p.id === efficiencyPeriodAId) ?? selectedPeriod;

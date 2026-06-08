@@ -11,13 +11,14 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { AlertTriangle, Package, Printer, FileSpreadsheet, Loader2 } from "lucide-react";
-import { exportToExcel } from "@/lib/exportUtils";
+import { AlertTriangle, Package, Printer, FileSpreadsheet, Loader2, GitCompareArrows, FileText, Zap } from "lucide-react";
+import { exportToExcel, exportToPDF } from "@/lib/exportUtils";
 import { toast as sonnerToast } from "sonner";
 import { CategoryPackingTable } from "@/components/menu-analysis/CategoryPackingTable";
 import { CategorySummaryTable } from "@/components/menu-analysis/CategorySummaryTable";
 import { CategorySideCostTable } from "@/components/menu-analysis/CategorySideCostTable";
 import { CategoryFinancialTable } from "@/components/menu-analysis/CategoryFinancialTable";
+import { PeriodComparisonDialog } from "@/components/menu-analysis/PeriodComparisonDialog";
 
 interface RecipeIngredientDetail {
   name: string;
@@ -144,6 +145,12 @@ export const MenuAnalysisPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [companyName, setCompanyName] = useState("");
   const [excelLoading, setExcelLoading] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [compareOpen, setCompareOpen] = useState(false);
+  const [efficiencyPeriodAId, setEfficiencyPeriodAId] = useState<string>("");
+  const [efficiencyPeriodBId, setEfficiencyPeriodBId] = useState<string>("");
+  const [periodBPacking, setPeriodBPacking] = useState<PackingItem[]>([]);
+  const [periodBSideCost, setPeriodBSideCost] = useState<SideCostItem[]>([]);
 
   const companyId = auth.profile?.company_id;
 
@@ -392,6 +399,75 @@ export const MenuAnalysisPage: React.FC = () => {
     }
     return { totalPrice, totalDirectCost, totalIndirect, totalProfit, itemCount };
   }, [categorizedData]);
+
+  // ===== Period A/B metrics for in-page efficiency comparison =====
+  const periodAResolved = useMemo(() => periods.find(p => p.id === efficiencyPeriodAId) ?? selectedPeriod ?? null, [periods, efficiencyPeriodAId, selectedPeriod]);
+  const periodBResolved = useMemo(() => periods.find(p => p.id === efficiencyPeriodBId) ?? null, [periods, efficiencyPeriodBId]);
+
+  // Load packing/side cost items for Period B when chosen
+  useEffect(() => {
+    if (!companyId || !efficiencyPeriodBId) {
+      setPeriodBPacking([]);
+      setPeriodBSideCost([]);
+      return;
+    }
+    (async () => {
+      const [p, s] = await Promise.all([
+        supabase.from("category_packing_items").select("*").eq("company_id", companyId).eq("period_id", efficiencyPeriodBId),
+        supabase.from("category_side_costs" as any).select("*").eq("company_id", companyId).eq("period_id", efficiencyPeriodBId),
+      ]);
+      setPeriodBPacking((p.data as PackingItem[]) || []);
+      setPeriodBSideCost((s.data as unknown as SideCostItem[]) || []);
+    })();
+  }, [companyId, efficiencyPeriodBId]);
+
+  // Reusable: compute period metrics from a period + its packing/side cost items
+  const computeMetrics = useCallback((period: CostingPeriod | null, packing: PackingItem[], sideCosts: SideCostItem[]) => {
+    if (!period) return null;
+    const start = new Date(period.start_date);
+    const end = new Date(period.end_date);
+    const days = Math.max(1, Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+    const monthly = period.expected_sales * days;
+    const fixedExp = period.media + period.bills + period.salaries + period.other_expenses + period.maintenance + period.rent;
+    const customExp = (period.custom_expenses || []).reduce((s, e) => s + e.value, 0);
+    const indirect = fixedExp + customExp;
+    const indirectPct = monthly > 0 ? indirect / monthly : 0;
+
+    let totalPrice = 0, totalDirect = 0, totalProfit = 0;
+    for (const item of filteredPosItems) {
+      const catName = item.category || "بدون تصنيف";
+      const mainCost = recipes.get(item.id) || 0;
+      const override = costOverrides.get(item.id);
+      const sideCost = override?.side_cost || 0;
+      const categorySideCost = sideCosts.filter(p => p.category_name === catName).reduce((s, p) => s + p.cost, 0);
+      const kitchenCats = Array.isArray(period.consumables_kitchen_categories) ? period.consumables_kitchen_categories : [];
+      const barCats = Array.isArray(period.consumables_bar_categories) ? period.consumables_bar_categories : [];
+      const isInBar = barCats.includes(catName);
+      const isInKitchen = kitchenCats.length === 0 || kitchenCats.includes(catName);
+      let defaultPct = 0;
+      if (isInBar) defaultPct = period.default_consumables_pct_bar ?? period.default_consumables_pct;
+      else if (isInKitchen) defaultPct = period.default_consumables_pct;
+      const consumablesPct = override?.consumables_pct ?? defaultPct;
+      const consumables = (item.price * consumablesPct) / 100;
+      const categoryPacking = packing.filter(p => p.category_name === catName).reduce((s, p) => s + p.cost, 0);
+      const itemPacking = override?.packing_cost || 0;
+      const packingCost = categoryPacking + itemPacking;
+      const finalDirectCost = mainCost + sideCost + categorySideCost + consumables + packingCost;
+      const indirectExp = item.price * indirectPct;
+      const totalCost = finalDirectCost + indirectExp;
+      const netProfit = item.price - totalCost;
+      totalPrice += item.price;
+      totalDirect += finalDirectCost;
+      totalProfit += netProfit;
+    }
+    const avgDirectPct = totalPrice > 0 ? (totalDirect / totalPrice) * 100 : 0;
+    const netProfitPct = totalPrice > 0 ? (totalProfit / totalPrice) * 100 : 0;
+    return { monthlySales: monthly, indirectCost: indirect, indirectPct: indirectPct * 100, totalPrice, totalDirect, totalProfit, avgDirectPct, netProfitPct };
+  }, [filteredPosItems, recipes, costOverrides]);
+
+  const metricsA = useMemo(() => computeMetrics(periodAResolved, categoryPackingItems, categorySideCostItems), [computeMetrics, periodAResolved, categoryPackingItems, categorySideCostItems]);
+  const metricsB = useMemo(() => computeMetrics(periodBResolved, periodBPacking, periodBSideCost), [computeMetrics, periodBResolved, periodBPacking, periodBSideCost]);
+
 
   const formatNum = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const formatPct = (n: number) => n.toFixed(2) + "%";
@@ -736,6 +812,79 @@ export const MenuAnalysisPage: React.FC = () => {
     }
   };
 
+  const handlePdfExport = async () => {
+    if (!selectedPeriod || categorizedData.length === 0) return;
+    setPdfLoading(true);
+    try {
+      const tabLabel = activeTab === "kitchen" ? "المطبخ" : "البار";
+      const branchName = selectedBranchId !== "all" ? branches.find(b => b.id === selectedBranchId)?.name : "كل الفروع";
+      const columns = [
+        { key: "catName", label: "التصنيف" },
+        { key: "idx", label: "#" },
+        { key: "name", label: "اسم الصنف" },
+        { key: "price", label: "السعر" },
+        { key: "finalDirectCost", label: "إجمالي مباشر" },
+        { key: "directCostPct", label: "% مباشرة" },
+        { key: "indirectExpenses", label: "غير مباشرة" },
+        { key: "totalCost", label: "إجمالي التكلفة" },
+        { key: "netProfit", label: "صافي الربح" },
+        { key: "finalNetPct", label: "% الربح" },
+      ];
+      const rows: Record<string, any>[] = [];
+      for (const cat of categorizedData) {
+        cat.items.forEach((item, idx) => {
+          rows.push({
+            catName: cat.name, idx: idx + 1, name: item.name,
+            price: formatNum(item.price),
+            finalDirectCost: formatNum(item.finalDirectCost),
+            directCostPct: formatPct(item.directCostPct),
+            indirectExpenses: formatNum(item.indirectExpenses),
+            totalCost: formatNum(item.totalCost),
+            netProfit: formatNum(item.netProfit),
+            finalNetPct: formatPct(item.finalNetPct),
+          });
+        });
+        const catTotalPrice = cat.items.reduce((s, i) => s + i.price, 0);
+        const catTotalDirect = cat.items.reduce((s, i) => s + i.finalDirectCost, 0);
+        const catTotalProfit = cat.items.reduce((s, i) => s + i.netProfit, 0);
+        rows.push({
+          __rowType: "group-total",
+          catName: `إجمالي ${cat.name}`, idx: "", name: "",
+          price: formatNum(catTotalPrice),
+          finalDirectCost: formatNum(catTotalDirect),
+          directCostPct: catTotalPrice > 0 ? formatPct(catTotalDirect / catTotalPrice * 100) : "0%",
+          indirectExpenses: formatNum(cat.items.reduce((s, i) => s + i.indirectExpenses, 0)),
+          totalCost: formatNum(cat.items.reduce((s, i) => s + i.totalCost, 0)),
+          netProfit: formatNum(catTotalProfit),
+          finalNetPct: catTotalPrice > 0 ? formatPct(catTotalProfit / catTotalPrice * 100) : "0%",
+        });
+      }
+      rows.push({
+        __rowType: "grand-total",
+        catName: "الإجمالي الكلي", idx: "", name: `${grandTotals.itemCount} صنف`,
+        price: formatNum(grandTotals.totalPrice),
+        finalDirectCost: formatNum(grandTotals.totalDirectCost),
+        directCostPct: grandTotals.totalPrice > 0 ? formatPct(grandTotals.totalDirectCost / grandTotals.totalPrice * 100) : "0%",
+        indirectExpenses: formatNum(grandTotals.totalIndirect),
+        totalCost: "",
+        netProfit: formatNum(grandTotals.totalProfit),
+        finalNetPct: grandTotals.totalPrice > 0 ? formatPct(grandTotals.totalProfit / grandTotals.totalPrice * 100) : "0%",
+      });
+      await exportToPDF({
+        title: `تحليل المنيو - ${tabLabel} - ${branchName} - ${selectedPeriod.name}`,
+        filename: `menu-analysis-${tabLabel}-${selectedPeriod.name}`,
+        columns,
+        data: rows,
+      });
+      sonnerToast.success("تم تصدير PDF بنجاح");
+    } catch (err) {
+      console.error(err);
+      sonnerToast.error("حدث خطأ أثناء تصدير PDF");
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
   const handlePrint = () => {
     if (!selectedPeriod || categorizedData.length === 0) return;
     const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
@@ -974,6 +1123,15 @@ export const MenuAnalysisPage: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-fade-in-up" dir="rtl">
+      <PeriodComparisonDialog
+        open={compareOpen}
+        onOpenChange={setCompareOpen}
+        periods={periods as any}
+        branches={branches}
+        defaultPeriodId={selectedPeriod?.id || null}
+        avgDirectCostPct={grandTotals.totalPrice > 0 ? (grandTotals.totalDirectCost / grandTotals.totalPrice) * 100 : 0}
+      />
+
       <div className="flex items-center justify-between flex-wrap gap-4">
         <h1 className="text-2xl font-bold">تحليل المنيو</h1>
         <div className="flex items-center gap-3 flex-wrap">
@@ -1002,9 +1160,17 @@ export const MenuAnalysisPage: React.FC = () => {
           </Select>
           {selectedPeriod && categorizedData.length > 0 && (
             <>
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => setCompareOpen(true)} disabled={periods.length < 2}>
+                <GitCompareArrows size={14} className="text-blue-500" />
+                قارن مع فترة سابقة
+              </Button>
               <Button variant="outline" size="sm" className="gap-2" onClick={handleExcelExport} disabled={excelLoading}>
                 {excelLoading ? <Loader2 size={14} className="animate-spin" /> : <FileSpreadsheet size={14} className="text-green-600" />}
                 Excel
+              </Button>
+              <Button variant="outline" size="sm" className="gap-2" onClick={handlePdfExport} disabled={pdfLoading}>
+                {pdfLoading ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} className="text-red-500" />}
+                PDF
               </Button>
               <Button variant="outline" size="sm" className="gap-2" onClick={handlePrint}>
                 <Printer size={14} /> طباعة
@@ -1014,6 +1180,7 @@ export const MenuAnalysisPage: React.FC = () => {
         </div>
       </div>
 
+
       {!selectedPeriod && (
         <Card className="p-12 text-center">
           <AlertTriangle size={48} className="mx-auto mb-4 text-muted-foreground/30" />
@@ -1022,7 +1189,103 @@ export const MenuAnalysisPage: React.FC = () => {
         </Card>
       )}
 
+      {selectedPeriod && (() => {
+        const a = metricsA;
+        const b = metricsB;
+        const periodALabel = periodAResolved?.name ?? "—";
+        const periodBLabel = periodBResolved?.name ?? "—";
+
+        const delta = (av: number, bv: number) => bv - av;
+        const fmtNum = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+        const fmtPct = (n: number) => `${n.toFixed(2)}%`;
+        const signed = (n: number) => `${n >= 0 ? "+" : ""}${fmtNum(n)}`;
+        const signedPct = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
+
+        return (
+          <Card className="border-primary/20">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Zap className="text-yellow-500" size={20} />
+                كفاءة المنيو (مقارنة بين فترتين)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <p className="text-xs text-muted-foreground mb-2">الفترة الأساسية (أ)</p>
+                  <Select value={efficiencyPeriodAId || selectedPeriod.id} onValueChange={setEfficiencyPeriodAId}>
+                    <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="اختر الفترة الأساسية" /></SelectTrigger>
+                    <SelectContent>
+                      {periods.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <p className="text-xs text-muted-foreground mb-2">فترة المقارنة (ب)</p>
+                  <Select value={efficiencyPeriodBId} onValueChange={setEfficiencyPeriodBId}>
+                    <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="اختر فترة للمقارنة" /></SelectTrigger>
+                    <SelectContent>
+                      {periods.filter(p => p.id !== (efficiencyPeriodAId || selectedPeriod.id)).map(p => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {!b || !a ? (
+                <p className="text-sm text-muted-foreground text-center py-4">اختر فترتين لعرض مقارنة كفاءة المنيو</p>
+              ) : (
+                <div className="rounded-lg border overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-right py-2 px-3 font-semibold">المؤشر</th>
+                        <th className="text-center py-2 px-3 font-semibold">الفترة (أ)<br/><span className="text-[10px] text-muted-foreground font-normal">{periodALabel}</span></th>
+                        <th className="text-center py-2 px-3 font-semibold">الفترة (ب)<br/><span className="text-[10px] text-muted-foreground font-normal">{periodBLabel}</span></th>
+                        <th className="text-center py-2 px-3 font-semibold">الفرق</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-t">
+                        <td className="py-2 px-3 font-medium">إجمالي المبيعات الشهرية</td>
+                        <td className="text-center py-2 px-3">{fmtNum(a.monthlySales)}</td>
+                        <td className="text-center py-2 px-3">{fmtNum(b.monthlySales)}</td>
+                        <td className={`text-center py-2 px-3 font-semibold ${delta(a.monthlySales, b.monthlySales) >= 0 ? 'text-emerald-500' : 'text-destructive'}`}>{signed(delta(a.monthlySales, b.monthlySales))}</td>
+                      </tr>
+                      <tr className="border-t">
+                        <td className="py-2 px-3 font-medium">متوسط نسبة التكلفة المباشرة (Avg Direct Cost %)</td>
+                        <td className="text-center py-2 px-3">{fmtPct(a.avgDirectPct)}</td>
+                        <td className="text-center py-2 px-3">{fmtPct(b.avgDirectPct)}</td>
+                        <td className={`text-center py-2 px-3 font-semibold ${delta(a.avgDirectPct, b.avgDirectPct) <= 0 ? 'text-emerald-500' : 'text-destructive'}`}>{signedPct(delta(a.avgDirectPct, b.avgDirectPct))}</td>
+                      </tr>
+                      <tr className="border-t">
+                        <td className="py-2 px-3 font-medium">نسبة الربح الصافي (Net Profit %)</td>
+                        <td className="text-center py-2 px-3">{fmtPct(a.netProfitPct)}</td>
+                        <td className="text-center py-2 px-3">{fmtPct(b.netProfitPct)}</td>
+                        <td className={`text-center py-2 px-3 font-semibold ${delta(a.netProfitPct, b.netProfitPct) >= 0 ? 'text-emerald-500' : 'text-destructive'}`}>{signedPct(delta(a.netProfitPct, b.netProfitPct))}</td>
+                      </tr>
+                      <tr className="border-t">
+                        <td className="py-2 px-3 font-medium">نسبة المصاريف الغير مباشرة</td>
+                        <td className="text-center py-2 px-3">{fmtPct(a.indirectPct)}</td>
+                        <td className="text-center py-2 px-3">{fmtPct(b.indirectPct)}</td>
+                        <td className={`text-center py-2 px-3 font-semibold ${delta(a.indirectPct, b.indirectPct) <= 0 ? 'text-emerald-500' : 'text-destructive'}`}>{signedPct(delta(a.indirectPct, b.indirectPct))}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <p className="text-[11px] text-muted-foreground leading-relaxed bg-yellow-500/5 border border-yellow-500/20 rounded p-2 mt-3">
+                <strong>ملاحظة:</strong> هذه المقارنة مبنية على نفس قوائم الأصناف الحالية (فلتر الفرع/القسم) مع تطبيق إعدادات كل فترة (المستهلكات/التغليف/الإكسترا/المصاريف).
+              </p>
+            </CardContent>
+          </Card>
+        );
+      })()}
+
       {selectedPeriod && (
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
             <TabsTrigger value="kitchen">المطبخ (Kitchen)</TabsTrigger>

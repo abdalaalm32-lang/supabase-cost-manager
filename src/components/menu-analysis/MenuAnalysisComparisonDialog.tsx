@@ -75,11 +75,12 @@ const fmt = (n: number) =>
   (Number.isFinite(n) ? n : 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const pct = (n: number) => `${(Number.isFinite(n) ? n : 0).toFixed(2)}%`;
 
+// a = current period, b = old period. diff = current - old (موجب = ارتفع، سالب = انخفض)
 const Diff: React.FC<{ a: number; b: number; positiveIsGood?: boolean; isPct?: boolean }> = ({
   a, b, positiveIsGood = true, isPct = false,
 }) => {
-  const diff = b - a;
-  const p = a !== 0 ? (diff / Math.abs(a)) * 100 : (b === 0 ? 0 : 100);
+  const diff = a - b;
+  const p = b !== 0 ? (diff / Math.abs(b)) * 100 : (a === 0 ? 0 : 100);
   const good = positiveIsGood ? diff >= 0 : diff <= 0;
   const color = diff === 0 ? "text-muted-foreground" : good ? "text-emerald-600" : "text-red-500";
   const Icon = diff > 0 ? TrendingUp : diff < 0 ? TrendingDown : Minus;

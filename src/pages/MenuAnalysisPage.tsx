@@ -468,6 +468,111 @@ export const MenuAnalysisPage: React.FC = () => {
   const metricsA = useMemo(() => computeMetrics(periodAResolved, categoryPackingItems, categorySideCostItems), [computeMetrics, periodAResolved, categoryPackingItems, categorySideCostItems]);
   const metricsB = useMemo(() => computeMetrics(periodBResolved, periodBPacking, periodBSideCost), [computeMetrics, periodBResolved, periodBPacking, periodBSideCost]);
 
+  // Build full breakdown (totals + categories + items) for any period — used by the comparison dialog.
+  const loadBreakdown = useCallback(async (periodId: string): Promise<MenuBreakdown | null> => {
+    const period = periods.find(p => p.id === periodId);
+    if (!period || !companyId) return null;
+
+    // Fetch this period's packing + side cost items
+    const [packRes, sideRes] = await Promise.all([
+      supabase.from("category_packing_items").select("*").eq("company_id", companyId).eq("period_id", periodId),
+      supabase.from("category_side_costs" as any).select("*").eq("company_id", companyId).eq("period_id", periodId),
+    ]);
+    const packing = (packRes.data as PackingItem[]) || [];
+    const sideCosts = (sideRes.data as unknown as SideCostItem[]) || [];
+
+    const start = new Date(period.start_date);
+    const end = new Date(period.end_date);
+    const days = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86400000) + 1);
+    const monthlySales = period.expected_sales * days;
+    const fixedExp = period.media + period.bills + period.salaries + period.other_expenses + period.maintenance + period.rent;
+    const customExp = (period.custom_expenses || []).reduce((s, e) => s + e.value, 0);
+    const indirect = fixedExp + customExp;
+    const indirectPctRate = monthlySales > 0 ? indirect / monthlySales : 0;
+
+    const items: MenuBreakdown["items"] = [];
+    for (const item of filteredPosItems) {
+      const catName = item.category || "بدون تصنيف";
+      const mainCost = recipes.get(item.id) || 0;
+      const override = costOverrides.get(item.id);
+      const sideCost = override?.side_cost || 0;
+      const categorySideCost = sideCosts.filter(p => p.category_name === catName).reduce((s, p) => s + p.cost, 0);
+      const kitchenCats = Array.isArray(period.consumables_kitchen_categories) ? period.consumables_kitchen_categories : [];
+      const barCats = Array.isArray(period.consumables_bar_categories) ? period.consumables_bar_categories : [];
+      const isInBar = barCats.includes(catName);
+      const isInKitchen = kitchenCats.length === 0 || kitchenCats.includes(catName);
+      let defaultPct = 0;
+      if (isInBar) defaultPct = period.default_consumables_pct_bar ?? period.default_consumables_pct;
+      else if (isInKitchen) defaultPct = period.default_consumables_pct;
+      const consumablesPct = override?.consumables_pct ?? defaultPct;
+      const consumables = (item.price * consumablesPct) / 100;
+      const categoryPacking = packing.filter(p => p.category_name === catName).reduce((s, p) => s + p.cost, 0);
+      const itemPacking = override?.packing_cost || 0;
+      const packingCost = categoryPacking + itemPacking;
+      const finalDirectCost = mainCost + sideCost + categorySideCost + consumables + packingCost;
+      const indirectExpenses = item.price * indirectPctRate;
+      const totalCost = finalDirectCost + indirectExpenses;
+      const netProfit = item.price - totalCost;
+      items.push({
+        id: item.id,
+        name: item.name,
+        code: item.code || "",
+        category: catName,
+        classification: (item as any).categories?.menu_engineering_class || item.menu_engineering_class || "",
+        price: item.price,
+        finalDirectCost,
+        directCostPct: item.price > 0 ? (finalDirectCost / item.price) * 100 : 0,
+        indirectExpenses,
+        totalCost,
+        netProfit,
+        netPct: item.price > 0 ? (netProfit / item.price) * 100 : 0,
+      });
+    }
+
+    // Aggregate per category
+    const catMap = new Map<string, MenuBreakdown["categories"][number]>();
+    for (const it of items) {
+      let c = catMap.get(it.category);
+      if (!c) {
+        c = { name: it.category, classification: it.classification, price: 0, direct: 0, indirect: 0, profit: 0, directPct: 0, indirectPct: 0, netPct: 0, itemCount: 0 };
+        catMap.set(it.category, c);
+      }
+      c.price += it.price;
+      c.direct += it.finalDirectCost;
+      c.indirect += it.indirectExpenses;
+      c.profit += it.netProfit;
+      c.itemCount += 1;
+    }
+    const categories = Array.from(catMap.values()).map(c => ({
+      ...c,
+      directPct: c.price > 0 ? (c.direct / c.price) * 100 : 0,
+      indirectPct: c.price > 0 ? (c.indirect / c.price) * 100 : 0,
+      netPct: c.price > 0 ? (c.profit / c.price) * 100 : 0,
+    }));
+
+    const totalPrice = items.reduce((s, i) => s + i.price, 0);
+    const totalDirect = items.reduce((s, i) => s + i.finalDirectCost, 0);
+    const totalIndirect = items.reduce((s, i) => s + i.indirectExpenses, 0);
+    const totalProfit = items.reduce((s, i) => s + i.netProfit, 0);
+
+    return {
+      totals: {
+        price: totalPrice,
+        direct: totalDirect,
+        indirect: totalIndirect,
+        profit: totalProfit,
+        directPct: totalPrice > 0 ? (totalDirect / totalPrice) * 100 : 0,
+        indirectPct: totalPrice > 0 ? (totalIndirect / totalPrice) * 100 : 0,
+        netPct: totalPrice > 0 ? (totalProfit / totalPrice) * 100 : 0,
+        itemCount: items.length,
+        monthlySales,
+      },
+      categories,
+      items,
+    };
+  }, [periods, companyId, filteredPosItems, recipes, costOverrides]);
+
+
 
   const formatNum = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const formatPct = (n: number) => n.toFixed(2) + "%";

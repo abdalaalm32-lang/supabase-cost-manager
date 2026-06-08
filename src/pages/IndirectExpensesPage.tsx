@@ -117,7 +117,8 @@ export const IndirectExpensesPage: React.FC = () => {
   const [costScope, setCostScope] = useState<"all" | "kitchen" | "bar">("all");
   const [excelLoading, setExcelLoading] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
-  const [efficiencyComparePeriodId, setEfficiencyComparePeriodId] = useState<string>("");
+  const [efficiencyPeriodAId, setEfficiencyPeriodAId] = useState<string>("");
+  const [efficiencyPeriodBId, setEfficiencyPeriodBId] = useState<string>("");
 
   const companyId = auth.profile?.company_id;
 
@@ -967,14 +968,18 @@ export const IndirectExpensesPage: React.FC = () => {
 
           {/* Sales Growth Efficiency Card */}
           {(() => {
-            const otherPeriods = periods.filter(p => p.id !== selectedPeriod.id);
-            const prev = otherPeriods.find(p => p.id === efficiencyComparePeriodId) ?? null;
-            const prevSales = prev ? monthlyExpectedSales(prev) : 0;
-            const prevIndirect = prev ? totalIndirectCost(prev) : 0;
-            const extraSales = monthSales - prevSales;
-            const extraExpenses = total - prevIndirect;
-            const costPerExtraEgp = prev && extraSales > 0 ? extraExpenses / extraSales : null;
-            const retentionPct = prev && extraSales > 0 ? ((extraSales - extraExpenses) / extraSales) * 100 : null;
+            const periodA = periods.find(p => p.id === efficiencyPeriodAId) ?? selectedPeriod;
+            const periodB = periods.find(p => p.id === efficiencyPeriodBId) ?? null;
+
+            const aSales = periodA ? monthlyExpectedSales(periodA) : 0;
+            const aIndirect = periodA ? totalIndirectCost(periodA) : 0;
+            const bSales = periodB ? monthlyExpectedSales(periodB) : 0;
+            const bIndirect = periodB ? totalIndirectCost(periodB) : 0;
+
+            const extraSales = bSales - aSales;
+            const extraExpenses = bIndirect - aIndirect;
+            const costPerExtraEgp = periodB && extraSales > 0 ? extraExpenses / extraSales : null;
+            const retentionPct = periodB && extraSales > 0 ? ((extraSales - extraExpenses) / extraSales) * 100 : null;
 
             const rating = (() => {
               if (costPerExtraEgp === null) return { label: "—", color: "text-muted-foreground", emoji: "" };
@@ -985,56 +990,86 @@ export const IndirectExpensesPage: React.FC = () => {
               return { label: "خطر", color: "text-destructive", emoji: "🔴" };
             })();
 
+            const periodALabel = periodA ? `${periodA.name}${branches.find(b => b.id === periodA.branch_id)?.name ? ` - ${branches.find(b => b.id === periodA.branch_id)?.name}` : ""}` : "—";
+            const periodBLabel = periodB ? `${periodB.name}${branches.find(b => b.id === periodB.branch_id)?.name ? ` - ${branches.find(b => b.id === periodB.branch_id)?.name}` : ""}` : "—";
+
             return (
               <Card className="border-primary/20">
                 <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between flex-wrap gap-3">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Zap className="text-yellow-500" size={20} />
-                      كفاءة نمو المبيعات
-                    </CardTitle>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">قارن مع:</span>
-                      <Select value={efficiencyComparePeriodId} onValueChange={setEfficiencyComparePeriodId}>
-                        <SelectTrigger className="w-[200px] h-8 text-xs">
-                          <SelectValue placeholder="اختر فترة للمقارنة" />
-                        </SelectTrigger>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Zap className="text-yellow-500" size={20} />
+                    كفاءة نمو المبيعات (مقارنة بين فترتين)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {/* Two period selectors */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                    <div className="rounded-lg border bg-muted/30 p-3">
+                      <p className="text-xs text-muted-foreground mb-2">الفترة الأساسية (أ)</p>
+                      <Select value={efficiencyPeriodAId || selectedPeriod.id} onValueChange={setEfficiencyPeriodAId}>
+                        <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="اختر الفترة الأساسية" /></SelectTrigger>
                         <SelectContent>
-                          {otherPeriods.length === 0 ? (
-                            <div className="px-2 py-1 text-xs text-muted-foreground">لا توجد فترات أخرى</div>
-                          ) : otherPeriods.map(p => {
+                          {periods.map(p => {
                             const bn = branches.find(b => b.id === p.branch_id)?.name;
-                            return (
-                              <SelectItem key={p.id} value={p.id}>
-                                {p.name}{bn ? ` - ${bn}` : ""}
-                              </SelectItem>
-                            );
+                            return <SelectItem key={p.id} value={p.id}>{p.name}{bn ? ` - ${bn}` : ""}</SelectItem>;
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="rounded-lg border bg-muted/30 p-3">
+                      <p className="text-xs text-muted-foreground mb-2">فترة المقارنة (ب)</p>
+                      <Select value={efficiencyPeriodBId} onValueChange={setEfficiencyPeriodBId}>
+                        <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="اختر فترة للمقارنة" /></SelectTrigger>
+                        <SelectContent>
+                          {periods.filter(p => p.id !== (efficiencyPeriodAId || selectedPeriod.id)).map(p => {
+                            const bn = branches.find(b => b.id === p.branch_id)?.name;
+                            return <SelectItem key={p.id} value={p.id}>{p.name}{bn ? ` - ${bn}` : ""}</SelectItem>;
                           })}
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  {!prev ? (
+
+                  {!periodB ? (
                     <p className="text-sm text-muted-foreground text-center py-4">
-                      اختر فترة سابقة من القائمة أعلاه لعرض تحليل كفاءة نمو المبيعات
+                      اختر فترتين لعرض تحليل كفاءة نمو المبيعات
                     </p>
                   ) : (
                     <>
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
-                        <div className="rounded-lg border bg-card p-3 text-center">
-                          <p className="text-[11px] text-muted-foreground mb-1">مبيعات إضافية</p>
-                          <p className={`text-base font-bold ${extraSales >= 0 ? 'text-primary' : 'text-destructive'}`}>
-                            {extraSales.toLocaleString(undefined, { maximumFractionDigits: 0 })} ج
-                          </p>
-                        </div>
-                        <div className="rounded-lg border bg-card p-3 text-center">
-                          <p className="text-[11px] text-muted-foreground mb-1">مصاريف إضافية</p>
-                          <p className={`text-base font-bold ${extraExpenses <= 0 ? 'text-emerald-500' : 'text-destructive'}`}>
-                            {extraExpenses.toLocaleString(undefined, { maximumFractionDigits: 0 })} ج
-                          </p>
-                        </div>
+                      {/* Comparison table */}
+                      <div className="rounded-lg border overflow-hidden mb-4">
+                        <table className="w-full text-sm">
+                          <thead className="bg-muted/50">
+                            <tr>
+                              <th className="text-right py-2 px-3 font-semibold">البند</th>
+                              <th className="text-center py-2 px-3 font-semibold">الفترة (أ)<br/><span className="text-[10px] text-muted-foreground font-normal">{periodALabel}</span></th>
+                              <th className="text-center py-2 px-3 font-semibold">الفترة (ب)<br/><span className="text-[10px] text-muted-foreground font-normal">{periodBLabel}</span></th>
+                              <th className="text-center py-2 px-3 font-semibold">الفرق</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr className="border-t">
+                              <td className="py-2 px-3 font-medium">المبيعات الشهرية</td>
+                              <td className="text-center py-2 px-3">{aSales.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                              <td className="text-center py-2 px-3">{bSales.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                              <td className={`text-center py-2 px-3 font-semibold ${extraSales >= 0 ? 'text-emerald-500' : 'text-destructive'}`}>
+                                {extraSales >= 0 ? '+' : ''}{extraSales.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                              </td>
+                            </tr>
+                            <tr className="border-t">
+                              <td className="py-2 px-3 font-medium">المصاريف الغير مباشرة</td>
+                              <td className="text-center py-2 px-3">{aIndirect.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                              <td className="text-center py-2 px-3">{bIndirect.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+                              <td className={`text-center py-2 px-3 font-semibold ${extraExpenses <= 0 ? 'text-emerald-500' : 'text-destructive'}`}>
+                                {extraExpenses >= 0 ? '+' : ''}{extraExpenses.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* KPI mini cards */}
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
                         <div className="rounded-lg border bg-card p-3 text-center">
                           <p className="text-[11px] text-muted-foreground mb-1">تكلفة كل 1ج مبيعات إضافية</p>
                           <p className={`text-base font-bold ${rating.color}`}>
@@ -1077,7 +1112,7 @@ export const IndirectExpensesPage: React.FC = () => {
                       </div>
 
                       <p className="text-[11px] text-muted-foreground leading-relaxed bg-yellow-500/5 border border-yellow-500/20 rounded p-2">
-                        <strong>ملاحظة:</strong> هذا المؤشر يعتمد على المصاريف غير المباشرة فقط (لا يشمل تكلفة البضاعة)، لقياس كفاءة التشغيل مع نمو المبيعات بدقة.
+                        <strong>ملاحظة:</strong> هذا المؤشر يعتمد على المصاريف غير المباشرة فقط (لا يشمل تكلفة البضاعة)، لقياس كفاءة التشغيل مع نمو المبيعات بدقة. الفترة (ب) هي الفترة الأحدث/المقارنة.
                       </p>
                     </>
                   )}
@@ -1085,6 +1120,7 @@ export const IndirectExpensesPage: React.FC = () => {
               </Card>
             );
           })()}
+
 
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

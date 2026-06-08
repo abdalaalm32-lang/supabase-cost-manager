@@ -348,12 +348,12 @@ export const MenuAnalysisComparisonDialog: React.FC<Props> = ({
                         <TableRow>
                           <TableHead>الصنف</TableHead>
                           <TableHead className="text-center">التصنيف</TableHead>
-                          <TableHead className="text-center">سعر (أ)</TableHead>
-                          <TableHead className="text-center">سعر (ب)</TableHead>
-                          <TableHead className="text-center">% مباشرة (أ)</TableHead>
-                          <TableHead className="text-center">% مباشرة (ب)</TableHead>
+                          <TableHead className="text-center">سعر (حالياً)</TableHead>
+                          <TableHead className="text-center">سعر (قديماً)</TableHead>
+                          <TableHead className="text-center">% مباشرة (حالياً)</TableHead>
+                          <TableHead className="text-center">% مباشرة (قديماً)</TableHead>
                           <TableHead className="text-center">فرق %</TableHead>
-                          <TableHead className="text-center">% صافي (ب)</TableHead>
+                          <TableHead className="text-center">% صافي (قديماً)</TableHead>
                           <TableHead className="text-center">فرق صافي %</TableHead>
                         </TableRow>
                       </TableHeader>

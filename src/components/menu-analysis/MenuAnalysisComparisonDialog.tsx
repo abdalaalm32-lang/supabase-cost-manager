@@ -299,13 +299,13 @@ export const MenuAnalysisComparisonDialog: React.FC<Props> = ({
                         <TableRow>
                           <TableHead>التصنيف</TableHead>
                           <TableHead className="text-center">القسم</TableHead>
-                          <TableHead className="text-center">سعر البيع (أ)</TableHead>
-                          <TableHead className="text-center">سعر البيع (ب)</TableHead>
-                          <TableHead className="text-center">% تكلفة مباشرة (أ)</TableHead>
-                          <TableHead className="text-center">% تكلفة مباشرة (ب)</TableHead>
+                          <TableHead className="text-center">سعر البيع (حالياً)</TableHead>
+                          <TableHead className="text-center">سعر البيع (قديماً)</TableHead>
+                          <TableHead className="text-center">% تكلفة مباشرة (حالياً)</TableHead>
+                          <TableHead className="text-center">% تكلفة مباشرة (قديماً)</TableHead>
                           <TableHead className="text-center">فرق %</TableHead>
-                          <TableHead className="text-center">% صافي ربح (أ)</TableHead>
-                          <TableHead className="text-center">% صافي ربح (ب)</TableHead>
+                          <TableHead className="text-center">% صافي ربح (حالياً)</TableHead>
+                          <TableHead className="text-center">% صافي ربح (قديماً)</TableHead>
                           <TableHead className="text-center">فرق %</TableHead>
                         </TableRow>
                       </TableHeader>

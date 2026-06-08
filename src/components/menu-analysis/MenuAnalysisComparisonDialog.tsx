@@ -385,7 +385,7 @@ export const MenuAnalysisComparisonDialog: React.FC<Props> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-blue-500">🆕 أصناف جديدة في (ب)</CardTitle>
+                    <CardTitle className="text-sm text-blue-500">🆕 أصناف جديدة في القديمة</CardTitle>
                   </CardHeader>
                   <CardContent className="p-0">
                     {itemRows.added.length === 0 ? (

@@ -389,14 +389,15 @@ export const IndirectExpensesPage: React.FC = () => {
     let items = selectedBranchId !== "all" 
       ? posItems.filter(i => i.branch_id === selectedBranchId) 
       : posItems;
-    
-    // Filter by cost scope (kitchen/bar/all)
-    if (costScope !== "all") {
-      items = items.filter(i => {
-        const catName = i.category || "";
-        const catClass = categoryClassMap.get(`${i.branch_id || ""}::${catName}`) ?? categoryClassMap.get(`::${catName}`);
-        return catClass === costScope;
-      });
+
+    // Match MenuAnalysisPage logic: exclude items classified as "none"
+    items = items.filter((i: any) => i.menu_engineering_class !== "none" && i.categories?.menu_engineering_class !== "none");
+
+    // Filter by cost scope using item's own menu_engineering_class (matches MenuAnalysisPage)
+    if (costScope === "kitchen") {
+      items = items.filter((i: any) => !i.menu_engineering_class || i.menu_engineering_class.toLowerCase() === "kitchen");
+    } else if (costScope === "bar") {
+      items = items.filter((i: any) => i.menu_engineering_class?.toLowerCase() === "bar");
     }
     
     let totalPrice = 0;

@@ -1189,7 +1189,103 @@ export const MenuAnalysisPage: React.FC = () => {
         </Card>
       )}
 
+      {selectedPeriod && (() => {
+        const a = metricsA;
+        const b = metricsB;
+        const periodALabel = periodAResolved?.name ?? "—";
+        const periodBLabel = periodBResolved?.name ?? "—";
+
+        const delta = (av: number, bv: number) => bv - av;
+        const fmtNum = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+        const fmtPct = (n: number) => `${n.toFixed(2)}%`;
+        const signed = (n: number) => `${n >= 0 ? "+" : ""}${fmtNum(n)}`;
+        const signedPct = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
+
+        return (
+          <Card className="border-primary/20">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Zap className="text-yellow-500" size={20} />
+                كفاءة المنيو (مقارنة بين فترتين)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <p className="text-xs text-muted-foreground mb-2">الفترة الأساسية (أ)</p>
+                  <Select value={efficiencyPeriodAId || selectedPeriod.id} onValueChange={setEfficiencyPeriodAId}>
+                    <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="اختر الفترة الأساسية" /></SelectTrigger>
+                    <SelectContent>
+                      {periods.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="rounded-lg border bg-muted/30 p-3">
+                  <p className="text-xs text-muted-foreground mb-2">فترة المقارنة (ب)</p>
+                  <Select value={efficiencyPeriodBId} onValueChange={setEfficiencyPeriodBId}>
+                    <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="اختر فترة للمقارنة" /></SelectTrigger>
+                    <SelectContent>
+                      {periods.filter(p => p.id !== (efficiencyPeriodAId || selectedPeriod.id)).map(p => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {!b || !a ? (
+                <p className="text-sm text-muted-foreground text-center py-4">اختر فترتين لعرض مقارنة كفاءة المنيو</p>
+              ) : (
+                <div className="rounded-lg border overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/50">
+                      <tr>
+                        <th className="text-right py-2 px-3 font-semibold">المؤشر</th>
+                        <th className="text-center py-2 px-3 font-semibold">الفترة (أ)<br/><span className="text-[10px] text-muted-foreground font-normal">{periodALabel}</span></th>
+                        <th className="text-center py-2 px-3 font-semibold">الفترة (ب)<br/><span className="text-[10px] text-muted-foreground font-normal">{periodBLabel}</span></th>
+                        <th className="text-center py-2 px-3 font-semibold">الفرق</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-t">
+                        <td className="py-2 px-3 font-medium">إجمالي المبيعات الشهرية</td>
+                        <td className="text-center py-2 px-3">{fmtNum(a.monthlySales)}</td>
+                        <td className="text-center py-2 px-3">{fmtNum(b.monthlySales)}</td>
+                        <td className={`text-center py-2 px-3 font-semibold ${delta(a.monthlySales, b.monthlySales) >= 0 ? 'text-emerald-500' : 'text-destructive'}`}>{signed(delta(a.monthlySales, b.monthlySales))}</td>
+                      </tr>
+                      <tr className="border-t">
+                        <td className="py-2 px-3 font-medium">متوسط نسبة التكلفة المباشرة (Avg Direct Cost %)</td>
+                        <td className="text-center py-2 px-3">{fmtPct(a.avgDirectPct)}</td>
+                        <td className="text-center py-2 px-3">{fmtPct(b.avgDirectPct)}</td>
+                        <td className={`text-center py-2 px-3 font-semibold ${delta(a.avgDirectPct, b.avgDirectPct) <= 0 ? 'text-emerald-500' : 'text-destructive'}`}>{signedPct(delta(a.avgDirectPct, b.avgDirectPct))}</td>
+                      </tr>
+                      <tr className="border-t">
+                        <td className="py-2 px-3 font-medium">نسبة الربح الصافي (Net Profit %)</td>
+                        <td className="text-center py-2 px-3">{fmtPct(a.netProfitPct)}</td>
+                        <td className="text-center py-2 px-3">{fmtPct(b.netProfitPct)}</td>
+                        <td className={`text-center py-2 px-3 font-semibold ${delta(a.netProfitPct, b.netProfitPct) >= 0 ? 'text-emerald-500' : 'text-destructive'}`}>{signedPct(delta(a.netProfitPct, b.netProfitPct))}</td>
+                      </tr>
+                      <tr className="border-t">
+                        <td className="py-2 px-3 font-medium">نسبة المصاريف الغير مباشرة</td>
+                        <td className="text-center py-2 px-3">{fmtPct(a.indirectPct)}</td>
+                        <td className="text-center py-2 px-3">{fmtPct(b.indirectPct)}</td>
+                        <td className={`text-center py-2 px-3 font-semibold ${delta(a.indirectPct, b.indirectPct) <= 0 ? 'text-emerald-500' : 'text-destructive'}`}>{signedPct(delta(a.indirectPct, b.indirectPct))}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <p className="text-[11px] text-muted-foreground leading-relaxed bg-yellow-500/5 border border-yellow-500/20 rounded p-2 mt-3">
+                <strong>ملاحظة:</strong> هذه المقارنة مبنية على نفس قوائم الأصناف الحالية (فلتر الفرع/القسم) مع تطبيق إعدادات كل فترة (المستهلكات/التغليف/الإكسترا/المصاريف).
+              </p>
+            </CardContent>
+          </Card>
+        );
+      })()}
+
       {selectedPeriod && (
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
             <TabsTrigger value="kitchen">المطبخ (Kitchen)</TabsTrigger>

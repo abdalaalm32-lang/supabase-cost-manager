@@ -132,9 +132,15 @@ const netProfitPctOf = (p: ComparablePeriod, directPct: number) => {
   return 100 - indPct - directPct;
 };
 
-const classifyItem = (a: number, b: number): { label: string; variant: "destructive" | "secondary" | "default" | "outline"; className?: string } => {
-  if (a === 0 && b > 0) return { label: "مصروف جديد", variant: "outline", className: "text-blue-500 border-blue-500/50" };
-  if (a > 0 && b === 0) return { label: "تم إلغاؤه", variant: "outline", className: "text-purple-500 border-purple-500/50" };
+const classifyItem = (a: number, b: number, itemPct: number, salesPct: number): { label: string; variant: "destructive" | "secondary" | "default" | "outline"; className?: string } => {
+  if (a === 0 && b > 0) return { label: "🆕 مصروف جديد", variant: "outline", className: "text-blue-500 border-blue-500/50" };
+  if (a > 0 && b === 0) return { label: "✖ تم إلغاؤه", variant: "outline", className: "text-purple-500 border-purple-500/50" };
+  if (a === 0 && b === 0) return { label: "—", variant: "secondary" };
+  const diff = itemPct - salesPct;
+  if (diff >= 10) return { label: "🔴 أعلى بكثير من نمو المبيعات", variant: "outline", className: "text-red-500 border-red-500/50" };
+  if (diff >= 3) return { label: "🟡 أعلى من نمو المبيعات", variant: "outline", className: "text-yellow-600 border-yellow-500/50" };
+  if (diff <= -10) return { label: "🟢 أقل بكثير من نمو المبيعات", variant: "outline", className: "text-emerald-600 border-emerald-500/50" };
+  if (diff <= -3) return { label: "🟢 أقل من نمو المبيعات", variant: "outline", className: "text-emerald-600 border-emerald-500/50" };
   return { label: "طبيعي", variant: "secondary" };
 };
 

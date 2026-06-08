@@ -117,6 +117,7 @@ export const IndirectExpensesPage: React.FC = () => {
   const [categoryClassMap, setCategoryClassMap] = useState<Map<string, string | null>>(new Map());
   const [costScope, setCostScope] = useState<"all" | "kitchen" | "bar">("all");
   const [excelLoading, setExcelLoading] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
   const [efficiencyPeriodAId, setEfficiencyPeriodAId] = useState<string>("");
   const [efficiencyPeriodBId, setEfficiencyPeriodBId] = useState<string>("");

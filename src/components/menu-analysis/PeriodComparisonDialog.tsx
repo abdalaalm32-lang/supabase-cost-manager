@@ -604,22 +604,80 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {[
-                            { label: "السعة (Capacity)", a: A.capacity, b: B.capacity, c: C?.capacity || 0 },
-                            { label: "معدل الدوران", a: A.turn_over, b: B.turn_over, c: C?.turn_over || 0 },
-                            { label: "متوسط الفاتورة", a: A.avg_check, b: B.avg_check, c: C?.avg_check || 0 },
-                            { label: "عدد الأيام", a: getDays(A.start_date, A.end_date), b: getDays(B.start_date, B.end_date), c: C ? getDays(C.start_date, C.end_date) : 0 },
-                            { label: "مبيعات يومية متوقعة", a: expectedDailySales(A), b: expectedDailySales(B), c: C ? expectedDailySales(C) : 0 },
-                            { label: "مؤشر الكفاءة (مصاريف/مبيعات)", a: analysis.aEfficiency, b: analysis.bEfficiency, c: analysis.cEfficiency, decimal: 4 },
-                          ].map(r => (
-                            <TableRow key={r.label}>
-                              <TableCell className="font-medium">{r.label}</TableCell>
-                              <TableCell className="text-center">{r.a.toLocaleString(undefined, { maximumFractionDigits: (r as any).decimal || 2 })}</TableCell>
-                              <TableCell className="text-center font-bold">{r.b.toLocaleString(undefined, { maximumFractionDigits: (r as any).decimal || 2 })}</TableCell>
-                              {hasC && <TableCell className="text-center font-bold">{r.c.toLocaleString(undefined, { maximumFractionDigits: (r as any).decimal || 2 })}</TableCell>}
-                              <TableCell className="text-center"><ChangeCell a={r.a} b={r.b} /></TableCell>
-                            </TableRow>
-                          ))}
+                          {(() => {
+                            const venueOf = (p?: ComparablePeriod) => p ? (p.venue_type === "تيك اواي" ? "تيك اواي" : "صالة") : "—";
+                            const isTake = (p?: ComparablePeriod) => p?.venue_type === "تيك اواي";
+                            const anyTake = isTake(A) || isTake(B) || (hasC && isTake(C));
+                            const cap = (p?: ComparablePeriod) => p ? p.capacity : 0;
+                            const to = (p?: ComparablePeriod) => p ? p.turn_over : 0;
+                            const ac = (p?: ComparablePeriod) => p ? p.avg_check : 0;
+                            const days = (p?: ComparablePeriod) => p ? getDays(p.start_date, p.end_date) : 0;
+                            const ds = (p?: ComparablePeriod) => p ? expectedDailySales(p) : 0;
+
+                            const dashCell = (txt: string = "—") => <TableCell className="text-center text-muted-foreground">{txt}</TableCell>;
+                            const numCell = (v: number, bold = false, dec = 2) => (
+                              <TableCell className={`text-center ${bold ? "font-bold" : ""}`}>{v.toLocaleString(undefined, { maximumFractionDigits: dec })}</TableCell>
+                            );
+
+                            return (
+                              <>
+                                {/* Venue type row */}
+                                <TableRow>
+                                  <TableCell className="font-medium">نوع المكان</TableCell>
+                                  <TableCell className="text-center">
+                                    <Badge variant="outline" className={isTake(A) ? "text-orange-500 border-orange-500/40" : "text-blue-500 border-blue-500/40"}>{venueOf(A)}</Badge>
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <Badge variant="outline" className={isTake(B) ? "text-orange-500 border-orange-500/40" : "text-blue-500 border-blue-500/40"}>{venueOf(B)}</Badge>
+                                  </TableCell>
+                                  {hasC && <TableCell className="text-center">
+                                    <Badge variant="outline" className={isTake(C) ? "text-orange-500 border-orange-500/40" : "text-blue-500 border-blue-500/40"}>{venueOf(C)}</Badge>
+                                  </TableCell>}
+                                  <TableCell className="text-center text-xs text-muted-foreground">
+                                    {venueOf(A) === venueOf(B) ? "نفس النوع" : "⚠️ نوعين مختلفين"}
+                                  </TableCell>
+                                </TableRow>
+                                {/* Capacity */}
+                                <TableRow>
+                                  <TableCell className="font-medium">{anyTake ? "السعة / عدد الطلبات اليومي" : "السعة (Capacity)"}</TableCell>
+                                  {numCell(cap(A))}{numCell(cap(B), true)}{hasC && numCell(cap(C), true)}
+                                  <TableCell className="text-center"><ChangeCell a={cap(A)} b={cap(B)} /></TableCell>
+                                </TableRow>
+                                {/* Turn over — hidden value if takeaway */}
+                                <TableRow>
+                                  <TableCell className="font-medium">معدل الدوران {anyTake && <span className="text-xs text-muted-foreground">(للصالة فقط)</span>}</TableCell>
+                                  {isTake(A) ? dashCell() : numCell(to(A))}
+                                  {isTake(B) ? dashCell() : numCell(to(B), true)}
+                                  {hasC && (isTake(C) ? dashCell() : numCell(to(C), true))}
+                                  {(isTake(A) || isTake(B)) ? dashCell("—") : <TableCell className="text-center"><ChangeCell a={to(A)} b={to(B)} /></TableCell>}
+                                </TableRow>
+                                {/* Avg check */}
+                                <TableRow>
+                                  <TableCell className="font-medium">متوسط الفاتورة</TableCell>
+                                  {numCell(ac(A))}{numCell(ac(B), true)}{hasC && numCell(ac(C), true)}
+                                  <TableCell className="text-center"><ChangeCell a={ac(A)} b={ac(B)} /></TableCell>
+                                </TableRow>
+                                {/* Days */}
+                                <TableRow>
+                                  <TableCell className="font-medium">عدد الأيام</TableCell>
+                                  {numCell(days(A))}{numCell(days(B), true)}{hasC && numCell(days(C), true)}
+                                  <TableCell className="text-center"><ChangeCell a={days(A)} b={days(B)} /></TableCell>
+                                </TableRow>
+                                {/* Daily expected sales */}
+                                <TableRow>
+                                  <TableCell className="font-medium">مبيعات يومية متوقعة</TableCell>
+                                  {numCell(ds(A))}{numCell(ds(B), true)}{hasC && numCell(ds(C), true)}
+                                  <TableCell className="text-center"><ChangeCell a={ds(A)} b={ds(B)} /></TableCell>
+                                </TableRow>
+                                {/* Efficiency */}
+                                <TableRow>
+                                  <TableCell className="font-medium">مؤشر الكفاءة (مصاريف/مبيعات)</TableCell>
+                                  {numCell(analysis.aEfficiency, false, 4)}{numCell(analysis.bEfficiency, true, 4)}{hasC && numCell(analysis.cEfficiency, true, 4)}
+                                  <TableCell className="text-center"><ChangeCell a={analysis.aEfficiency} b={analysis.bEfficiency} /></TableCell>
+                                </TableRow>
+                              </>
+                            );
+                          })()}
                         </TableBody>
                       </Table>
                     </div>

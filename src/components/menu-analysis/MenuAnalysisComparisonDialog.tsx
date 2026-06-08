@@ -627,7 +627,7 @@ export const MenuAnalysisComparisonDialog: React.FC<Props> = ({
             <TabsContent value="items" className="space-y-4">
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-base">أكبر 15 صنف تغيّرت نسبة تكلفته المباشرة</CardTitle>
+                  <CardTitle className="text-base">جميع الأصناف — مرتبة حسب حجم تغير نسبة التكلفة المباشرة</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="overflow-x-auto">

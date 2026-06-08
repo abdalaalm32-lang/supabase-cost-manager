@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrendingDown, TrendingUp, Minus, AlertTriangle, CheckCircle2, Info } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
-import { PrintButton } from "@/components/PrintButton";
+
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";

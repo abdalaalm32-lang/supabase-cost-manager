@@ -192,8 +192,7 @@ export const MenuAnalysisComparisonDialog: React.FC<Props> = ({
     const removed = rows.filter(r => r.isRemoved);
     const top = rows
       .filter(r => !r.isNew && !r.isRemoved)
-      .sort((x, y) => Math.abs(y.directPctDiff) - Math.abs(x.directPctDiff))
-      .slice(0, 15);
+      .sort((x, y) => Math.abs(y.directPctDiff) - Math.abs(x.directPctDiff));
     return { top, added, removed };
   }, [A, B]);
 

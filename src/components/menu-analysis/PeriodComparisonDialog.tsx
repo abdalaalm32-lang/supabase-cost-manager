@@ -206,9 +206,13 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
       const shareB = bSales > 0 ? (bv / bSales) * 100 : 0;
       const vsSales = pct - salesGrowthPct;
       const contribution = totalIncrease !== 0 ? (diff / Math.abs(totalIncrease)) * 100 : 0;
-      const type = classifyItem(av, bv);
+      const expected = av > 0 ? av * (1 + salesGrowthPct / 100) : 0;
+      const variance = av > 0 ? bv - expected : 0;
+      const isNew = av === 0 && bv > 0;
+      const isRemoved = av > 0 && bv === 0;
+      const type = classifyItem(av, bv, pct, salesGrowthPct);
       const risk = riskLevel(contribution, pct);
-      return { label, a: av, b: bv, c: cv, diff, pct, shareA, shareB, vsSales, contribution, type, risk };
+      return { label, a: av, b: bv, c: cv, diff, pct, shareA, shareB, vsSales, contribution, expected, variance, isNew, isRemoved, type, risk };
     });
 
     const increased = [...rows].filter(r => r.diff > 0).sort((x, y) => y.diff - x.diff).slice(0, 3);

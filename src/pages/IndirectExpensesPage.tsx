@@ -117,6 +117,7 @@ export const IndirectExpensesPage: React.FC = () => {
   const [costScope, setCostScope] = useState<"all" | "kitchen" | "bar">("all");
   const [excelLoading, setExcelLoading] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
+  const [efficiencyComparePeriodId, setEfficiencyComparePeriodId] = useState<string>("");
 
   const companyId = auth.profile?.company_id;
 
@@ -963,6 +964,127 @@ export const IndirectExpensesPage: React.FC = () => {
               </table>
             </CardContent>
           </Card>
+
+          {/* Sales Growth Efficiency Card */}
+          {(() => {
+            const otherPeriods = periods.filter(p => p.id !== selectedPeriod.id);
+            const prev = otherPeriods.find(p => p.id === efficiencyComparePeriodId) ?? null;
+            const prevSales = prev ? monthlyExpectedSales(prev) : 0;
+            const prevIndirect = prev ? totalIndirectCost(prev) : 0;
+            const extraSales = monthSales - prevSales;
+            const extraExpenses = total - prevIndirect;
+            const costPerExtraEgp = prev && extraSales > 0 ? extraExpenses / extraSales : null;
+            const retentionPct = prev && extraSales > 0 ? ((extraSales - extraExpenses) / extraSales) * 100 : null;
+
+            const rating = (() => {
+              if (costPerExtraEgp === null) return { label: "—", color: "text-muted-foreground", emoji: "" };
+              if (costPerExtraEgp < 0.25) return { label: "ممتاز", color: "text-emerald-500", emoji: "🟢" };
+              if (costPerExtraEgp < 0.40) return { label: "جيد", color: "text-green-500", emoji: "🟢" };
+              if (costPerExtraEgp < 0.60) return { label: "متوسط", color: "text-yellow-500", emoji: "🟡" };
+              if (costPerExtraEgp <= 1.00) return { label: "ضعيف", color: "text-orange-500", emoji: "🟠" };
+              return { label: "خطر", color: "text-destructive", emoji: "🔴" };
+            })();
+
+            return (
+              <Card className="border-primary/20">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Zap className="text-yellow-500" size={20} />
+                      كفاءة نمو المبيعات
+                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">قارن مع:</span>
+                      <Select value={efficiencyComparePeriodId} onValueChange={setEfficiencyComparePeriodId}>
+                        <SelectTrigger className="w-[200px] h-8 text-xs">
+                          <SelectValue placeholder="اختر فترة للمقارنة" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {otherPeriods.length === 0 ? (
+                            <div className="px-2 py-1 text-xs text-muted-foreground">لا توجد فترات أخرى</div>
+                          ) : otherPeriods.map(p => {
+                            const bn = branches.find(b => b.id === p.branch_id)?.name;
+                            return (
+                              <SelectItem key={p.id} value={p.id}>
+                                {p.name}{bn ? ` - ${bn}` : ""}
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {!prev ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      اختر فترة سابقة من القائمة أعلاه لعرض تحليل كفاءة نمو المبيعات
+                    </p>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+                        <div className="rounded-lg border bg-card p-3 text-center">
+                          <p className="text-[11px] text-muted-foreground mb-1">مبيعات إضافية</p>
+                          <p className={`text-base font-bold ${extraSales >= 0 ? 'text-primary' : 'text-destructive'}`}>
+                            {extraSales.toLocaleString(undefined, { maximumFractionDigits: 0 })} ج
+                          </p>
+                        </div>
+                        <div className="rounded-lg border bg-card p-3 text-center">
+                          <p className="text-[11px] text-muted-foreground mb-1">مصاريف إضافية</p>
+                          <p className={`text-base font-bold ${extraExpenses <= 0 ? 'text-emerald-500' : 'text-destructive'}`}>
+                            {extraExpenses.toLocaleString(undefined, { maximumFractionDigits: 0 })} ج
+                          </p>
+                        </div>
+                        <div className="rounded-lg border bg-card p-3 text-center">
+                          <p className="text-[11px] text-muted-foreground mb-1">تكلفة كل 1ج مبيعات إضافية</p>
+                          <p className={`text-base font-bold ${rating.color}`}>
+                            {costPerExtraEgp !== null ? `${costPerExtraEgp.toFixed(2)} ج` : "—"}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border bg-card p-3 text-center">
+                          <p className="text-[11px] text-muted-foreground mb-1">الاحتفاظ من نمو المبيعات</p>
+                          <p className={`text-base font-bold ${(retentionPct ?? 0) >= 50 ? 'text-emerald-500' : (retentionPct ?? 0) >= 0 ? 'text-yellow-500' : 'text-destructive'}`}>
+                            {retentionPct !== null ? `${retentionPct.toFixed(1)}%` : "—"}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border bg-card p-3 text-center">
+                          <p className="text-[11px] text-muted-foreground mb-1">التقييم</p>
+                          <p className={`text-base font-bold ${rating.color}`}>
+                            {rating.emoji} {rating.label}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg border bg-muted/30 p-3 mb-3">
+                        <p className="text-xs font-semibold mb-2">سلم التصنيف:</p>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="border-b">
+                                <th className="text-right py-1 px-2 font-semibold">القيمة</th>
+                                <th className="text-right py-1 px-2 font-semibold">التقييم</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr className="border-b"><td className="py-1 px-2">أقل من 0.25</td><td className="py-1 px-2 text-emerald-500 font-semibold">🟢 ممتاز</td></tr>
+                              <tr className="border-b"><td className="py-1 px-2">0.25 - 0.40</td><td className="py-1 px-2 text-green-500 font-semibold">🟢 جيد</td></tr>
+                              <tr className="border-b"><td className="py-1 px-2">0.40 - 0.60</td><td className="py-1 px-2 text-yellow-500 font-semibold">🟡 متوسط</td></tr>
+                              <tr className="border-b"><td className="py-1 px-2">0.60 - 1.00</td><td className="py-1 px-2 text-orange-500 font-semibold">🟠 ضعيف</td></tr>
+                              <tr><td className="py-1 px-2">أكبر من 1.00</td><td className="py-1 px-2 text-destructive font-semibold">🔴 خطر</td></tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      <p className="text-[11px] text-muted-foreground leading-relaxed bg-yellow-500/5 border border-yellow-500/20 rounded p-2">
+                        <strong>ملاحظة:</strong> هذا المؤشر يعتمد على المصاريف غير المباشرة فقط (لا يشمل تكلفة البضاعة)، لقياس كفاءة التشغيل مع نمو المبيعات بدقة.
+                      </p>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
 
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

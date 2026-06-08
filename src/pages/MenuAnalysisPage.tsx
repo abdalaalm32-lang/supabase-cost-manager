@@ -145,6 +145,12 @@ export const MenuAnalysisPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [companyName, setCompanyName] = useState("");
   const [excelLoading, setExcelLoading] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [compareOpen, setCompareOpen] = useState(false);
+  const [efficiencyPeriodAId, setEfficiencyPeriodAId] = useState<string>("");
+  const [efficiencyPeriodBId, setEfficiencyPeriodBId] = useState<string>("");
+  const [periodBPacking, setPeriodBPacking] = useState<PackingItem[]>([]);
+  const [periodBSideCost, setPeriodBSideCost] = useState<SideCostItem[]>([]);
 
   const companyId = auth.profile?.company_id;
 

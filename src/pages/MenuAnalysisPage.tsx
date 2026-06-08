@@ -18,7 +18,7 @@ import { CategoryPackingTable } from "@/components/menu-analysis/CategoryPacking
 import { CategorySummaryTable } from "@/components/menu-analysis/CategorySummaryTable";
 import { CategorySideCostTable } from "@/components/menu-analysis/CategorySideCostTable";
 import { CategoryFinancialTable } from "@/components/menu-analysis/CategoryFinancialTable";
-import { PeriodComparisonDialog } from "@/components/menu-analysis/PeriodComparisonDialog";
+import { MenuAnalysisComparisonDialog, MenuBreakdown } from "@/components/menu-analysis/MenuAnalysisComparisonDialog";
 
 interface RecipeIngredientDetail {
   name: string;

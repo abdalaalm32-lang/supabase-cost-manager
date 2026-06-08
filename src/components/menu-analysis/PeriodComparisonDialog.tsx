@@ -132,9 +132,15 @@ const netProfitPctOf = (p: ComparablePeriod, directPct: number) => {
   return 100 - indPct - directPct;
 };
 
-const classifyItem = (a: number, b: number): { label: string; variant: "destructive" | "secondary" | "default" | "outline"; className?: string } => {
-  if (a === 0 && b > 0) return { label: "مصروف جديد", variant: "outline", className: "text-blue-500 border-blue-500/50" };
-  if (a > 0 && b === 0) return { label: "تم إلغاؤه", variant: "outline", className: "text-purple-500 border-purple-500/50" };
+const classifyItem = (a: number, b: number, itemPct: number, salesPct: number): { label: string; variant: "destructive" | "secondary" | "default" | "outline"; className?: string } => {
+  if (a === 0 && b > 0) return { label: "🆕 مصروف جديد", variant: "outline", className: "text-blue-500 border-blue-500/50" };
+  if (a > 0 && b === 0) return { label: "✖ تم إلغاؤه", variant: "outline", className: "text-purple-500 border-purple-500/50" };
+  if (a === 0 && b === 0) return { label: "—", variant: "secondary" };
+  const diff = itemPct - salesPct;
+  if (diff >= 10) return { label: "🔴 أعلى بكثير من نمو المبيعات", variant: "outline", className: "text-red-500 border-red-500/50" };
+  if (diff >= 3) return { label: "🟡 أعلى من نمو المبيعات", variant: "outline", className: "text-yellow-600 border-yellow-500/50" };
+  if (diff <= -10) return { label: "🟢 أقل بكثير من نمو المبيعات", variant: "outline", className: "text-emerald-600 border-emerald-500/50" };
+  if (diff <= -3) return { label: "🟢 أقل من نمو المبيعات", variant: "outline", className: "text-emerald-600 border-emerald-500/50" };
   return { label: "طبيعي", variant: "secondary" };
 };
 
@@ -200,9 +206,13 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
       const shareB = bSales > 0 ? (bv / bSales) * 100 : 0;
       const vsSales = pct - salesGrowthPct;
       const contribution = totalIncrease !== 0 ? (diff / Math.abs(totalIncrease)) * 100 : 0;
-      const type = classifyItem(av, bv);
+      const expected = av > 0 ? av * (1 + salesGrowthPct / 100) : 0;
+      const variance = av > 0 ? bv - expected : 0;
+      const isNew = av === 0 && bv > 0;
+      const isRemoved = av > 0 && bv === 0;
+      const type = classifyItem(av, bv, pct, salesGrowthPct);
       const risk = riskLevel(contribution, pct);
-      return { label, a: av, b: bv, c: cv, diff, pct, shareA, shareB, vsSales, contribution, type, risk };
+      return { label, a: av, b: bv, c: cv, diff, pct, shareA, shareB, vsSales, contribution, expected, variance, isNew, isRemoved, type, risk };
     });
 
     const increased = [...rows].filter(r => r.diff > 0).sort((x, y) => y.diff - x.diff).slice(0, 3);
@@ -253,8 +263,8 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
     }
 
     // Items added / removed
-    const added = rows.filter(r => r.type.label === "مصروف جديد");
-    const removed = rows.filter(r => r.type.label === "تم إلغاؤه");
+    const added = rows.filter(r => r.isNew);
+    const removed = rows.filter(r => r.isRemoved);
     if (added.length) recs.push({ type: "info", text: `مصاريف جديدة ظهرت: ${added.map(x => x.label).join("، ")}` });
     if (removed.length) recs.push({ type: "success", text: `مصاريف تم إلغاؤها: ${removed.map(x => x.label).join("، ")}` });
 
@@ -265,6 +275,30 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
     }
 
     if (recs.length === 0) recs.push({ type: "info", text: "مفيش تغييرات جوهرية بين الفترات — الأداء مستقر." });
+
+    // Marginal expense per extra EGP of sales (only meaningful when sales grew)
+    const extraSales = bSales - aSales;
+    const extraExpenses = bTotal - aTotal;
+    const expensePerExtraSale = extraSales > 0 ? extraExpenses / extraSales : null;
+    const salesRetentionPct = expensePerExtraSale !== null ? (1 - expensePerExtraSale) * 100 : null;
+
+    // Executive summary
+    const topUp = [...rows].filter(r => r.diff > 0).sort((x, y) => y.diff - x.diff)[0];
+    const topDown = [...rows].filter(r => r.diff < 0).sort((x, y) => x.diff - y.diff)[0];
+    const execParts: string[] = [];
+    execParts.push(`ارتفعت المبيعات بنسبة ${salesGrowthPct.toFixed(1)}% مقابل تغير في المصاريف قدره ${totalDiffPct > 0 ? "+" : ""}${totalDiffPct.toFixed(1)}%`);
+    execParts.push(`مما أدى إلى ${bPct < aPct ? "تحسن" : "تغير"} نسبة المصاريف من المبيعات من ${aPct.toFixed(2)}% إلى ${bPct.toFixed(2)}%`);
+    execParts.push(`وحركة صافي الربح من ${aNetProfitPct.toFixed(2)}% إلى ${bNetProfitPct.toFixed(2)}%.`);
+    if (topUp && topUp.diff > 0) {
+      execParts.push(`أكبر مساهم في زيادة المصاريف كان بند "${topUp.label}" (${topUp.contribution.toFixed(0)}% من إجمالي الزيادة).`);
+    }
+    if (topDown && topDown.diff < 0) {
+      execParts.push(`بينما ساهم انخفاض "${topDown.label}" في تعويض جزء من الزيادة (${fmt(Math.abs(topDown.diff))}).`);
+    }
+    if (expensePerExtraSale !== null) {
+      execParts.push(`كل 1 جنيه مبيعات إضافية احتاج ${expensePerExtraSale.toFixed(2)} جنيه مصروف إضافي فقط، وتم الاحتفاظ بـ ${(salesRetentionPct ?? 0).toFixed(1)}% من نمو المبيعات قبل احتساب تكلفة البضاعة.`);
+    }
+    const executiveSummary = execParts.join(" ");
 
     // Chart data
     const chartData = [
@@ -278,7 +312,9 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
       aNetProfitPct, bNetProfitPct, cNetProfitPct,
       aBreakEven, bBreakEven, cBreakEven,
       aEfficiency, bEfficiency, cEfficiency,
-      salesGrowthPct, totalIncrease,
+      salesGrowthPct, totalIncrease, totalDiffPct,
+      extraSales, extraExpenses, expensePerExtraSale, salesRetentionPct,
+      executiveSummary,
       increased, decreased, recs, chartData,
     };
   }, [A, B, C, avgDirectCostPct]);
@@ -293,6 +329,8 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
     if (hasC) cols.push({ key: "c", label: `C: ${C?.name || ""}` });
     cols.push({ key: "change_ba", label: "التغيير B عن A" });
     if (hasC) cols.push({ key: "change_cb", label: "التغيير C عن B" });
+    cols.push({ key: "expected", label: "المتوقع وفق نمو المبيعات" });
+    cols.push({ key: "variance", label: "الفرق عن المتوقع" });
     cols.push({ key: "shareA", label: "% من مبيعات A" });
     cols.push({ key: "shareB", label: "% من مبيعات B" });
     cols.push({ key: "vsSales", label: "نمو مقابل المبيعات" });
@@ -309,20 +347,26 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
       a: fmt(r.a),
       b: fmt(r.b),
       c: hasC ? fmt(r.c) : "",
-      change_ba: fmtChange(r.a, r.b),
+      change_ba: r.isNew ? `جديد +${fmt(r.b)}` : r.isRemoved ? `ملغي −${fmt(r.a)}` : fmtChange(r.a, r.b),
       change_cb: hasC ? fmtChange(r.b, r.c) : "",
+      expected: r.isNew ? "—" : fmt(r.expected),
+      variance: r.isNew || r.isRemoved ? "—" : `${r.variance > 0 ? "+" : ""}${fmt(r.variance)}`,
       shareA: r.shareA.toFixed(2) + "%",
       shareB: r.shareB.toFixed(2) + "%",
-      vsSales: (r.vsSales > 0 ? "+" : "") + r.vsSales.toFixed(1) + "%",
+      vsSales: r.isNew || r.isRemoved ? "—" : (r.vsSales > 0 ? "+" : "") + r.vsSales.toFixed(1) + "%",
       contribution: r.contribution.toFixed(1) + "%",
       type: r.type.label,
       risk: r.risk.label,
     }));
+    const expectedTotal = analysis.aTotal * (1 + analysis.salesGrowthPct / 100);
+    const varianceTotal = analysis.bTotal - expectedTotal;
     rows.push({
       label: "الإجمالي", a: fmt(analysis.aTotal), b: fmt(analysis.bTotal),
       c: hasC ? fmt(analysis.cTotal) : "",
       change_ba: fmtChange(analysis.aTotal, analysis.bTotal),
       change_cb: hasC ? fmtChange(analysis.bTotal, analysis.cTotal) : "",
+      expected: fmt(expectedTotal),
+      variance: `${varianceTotal > 0 ? "+" : ""}${fmt(varianceTotal)}`,
       shareA: analysis.aPct.toFixed(2) + "%", shareB: analysis.bPct.toFixed(2) + "%",
       vsSales: "", contribution: "100%", type: "", risk: "",
       __rowType: "grand-total",
@@ -333,6 +377,7 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
       c: hasC ? fmt(analysis.cSales) : "",
       change_ba: fmtChange(analysis.aSales, analysis.bSales),
       change_cb: hasC ? fmtChange(analysis.bSales, analysis.cSales) : "",
+      expected: "", variance: "",
       shareA: "", shareB: "", vsSales: "", contribution: "", type: "", risk: "",
       __rowType: "group-total",
     });
@@ -342,6 +387,7 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
       c: hasC ? analysis.cPct.toFixed(2) + "%" : "",
       change_ba: (analysis.bPct - analysis.aPct).toFixed(2) + "%",
       change_cb: hasC ? (analysis.cPct - analysis.bPct).toFixed(2) + "%" : "",
+      expected: "", variance: "",
       shareA: "", shareB: "", vsSales: "", contribution: "", type: "", risk: "",
       __rowType: "group-total",
     });
@@ -351,6 +397,7 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
       c: hasC ? fmt(analysis.cBreakEven) : "",
       change_ba: fmtChange(analysis.aBreakEven, analysis.bBreakEven),
       change_cb: hasC ? fmtChange(analysis.bBreakEven, analysis.cBreakEven) : "",
+      expected: "", variance: "",
       shareA: "", shareB: "", vsSales: "", contribution: "", type: "", risk: "",
       __rowType: "group-total",
     });
@@ -361,9 +408,20 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
       c: hasC ? analysis.cNetProfitPct.toFixed(2) + "%" : "",
       change_ba: (analysis.bNetProfitPct - analysis.aNetProfitPct).toFixed(2) + "%",
       change_cb: hasC ? (analysis.cNetProfitPct - analysis.bNetProfitPct).toFixed(2) + "%" : "",
+      expected: "", variance: "",
       shareA: "", shareB: "", vsSales: "", contribution: "", type: "", risk: "",
       __rowType: "group-total",
     });
+    if (analysis.expensePerExtraSale !== null) {
+      rows.push({
+        label: "مصروف إضافي لكل 1 جنيه مبيعات إضافية",
+        a: "", b: analysis.expensePerExtraSale.toFixed(2),
+        c: "", change_ba: `${(analysis.salesRetentionPct ?? 0).toFixed(1)}% احتفاظ`,
+        change_cb: "", expected: "", variance: "",
+        shareA: "", shareB: "", vsSales: "", contribution: "", type: "", risk: "",
+        __rowType: "group-total",
+      });
+    }
     return rows;
   }, [analysis, A, B, C, hasC]);
 
@@ -411,22 +469,37 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
 
     const detailHead = `<tr>
       <th>البند</th><th>A</th><th>B</th>${hasC ? "<th>C</th>" : ""}<th>B عن A</th>${hasC ? "<th>C عن B</th>" : ""}
+      <th>المتوقع</th><th>الفرق عن المتوقع</th>
       <th>% من مبيعات A</th><th>% من مبيعات B</th><th>vs نمو المبيعات</th><th>المساهمة %</th><th>التصنيف</th><th>الخطر</th>
     </tr>`;
-    const detailBody = analysis.rows.map(r => `<tr>
+    const detailBody = analysis.rows.map(r => {
+      const changeBa = r.isNew ? `<span style="color:#1976d2;">جديد +${fmt(r.b)}</span>`
+        : r.isRemoved ? `<span style="color:#7b1fa2;">ملغي −${fmt(r.a)}</span>`
+        : fmtChange(r.a, r.b);
+      const expectedCell = r.isNew ? "—" : fmt(r.expected);
+      const varianceCell = r.isNew || r.isRemoved ? "—" : `${r.variance > 0 ? "+" : ""}${fmt(r.variance)}`;
+      const vsSalesCell = r.isNew || r.isRemoved ? "—" : `${r.vsSales > 0 ? "+" : ""}${r.vsSales.toFixed(1)}%`;
+      return `<tr>
       <td style="text-align:right;">${r.label}</td>
       <td>${fmt(r.a)}</td><td><b>${fmt(r.b)}</b></td>${hasC ? `<td><b>${fmt(r.c)}</b></td>` : ""}
-      <td>${fmtChange(r.a, r.b)}</td>${hasC ? `<td>${fmtChange(r.b, r.c)}</td>` : ""}
+      <td>${changeBa}</td>${hasC ? `<td>${fmtChange(r.b, r.c)}</td>` : ""}
+      <td>${expectedCell}</td><td>${varianceCell}</td>
       <td>${r.shareA.toFixed(2)}%</td><td>${r.shareB.toFixed(2)}%</td>
-      <td>${r.vsSales > 0 ? "+" : ""}${r.vsSales.toFixed(1)}%</td>
+      <td>${vsSalesCell}</td>
       <td>${r.contribution.toFixed(1)}%</td>
       <td>${r.type.label}</td><td>${r.risk.label}</td>
-    </tr>`).join("") + `<tr style="font-weight:bold;background:#f0f0f0;">
+    </tr>`;
+    }).join("") + (() => {
+      const expectedT = analysis.aTotal * (1 + analysis.salesGrowthPct / 100);
+      const varianceT = analysis.bTotal - expectedT;
+      return `<tr style="font-weight:bold;background:#f0f0f0;">
       <td style="text-align:right;">الإجمالي</td>
       <td>${fmt(analysis.aTotal)}</td><td>${fmt(analysis.bTotal)}</td>${hasC ? `<td>${fmt(analysis.cTotal)}</td>` : ""}
       <td>${fmtChange(analysis.aTotal, analysis.bTotal)}</td>${hasC ? `<td>${fmtChange(analysis.bTotal, analysis.cTotal)}</td>` : ""}
+      <td>${fmt(expectedT)}</td><td>${varianceT > 0 ? "+" : ""}${fmt(varianceT)}</td>
       <td>${analysis.aPct.toFixed(2)}%</td><td>${analysis.bPct.toFixed(2)}%</td><td>—</td><td>100%</td><td>—</td><td>—</td>
     </tr>`;
+    })();
 
     const increasedHTML = analysis.increased.length
       ? `<ul>${analysis.increased.map(r => `<li>${r.label} <span style="color:#666;">(مساهمة ${r.contribution.toFixed(0)}%)</span> — <b style="color:#c0392b;">+${fmt(r.diff)} (${r.pct.toFixed(1)}%)</b></li>`).join("")}</ul>`
@@ -477,6 +550,18 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
   </div>
 
   ${periodsInfoHTML}
+
+  <h2>📝 الملخص التنفيذي</h2>
+  <div style="border:1px solid #000;padding:8px;background:#f8fbff;font-size:11px;line-height:1.8;margin-bottom:8px;">
+    ${analysis.executiveSummary}
+  </div>
+
+  ${analysis.expensePerExtraSale !== null ? `
+  <h2>⚡ المصروفات الإضافية لكل جنيه مبيعات إضافية</h2>
+  <table>
+    <thead><tr><th>مبيعات إضافية</th><th>مصاريف إضافية</th><th>تكلفة كل 1 جنيه مبيعات إضافية</th><th>نسبة الاحتفاظ بنمو المبيعات</th></tr></thead>
+    <tbody><tr><td>${fmt(analysis.extraSales)}</td><td>${fmt(analysis.extraExpenses)}</td><td><b>${analysis.expensePerExtraSale.toFixed(2)} جنيه</b></td><td><b>${(analysis.salesRetentionPct ?? 0).toFixed(1)}%</b></td></tr></tbody>
+  </table>` : ""}
 
   <h2>المؤشرات الرئيسية (KPIs)</h2>
   <table>
@@ -567,6 +652,38 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
 
             {A && B && aId !== bId && analysis && (
               <>
+                {/* Executive Summary */}
+                <Card className="border-primary/40 bg-primary/5">
+                  <CardHeader className="pb-2"><CardTitle className="text-sm">📝 الملخص التنفيذي</CardTitle></CardHeader>
+                  <CardContent>
+                    <p className="text-sm leading-7">{analysis.executiveSummary}</p>
+                  </CardContent>
+                </Card>
+
+                {/* Marginal Efficiency KPI */}
+                {analysis.expensePerExtraSale !== null && (
+                  <Card className="border-emerald-500/40 bg-emerald-500/5">
+                    <CardHeader className="pb-2"><CardTitle className="text-sm">⚡ المصروفات الإضافية لكل جنيه مبيعات إضافية</CardTitle></CardHeader>
+                    <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                      <div>
+                        <div className="text-muted-foreground text-xs mb-1">مبيعات إضافية</div>
+                        <div className="font-bold text-base">{fmt(analysis.extraSales)}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground text-xs mb-1">مصاريف إضافية</div>
+                        <div className="font-bold text-base">{fmt(analysis.extraExpenses)}</div>
+                      </div>
+                      <div>
+                        <div className="text-muted-foreground text-xs mb-1">تكلفة كل 1 جنيه مبيعات إضافية</div>
+                        <div className="font-bold text-base text-emerald-600">
+                          {analysis.expensePerExtraSale.toFixed(2)} جنيه
+                          <span className="text-xs text-muted-foreground mr-2">(تم الاحتفاظ بـ {(analysis.salesRetentionPct ?? 0).toFixed(1)}% من نمو المبيعات)</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* KPI Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
                   {[
@@ -704,6 +821,8 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
                             {hasC && <TableHead className="text-center">C</TableHead>}
                             <TableHead className="text-center">B عن A</TableHead>
                             {hasC && <TableHead className="text-center">C عن B</TableHead>}
+                            <TableHead className="text-center">المتوقع (وفق نمو المبيعات)</TableHead>
+                            <TableHead className="text-center">الفرق عن المتوقع</TableHead>
                             <TableHead className="text-center">% من مبيعات A</TableHead>
                             <TableHead className="text-center">% من مبيعات B</TableHead>
                             <TableHead className="text-center">vs نمو المبيعات</TableHead>
@@ -715,17 +834,30 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
                         <TableBody>
                           {analysis.rows.map(r => {
                             const vsColor = r.vsSales > 5 ? "text-red-500" : r.vsSales < -5 ? "text-emerald-600" : "text-muted-foreground";
+                            const varColor = r.variance > 0 ? "text-red-500" : r.variance < 0 ? "text-emerald-600" : "text-muted-foreground";
                             return (
                               <TableRow key={r.label}>
                                 <TableCell className="font-medium">{r.label}</TableCell>
                                 <TableCell className="text-center">{fmt(r.a)}</TableCell>
                                 <TableCell className="text-center font-bold">{fmt(r.b)}</TableCell>
                                 {hasC && <TableCell className="text-center font-bold">{fmt(r.c)}</TableCell>}
-                                <TableCell className="text-center"><ChangeCell a={r.a} b={r.b} /></TableCell>
+                                <TableCell className="text-center">
+                                  {r.isNew ? (
+                                    <span className="font-semibold text-blue-500">جديد +{fmt(r.b)}</span>
+                                  ) : r.isRemoved ? (
+                                    <span className="font-semibold text-purple-500">ملغي −{fmt(r.a)}</span>
+                                  ) : (
+                                    <ChangeCell a={r.a} b={r.b} />
+                                  )}
+                                </TableCell>
                                 {hasC && <TableCell className="text-center"><ChangeCell a={r.b} b={r.c} /></TableCell>}
+                                <TableCell className="text-center text-xs">{r.isNew ? "—" : fmt(r.expected)}</TableCell>
+                                <TableCell className={`text-center text-xs font-bold ${varColor}`}>
+                                  {r.isNew || r.isRemoved ? "—" : `${r.variance > 0 ? "+" : ""}${fmt(r.variance)}`}
+                                </TableCell>
                                 <TableCell className="text-center text-xs">{r.shareA.toFixed(2)}%</TableCell>
                                 <TableCell className="text-center text-xs font-bold">{r.shareB.toFixed(2)}%</TableCell>
-                                <TableCell className={`text-center text-xs font-bold ${vsColor}`}>{r.vsSales > 0 ? "+" : ""}{r.vsSales.toFixed(1)}%</TableCell>
+                                <TableCell className={`text-center text-xs font-bold ${vsColor}`}>{r.isNew || r.isRemoved ? "—" : `${r.vsSales > 0 ? "+" : ""}${r.vsSales.toFixed(1)}%`}</TableCell>
                                 <TableCell className="text-center text-xs font-bold">{r.contribution.toFixed(1)}%</TableCell>
                                 <TableCell className="text-center"><Badge variant={r.type.variant} className={r.type.className}>{r.type.label}</Badge></TableCell>
                                 <TableCell className="text-center"><Badge variant="outline" className={r.risk.className}>{r.risk.label}</Badge></TableCell>
@@ -739,6 +871,8 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
                             {hasC && <TableCell className="text-center">{fmt(analysis.cTotal)}</TableCell>}
                             <TableCell className="text-center"><ChangeCell a={analysis.aTotal} b={analysis.bTotal} /></TableCell>
                             {hasC && <TableCell className="text-center"><ChangeCell a={analysis.bTotal} b={analysis.cTotal} /></TableCell>}
+                            <TableCell className="text-center text-xs">{fmt(analysis.aTotal * (1 + analysis.salesGrowthPct / 100))}</TableCell>
+                            <TableCell className="text-center text-xs">{(analysis.bTotal - analysis.aTotal * (1 + analysis.salesGrowthPct / 100)) > 0 ? "+" : ""}{fmt(analysis.bTotal - analysis.aTotal * (1 + analysis.salesGrowthPct / 100))}</TableCell>
                             <TableCell className="text-center text-xs">{analysis.aPct.toFixed(2)}%</TableCell>
                             <TableCell className="text-center text-xs">{analysis.bPct.toFixed(2)}%</TableCell>
                             <TableCell />

@@ -329,6 +329,8 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
     if (hasC) cols.push({ key: "c", label: `C: ${C?.name || ""}` });
     cols.push({ key: "change_ba", label: "التغيير B عن A" });
     if (hasC) cols.push({ key: "change_cb", label: "التغيير C عن B" });
+    cols.push({ key: "expected", label: "المتوقع وفق نمو المبيعات" });
+    cols.push({ key: "variance", label: "الفرق عن المتوقع" });
     cols.push({ key: "shareA", label: "% من مبيعات A" });
     cols.push({ key: "shareB", label: "% من مبيعات B" });
     cols.push({ key: "vsSales", label: "نمو مقابل المبيعات" });
@@ -345,11 +347,13 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
       a: fmt(r.a),
       b: fmt(r.b),
       c: hasC ? fmt(r.c) : "",
-      change_ba: fmtChange(r.a, r.b),
+      change_ba: r.isNew ? `جديد +${fmt(r.b)}` : r.isRemoved ? `ملغي −${fmt(r.a)}` : fmtChange(r.a, r.b),
       change_cb: hasC ? fmtChange(r.b, r.c) : "",
+      expected: r.isNew ? "—" : fmt(r.expected),
+      variance: r.isNew || r.isRemoved ? "—" : `${r.variance > 0 ? "+" : ""}${fmt(r.variance)}`,
       shareA: r.shareA.toFixed(2) + "%",
       shareB: r.shareB.toFixed(2) + "%",
-      vsSales: (r.vsSales > 0 ? "+" : "") + r.vsSales.toFixed(1) + "%",
+      vsSales: r.isNew || r.isRemoved ? "—" : (r.vsSales > 0 ? "+" : "") + r.vsSales.toFixed(1) + "%",
       contribution: r.contribution.toFixed(1) + "%",
       type: r.type.label,
       risk: r.risk.label,

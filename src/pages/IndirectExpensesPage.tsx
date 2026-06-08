@@ -121,6 +121,10 @@ export const IndirectExpensesPage: React.FC = () => {
   const [compareOpen, setCompareOpen] = useState(false);
   const [efficiencyPeriodAId, setEfficiencyPeriodAId] = useState<string>("");
   const [efficiencyPeriodBId, setEfficiencyPeriodBId] = useState<string>("");
+  const [directCostAlertThreshold, setDirectCostAlertThreshold] = useState<number>(() => {
+    const saved = localStorage.getItem("direct_cost_alert_threshold");
+    return saved ? parseFloat(saved) : 40;
+  });
 
   const companyId = auth.profile?.company_id;
 

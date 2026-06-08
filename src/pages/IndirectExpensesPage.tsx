@@ -1099,23 +1099,43 @@ export const IndirectExpensesPage: React.FC = () => {
                     <Lightbulb className="text-yellow-500" size={20} />
                     الملخص التنفيذي والتوصيات
                   </CardTitle>
-                  <div className="flex items-center gap-2">
-                    <Label className="text-xs text-muted-foreground whitespace-nowrap">نسبة تنبيه التكلفة المباشرة (%)</Label>
-                    <Input
-                      type="number"
-                      step="0.1"
-                      min={0}
-                      max={100}
-                      value={directCostAlertThreshold}
-                      onChange={(e) => {
-                        const val = parseFloat(e.target.value);
-                        if (!isNaN(val)) {
-                          setDirectCostAlertThreshold(val);
-                          localStorage.setItem("direct_cost_alert_threshold", String(val));
-                        }
-                      }}
-                      className="w-20 h-8 text-xs text-center"
-                    />
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs text-muted-foreground whitespace-nowrap">الحد المستهدف للتكلفة المباشرة (%)</Label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        min={0}
+                        max={100}
+                        value={directCostAlertThreshold}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          if (!isNaN(val)) {
+                            setDirectCostAlertThreshold(val);
+                            localStorage.setItem("direct_cost_alert_threshold", String(val));
+                          }
+                        }}
+                        className="w-20 h-8 text-xs text-center"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs text-muted-foreground whitespace-nowrap">نسبة السماح (±%)</Label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        min={0}
+                        max={50}
+                        value={directCostTolerance}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          if (!isNaN(val)) {
+                            setDirectCostTolerance(val);
+                            localStorage.setItem("direct_cost_tolerance", String(val));
+                          }
+                        }}
+                        className="w-20 h-8 text-xs text-center"
+                      />
+                    </div>
                   </div>
                 </div>
               </CardHeader>

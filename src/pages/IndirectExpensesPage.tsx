@@ -498,7 +498,15 @@ export const IndirectExpensesPage: React.FC = () => {
     else if (netProfitPct < 20) recommendations.push({ type: "info", text: `هامش الربح مقبول (${netProfitPct.toFixed(1)}%) — هناك مجال للتحسين للوصول للنطاق الصحي (20%+).` });
     else recommendations.push({ type: "success", text: `هامش ربح ممتاز (${netProfitPct.toFixed(1)}%) — استمر في هذا الأداء.` });
 
-    if (avgDirectCostPct > directCostAlertThreshold) recommendations.push({ type: "warning", text: `تكلفة الأصناف المباشرة مرتفعة (${avgDirectCostPct.toFixed(1)}%) — راجع أسعار البيع أو تكاليف المكونات.` });
+    const dcDiff = avgDirectCostPct - directCostAlertThreshold;
+    if (dcDiff > directCostTolerance) {
+      const eaten = (dcDiff / 100) * totalSellingPrice;
+      recommendations.push({ type: "danger", text: `التكلفة المباشرة (${avgDirectCostPct.toFixed(1)}%) تجاوزت المستهدف (${directCostAlertThreshold}%) خارج نسبة السماح — تأكل تقريبًا ${eaten.toLocaleString(undefined, { maximumFractionDigits: 0 })} ج.م من ربحك.` });
+    } else if (dcDiff > 0) {
+      recommendations.push({ type: "warning", text: `التكلفة المباشرة (${avgDirectCostPct.toFixed(1)}%) أعلى من المستهدف (${directCostAlertThreshold}%) لكنها ضمن نسبة السماح (±${directCostTolerance}%).` });
+    } else {
+      recommendations.push({ type: "success", text: `التكلفة المباشرة (${avgDirectCostPct.toFixed(1)}%) ضمن المستهدف (${directCostAlertThreshold}%) — أداء جيد.` });
+    }
     if (indirectPctValue > 40) recommendations.push({ type: "warning", text: `نسبة المصاريف الغير مباشرة مرتفعة (${indirectPctValue.toFixed(1)}%) — راجع البنود الأكبر.` });
     if (rentPct > 12) recommendations.push({ type: "warning", text: `الإيجار يمثل ${rentPct.toFixed(1)}% من المبيعات (المُوصى به أقل من 10%).` });
     if (salariesPct > 30) recommendations.push({ type: "warning", text: `المرتبات تمثل ${salariesPct.toFixed(1)}% من المبيعات (المُوصى به أقل من 25%).` });

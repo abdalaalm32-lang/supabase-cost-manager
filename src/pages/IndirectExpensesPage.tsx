@@ -117,7 +117,8 @@ export const IndirectExpensesPage: React.FC = () => {
   const [costScope, setCostScope] = useState<"all" | "kitchen" | "bar">("all");
   const [excelLoading, setExcelLoading] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
-  const [efficiencyComparePeriodId, setEfficiencyComparePeriodId] = useState<string>("");
+  const [efficiencyPeriodAId, setEfficiencyPeriodAId] = useState<string>("");
+  const [efficiencyPeriodBId, setEfficiencyPeriodBId] = useState<string>("");
 
   const companyId = auth.profile?.company_id;
 

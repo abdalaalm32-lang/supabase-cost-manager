@@ -358,11 +358,15 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
       type: r.type.label,
       risk: r.risk.label,
     }));
+    const expectedTotal = analysis.aTotal * (1 + analysis.salesGrowthPct / 100);
+    const varianceTotal = analysis.bTotal - expectedTotal;
     rows.push({
       label: "الإجمالي", a: fmt(analysis.aTotal), b: fmt(analysis.bTotal),
       c: hasC ? fmt(analysis.cTotal) : "",
       change_ba: fmtChange(analysis.aTotal, analysis.bTotal),
       change_cb: hasC ? fmtChange(analysis.bTotal, analysis.cTotal) : "",
+      expected: fmt(expectedTotal),
+      variance: `${varianceTotal > 0 ? "+" : ""}${fmt(varianceTotal)}`,
       shareA: analysis.aPct.toFixed(2) + "%", shareB: analysis.bPct.toFixed(2) + "%",
       vsSales: "", contribution: "100%", type: "", risk: "",
       __rowType: "grand-total",
@@ -373,6 +377,7 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
       c: hasC ? fmt(analysis.cSales) : "",
       change_ba: fmtChange(analysis.aSales, analysis.bSales),
       change_cb: hasC ? fmtChange(analysis.bSales, analysis.cSales) : "",
+      expected: "", variance: "",
       shareA: "", shareB: "", vsSales: "", contribution: "", type: "", risk: "",
       __rowType: "group-total",
     });
@@ -382,6 +387,7 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
       c: hasC ? analysis.cPct.toFixed(2) + "%" : "",
       change_ba: (analysis.bPct - analysis.aPct).toFixed(2) + "%",
       change_cb: hasC ? (analysis.cPct - analysis.bPct).toFixed(2) + "%" : "",
+      expected: "", variance: "",
       shareA: "", shareB: "", vsSales: "", contribution: "", type: "", risk: "",
       __rowType: "group-total",
     });
@@ -391,6 +397,7 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
       c: hasC ? fmt(analysis.cBreakEven) : "",
       change_ba: fmtChange(analysis.aBreakEven, analysis.bBreakEven),
       change_cb: hasC ? fmtChange(analysis.bBreakEven, analysis.cBreakEven) : "",
+      expected: "", variance: "",
       shareA: "", shareB: "", vsSales: "", contribution: "", type: "", risk: "",
       __rowType: "group-total",
     });
@@ -401,9 +408,20 @@ export const PeriodComparisonDialog: React.FC<Props> = ({ open, onOpenChange, pe
       c: hasC ? analysis.cNetProfitPct.toFixed(2) + "%" : "",
       change_ba: (analysis.bNetProfitPct - analysis.aNetProfitPct).toFixed(2) + "%",
       change_cb: hasC ? (analysis.cNetProfitPct - analysis.bNetProfitPct).toFixed(2) + "%" : "",
+      expected: "", variance: "",
       shareA: "", shareB: "", vsSales: "", contribution: "", type: "", risk: "",
       __rowType: "group-total",
     });
+    if (analysis.expensePerExtraSale !== null) {
+      rows.push({
+        label: "مصروف إضافي لكل 1 جنيه مبيعات إضافية",
+        a: "", b: analysis.expensePerExtraSale.toFixed(2),
+        c: "", change_ba: `${(analysis.salesRetentionPct ?? 0).toFixed(1)}% احتفاظ`,
+        change_cb: "", expected: "", variance: "",
+        shareA: "", shareB: "", vsSales: "", contribution: "", type: "", risk: "",
+        __rowType: "group-total",
+      });
+    }
     return rows;
   }, [analysis, A, B, C, hasC]);
 

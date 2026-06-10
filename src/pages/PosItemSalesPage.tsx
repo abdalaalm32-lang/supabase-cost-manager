@@ -490,7 +490,9 @@ export const PosItemSalesPage: React.FC = () => {
                     ))}
                   </Pie>
                   <Tooltip
-                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12, color: "hsl(var(--foreground))" }}
+                    labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 700 }}
+                    itemStyle={{ color: "hsl(var(--foreground))" }}
                     formatter={(v: number, _n, p: any) => [`${fmt(v)} EGP (${p?.payload?.pct?.toFixed(1)}%)`, p?.payload?.name]}
                   />
                   <Legend

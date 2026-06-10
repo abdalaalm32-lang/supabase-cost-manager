@@ -45,7 +45,7 @@ export const PosDailyStats: React.FC<PosDailyStatsProps> = ({ companyId, branchI
   const { data: stats } = useQuery({
     queryKey: ["pos-daily-stats-v2", companyId, branchId, viewMode, selectedShift?.id, selectedShift?.opened_at, selectedShift?.closed_at],
     queryFn: async () => {
-      const empty = { totalSales: 0, invoiceCount: 0, avgInvoice: 0, itemsCount: 0, cashSales: 0, visaSales: 0, returnsCash: 0, returnsVisa: 0, returnsTotal: 0, netSales: 0 };
+      const empty = { totalSales: 0, invoiceCount: 0, avgInvoice: 0, itemsCount: 0, cashSales: 0, visaSales: 0, instapaySales: 0, returnsCash: 0, returnsVisa: 0, returnsInstapay: 0, returnsTotal: 0, netSales: 0 };
 
       // Build sales query
       let salesQuery = supabase

@@ -510,6 +510,7 @@ export const PosScreenPage: React.FC = () => {
         customer_name: customerName || null,
         customer_phone: orderType === "دليفري" ? (customerPhone || null) : null,
         customer_address: orderType === "دليفري" ? (customerAddress || null) : null,
+        table_number: orderType === "صالة" ? (tableNumber || null) : null,
         notes: cart.filter(c => c.notes).map(c => `${c.name}: ${c.notes}`).join(" | ") || null,
       };
 

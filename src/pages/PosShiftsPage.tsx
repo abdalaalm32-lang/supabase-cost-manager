@@ -229,6 +229,7 @@ export const PosShiftsPage: React.FC = () => {
   const dTotalSales = detailSales?.reduce((s: number, sale: any) => s + sale.total_amount, 0) ?? 0;
   const dTotalCash = detailSales?.filter((s: any) => s.payment_method === "كاش").reduce((s: number, sale: any) => s + sale.total_amount, 0) ?? 0;
   const dTotalVisa = detailSales?.filter((s: any) => s.payment_method === "فيزا").reduce((s: number, sale: any) => s + sale.total_amount, 0) ?? 0;
+  const dTotalInstapay = detailSales?.filter((s: any) => s.payment_method === "انستا باي").reduce((s: number, sale: any) => s + sale.total_amount, 0) ?? 0;
   const dInvoiceCount = detailSales?.length ?? 0;
   const dTotalExpenses = detailExpenses?.reduce((s: number, e: any) => s + (e.amount || 0), 0) ?? 0;
   const dTotalReturns = detailReturns?.reduce((s: number, r: any) => s + (r.total_amount || 0), 0) ?? 0;

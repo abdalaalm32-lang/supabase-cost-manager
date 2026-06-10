@@ -440,17 +440,17 @@ export const PosItemSalesPage: React.FC = () => {
                     formatter={(v: number) => [fmt(v) + " EGP", "الإيراد"]}
                     labelFormatter={(_, p) => (p?.[0] as any)?.payload?.fullName || ""}
                   />
-                  <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} minPointSize={200}>
+                  <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} minPointSize={220}>
                     <LabelList
                       dataKey="fullName"
                       position="insideLeft"
-                      style={{ fill: "hsl(var(--primary-foreground))", fontSize: 12, fontWeight: 600 }}
-                      formatter={(v: string) => (v?.length > 34 ? v.slice(0, 34) + "…" : v)}
+                      style={{ fill: "#ffffff", fontSize: 12, fontWeight: 700 }}
+                      formatter={(v: string) => (v?.length > 38 ? v.slice(0, 38) + "…" : v)}
                     />
                     <LabelList
                       dataKey="revenue"
                       position="insideRight"
-                      style={{ fill: "hsl(var(--primary-foreground))", fontSize: 11, fontWeight: 700 }}
+                      style={{ fill: "#ffffff", fontSize: 11, fontWeight: 700 }}
                       formatter={(v: number) => fmt(v) + " EGP"}
                     />
                   </Bar>
@@ -479,11 +479,23 @@ export const PosItemSalesPage: React.FC = () => {
                     nameKey="name"
                     cx="38%"
                     cy="50%"
-                    outerRadius={105}
-                    innerRadius={45}
+                    outerRadius={90}
+                    innerRadius={40}
                     paddingAngle={1}
-                    label={(e: any) => (e.pct >= 3 ? `${e.pct.toFixed(1)}%` : "")}
-                    labelLine={false}
+                    label={(props: any) => {
+                      const { cx, cy, midAngle, outerRadius, pct } = props;
+                      if (pct < 2) return null;
+                      const RAD = Math.PI / 180;
+                      const r = outerRadius + 18;
+                      const x = cx + r * Math.cos(-midAngle * RAD);
+                      const y = cy + r * Math.sin(-midAngle * RAD);
+                      return (
+                        <text x={x} y={y} fill="hsl(var(--foreground))" textAnchor={x > cx ? "start" : "end"} dominantBaseline="central" fontSize={11} fontWeight={600}>
+                          {`${pct.toFixed(1)}%`}
+                        </text>
+                      );
+                    }}
+                    labelLine={{ stroke: "hsl(var(--muted-foreground))", strokeWidth: 1 }}
                   >
                     {pieData.map((_, i) => (
                       <Cell key={i} fill={COLORS[i % COLORS.length]} stroke="hsl(var(--card))" strokeWidth={2} />

@@ -45,6 +45,7 @@ const DELIVERY_STATUSES = [
 const PAYMENT_METHODS = [
   { value: "كاش", label: "كاش", icon: Banknote },
   { value: "فيزا", label: "فيزا", icon: CreditCard },
+  { value: "انستا باي", label: "انستا باي", icon: Smartphone },
 ];
 
 const FEEDBACK_TYPES = [

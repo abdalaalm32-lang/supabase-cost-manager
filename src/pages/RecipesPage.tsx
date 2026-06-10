@@ -210,11 +210,14 @@ export const RecipesPage: React.FC = () => {
     if (selectedEngClass !== "all") {
       items = items.filter((p: any) => p.menu_engineering_class === selectedEngClass);
     }
+    if (selectedPosCategory !== "all") {
+      const catName = posCategoryMap[selectedPosCategory];
+      items = items.filter((p: any) => p.category_id === selectedPosCategory || (catName && p.category === catName));
+    }
     if (productSearch.trim()) {
       const q = productSearch.trim().toLowerCase();
       items = items.filter((p: any) => {
-        const catName = (p.category_id ? posCategoryMap[p.category_id] : p.category) || "";
-        return p.name.toLowerCase().includes(q) || (p.code || "").toLowerCase().includes(q) || catName.toLowerCase().includes(q);
+        return p.name.toLowerCase().includes(q) || (p.code || "").toLowerCase().includes(q);
       });
     }
     if (productFilter === "ready") {
@@ -223,7 +226,20 @@ export const RecipesPage: React.FC = () => {
       items = items.filter((p: any) => !recipeMap[p.id]);
     }
     return items;
-  }, [posItems, selectedBranch, selectedEngClass, productSearch, productFilter, recipeMap, posCategoryMap]);
+  }, [posItems, selectedBranch, selectedEngClass, selectedPosCategory, productSearch, productFilter, recipeMap, posCategoryMap]);
+
+  // POS categories filtered by selected branch
+  const branchPosCategories = useMemo(() => {
+    if (selectedBranch === "all") return posCategories;
+    return posCategories.filter((c: any) => !c.branch_id || c.branch_id === selectedBranch);
+  }, [posCategories, selectedBranch]);
+
+  // Reset category filter when branch changes if not available
+  useEffect(() => {
+    if (selectedPosCategory !== "all" && !branchPosCategories.some((c: any) => c.id === selectedPosCategory)) {
+      setSelectedPosCategory("all");
+    }
+  }, [branchPosCategories, selectedPosCategory]);
 
   const selectedProduct = useMemo(() => {
     if (!selectedProductId) return null;

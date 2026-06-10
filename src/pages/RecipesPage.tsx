@@ -1042,11 +1042,24 @@ th { border:1px solid #000; padding:5px 6px; font-size:10px; text-align:center; 
             </SelectContent>
           </Select>
 
+          {/* POS Category Filter */}
+          <Select value={selectedPosCategory} onValueChange={setSelectedPosCategory}>
+            <SelectTrigger className="h-9 text-sm">
+              <SelectValue placeholder="فلتر المجموعات" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">كل المجموعات</SelectItem>
+              {branchPosCategories.map((c: any) => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           {/* Product Search */}
           <div className="relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="بحث بمنتج أو مجموعة..."
+              placeholder="بحث بمنتج..."
               value={productSearch}
               onChange={(e) => setProductSearch(e.target.value)}
               className="pr-9 h-9 text-sm"

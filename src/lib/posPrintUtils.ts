@@ -188,6 +188,7 @@ export const buildKitchenReceiptHTML = (data: KitchenReceiptData): string => {
   ${invoiceNumber ? `<div style="font-weight:900;font-size:17px;color:#000">فاتورة: ${invoiceNumber}</div>` : ""}
   <div style="font-weight:700;color:#000">${date}</div>
   ${orderType ? `<div style="font-weight:900;margin-top:3px;font-size:15px;color:#000">${orderType}</div>` : ""}
+  ${deliveryCompanyName ? `<div style="font-weight:900;margin-top:3px;font-size:14px;color:#000;background:#000;color:#fff;padding:3px;border-radius:3px">🛵 ${deliveryCompanyName}</div>` : ""}
   ${customerName ? `<div style="font-weight:700;color:#000">العميل: ${customerName}</div>` : ""}
 </div>
 ${timeBlock}

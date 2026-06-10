@@ -31,6 +31,7 @@ export interface CustomerReceiptData {
   customerPhone2?: string;
   customerAddress?: string;
   expectedReadyTime?: string; // وقت الجاهزية للتيك أواي / التسليم المتوقع للدليفري
+  deliveryCompanyName?: string; // شركة التوصيل (طلبات، مرسول، ...)
 }
 
 export interface KitchenReceiptData {
@@ -43,6 +44,7 @@ export interface KitchenReceiptData {
   companyName?: string;
   orderTime?: string;            // وقت ضرب الأوردر
   expectedDeliveryTime?: string; // وقت التسليم المتوقع (للكول سنتر فقط)
+  deliveryCompanyName?: string;  // شركة التوصيل
 }
 
 // Silent print using hidden iframe
@@ -79,6 +81,7 @@ export const buildCustomerReceiptHTML = (data: CustomerReceiptData): string => {
     subtotal, discountAmount, discountLabel, taxAmount, taxRate, total,
     companyName, notes, orderType, paymentMethod, deliveryFee,
     customerPhone, customerPhone2, customerAddress, expectedReadyTime,
+    deliveryCompanyName,
   } = data;
 
   const isTakeaway = orderType === "تيك أواي";
@@ -119,6 +122,7 @@ export const buildCustomerReceiptHTML = (data: CustomerReceiptData): string => {
   ${customerPhone ? `<div style="font-size:13px;font-weight:700;color:#000" dir="ltr">${customerPhone}${customerPhone2 ? ` / ${customerPhone2}` : ""}</div>` : ""}
   ${customerAddress ? `<div style="font-size:13px;font-weight:700;color:#000">العنوان: ${customerAddress}</div>` : ""}
   ${orderType ? `<div style="font-size:13px;font-weight:700;color:#000">نوع الطلب: ${orderType}</div>` : ""}
+  ${deliveryCompanyName ? `<div style="font-size:13px;font-weight:900;color:#000;background:#000;color:#fff;padding:3px;margin-top:3px;border-radius:3px">🛵 شركة التوصيل: ${deliveryCompanyName}</div>` : ""}
   ${paymentMethod ? `<div style="font-size:13px;font-weight:700;color:#000">طريقة الدفع: ${paymentMethod}</div>` : ""}
 </div>
 ${bigOrderBadge}
@@ -150,7 +154,7 @@ ${notes ? `<div style="border:2px solid #000;padding:6px;margin-top:6px;backgrou
 
 // Build kitchen receipt HTML — only items, quantities, notes (no prices)
 export const buildKitchenReceiptHTML = (data: KitchenReceiptData): string => {
-  const { invoiceNumber, branchName, date, items, orderType, customerName, companyName, orderTime, expectedDeliveryTime } = data;
+  const { invoiceNumber, branchName, date, items, orderType, customerName, companyName, orderTime, expectedDeliveryTime, deliveryCompanyName } = data;
 
   const itemsRows = items.map((item) =>
     `<tr style="border-bottom:2px solid #000">
@@ -184,6 +188,7 @@ export const buildKitchenReceiptHTML = (data: KitchenReceiptData): string => {
   ${invoiceNumber ? `<div style="font-weight:900;font-size:17px;color:#000">فاتورة: ${invoiceNumber}</div>` : ""}
   <div style="font-weight:700;color:#000">${date}</div>
   ${orderType ? `<div style="font-weight:900;margin-top:3px;font-size:15px;color:#000">${orderType}</div>` : ""}
+  ${deliveryCompanyName ? `<div style="font-weight:900;margin-top:3px;font-size:14px;color:#000;background:#000;color:#fff;padding:3px;border-radius:3px">🛵 ${deliveryCompanyName}</div>` : ""}
   ${customerName ? `<div style="font-weight:700;color:#000">العميل: ${customerName}</div>` : ""}
 </div>
 ${timeBlock}

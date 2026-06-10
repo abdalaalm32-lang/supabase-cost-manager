@@ -500,6 +500,44 @@ export type Database = {
           },
         ]
       }
+      delivery_companies: {
+        Row: {
+          active: boolean
+          commission_percent: number
+          company_id: string
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          commission_percent?: number
+          company_id: string
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          commission_percent?: number
+          company_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_companies_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       delivery_drivers: {
         Row: {
           active: boolean
@@ -1255,6 +1293,7 @@ export type Database = {
           customer_phone: string | null
           customer_rating: number | null
           date: string
+          delivery_company_id: string | null
           delivery_fee: number
           delivery_status: string | null
           discount_amount: number
@@ -1287,6 +1326,7 @@ export type Database = {
           customer_phone?: string | null
           customer_rating?: number | null
           date?: string
+          delivery_company_id?: string | null
           delivery_fee?: number
           delivery_status?: string | null
           discount_amount?: number
@@ -1319,6 +1359,7 @@ export type Database = {
           customer_phone?: string | null
           customer_rating?: number | null
           date?: string
+          delivery_company_id?: string | null
           delivery_fee?: number
           delivery_status?: string | null
           discount_amount?: number
@@ -1367,6 +1408,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_sales_delivery_company_id_fkey"
+            columns: ["delivery_company_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_companies"
             referencedColumns: ["id"]
           },
           {

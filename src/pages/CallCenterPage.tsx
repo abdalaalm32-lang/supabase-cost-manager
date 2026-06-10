@@ -18,7 +18,7 @@ import {
   Phone, Plus, Minus, Trash2, Search, Truck, User, MapPin, Store,
   ShoppingCart, LayoutGrid, Banknote, CreditCard, Clock, CheckCircle2,
   ChefHat, PackageCheck, Send, Star, PhoneCall, MessageSquare,
-  Users, TrendingUp, FileText, AlertCircle
+  Users, TrendingUp, FileText, AlertCircle, Smartphone, Building2
 } from "lucide-react";
 import { printCustomerReceipt, printKitchenReceipt } from "@/lib/posPrintUtils";
 import { CallCenterReprintDialog } from "@/components/pos/CallCenterReprintDialog";
@@ -45,6 +45,7 @@ const DELIVERY_STATUSES = [
 const PAYMENT_METHODS = [
   { value: "كاش", label: "كاش", icon: Banknote },
   { value: "فيزا", label: "فيزا", icon: CreditCard },
+  { value: "انستا باي", label: "انستا باي", icon: Smartphone },
 ];
 
 const FEEDBACK_TYPES = [
@@ -75,6 +76,7 @@ export const CallCenterPage: React.FC = () => {
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [deliveryFee, setDeliveryFee] = useState<number>(0);
   const [expectedDeliveryTime, setExpectedDeliveryTime] = useState<string>(""); // HH:mm input
+  const [deliveryCompanyId, setDeliveryCompanyId] = useState<string>("");
   // driver selection removed - cashier handles it
 
   // Cart
@@ -170,6 +172,22 @@ export const CallCenterPage: React.FC = () => {
         result = result.filter((p: any) => p.branch_id === selectedBranchId);
       }
       return result;
+    },
+    enabled: !!companyId,
+  });
+
+  // Delivery partner companies (Talabat, Mrsool, etc.)
+  const { data: deliveryCompanies } = useQuery({
+    queryKey: ["delivery-companies", companyId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("delivery_companies")
+        .select("*")
+        .eq("company_id", companyId!)
+        .eq("active", true)
+        .order("name");
+      if (error) throw error;
+      return data || [];
     },
     enabled: !!companyId,
   });
@@ -384,6 +402,7 @@ export const CallCenterPage: React.FC = () => {
     setPaymentMethod("كاش");
     setDeliveryFee(0);
     setExpectedDeliveryTime("");
+    setDeliveryCompanyId("");
   }, []);
 
   // Save/create customer and order
@@ -454,6 +473,7 @@ export const CallCenterPage: React.FC = () => {
         customer_address: customerAddress,
         delivery_fee: deliveryFee || 0,
         driver_id: null,
+        delivery_company_id: deliveryCompanyId || null,
         assigned_cashier_id: (selectedCashierId && selectedCashierId !== "none") ? selectedCashierId : null,
         notes: cart.filter(c => c.notes).map(c => `${c.name}: ${c.notes}`).join(" | ") || null,
         expected_delivery_time: (() => {
@@ -504,6 +524,7 @@ export const CallCenterPage: React.FC = () => {
         paymentMethod,
         deliveryFee,
         expectedReadyTime: expectedReady,
+        deliveryCompanyName: deliveryCompanies?.find((c: any) => c.id === deliveryCompanyId)?.name,
         // extra fields used by kitchen print
         _orderTime: format(new Date(), "HH:mm"),
         _expectedDeliveryTime: expectedReady,
@@ -723,6 +744,16 @@ export const CallCenterPage: React.FC = () => {
                     <SelectContent>
                       <SelectItem value="none" className="text-xs">بدون تحديد</SelectItem>
                       {branchUsers?.map((u: any) => (<SelectItem key={u.id} value={u.id} className="text-xs">{u.full_name}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={deliveryCompanyId || "none"} onValueChange={(v) => setDeliveryCompanyId(v === "none" ? "" : v)}>
+                    <SelectTrigger className="glass-input h-8 text-xs">
+                      <Building2 className="h-3.5 w-3.5 ml-1 text-muted-foreground" />
+                      <SelectValue placeholder="شركة التوصيل (اختياري)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none" className="text-xs">بدون شركة توصيل</SelectItem>
+                      {deliveryCompanies?.map((c: any) => (<SelectItem key={c.id} value={c.id} className="text-xs">{c.name}</SelectItem>))}
                     </SelectContent>
                   </Select>
                   <div className="relative">

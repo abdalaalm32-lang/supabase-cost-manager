@@ -37,6 +37,7 @@ export const SettingsBranchesPage: React.FC = () => {
   const [formAddress, setFormAddress] = useState("");
   const [formManagerId, setFormManagerId] = useState("");
   const [formActive, setFormActive] = useState(true);
+  const [formTablesCount, setFormTablesCount] = useState<number>(0);
 
   const { data: branches, isLoading } = useQuery({
     queryKey: ["settings-branches", companyId],

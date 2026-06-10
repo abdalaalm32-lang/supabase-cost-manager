@@ -31,6 +31,7 @@ export interface CustomerReceiptData {
   customerPhone2?: string;
   customerAddress?: string;
   expectedReadyTime?: string; // وقت الجاهزية للتيك أواي / التسليم المتوقع للدليفري
+  deliveryCompanyName?: string; // شركة التوصيل (طلبات، مرسول، ...)
 }
 
 export interface KitchenReceiptData {

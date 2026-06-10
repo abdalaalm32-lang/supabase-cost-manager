@@ -440,18 +440,18 @@ export const PosItemSalesPage: React.FC = () => {
                     formatter={(v: number) => [fmt(v) + " EGP", "الإيراد"]}
                     labelFormatter={(_, p) => (p?.[0] as any)?.payload?.fullName || ""}
                   />
-                  <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} minPointSize={120}>
+                  <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} minPointSize={200}>
                     <LabelList
                       dataKey="fullName"
-                      position="insideRight"
+                      position="insideLeft"
                       style={{ fill: "hsl(var(--primary-foreground))", fontSize: 12, fontWeight: 600 }}
-                      formatter={(v: string) => v}
+                      formatter={(v: string) => (v?.length > 34 ? v.slice(0, 34) + "…" : v)}
                     />
                     <LabelList
                       dataKey="revenue"
-                      position="right"
-                      style={{ fill: "hsl(var(--foreground))", fontSize: 11, fontWeight: 600 }}
-                      formatter={(v: number) => fmt(v)}
+                      position="insideRight"
+                      style={{ fill: "hsl(var(--primary-foreground))", fontSize: 11, fontWeight: 700 }}
+                      formatter={(v: number) => fmt(v) + " EGP"}
                     />
                   </Bar>
                 </BarChart>

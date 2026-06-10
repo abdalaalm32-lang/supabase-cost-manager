@@ -19,8 +19,7 @@ import {
 } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend, LabelList
+  Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend
 } from "recharts";
 
 type SortKey = "name" | "category" | "quantity" | "revenue" | "avgPrice" | "share";
@@ -209,6 +208,8 @@ export const PosItemSalesPage: React.FC = () => {
     }));
   }, [aggregated.items]);
 
+  const topRevenueMax = useMemo(() => Math.max(1, ...top10.map((item) => item.revenue)), [top10]);
+
   // Group categories <5% into "أخرى" for cleaner pie chart
   const pieData = useMemo(() => {
     const total = aggregated.totalRevenue || 0;
@@ -359,7 +360,7 @@ export const PosItemSalesPage: React.FC = () => {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="glass-card lg:col-span-2">
+        <Card className="glass-card">
           <CardContent className="pt-5">
             <div className="flex items-center justify-between">
               <div>
@@ -416,7 +417,7 @@ export const PosItemSalesPage: React.FC = () => {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card className="glass-card">
+        <Card className="glass-card lg:col-span-2">
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <BarChart3 className="h-5 w-5 text-primary" />
@@ -427,41 +428,30 @@ export const PosItemSalesPage: React.FC = () => {
             {top10.length === 0 ? (
               <div className="h-[340px] flex items-center justify-center text-sm text-muted-foreground">لا توجد بيانات</div>
             ) : (
-              <ResponsiveContainer width="100%" height={Math.max(340, top10.length * 40)}>
-                <BarChart data={top10} layout="vertical" margin={{ top: 5, right: 170, left: 110, bottom: 5 }} barCategoryGap={8}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.15} horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 10 }} domain={[0, "dataMax"]} />
-                  <YAxis
-                    dataKey="name"
-                    type="category"
-                    orientation="right"
-                    width={165}
-                    interval={0}
-                    tickLine={false}
-                    axisLine={false}
-                    tick={{ fontSize: 11, fill: "hsl(var(--foreground))", fontWeight: 700, textAnchor: "end" }}
-                    tickMargin={10}
-                    tickFormatter={(value: string) => (value.length > 24 ? value.slice(0, 24) + "…" : value)}
-                  />
-                  <Tooltip
-                    cursor={{ fill: "hsl(var(--muted) / 0.3)" }}
-                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12, color: "hsl(var(--foreground))" }}
-                    labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 700, marginBottom: 4 }}
-                    itemStyle={{ color: "hsl(var(--foreground))" }}
-                    formatter={(v: number) => [fmt(v) + " EGP", "الإيراد"]}
-                    labelFormatter={(_, p) => (p?.[0] as any)?.payload?.fullName || ""}
-                  />
-                  <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} minPointSize={8}>
-                    <LabelList
-                      dataKey="revenue"
-                      position="left"
-                      offset={8}
-                      style={{ fill: "hsl(var(--foreground))", fontSize: 11, fontWeight: 700 }}
-                      formatter={(v: number) => fmt(v) + " EGP"}
-                    />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="h-[500px] overflow-y-auto overflow-x-hidden pl-2 pr-1">
+                <div className="min-h-[500px] space-y-4 py-3">
+                  {top10.map((item) => (
+                    <div
+                      key={item.fullName}
+                      className="grid grid-cols-[112px_minmax(220px,1fr)_190px] items-center gap-3"
+                      title={`${item.fullName} — ${fmt(item.revenue)} EGP`}
+                    >
+                      <div className="text-left text-xs font-black text-foreground tabular-nums whitespace-nowrap">
+                        {fmt(item.revenue)} EGP
+                      </div>
+                      <div className="h-9 rounded-sm bg-muted/35 overflow-hidden flex justify-end">
+                        <div
+                          className="h-full rounded-sm bg-primary transition-all"
+                          style={{ width: `${Math.max(4, (item.revenue / topRevenueMax) * 100)}%` }}
+                        />
+                      </div>
+                      <div className="text-right text-xs font-bold text-foreground truncate" dir="rtl">
+                        {item.name}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>

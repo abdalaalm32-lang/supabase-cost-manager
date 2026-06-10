@@ -359,7 +359,7 @@ export const PosItemSalesPage: React.FC = () => {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="glass-card lg:col-span-2">
+        <Card className="glass-card">
           <CardContent className="pt-5">
             <div className="flex items-center justify-between">
               <div>
@@ -372,7 +372,7 @@ export const PosItemSalesPage: React.FC = () => {
             </div>
           </CardContent>
         </Card>
-        <Card className="glass-card">
+        <Card className="glass-card lg:col-span-2">
           <CardContent className="pt-5">
             <div className="flex items-center justify-between">
               <div>
@@ -427,15 +427,16 @@ export const PosItemSalesPage: React.FC = () => {
             {top10.length === 0 ? (
               <div className="h-[340px] flex items-center justify-center text-sm text-muted-foreground">لا توجد بيانات</div>
             ) : (
-              <ResponsiveContainer width="100%" height={Math.max(340, top10.length * 40)}>
-                <BarChart data={top10} layout="vertical" margin={{ top: 5, right: 170, left: 110, bottom: 5 }} barCategoryGap={8}>
+              <div className="h-[500px] overflow-y-auto overflow-x-hidden pl-2">
+                <ResponsiveContainer width="100%" height={Math.max(500, top10.length * 52)}>
+                <BarChart data={top10} layout="vertical" margin={{ top: 12, right: 190, left: 96, bottom: 12 }} barSize={34} barCategoryGap={14}>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.15} horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 10 }} domain={[0, "dataMax"]} />
+                  <XAxis type="number" tick={{ fontSize: 10 }} domain={[0, "dataMax"]} hide />
                   <YAxis
                     dataKey="name"
                     type="category"
                     orientation="right"
-                    width={165}
+                    width={175}
                     interval={0}
                     tickLine={false}
                     axisLine={false}
@@ -451,7 +452,7 @@ export const PosItemSalesPage: React.FC = () => {
                     formatter={(v: number) => [fmt(v) + " EGP", "الإيراد"]}
                     labelFormatter={(_, p) => (p?.[0] as any)?.payload?.fullName || ""}
                   />
-                  <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} minPointSize={8}>
+                  <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[6, 0, 0, 6]} minPointSize={14}>
                     <LabelList
                       dataKey="revenue"
                       position="left"
@@ -461,7 +462,8 @@ export const PosItemSalesPage: React.FC = () => {
                     />
                   </Bar>
                 </BarChart>
-              </ResponsiveContainer>
+                </ResponsiveContainer>
+              </div>
             )}
           </CardContent>
         </Card>

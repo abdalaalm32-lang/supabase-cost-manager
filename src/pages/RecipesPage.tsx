@@ -75,6 +75,7 @@ export const RecipesPage: React.FC = () => {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [productSearch, setProductSearch] = useState("");
   const [productFilter, setProductFilter] = useState<ProductFilter>("all");
+  const [selectedPosCategory, setSelectedPosCategory] = useState<string>("all");
 
   const [ingredients, setIngredients] = useState<LocalIngredient[]>([]);
   const [recipeStatus, setRecipeStatus] = useState<RecipeStatus>("draft");
@@ -209,11 +210,14 @@ export const RecipesPage: React.FC = () => {
     if (selectedEngClass !== "all") {
       items = items.filter((p: any) => p.menu_engineering_class === selectedEngClass);
     }
+    if (selectedPosCategory !== "all") {
+      const catName = posCategoryMap[selectedPosCategory];
+      items = items.filter((p: any) => p.category_id === selectedPosCategory || (catName && p.category === catName));
+    }
     if (productSearch.trim()) {
       const q = productSearch.trim().toLowerCase();
       items = items.filter((p: any) => {
-        const catName = (p.category_id ? posCategoryMap[p.category_id] : p.category) || "";
-        return p.name.toLowerCase().includes(q) || (p.code || "").toLowerCase().includes(q) || catName.toLowerCase().includes(q);
+        return p.name.toLowerCase().includes(q) || (p.code || "").toLowerCase().includes(q);
       });
     }
     if (productFilter === "ready") {
@@ -222,7 +226,20 @@ export const RecipesPage: React.FC = () => {
       items = items.filter((p: any) => !recipeMap[p.id]);
     }
     return items;
-  }, [posItems, selectedBranch, selectedEngClass, productSearch, productFilter, recipeMap, posCategoryMap]);
+  }, [posItems, selectedBranch, selectedEngClass, selectedPosCategory, productSearch, productFilter, recipeMap, posCategoryMap]);
+
+  // POS categories filtered by selected branch
+  const branchPosCategories = useMemo(() => {
+    if (selectedBranch === "all") return posCategories;
+    return posCategories.filter((c: any) => !c.branch_id || c.branch_id === selectedBranch);
+  }, [posCategories, selectedBranch]);
+
+  // Reset category filter when branch changes if not available
+  useEffect(() => {
+    if (selectedPosCategory !== "all" && !branchPosCategories.some((c: any) => c.id === selectedPosCategory)) {
+      setSelectedPosCategory("all");
+    }
+  }, [branchPosCategories, selectedPosCategory]);
 
   const selectedProduct = useMemo(() => {
     if (!selectedProductId) return null;
@@ -1025,11 +1042,24 @@ th { border:1px solid #000; padding:5px 6px; font-size:10px; text-align:center; 
             </SelectContent>
           </Select>
 
+          {/* POS Category Filter */}
+          <Select value={selectedPosCategory} onValueChange={setSelectedPosCategory}>
+            <SelectTrigger className="h-9 text-sm">
+              <SelectValue placeholder="فلتر المجموعات" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">كل المجموعات</SelectItem>
+              {branchPosCategories.map((c: any) => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           {/* Product Search */}
           <div className="relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="بحث بمنتج أو مجموعة..."
+              placeholder="بحث بمنتج..."
               value={productSearch}
               onChange={(e) => setProductSearch(e.target.value)}
               className="pr-9 h-9 text-sm"

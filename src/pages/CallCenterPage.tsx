@@ -176,6 +176,22 @@ export const CallCenterPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  // Delivery partner companies (Talabat, Mrsool, etc.)
+  const { data: deliveryCompanies } = useQuery({
+    queryKey: ["delivery-companies", companyId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("delivery_companies")
+        .select("*")
+        .eq("company_id", companyId!)
+        .eq("active", true)
+        .order("name");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!companyId,
+  });
+
   const { data: categories } = useQuery({
     queryKey: ["pos-categories-active", companyId],
     queryFn: async () => {

@@ -434,7 +434,9 @@ export const PosItemSalesPage: React.FC = () => {
                   <YAxis dataKey="name" type="category" hide />
                   <Tooltip
                     cursor={{ fill: "hsl(var(--muted) / 0.3)" }}
-                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12, color: "hsl(var(--foreground))" }}
+                    labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 700, marginBottom: 4 }}
+                    itemStyle={{ color: "hsl(var(--foreground))" }}
                     formatter={(v: number) => [fmt(v) + " EGP", "الإيراد"]}
                     labelFormatter={(_, p) => (p?.[0] as any)?.payload?.fullName || ""}
                   />

@@ -93,6 +93,9 @@ export const PosScreenPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [customerName, setCustomerName] = useState(saved?.customerName || "");
+  const [tableNumber, setTableNumber] = useState<string>(saved?.tableNumber || "");
+  const [tablePickerOpen, setTablePickerOpen] = useState(false);
+  const [tablePickerMode, setTablePickerMode] = useState<"pick" | "transfer">("pick");
   
   const [receiptData, setReceiptData] = useState<any>(null);
   const [orderType, setOrderType] = useState<string>(saved?.orderType || "صالة");

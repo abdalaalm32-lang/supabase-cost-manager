@@ -427,23 +427,31 @@ export const PosItemSalesPage: React.FC = () => {
             {top10.length === 0 ? (
               <div className="h-[340px] flex items-center justify-center text-sm text-muted-foreground">لا توجد بيانات</div>
             ) : (
-              <ResponsiveContainer width="100%" height={340}>
-                <BarChart data={top10} layout="vertical" margin={{ top: 5, right: 24, left: 8, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 11 }} />
-                  <YAxis
-                    dataKey="name"
-                    type="category"
-                    tick={{ fontSize: 11, textAnchor: "end" }}
-                    width={180}
-                    interval={0}
-                  />
+              <ResponsiveContainer width="100%" height={Math.max(340, top10.length * 40)}>
+                <BarChart data={top10} layout="vertical" margin={{ top: 5, right: 16, left: 16, bottom: 5 }} barCategoryGap={6}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.15} horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10 }} />
+                  <YAxis dataKey="name" type="category" hide />
                   <Tooltip
+                    cursor={{ fill: "hsl(var(--muted) / 0.3)" }}
                     contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
                     formatter={(v: number) => [fmt(v) + " EGP", "الإيراد"]}
                     labelFormatter={(_, p) => (p?.[0] as any)?.payload?.fullName || ""}
                   />
-                  <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} />
+                  <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} minPointSize={120}>
+                    <LabelList
+                      dataKey="fullName"
+                      position="insideRight"
+                      style={{ fill: "hsl(var(--primary-foreground))", fontSize: 12, fontWeight: 600 }}
+                      formatter={(v: string) => v}
+                    />
+                    <LabelList
+                      dataKey="revenue"
+                      position="right"
+                      style={{ fill: "hsl(var(--foreground))", fontSize: 11, fontWeight: 600 }}
+                      formatter={(v: number) => fmt(v)}
+                    />
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             )}

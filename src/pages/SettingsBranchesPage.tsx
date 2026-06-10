@@ -37,6 +37,7 @@ export const SettingsBranchesPage: React.FC = () => {
   const [formAddress, setFormAddress] = useState("");
   const [formManagerId, setFormManagerId] = useState("");
   const [formActive, setFormActive] = useState(true);
+  const [formTablesCount, setFormTablesCount] = useState<number>(0);
 
   const { data: branches, isLoading } = useQuery({
     queryKey: ["settings-branches", companyId],
@@ -90,7 +91,7 @@ export const SettingsBranchesPage: React.FC = () => {
   const maxWarehouses = companyData?.max_warehouses ?? 999;
 
   const resetForm = () => {
-    setFormName(""); setFormAddress(""); setFormManagerId(""); setFormActive(true); setEditBranch(null);
+    setFormName(""); setFormAddress(""); setFormManagerId(""); setFormActive(true); setFormTablesCount(0); setEditBranch(null);
   };
 
   const openAdd = () => {
@@ -106,6 +107,7 @@ export const SettingsBranchesPage: React.FC = () => {
     setFormAddress(b.address || "");
     setFormManagerId(b.manager_id || "");
     setFormActive(b.active);
+    setFormTablesCount(Number(b.tables_count) || 0);
     setIsDialogOpen(true);
   };
 
@@ -137,11 +139,13 @@ export const SettingsBranchesPage: React.FC = () => {
   const saveBranch = useMutation({
     mutationFn: async () => {
       if (!formName.trim()) throw new Error("اسم الفرع مطلوب");
+      const tablesCountSafe = Math.max(0, Math.floor(Number(formTablesCount) || 0));
       if (editBranch) {
         const { error } = await supabase.from("branches").update({
           name: formName, address: formAddress || null,
           manager_id: formManagerId || null, active: formActive,
-        }).eq("id", editBranch.id);
+          tables_count: tablesCountSafe,
+        } as any).eq("id", editBranch.id);
         if (error) throw error;
       } else {
         // Hard limit guard (applies to everyone including system admins)
@@ -164,8 +168,9 @@ export const SettingsBranchesPage: React.FC = () => {
         const { error } = await supabase.from("branches").insert({
           name: formName, address: formAddress || null,
           manager_id: formManagerId || null, active: formActive,
+          tables_count: tablesCountSafe,
           company_id: companyId!, code,
-        });
+        } as any);
         if (error) throw error;
       }
     },
@@ -349,6 +354,19 @@ export const SettingsBranchesPage: React.FC = () => {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>عدد الطاولات (للصالة)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={formTablesCount === 0 ? "" : formTablesCount}
+                  onChange={e => setFormTablesCount(Number(e.target.value) || 0)}
+                  placeholder="مثال: 20"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  سيتم ترقيم الطاولات تلقائيًا من T1 إلى T{formTablesCount || "N"}. اتركها 0 لإخفاء شاشة الطاولات.
+                </p>
               </div>
               <div className="flex items-center justify-between">
                 <Label>حالة الفرع</Label>

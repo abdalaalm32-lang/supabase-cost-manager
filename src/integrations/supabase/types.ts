@@ -24,6 +24,7 @@ export type Database = {
           id: string
           manager_id: string | null
           name: string
+          tables_count: number
         }
         Insert: {
           active?: boolean
@@ -34,6 +35,7 @@ export type Database = {
           id?: string
           manager_id?: string | null
           name: string
+          tables_count?: number
         }
         Update: {
           active?: boolean
@@ -44,6 +46,7 @@ export type Database = {
           id?: string
           manager_id?: string | null
           name?: string
+          tables_count?: number
         }
         Relationships: [
           {
@@ -1267,6 +1270,7 @@ export type Database = {
           payment_method: string
           shift_id: string | null
           status: string
+          table_number: string | null
           tax_amount: number
           tax_enabled: boolean
           tax_rate: number
@@ -1298,6 +1302,7 @@ export type Database = {
           payment_method?: string
           shift_id?: string | null
           status?: string
+          table_number?: string | null
           tax_amount?: number
           tax_enabled?: boolean
           tax_rate?: number
@@ -1329,6 +1334,7 @@ export type Database = {
           payment_method?: string
           shift_id?: string | null
           status?: string
+          table_number?: string | null
           tax_amount?: number
           tax_enabled?: boolean
           tax_rate?: number

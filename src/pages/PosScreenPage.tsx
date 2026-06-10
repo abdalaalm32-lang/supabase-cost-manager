@@ -31,6 +31,7 @@ import { PosShiftManager } from "@/components/pos/PosShiftManager";
 import { PosShiftExpenses } from "@/components/pos/PosShiftExpenses";
 import { PosReturnsManager } from "@/components/pos/PosReturnsManager";
 import { PosShiftSalesReprint } from "@/components/pos/PosShiftSalesReprint";
+import { PosTablePicker } from "@/components/pos/PosTablePicker";
 
 interface CartItem {
   id: string;
@@ -93,6 +94,9 @@ export const PosScreenPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [customerName, setCustomerName] = useState(saved?.customerName || "");
+  const [tableNumber, setTableNumber] = useState<string>(saved?.tableNumber || "");
+  const [tablePickerOpen, setTablePickerOpen] = useState(false);
+  const [tablePickerMode, setTablePickerMode] = useState<"pick" | "transfer">("pick");
   
   const [receiptData, setReceiptData] = useState<any>(null);
   const [orderType, setOrderType] = useState<string>(saved?.orderType || "صالة");
@@ -275,9 +279,9 @@ export const PosScreenPage: React.FC = () => {
   });
 
   useEffect(() => {
-    const draft = { cart, branchId, saleDate: saleDate.toISOString(), taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, discountInPnl, editingSaleId, customerName, orderType, paymentMethod, deliveryFee, customerPhone, customerAddress };
+    const draft = { cart, branchId, saleDate: saleDate.toISOString(), taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, discountInPnl, editingSaleId, customerName, tableNumber, orderType, paymentMethod, deliveryFee, customerPhone, customerAddress };
     sessionStorage.setItem("pos_draft", JSON.stringify(draft));
-  }, [cart, branchId, saleDate, taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, discountInPnl, editingSaleId, customerName, orderType, paymentMethod, deliveryFee, customerPhone, customerAddress]);
+  }, [cart, branchId, saleDate, taxEnabled, taxRate, taxInputVisible, discountEnabled, discountType, discountValue, discountInPnl, editingSaleId, customerName, tableNumber, orderType, paymentMethod, deliveryFee, customerPhone, customerAddress]);
 
   // Load archived sale from navigation state
   useEffect(() => {
@@ -304,6 +308,7 @@ export const PosScreenPage: React.FC = () => {
       setTaxInputVisible(sale.tax_enabled);
       setOrderType((sale as any).order_type || "صالة");
       setPaymentMethod((sale as any).payment_method || "كاش");
+      setTableNumber((sale as any).table_number || "");
       if (sale.discount_amount > 0) {
         setDiscountEnabled(true);
         setDiscountType("fixed");
@@ -396,6 +401,12 @@ export const PosScreenPage: React.FC = () => {
     return categories.filter((c) => !c.branch_id || c.branch_id === branchId);
   }, [categories, branchId]);
 
+  const selectedBranchTablesCount = useMemo(() => {
+    if (!branchId || !branches) return 0;
+    const b: any = branches.find((x: any) => x.id === branchId);
+    return Number(b?.tables_count) || 0;
+  }, [branchId, branches]);
+
   const filteredItems = useMemo(() => {
     if (!items) return [];
     let result = items;
@@ -441,6 +452,7 @@ export const PosScreenPage: React.FC = () => {
     setCustomerPhone("");
     setCustomerAddress("");
     setDeliveryFee(0);
+    setTableNumber("");
     
     if (!keepOrderType) {
       setOrderType("صالة");
@@ -468,6 +480,7 @@ export const PosScreenPage: React.FC = () => {
     setTaxInputVisible(sale.tax_enabled);
     setOrderType(sale.order_type || "صالة");
     setPaymentMethod(sale.payment_method || "كاش");
+    setTableNumber((sale as any).table_number || "");
     if (sale.discount_amount > 0) {
       setDiscountEnabled(true);
       setDiscountType("fixed");
@@ -504,6 +517,7 @@ export const PosScreenPage: React.FC = () => {
         customer_name: customerName || null,
         customer_phone: orderType === "دليفري" ? (customerPhone || null) : null,
         customer_address: orderType === "دليفري" ? (customerAddress || null) : null,
+        table_number: orderType === "صالة" ? (tableNumber || null) : null,
         notes: cart.filter(c => c.notes).map(c => `${c.name}: ${c.notes}`).join(" | ") || null,
       };
 
@@ -838,18 +852,52 @@ export const PosScreenPage: React.FC = () => {
                 </div>
               </div>
 
+              {/* Tables (dine-in) */}
+              {orderType === "صالة" && branchId && (selectedBranchTablesCount > 0) && (
+                <div className="mb-2 flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      "h-8 text-xs gap-1.5 flex-1 justify-start",
+                      tableNumber
+                        ? "border-amber-500/60 bg-amber-500/10 text-amber-600 dark:text-amber-300 hover:bg-amber-500/20"
+                        : "border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10"
+                    )}
+                    onClick={() => { setTablePickerMode("pick"); setTablePickerOpen(true); }}
+                  >
+                    <UtensilsCrossed className="h-3.5 w-3.5" />
+                    {tableNumber ? `الطاولة: ${tableNumber}` : "اختر الطاولة"}
+                  </Button>
+                  {tableNumber && editingSaleId && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs gap-1.5 border-primary/40 text-primary hover:bg-primary/10"
+                      onClick={() => { setTablePickerMode("transfer"); setTablePickerOpen(true); }}
+                      title="نقل الأوردر لطاولة أخرى أو دمجه مع طاولة مشغولة"
+                    >
+                      نقل / دمج
+                    </Button>
+                  )}
+                </div>
+              )}
+
               {/* Customer name */}
               <div className="mb-2">
                 <div className="relative">
                   <User className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                   <Input
-                    placeholder="اسم العميل / رقم الطاولة (اختياري)"
+                    placeholder="اسم العميل (اختياري)"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
                     className="glass-input h-8 text-xs pr-8"
                   />
                 </div>
               </div>
+
 
               {/* Delivery extra fields */}
               {orderType === "دليفري" && (
@@ -1288,6 +1336,40 @@ export const PosScreenPage: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {companyId && branchId && (
+        <PosTablePicker
+          open={tablePickerOpen}
+          onOpenChange={setTablePickerOpen}
+          companyId={companyId}
+          branchId={branchId}
+          tablesCount={selectedBranchTablesCount}
+          currentTable={tableNumber || null}
+          currentSaleId={editingSaleId}
+          mode={tablePickerMode}
+          onPickFree={(label) => setTableNumber(label)}
+          onPickOccupied={async (sale) => {
+            // Resume that held sale
+            const { data: full } = await supabase
+              .from("pos_sales")
+              .select("*, branches:branch_id(name)")
+              .eq("id", sale.id)
+              .single();
+            const { data: saleItems } = await supabase
+              .from("pos_sale_items")
+              .select("*, pos_items:pos_item_id(name, categories:category_id(name))")
+              .eq("sale_id", sale.id);
+            if (full) handleResumeHeld(full, saleItems || []);
+          }}
+          onTransferComplete={() => {
+            queryClient.invalidateQueries({ queryKey: ["pos-held-sales"] });
+            queryClient.invalidateQueries({ queryKey: ["pos-held-tables"] });
+            clearAll(true);
+            toast.success("تم نقل / دمج الطاولة بنجاح");
+          }}
+        />
+      )}
     </>
+
   );
 };

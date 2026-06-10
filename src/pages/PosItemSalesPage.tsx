@@ -20,7 +20,7 @@ import {
 import { ExportButtons } from "@/components/ExportButtons";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend
+  PieChart, Pie, Cell, Legend, LabelList
 } from "recharts";
 
 type SortKey = "name" | "category" | "quantity" | "revenue" | "avgPrice" | "share";

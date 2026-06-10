@@ -143,7 +143,7 @@ export const PosScreenPage: React.FC = () => {
     queryFn: async () => {
       let query = supabase
         .from("pos_sales")
-        .select("id, invoice_number, customer_name, customer_phone, customer_address, customer_id, total_amount, delivery_fee, date, delivery_status, driver_id, notes, discount_amount, tax_amount, tax_rate, payment_method, branch_id, assigned_cashier_id")
+        .select("id, invoice_number, customer_name, customer_phone, customer_address, customer_id, total_amount, delivery_fee, date, delivery_status, driver_id, notes, discount_amount, tax_amount, tax_rate, payment_method, branch_id, assigned_cashier_id, delivery_company_id, delivery_companies:delivery_company_id(name)")
         .eq("company_id", companyId!)
         .eq("order_type", "دليفري")
         .in("delivery_status", ["جديد", "قيد التحضير", "خرج للتوصيل"])

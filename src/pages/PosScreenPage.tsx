@@ -627,6 +627,7 @@ export const PosScreenPage: React.FC = () => {
       orderType: lastReceipt.orderType,
       customerName: lastReceipt.customerName,
       companyName: lastReceipt.companyName,
+      deliveryCompanyName: lastReceipt.deliveryCompanyName,
     });
     toast.success("تم إرسال إيصال المطبخ للطباعة");
   }, [lastReceipt]);

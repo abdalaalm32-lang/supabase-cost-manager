@@ -471,6 +471,9 @@ export const PosShiftsPage: React.FC = () => {
                 <p><span className="text-muted-foreground">إجمالي المبيعات:</span> <span className="font-bold text-primary">{dTotalSales.toFixed(2)} EGP</span></p>
                 <p><span className="text-muted-foreground">كاش:</span> <span className="font-bold">{dTotalCash.toFixed(2)} EGP</span></p>
                 <p><span className="text-muted-foreground">فيزا:</span> <span className="font-bold">{dTotalVisa.toFixed(2)} EGP</span></p>
+                {dTotalInstapay > 0 && (
+                  <p><span className="text-muted-foreground">انستا باي:</span> <span className="font-bold">{dTotalInstapay.toFixed(2)} EGP</span></p>
+                )}
               </div>
               {dTotalExpenses > 0 && (
                 <div className="p-3 rounded-lg bg-destructive/5 border border-destructive/10 space-y-1">

@@ -111,6 +111,7 @@ export const PosScreenPage: React.FC = () => {
   const [deliveryFee, setDeliveryFee] = useState<number>(saved?.deliveryFee || 0);
   const [customerPhone, setCustomerPhone] = useState<string>(saved?.customerPhone || "");
   const [customerAddress, setCustomerAddress] = useState<string>(saved?.customerAddress || "");
+  const [editingDeliveryCompanyName, setEditingDeliveryCompanyName] = useState<string>("");
 
   // Current shift query for expenses — find any open shift for the company
   // (matches branch if set on shift, OR shifts without a branch, OR same branch)
@@ -143,7 +144,7 @@ export const PosScreenPage: React.FC = () => {
     queryFn: async () => {
       let query = supabase
         .from("pos_sales")
-        .select("id, invoice_number, customer_name, customer_phone, customer_address, customer_id, total_amount, delivery_fee, date, delivery_status, driver_id, notes, discount_amount, tax_amount, tax_rate, payment_method, branch_id, assigned_cashier_id")
+        .select("id, invoice_number, customer_name, customer_phone, customer_address, customer_id, total_amount, delivery_fee, date, delivery_status, driver_id, notes, discount_amount, tax_amount, tax_rate, payment_method, branch_id, assigned_cashier_id, delivery_company_id, delivery_companies:delivery_company_id(name)")
         .eq("company_id", companyId!)
         .eq("order_type", "دليفري")
         .in("delivery_status", ["جديد", "قيد التحضير", "خرج للتوصيل"])
@@ -292,7 +293,7 @@ export const PosScreenPage: React.FC = () => {
     navigate(location.pathname, { replace: true, state: {} });
 
     (async () => {
-      const { data: sale } = await supabase.from("pos_sales").select("*, branches:branch_id(name)").eq("id", saleId).single();
+      const { data: sale } = await supabase.from("pos_sales").select("*, branches:branch_id(name), delivery_companies:delivery_company_id(name)").eq("id", saleId).single();
       if (!sale) return;
 
       const { data: saleItems } = await supabase
@@ -310,6 +311,7 @@ export const PosScreenPage: React.FC = () => {
       setOrderType((sale as any).order_type || "صالة");
       setPaymentMethod((sale as any).payment_method || "كاش");
       setTableNumber((sale as any).table_number || "");
+      setEditingDeliveryCompanyName((sale as any).delivery_companies?.name || "");
       if (sale.discount_amount > 0) {
         setDiscountEnabled(true);
         setDiscountType("fixed");
@@ -454,6 +456,7 @@ export const PosScreenPage: React.FC = () => {
     setCustomerAddress("");
     setDeliveryFee(0);
     setTableNumber("");
+    setEditingDeliveryCompanyName("");
     
     if (!keepOrderType) {
       setOrderType("صالة");
@@ -482,6 +485,7 @@ export const PosScreenPage: React.FC = () => {
     setOrderType(sale.order_type || "صالة");
     setPaymentMethod(sale.payment_method || "كاش");
     setTableNumber((sale as any).table_number || "");
+    setEditingDeliveryCompanyName((sale as any).delivery_companies?.name || "");
     if (sale.discount_amount > 0) {
       setDiscountEnabled(true);
       setDiscountType("fixed");
@@ -575,6 +579,7 @@ export const PosScreenPage: React.FC = () => {
           deliveryFee: orderType === "دليفري" ? deliveryFee : 0,
           customerPhone: orderType === "دليفري" ? customerPhone : undefined,
           customerAddress: orderType === "دليفري" ? customerAddress : undefined,
+          deliveryCompanyName: orderType === "دليفري" ? editingDeliveryCompanyName : undefined,
         });
         toast.success("تم تنفيذ الفاتورة بنجاح");
       } else if (status === "معلق") {
@@ -622,6 +627,7 @@ export const PosScreenPage: React.FC = () => {
       orderType: lastReceipt.orderType,
       customerName: lastReceipt.customerName,
       companyName: lastReceipt.companyName,
+      deliveryCompanyName: lastReceipt.deliveryCompanyName,
     });
     toast.success("تم إرسال إيصال المطبخ للطباعة");
   }, [lastReceipt]);
@@ -1164,6 +1170,12 @@ export const PosScreenPage: React.FC = () => {
                           <StatusIcon className="h-3 w-3" />
                           {order.delivery_status}
                         </Badge>
+                        {(order as any).delivery_companies?.name && (
+                          <Badge className="text-[10px] gap-1 bg-orange-500/15 text-orange-600 border-orange-500/30 hover:bg-orange-500/20">
+                            <Truck className="h-3 w-3" />
+                            {(order as any).delivery_companies.name}
+                          </Badge>
+                        )}
                       </div>
                       <span className="text-[10px] text-muted-foreground">{format(new Date(order.date), "HH:mm")}</span>
                     </div>
@@ -1254,7 +1266,9 @@ export const PosScreenPage: React.FC = () => {
                               })) || [];
                               const itemsRows = items.map(i => `<tr><td style="text-align:right;padding:3px 0;font-size:10px">${i.name}</td><td style="text-align:center;font-size:10px">${i.qty}</td><td style="text-align:center;font-size:10px">${i.price?.toFixed(2)}</td><td style="text-align:left;font-size:10px">${i.total?.toFixed(2)}</td></tr>`).join("");
                               const phone2Line = order.customer_phone2 ? `<div class="info"><span class="label">هاتف 2:</span> <span dir="ltr">${order.customer_phone2}</span></div>` : "";
-                              const driverReceiptHTML = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>إيصال توصيل</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Cairo','Tahoma',sans-serif;width:72mm;margin:0 auto;padding:4px 6px;font-size:11px;color:#000;line-height:1.4}h2{text-align:center;font-size:14px;margin-bottom:4px}.sep{border-bottom:1px dashed #000;margin:6px 0}.info{font-size:10px;padding:2px 0}.label{font-weight:bold}table{width:100%;border-collapse:collapse;margin:6px 0}th{font-size:10px;border-bottom:1px solid #000;padding:3px 0;text-align:center}td{padding:3px 0;font-size:10px}.total-row{font-weight:bold;font-size:13px;text-align:center;padding:6px 0;border-top:2px dashed #000;margin-top:6px}.footer{text-align:center;font-size:9px;color:#666;margin-top:8px;border-top:1px dashed #ccc;padding-top:4px}@media print{@page{size:80mm auto;margin:0}}</style></head><body><h2>🚚 إيصال توصيل</h2><p style="text-align:center;font-size:10px">${company?.name || "CostControl"}</p><div class="sep"></div><div class="info"><span class="label">فاتورة:</span> ${order.invoice_number}</div><div class="info"><span class="label">التاريخ:</span> ${format(new Date(order.date), "yyyy/MM/dd HH:mm")}</div><div class="sep"></div><div class="info"><span class="label">العميل:</span> ${order.customer_name || "—"}</div><div class="info"><span class="label">الهاتف:</span> <span dir="ltr">${order.customer_phone || "—"}</span></div>${phone2Line}<div class="info"><span class="label">العنوان:</span> ${order.customer_address || "—"}</div>${driverName ? `<div class="sep"></div><div class="info"><span class="label">الطيار:</span> ${driverName}</div>${driverPhone ? `<div class="info"><span class="label">هاتف الطيار:</span> <span dir="ltr">${driverPhone}</span></div>` : ""}` : ""}<div class="sep"></div><table><thead><tr><th style="text-align:right">الصنف</th><th>الكمية</th><th>السعر</th><th style="text-align:left">الإجمالي</th></tr></thead><tbody>${itemsRows}</tbody></table>${order.discount_amount > 0 ? `<div class="info"><span class="label">خصم:</span> ${order.discount_amount?.toFixed(2)} EGP</div>` : ""}${order.tax_amount > 0 ? `<div class="info"><span class="label">ضريبة ${order.tax_rate}%:</span> ${order.tax_amount?.toFixed(2)} EGP</div>` : ""}<div class="info"><span class="label">رسوم التوصيل:</span> ${order.delivery_fee?.toFixed(2) || "0.00"} EGP</div><div class="total-row">الإجمالي المطلوب: ${((order.total_amount ?? 0) + (order.delivery_fee ?? 0)).toFixed(2)} EGP</div><div class="info" style="text-align:center;font-size:10px;margin-top:4px"><span class="label">طريقة الدفع:</span> ${order.payment_method || "كاش"}</div>${order.notes ? `<div class="sep"></div><div class="info" style="font-size:10px"><span class="label">ملاحظات:</span> ${order.notes}</div>` : ""}<div class="footer">شكراً لتعاملكم معنا • ${company?.name || "CostControl"}</div></body></html>`;
+                              const deliveryCompanyName = (order as any).delivery_companies?.name || "";
+                              const deliveryCompanyLine = deliveryCompanyName ? `<div class="info" style="background:#000;color:#fff;padding:3px 4px;border-radius:3px;margin:4px 0;text-align:center"><span class="label">🛵 شركة التوصيل:</span> ${deliveryCompanyName}</div>` : "";
+                              const driverReceiptHTML = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>إيصال توصيل</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Cairo','Tahoma',sans-serif;width:72mm;margin:0 auto;padding:4px 6px;font-size:11px;color:#000;line-height:1.4}h2{text-align:center;font-size:14px;margin-bottom:4px}.sep{border-bottom:1px dashed #000;margin:6px 0}.info{font-size:10px;padding:2px 0}.label{font-weight:bold}table{width:100%;border-collapse:collapse;margin:6px 0}th{font-size:10px;border-bottom:1px solid #000;padding:3px 0;text-align:center}td{padding:3px 0;font-size:10px}.total-row{font-weight:bold;font-size:13px;text-align:center;padding:6px 0;border-top:2px dashed #000;margin-top:6px}.footer{text-align:center;font-size:9px;color:#666;margin-top:8px;border-top:1px dashed #ccc;padding-top:4px}@media print{@page{size:80mm auto;margin:0}}</style></head><body><h2>🚚 إيصال توصيل</h2><p style="text-align:center;font-size:10px">${company?.name || "CostControl"}</p>${deliveryCompanyLine}<div class="sep"></div><div class="info"><span class="label">فاتورة:</span> ${order.invoice_number}</div><div class="info"><span class="label">التاريخ:</span> ${format(new Date(order.date), "yyyy/MM/dd HH:mm")}</div><div class="sep"></div><div class="info"><span class="label">العميل:</span> ${order.customer_name || "—"}</div><div class="info"><span class="label">الهاتف:</span> <span dir="ltr">${order.customer_phone || "—"}</span></div>${phone2Line}<div class="info"><span class="label">العنوان:</span> ${order.customer_address || "—"}</div>${driverName ? `<div class="sep"></div><div class="info"><span class="label">الطيار:</span> ${driverName}</div>${driverPhone ? `<div class="info"><span class="label">هاتف الطيار:</span> <span dir="ltr">${driverPhone}</span></div>` : ""}` : ""}<div class="sep"></div><table><thead><tr><th style="text-align:right">الصنف</th><th>الكمية</th><th>السعر</th><th style="text-align:left">الإجمالي</th></tr></thead><tbody>${itemsRows}</tbody></table>${order.discount_amount > 0 ? `<div class="info"><span class="label">خصم:</span> ${order.discount_amount?.toFixed(2)} EGP</div>` : ""}${order.tax_amount > 0 ? `<div class="info"><span class="label">ضريبة ${order.tax_rate}%:</span> ${order.tax_amount?.toFixed(2)} EGP</div>` : ""}<div class="info"><span class="label">رسوم التوصيل:</span> ${order.delivery_fee?.toFixed(2) || "0.00"} EGP</div><div class="total-row">الإجمالي المطلوب: ${((order.total_amount ?? 0) + (order.delivery_fee ?? 0)).toFixed(2)} EGP</div><div class="info" style="text-align:center;font-size:10px;margin-top:4px"><span class="label">طريقة الدفع:</span> ${order.payment_method || "كاش"}</div>${order.notes ? `<div class="sep"></div><div class="info" style="font-size:10px"><span class="label">ملاحظات:</span> ${order.notes}</div>` : ""}<div class="footer">شكراً لتعاملكم معنا • ${company?.name || "CostControl"}</div></body></html>`;
                               printViaIframe(driverReceiptHTML);
                             }}
                           >

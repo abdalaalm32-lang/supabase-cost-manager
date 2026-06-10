@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Receipt, DollarSign, TrendingUp, Clock, Layers, RotateCcw, Wallet, CreditCard, Package, RefreshCw } from "lucide-react";
+import { Receipt, DollarSign, TrendingUp, Clock, Layers, RotateCcw, Wallet, CreditCard, Package, RefreshCw, Smartphone } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
@@ -45,7 +45,7 @@ export const PosDailyStats: React.FC<PosDailyStatsProps> = ({ companyId, branchI
   const { data: stats } = useQuery({
     queryKey: ["pos-daily-stats-v2", companyId, branchId, viewMode, selectedShift?.id, selectedShift?.opened_at, selectedShift?.closed_at],
     queryFn: async () => {
-      const empty = { totalSales: 0, invoiceCount: 0, avgInvoice: 0, itemsCount: 0, cashSales: 0, visaSales: 0, returnsCash: 0, returnsVisa: 0, returnsTotal: 0, netSales: 0 };
+      const empty = { totalSales: 0, invoiceCount: 0, avgInvoice: 0, itemsCount: 0, cashSales: 0, visaSales: 0, instapaySales: 0, returnsCash: 0, returnsVisa: 0, returnsInstapay: 0, returnsTotal: 0, netSales: 0 };
 
       // Build sales query
       let salesQuery = supabase
@@ -188,6 +188,7 @@ export const PosDailyStats: React.FC<PosDailyStatsProps> = ({ companyId, branchI
     { icon: TrendingUp, label: "متوسط الفاتورة", value: `${(stats?.avgInvoice || 0).toFixed(0)} EGP`, color: "text-secondary" },
     { icon: Wallet, label: "كاش", value: `${(stats?.cashSales || 0).toFixed(0)} EGP`, color: "text-emerald-400" },
     { icon: CreditCard, label: "فيزا", value: `${(stats?.visaSales || 0).toFixed(0)} EGP`, color: "text-blue-400" },
+    { icon: Smartphone, label: "انستا باي", value: `${(stats?.instapaySales || 0).toFixed(0)} EGP`, color: "text-violet-400" },
   ];
 
   return (
@@ -237,9 +238,11 @@ function calcStats(sales: any[], returns: any[], itemsCount: number) {
   const avgInvoice = invoiceCount > 0 ? totalSales / invoiceCount : 0;
   const cashSales = sales.filter(s => s.payment_method === "كاش").reduce((s, r) => s + Number(r.total_amount || 0), 0);
   const visaSales = sales.filter(s => s.payment_method === "فيزا" || s.payment_method === "visa").reduce((s, r) => s + Number(r.total_amount || 0), 0);
+  const instapaySales = sales.filter(s => s.payment_method === "انستا باي").reduce((s, r) => s + Number(r.total_amount || 0), 0);
   const returnsCash = returns.filter(r => r.payment_method === "كاش").reduce((s, r) => s + Number(r.total_amount || 0), 0);
   const returnsVisa = returns.filter(r => r.payment_method === "فيزا" || r.payment_method === "visa").reduce((s, r) => s + Number(r.total_amount || 0), 0);
+  const returnsInstapay = returns.filter(r => r.payment_method === "انستا باي").reduce((s, r) => s + Number(r.total_amount || 0), 0);
   const returnsTotal = returns.reduce((s, r) => s + Number(r.total_amount || 0), 0);
   const netSales = totalSales - returnsTotal;
-  return { totalSales, invoiceCount, avgInvoice, itemsCount, cashSales, visaSales, returnsCash, returnsVisa, returnsTotal, netSales };
+  return { totalSales, invoiceCount, avgInvoice, itemsCount, cashSales, visaSales, instapaySales, returnsCash, returnsVisa, returnsInstapay, returnsTotal, netSales };
 }

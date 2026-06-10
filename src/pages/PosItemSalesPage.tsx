@@ -202,12 +202,29 @@ export const PosItemSalesPage: React.FC = () => {
 
   const top10 = useMemo(() => {
     return [...aggregated.items].sort((a, b) => b.revenue - a.revenue).slice(0, 10).map((i) => ({
-      name: i.name.length > 18 ? i.name.slice(0, 18) + "…" : i.name,
+      name: i.name.length > 22 ? i.name.slice(0, 22) + "…" : i.name,
       fullName: i.name,
       revenue: Number(i.revenue.toFixed(2)),
       quantity: i.quantity,
     }));
   }, [aggregated.items]);
+
+  // Group categories <5% into "أخرى" for cleaner pie chart
+  const pieData = useMemo(() => {
+    const total = aggregated.totalRevenue || 0;
+    if (total === 0) return [] as { name: string; revenue: number; pct: number }[];
+    const main: { name: string; revenue: number; pct: number }[] = [];
+    let othersRevenue = 0;
+    aggregated.byCategory.forEach((c) => {
+      const pct = (c.revenue / total) * 100;
+      if (pct < 5) othersRevenue += c.revenue;
+      else main.push({ name: c.name, revenue: c.revenue, pct });
+    });
+    if (othersRevenue > 0) {
+      main.push({ name: "أخرى", revenue: othersRevenue, pct: (othersRevenue / total) * 100 });
+    }
+    return main.sort((a, b) => b.revenue - a.revenue);
+  }, [aggregated.byCategory, aggregated.totalRevenue]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -408,13 +425,19 @@ export const PosItemSalesPage: React.FC = () => {
           </CardHeader>
           <CardContent>
             {top10.length === 0 ? (
-              <div className="h-[280px] flex items-center justify-center text-sm text-muted-foreground">لا توجد بيانات</div>
+              <div className="h-[340px] flex items-center justify-center text-sm text-muted-foreground">لا توجد بيانات</div>
             ) : (
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={top10} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+              <ResponsiveContainer width="100%" height={340}>
+                <BarChart data={top10} layout="vertical" margin={{ top: 5, right: 24, left: 8, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} horizontal={false} />
                   <XAxis type="number" tick={{ fontSize: 11 }} />
-                  <YAxis dataKey="name" type="category" tick={{ fontSize: 11 }} width={120} />
+                  <YAxis
+                    dataKey="name"
+                    type="category"
+                    tick={{ fontSize: 11, textAnchor: "end" }}
+                    width={180}
+                    interval={0}
+                  />
                   <Tooltip
                     contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
                     formatter={(v: number) => [fmt(v) + " EGP", "الإيراد"]}
@@ -435,19 +458,42 @@ export const PosItemSalesPage: React.FC = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {aggregated.byCategory.length === 0 ? (
-              <div className="h-[280px] flex items-center justify-center text-sm text-muted-foreground">لا توجد بيانات</div>
+            {pieData.length === 0 ? (
+              <div className="h-[340px] flex items-center justify-center text-sm text-muted-foreground">لا توجد بيانات</div>
             ) : (
-              <ResponsiveContainer width="100%" height={280}>
+              <ResponsiveContainer width="100%" height={340}>
                 <PieChart>
-                  <Pie data={aggregated.byCategory} dataKey="revenue" nameKey="name" cx="50%" cy="50%" outerRadius={95} label={(e: any) => `${e.name} (${((e.revenue / aggregated.totalRevenue) * 100).toFixed(1)}%)`} labelLine={false}>
-                    {aggregated.byCategory.map((_, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  <Pie
+                    data={pieData}
+                    dataKey="revenue"
+                    nameKey="name"
+                    cx="38%"
+                    cy="50%"
+                    outerRadius={105}
+                    innerRadius={45}
+                    paddingAngle={1}
+                    label={(e: any) => (e.pct >= 6 ? `${e.pct.toFixed(0)}%` : "")}
+                    labelLine={false}
+                  >
+                    {pieData.map((_, i) => (
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} stroke="hsl(var(--card))" strokeWidth={2} />
                     ))}
                   </Pie>
                   <Tooltip
                     contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
-                    formatter={(v: number) => [fmt(v) + " EGP", "الإيراد"]}
+                    formatter={(v: number, _n, p: any) => [`${fmt(v)} EGP (${p?.payload?.pct?.toFixed(1)}%)`, p?.payload?.name]}
+                  />
+                  <Legend
+                    layout="vertical"
+                    verticalAlign="middle"
+                    align="right"
+                    iconType="circle"
+                    wrapperStyle={{ fontSize: 11, maxWidth: "45%", maxHeight: 300, overflowY: "auto", paddingInlineStart: 8 }}
+                    formatter={(value: string, entry: any) => (
+                      <span className="text-foreground" style={{ marginInlineStart: 4 }}>
+                        {value} <span className="text-muted-foreground">({entry?.payload?.pct?.toFixed(1)}%)</span>
+                      </span>
+                    )}
                   />
                 </PieChart>
               </ResponsiveContainer>

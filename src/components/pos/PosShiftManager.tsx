@@ -458,7 +458,7 @@ ${totals.totalExpenses > 0 ? `<div class="sep"><p class="bold expense-label">ا�
 
 ${totals.totalReturns > 0 ? `<div class="sep"><p class="bold expense-label">المرتجعات (${(shiftReturns || []).length})</p>
 <table><thead><tr><th>رقم</th><th style="text-align:center">طريقة</th><th>المبلغ</th></tr></thead><tbody>${returnsRows}</tbody></table>
-<p class="bold" style="margin-top:4px">إجمالي: ${fmtMoney(totals.totalReturns)} EGP (كاش ${fmtMoney(totals.totalReturnsCash)} | فيزا ${fmtMoney(totals.totalReturnsVisa)})</p></div>` : ""}
+<p class="bold" style="margin-top:4px">إجمالي: ${fmtMoney(totals.totalReturns)} EGP (كاش ${fmtMoney(totals.totalReturnsCash)} | فيزا ${fmtMoney(totals.totalReturnsVisa)}${totals.totalReturnsInstapay > 0 ? ` | انستا باي ${fmtMoney(totals.totalReturnsInstapay)}` : ""})</p></div>` : ""}
 
 <div class="sep center box">
 <p>إجمالي المبيعات: ${fmtMoney(totals.totalSales)} EGP</p>

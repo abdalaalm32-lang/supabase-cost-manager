@@ -401,6 +401,12 @@ export const PosScreenPage: React.FC = () => {
     return categories.filter((c) => !c.branch_id || c.branch_id === branchId);
   }, [categories, branchId]);
 
+  const selectedBranchTablesCount = useMemo(() => {
+    if (!branchId || !branches) return 0;
+    const b: any = branches.find((x: any) => x.id === branchId);
+    return Number(b?.tables_count) || 0;
+  }, [branchId, branches]);
+
   const filteredItems = useMemo(() => {
     if (!items) return [];
     let result = items;

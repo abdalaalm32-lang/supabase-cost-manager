@@ -91,7 +91,7 @@ export const SettingsBranchesPage: React.FC = () => {
   const maxWarehouses = companyData?.max_warehouses ?? 999;
 
   const resetForm = () => {
-    setFormName(""); setFormAddress(""); setFormManagerId(""); setFormActive(true); setEditBranch(null);
+    setFormName(""); setFormAddress(""); setFormManagerId(""); setFormActive(true); setFormTablesCount(0); setEditBranch(null);
   };
 
   const openAdd = () => {
@@ -107,6 +107,7 @@ export const SettingsBranchesPage: React.FC = () => {
     setFormAddress(b.address || "");
     setFormManagerId(b.manager_id || "");
     setFormActive(b.active);
+    setFormTablesCount(Number(b.tables_count) || 0);
     setIsDialogOpen(true);
   };
 

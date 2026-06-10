@@ -524,6 +524,7 @@ export const CallCenterPage: React.FC = () => {
         paymentMethod,
         deliveryFee,
         expectedReadyTime: expectedReady,
+        deliveryCompanyName: deliveryCompanies?.find((c: any) => c.id === deliveryCompanyId)?.name,
         // extra fields used by kitchen print
         _orderTime: format(new Date(), "HH:mm"),
         _expectedDeliveryTime: expectedReady,

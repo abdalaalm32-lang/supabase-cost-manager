@@ -188,6 +188,7 @@ export const PosDailyStats: React.FC<PosDailyStatsProps> = ({ companyId, branchI
     { icon: TrendingUp, label: "متوسط الفاتورة", value: `${(stats?.avgInvoice || 0).toFixed(0)} EGP`, color: "text-secondary" },
     { icon: Wallet, label: "كاش", value: `${(stats?.cashSales || 0).toFixed(0)} EGP`, color: "text-emerald-400" },
     { icon: CreditCard, label: "فيزا", value: `${(stats?.visaSales || 0).toFixed(0)} EGP`, color: "text-blue-400" },
+    { icon: Smartphone, label: "انستا باي", value: `${(stats?.instapaySales || 0).toFixed(0)} EGP`, color: "text-violet-400" },
   ];
 
   return (

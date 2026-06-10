@@ -1336,6 +1336,40 @@ export const PosScreenPage: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {companyId && branchId && (
+        <PosTablePicker
+          open={tablePickerOpen}
+          onOpenChange={setTablePickerOpen}
+          companyId={companyId}
+          branchId={branchId}
+          tablesCount={selectedBranchTablesCount}
+          currentTable={tableNumber || null}
+          currentSaleId={editingSaleId}
+          mode={tablePickerMode}
+          onPickFree={(label) => setTableNumber(label)}
+          onPickOccupied={async (sale) => {
+            // Resume that held sale
+            const { data: full } = await supabase
+              .from("pos_sales")
+              .select("*, branches:branch_id(name)")
+              .eq("id", sale.id)
+              .single();
+            const { data: saleItems } = await supabase
+              .from("pos_sale_items")
+              .select("*, pos_items:pos_item_id(name, categories:category_id(name))")
+              .eq("sale_id", sale.id);
+            if (full) handleResumeHeld(full, saleItems || []);
+          }}
+          onTransferComplete={() => {
+            queryClient.invalidateQueries({ queryKey: ["pos-held-sales"] });
+            queryClient.invalidateQueries({ queryKey: ["pos-held-tables"] });
+            clearAll(true);
+            toast.success("تم نقل / دمج الطاولة بنجاح");
+          }}
+        />
+      )}
     </>
+
   );
 };

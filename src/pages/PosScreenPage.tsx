@@ -293,7 +293,7 @@ export const PosScreenPage: React.FC = () => {
     navigate(location.pathname, { replace: true, state: {} });
 
     (async () => {
-      const { data: sale } = await supabase.from("pos_sales").select("*, branches:branch_id(name)").eq("id", saleId).single();
+      const { data: sale } = await supabase.from("pos_sales").select("*, branches:branch_id(name), delivery_companies:delivery_company_id(name)").eq("id", saleId).single();
       if (!sale) return;
 
       const { data: saleItems } = await supabase

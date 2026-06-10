@@ -402,6 +402,7 @@ export const CallCenterPage: React.FC = () => {
     setPaymentMethod("كاش");
     setDeliveryFee(0);
     setExpectedDeliveryTime("");
+    setDeliveryCompanyId("");
   }, []);
 
   // Save/create customer and order

@@ -455,6 +455,7 @@ export const PosScreenPage: React.FC = () => {
     setCustomerAddress("");
     setDeliveryFee(0);
     setTableNumber("");
+    setEditingDeliveryCompanyName("");
     
     if (!keepOrderType) {
       setOrderType("صالة");

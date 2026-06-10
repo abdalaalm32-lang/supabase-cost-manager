@@ -202,7 +202,7 @@ export const PosItemSalesPage: React.FC = () => {
 
   const top10 = useMemo(() => {
     return [...aggregated.items].sort((a, b) => b.revenue - a.revenue).slice(0, 10).map((i) => ({
-      name: i.name.length > 22 ? i.name.slice(0, 22) + "…" : i.name,
+      name: i.name.length > 25 ? i.name.slice(0, 25) + "…" : i.name,
       fullName: i.name,
       revenue: Number(i.revenue.toFixed(2)),
       quantity: i.quantity,
@@ -428,10 +428,19 @@ export const PosItemSalesPage: React.FC = () => {
               <div className="h-[340px] flex items-center justify-center text-sm text-muted-foreground">لا توجد بيانات</div>
             ) : (
               <ResponsiveContainer width="100%" height={Math.max(340, top10.length * 40)}>
-                <BarChart data={top10} layout="vertical" margin={{ top: 5, right: 16, left: 16, bottom: 5 }} barCategoryGap={6}>
+                <BarChart data={top10} layout="vertical" margin={{ top: 5, right: 96, left: 24, bottom: 5 }} barCategoryGap={8}>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.15} horizontal={false} />
                   <XAxis type="number" tick={{ fontSize: 10 }} />
-                  <YAxis dataKey="name" type="category" hide />
+                  <YAxis
+                    dataKey="name"
+                    type="category"
+                    width={180}
+                    interval={0}
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fontSize: 11, fill: "hsl(var(--foreground))", fontWeight: 700 }}
+                    tickFormatter={(value: string) => (value.length > 25 ? value.slice(0, 25) + "…" : value)}
+                  />
                   <Tooltip
                     cursor={{ fill: "hsl(var(--muted) / 0.3)" }}
                     contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12, color: "hsl(var(--foreground))" }}
@@ -440,17 +449,12 @@ export const PosItemSalesPage: React.FC = () => {
                     formatter={(v: number) => [fmt(v) + " EGP", "الإيراد"]}
                     labelFormatter={(_, p) => (p?.[0] as any)?.payload?.fullName || ""}
                   />
-                  <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} minPointSize={220}>
-                    <LabelList
-                      dataKey="fullName"
-                      position="insideLeft"
-                      style={{ fill: "#ffffff", fontSize: 12, fontWeight: 700 }}
-                      formatter={(v: string) => (v?.length > 38 ? v.slice(0, 38) + "…" : v)}
-                    />
+                  <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} minPointSize={8}>
                     <LabelList
                       dataKey="revenue"
-                      position="insideRight"
-                      style={{ fill: "#ffffff", fontSize: 11, fontWeight: 700 }}
+                      position="right"
+                      offset={8}
+                      style={{ fill: "hsl(var(--foreground))", fontSize: 11, fontWeight: 700 }}
                       formatter={(v: number) => fmt(v) + " EGP"}
                     />
                   </Bar>

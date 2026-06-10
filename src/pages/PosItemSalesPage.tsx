@@ -359,7 +359,7 @@ export const PosItemSalesPage: React.FC = () => {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="glass-card">
+        <Card className="glass-card lg:col-span-2">
           <CardContent className="pt-5">
             <div className="flex items-center justify-between">
               <div>
@@ -428,20 +428,20 @@ export const PosItemSalesPage: React.FC = () => {
               <div className="h-[340px] flex items-center justify-center text-sm text-muted-foreground">لا توجد بيانات</div>
             ) : (
               <ResponsiveContainer width="100%" height={Math.max(340, top10.length * 40)}>
-                <BarChart data={top10} layout="vertical" margin={{ top: 5, right: 150, left: 72, bottom: 5 }} barCategoryGap={8}>
+                <BarChart data={top10} layout="vertical" margin={{ top: 5, right: 170, left: 110, bottom: 5 }} barCategoryGap={8}>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.15} horizontal={false} />
                   <XAxis type="number" tick={{ fontSize: 10 }} domain={[0, "dataMax"]} />
                   <YAxis
                     dataKey="name"
                     type="category"
                     orientation="right"
-                    width={140}
+                    width={165}
                     interval={0}
                     tickLine={false}
                     axisLine={false}
                     tick={{ fontSize: 11, fill: "hsl(var(--foreground))", fontWeight: 700, textAnchor: "end" }}
                     tickMargin={10}
-                    tickFormatter={(value: string) => (value.length > 18 ? value.slice(0, 18) + "…" : value)}
+                    tickFormatter={(value: string) => (value.length > 24 ? value.slice(0, 24) + "…" : value)}
                   />
                   <Tooltip
                     cursor={{ fill: "hsl(var(--muted) / 0.3)" }}

@@ -355,6 +355,19 @@ export const SettingsBranchesPage: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label>عدد الطاولات (للصالة)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={formTablesCount === 0 ? "" : formTablesCount}
+                  onChange={e => setFormTablesCount(Number(e.target.value) || 0)}
+                  placeholder="مثال: 20"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  سيتم ترقيم الطاولات تلقائيًا من T1 إلى T{formTablesCount || "N"}. اتركها 0 لإخفاء شاشة الطاولات.
+                </p>
+              </div>
               <div className="flex items-center justify-between">
                 <Label>حالة الفرع</Label>
                 <div className="flex items-center gap-2">

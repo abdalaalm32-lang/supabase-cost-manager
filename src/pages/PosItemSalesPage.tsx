@@ -385,7 +385,7 @@ export const PosItemSalesPage: React.FC = () => {
             </div>
           </CardContent>
         </Card>
-        <Card className="glass-card lg:col-span-2">
+        <Card className="glass-card">
           <CardContent className="pt-5">
             <div className="flex items-center justify-between">
               <div>
@@ -398,7 +398,7 @@ export const PosItemSalesPage: React.FC = () => {
             </div>
           </CardContent>
         </Card>
-        <Card className="glass-card">
+        <Card className="glass-card lg:col-span-2">
           <CardContent className="pt-5">
             <div className="flex items-center justify-between">
               <div>

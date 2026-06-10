@@ -18,7 +18,7 @@ import {
   Phone, Plus, Minus, Trash2, Search, Truck, User, MapPin, Store,
   ShoppingCart, LayoutGrid, Banknote, CreditCard, Clock, CheckCircle2,
   ChefHat, PackageCheck, Send, Star, PhoneCall, MessageSquare,
-  Users, TrendingUp, FileText, AlertCircle
+  Users, TrendingUp, FileText, AlertCircle, Smartphone, Building2
 } from "lucide-react";
 import { printCustomerReceipt, printKitchenReceipt } from "@/lib/posPrintUtils";
 import { CallCenterReprintDialog } from "@/components/pos/CallCenterReprintDialog";

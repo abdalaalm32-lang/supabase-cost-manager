@@ -76,6 +76,7 @@ export const CallCenterPage: React.FC = () => {
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [deliveryFee, setDeliveryFee] = useState<number>(0);
   const [expectedDeliveryTime, setExpectedDeliveryTime] = useState<string>(""); // HH:mm input
+  const [deliveryCompanyId, setDeliveryCompanyId] = useState<string>("");
   // driver selection removed - cashier handles it
 
   // Cart

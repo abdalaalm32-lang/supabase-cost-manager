@@ -122,6 +122,7 @@ export const buildCustomerReceiptHTML = (data: CustomerReceiptData): string => {
   ${customerPhone ? `<div style="font-size:13px;font-weight:700;color:#000" dir="ltr">${customerPhone}${customerPhone2 ? ` / ${customerPhone2}` : ""}</div>` : ""}
   ${customerAddress ? `<div style="font-size:13px;font-weight:700;color:#000">العنوان: ${customerAddress}</div>` : ""}
   ${orderType ? `<div style="font-size:13px;font-weight:700;color:#000">نوع الطلب: ${orderType}</div>` : ""}
+  ${deliveryCompanyName ? `<div style="font-size:13px;font-weight:900;color:#000;background:#000;color:#fff;padding:3px;margin-top:3px;border-radius:3px">🛵 شركة التوصيل: ${deliveryCompanyName}</div>` : ""}
   ${paymentMethod ? `<div style="font-size:13px;font-weight:700;color:#000">طريقة الدفع: ${paymentMethod}</div>` : ""}
 </div>
 ${bigOrderBadge}

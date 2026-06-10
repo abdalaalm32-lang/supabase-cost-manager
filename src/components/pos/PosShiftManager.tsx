@@ -625,6 +625,9 @@ ${closingNotes.trim() ? `<div class="sep"><p class="bold">📝 ملاحظات:</
                 <p className="font-bold text-destructive text-xs mb-1">↩ المرتجعات ({(shiftReturns || []).length})</p>
                 <div className="flex justify-between text-xs"><span className="text-muted-foreground">كاش:</span> <span className="font-bold">{fmtMoney(totals.totalReturnsCash)} EGP</span></div>
                 <div className="flex justify-between text-xs"><span className="text-muted-foreground">فيزا:</span> <span className="font-bold">{fmtMoney(totals.totalReturnsVisa)} EGP</span></div>
+                {totals.totalReturnsInstapay > 0 && (
+                  <div className="flex justify-between text-xs"><span className="text-muted-foreground">انستا باي:</span> <span className="font-bold">{fmtMoney(totals.totalReturnsInstapay)} EGP</span></div>
+                )}
                 <div className="flex justify-between text-xs border-t border-destructive/10 pt-1 mt-1"><span>إجمالي:</span> <span className="font-bold">{fmtMoney(totals.totalReturns)} EGP</span></div>
               </div>
             )}

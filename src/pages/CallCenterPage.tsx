@@ -746,6 +746,16 @@ export const CallCenterPage: React.FC = () => {
                       {branchUsers?.map((u: any) => (<SelectItem key={u.id} value={u.id} className="text-xs">{u.full_name}</SelectItem>))}
                     </SelectContent>
                   </Select>
+                  <Select value={deliveryCompanyId || "none"} onValueChange={(v) => setDeliveryCompanyId(v === "none" ? "" : v)}>
+                    <SelectTrigger className="glass-input h-8 text-xs">
+                      <Building2 className="h-3.5 w-3.5 ml-1 text-muted-foreground" />
+                      <SelectValue placeholder="شركة التوصيل (اختياري)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none" className="text-xs">بدون شركة توصيل</SelectItem>
+                      {deliveryCompanies?.map((c: any) => (<SelectItem key={c.id} value={c.id} className="text-xs">{c.name}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
                   <div className="relative">
                     <Phone className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                     <Input

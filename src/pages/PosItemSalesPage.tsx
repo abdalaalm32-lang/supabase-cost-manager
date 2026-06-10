@@ -428,18 +428,20 @@ export const PosItemSalesPage: React.FC = () => {
               <div className="h-[340px] flex items-center justify-center text-sm text-muted-foreground">لا توجد بيانات</div>
             ) : (
               <ResponsiveContainer width="100%" height={Math.max(340, top10.length * 40)}>
-                <BarChart data={top10} layout="vertical" margin={{ top: 5, right: 96, left: 24, bottom: 5 }} barCategoryGap={8}>
+                <BarChart data={top10} layout="vertical" margin={{ top: 5, right: 150, left: 72, bottom: 5 }} barCategoryGap={8}>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.15} horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 10 }} />
+                  <XAxis type="number" tick={{ fontSize: 10 }} domain={[0, "dataMax"]} />
                   <YAxis
                     dataKey="name"
                     type="category"
-                    width={180}
+                    orientation="right"
+                    width={140}
                     interval={0}
                     tickLine={false}
                     axisLine={false}
-                    tick={{ fontSize: 11, fill: "hsl(var(--foreground))", fontWeight: 700 }}
-                    tickFormatter={(value: string) => (value.length > 25 ? value.slice(0, 25) + "…" : value)}
+                    tick={{ fontSize: 11, fill: "hsl(var(--foreground))", fontWeight: 700, textAnchor: "end" }}
+                    tickMargin={10}
+                    tickFormatter={(value: string) => (value.length > 18 ? value.slice(0, 18) + "…" : value)}
                   />
                   <Tooltip
                     cursor={{ fill: "hsl(var(--muted) / 0.3)" }}
@@ -452,7 +454,7 @@ export const PosItemSalesPage: React.FC = () => {
                   <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} minPointSize={8}>
                     <LabelList
                       dataKey="revenue"
-                      position="right"
+                      position="left"
                       offset={8}
                       style={{ fill: "hsl(var(--foreground))", fontSize: 11, fontWeight: 700 }}
                       formatter={(v: number) => fmt(v) + " EGP"}

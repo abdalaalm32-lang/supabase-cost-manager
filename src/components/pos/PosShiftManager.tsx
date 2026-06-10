@@ -192,6 +192,9 @@ export const PosShiftManager: React.FC<PosShiftManagerProps> = ({ companyId, bra
     const totalVisaSales = sales
       .filter((s: any) => s.payment_method === "فيزا")
       .reduce((sum: number, sale: any) => sum + (Number(sale.total_amount) || 0), 0);
+    const totalInstapaySales = sales
+      .filter((s: any) => s.payment_method === "انستا باي")
+      .reduce((sum: number, sale: any) => sum + (Number(sale.total_amount) || 0), 0);
 
     const totalReturns = returns.reduce((s: number, r: any) => s + (Number(r.total_amount) || 0), 0);
     const totalReturnsCash = returns
@@ -200,21 +203,21 @@ export const PosShiftManager: React.FC<PosShiftManagerProps> = ({ companyId, bra
     const totalReturnsVisa = returns
       .filter((r: any) => r.payment_method === "فيزا")
       .reduce((s: number, r: any) => s + (Number(r.total_amount) || 0), 0);
+    const totalReturnsInstapay = returns
+      .filter((r: any) => r.payment_method === "انستا باي")
+      .reduce((s: number, r: any) => s + (Number(r.total_amount) || 0), 0);
 
     const totalExpenses = expenses.reduce((s: number, e: any) => s + (Number(e.amount) || 0), 0);
     const openingCashVal = Number(currentShift?.opening_cash) || 0;
 
-    // CORRECT FORMULA: Cash drawer expected
-    // = Opening Cash + Cash Sales - Cash Returns - Expenses
+    // Cash drawer expected = Opening + Cash sales - Cash returns - Expenses (InstaPay/Visa don't affect drawer)
     const expectedCash = openingCashVal + totalCashSales - totalReturnsCash - totalExpenses;
-
-    // Net shift revenue (excluding opening cash, which is owner's float)
     const netRevenue = totalSales - totalReturns - totalExpenses;
 
     return {
       invoiceCount,
-      totalSales, totalCashSales, totalVisaSales,
-      totalReturns, totalReturnsCash, totalReturnsVisa,
+      totalSales, totalCashSales, totalVisaSales, totalInstapaySales,
+      totalReturns, totalReturnsCash, totalReturnsVisa, totalReturnsInstapay,
       totalExpenses, openingCash: openingCashVal,
       expectedCash, netRevenue,
     };

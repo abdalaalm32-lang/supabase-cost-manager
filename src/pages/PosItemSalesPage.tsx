@@ -202,12 +202,29 @@ export const PosItemSalesPage: React.FC = () => {
 
   const top10 = useMemo(() => {
     return [...aggregated.items].sort((a, b) => b.revenue - a.revenue).slice(0, 10).map((i) => ({
-      name: i.name.length > 18 ? i.name.slice(0, 18) + "…" : i.name,
+      name: i.name.length > 22 ? i.name.slice(0, 22) + "…" : i.name,
       fullName: i.name,
       revenue: Number(i.revenue.toFixed(2)),
       quantity: i.quantity,
     }));
   }, [aggregated.items]);
+
+  // Group categories <5% into "أخرى" for cleaner pie chart
+  const pieData = useMemo(() => {
+    const total = aggregated.totalRevenue || 0;
+    if (total === 0) return [] as { name: string; revenue: number; pct: number }[];
+    const main: { name: string; revenue: number; pct: number }[] = [];
+    let othersRevenue = 0;
+    aggregated.byCategory.forEach((c) => {
+      const pct = (c.revenue / total) * 100;
+      if (pct < 5) othersRevenue += c.revenue;
+      else main.push({ name: c.name, revenue: c.revenue, pct });
+    });
+    if (othersRevenue > 0) {
+      main.push({ name: "أخرى", revenue: othersRevenue, pct: (othersRevenue / total) * 100 });
+    }
+    return main.sort((a, b) => b.revenue - a.revenue);
+  }, [aggregated.byCategory, aggregated.totalRevenue]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));

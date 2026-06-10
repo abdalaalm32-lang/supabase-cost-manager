@@ -482,7 +482,7 @@ export const PosItemSalesPage: React.FC = () => {
                     outerRadius={105}
                     innerRadius={45}
                     paddingAngle={1}
-                    label={(e: any) => (e.pct >= 6 ? `${e.pct.toFixed(0)}%` : "")}
+                    label={(e: any) => (e.pct >= 3 ? `${e.pct.toFixed(1)}%` : "")}
                     labelLine={false}
                   >
                     {pieData.map((_, i) => (

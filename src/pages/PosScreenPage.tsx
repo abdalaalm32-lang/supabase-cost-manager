@@ -1164,6 +1164,12 @@ export const PosScreenPage: React.FC = () => {
                           <StatusIcon className="h-3 w-3" />
                           {order.delivery_status}
                         </Badge>
+                        {(order as any).delivery_companies?.name && (
+                          <Badge className="text-[10px] gap-1 bg-orange-500/15 text-orange-600 border-orange-500/30 hover:bg-orange-500/20">
+                            <Truck className="h-3 w-3" />
+                            {(order as any).delivery_companies.name}
+                          </Badge>
+                        )}
                       </div>
                       <span className="text-[10px] text-muted-foreground">{format(new Date(order.date), "HH:mm")}</span>
                     </div>

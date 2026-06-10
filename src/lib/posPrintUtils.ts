@@ -44,6 +44,7 @@ export interface KitchenReceiptData {
   companyName?: string;
   orderTime?: string;            // وقت ضرب الأوردر
   expectedDeliveryTime?: string; // وقت التسليم المتوقع (للكول سنتر فقط)
+  deliveryCompanyName?: string;  // شركة التوصيل
 }
 
 // Silent print using hidden iframe

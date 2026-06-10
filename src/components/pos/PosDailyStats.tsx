@@ -238,9 +238,11 @@ function calcStats(sales: any[], returns: any[], itemsCount: number) {
   const avgInvoice = invoiceCount > 0 ? totalSales / invoiceCount : 0;
   const cashSales = sales.filter(s => s.payment_method === "كاش").reduce((s, r) => s + Number(r.total_amount || 0), 0);
   const visaSales = sales.filter(s => s.payment_method === "فيزا" || s.payment_method === "visa").reduce((s, r) => s + Number(r.total_amount || 0), 0);
+  const instapaySales = sales.filter(s => s.payment_method === "انستا باي").reduce((s, r) => s + Number(r.total_amount || 0), 0);
   const returnsCash = returns.filter(r => r.payment_method === "كاش").reduce((s, r) => s + Number(r.total_amount || 0), 0);
   const returnsVisa = returns.filter(r => r.payment_method === "فيزا" || r.payment_method === "visa").reduce((s, r) => s + Number(r.total_amount || 0), 0);
+  const returnsInstapay = returns.filter(r => r.payment_method === "انستا باي").reduce((s, r) => s + Number(r.total_amount || 0), 0);
   const returnsTotal = returns.reduce((s, r) => s + Number(r.total_amount || 0), 0);
   const netSales = totalSales - returnsTotal;
-  return { totalSales, invoiceCount, avgInvoice, itemsCount, cashSales, visaSales, returnsCash, returnsVisa, returnsTotal, netSales };
+  return { totalSales, invoiceCount, avgInvoice, itemsCount, cashSales, visaSales, instapaySales, returnsCash, returnsVisa, returnsInstapay, returnsTotal, netSales };
 }

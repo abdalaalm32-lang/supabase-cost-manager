@@ -154,7 +154,7 @@ ${notes ? `<div style="border:2px solid #000;padding:6px;margin-top:6px;backgrou
 
 // Build kitchen receipt HTML — only items, quantities, notes (no prices)
 export const buildKitchenReceiptHTML = (data: KitchenReceiptData): string => {
-  const { invoiceNumber, branchName, date, items, orderType, customerName, companyName, orderTime, expectedDeliveryTime } = data;
+  const { invoiceNumber, branchName, date, items, orderType, customerName, companyName, orderTime, expectedDeliveryTime, deliveryCompanyName } = data;
 
   const itemsRows = items.map((item) =>
     `<tr style="border-bottom:2px solid #000">

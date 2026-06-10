@@ -442,6 +442,7 @@ ${!isNaN(actualCashNum) ? `
 <p>إجمالي المبيعات: <b>${fmtMoney(totals.totalSales)} EGP</b></p>
 <p>كاش: ${fmtMoney(totals.totalCashSales)} EGP</p>
 <p>فيزا: ${fmtMoney(totals.totalVisaSales)} EGP</p>
+${totals.totalInstapaySales > 0 ? `<p>انستا باي: ${fmtMoney(totals.totalInstapaySales)} EGP</p>` : ""}
 </div>
 
 ${itemsList.length > 0 ? `<div class="sep"><p class="bold">🍽 الأصناف المباعة</p>

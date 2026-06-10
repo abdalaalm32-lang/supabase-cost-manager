@@ -845,18 +845,52 @@ export const PosScreenPage: React.FC = () => {
                 </div>
               </div>
 
+              {/* Tables (dine-in) */}
+              {orderType === "صالة" && branchId && (selectedBranchTablesCount > 0) && (
+                <div className="mb-2 flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      "h-8 text-xs gap-1.5 flex-1 justify-start",
+                      tableNumber
+                        ? "border-amber-500/60 bg-amber-500/10 text-amber-600 dark:text-amber-300 hover:bg-amber-500/20"
+                        : "border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10"
+                    )}
+                    onClick={() => { setTablePickerMode("pick"); setTablePickerOpen(true); }}
+                  >
+                    <UtensilsCrossed className="h-3.5 w-3.5" />
+                    {tableNumber ? `الطاولة: ${tableNumber}` : "اختر الطاولة"}
+                  </Button>
+                  {tableNumber && editingSaleId && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs gap-1.5 border-primary/40 text-primary hover:bg-primary/10"
+                      onClick={() => { setTablePickerMode("transfer"); setTablePickerOpen(true); }}
+                      title="نقل الأوردر لطاولة أخرى أو دمجه مع طاولة مشغولة"
+                    >
+                      نقل / دمج
+                    </Button>
+                  )}
+                </div>
+              )}
+
               {/* Customer name */}
               <div className="mb-2">
                 <div className="relative">
                   <User className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                   <Input
-                    placeholder="اسم العميل / رقم الطاولة (اختياري)"
+                    placeholder="اسم العميل (اختياري)"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
                     className="glass-input h-8 text-xs pr-8"
                   />
                 </div>
               </div>
+
 
               {/* Delivery extra fields */}
               {orderType === "دليفري" && (

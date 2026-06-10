@@ -81,6 +81,7 @@ export const buildCustomerReceiptHTML = (data: CustomerReceiptData): string => {
     subtotal, discountAmount, discountLabel, taxAmount, taxRate, total,
     companyName, notes, orderType, paymentMethod, deliveryFee,
     customerPhone, customerPhone2, customerAddress, expectedReadyTime,
+    deliveryCompanyName,
   } = data;
 
   const isTakeaway = orderType === "تيك أواي";

@@ -485,6 +485,7 @@ export const PosScreenPage: React.FC = () => {
     setOrderType(sale.order_type || "صالة");
     setPaymentMethod(sale.payment_method || "كاش");
     setTableNumber((sale as any).table_number || "");
+    setEditingDeliveryCompanyName((sale as any).delivery_companies?.name || "");
     if (sale.discount_amount > 0) {
       setDiscountEnabled(true);
       setDiscountType("fixed");

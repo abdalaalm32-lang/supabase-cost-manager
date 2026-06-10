@@ -75,6 +75,7 @@ export const RecipesPage: React.FC = () => {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [productSearch, setProductSearch] = useState("");
   const [productFilter, setProductFilter] = useState<ProductFilter>("all");
+  const [selectedPosCategory, setSelectedPosCategory] = useState<string>("all");
 
   const [ingredients, setIngredients] = useState<LocalIngredient[]>([]);
   const [recipeStatus, setRecipeStatus] = useState<RecipeStatus>("draft");

@@ -372,7 +372,7 @@ export const PosItemSalesPage: React.FC = () => {
             </div>
           </CardContent>
         </Card>
-        <Card className="glass-card lg:col-span-2">
+        <Card className="glass-card">
           <CardContent className="pt-5">
             <div className="flex items-center justify-between">
               <div>
@@ -385,7 +385,7 @@ export const PosItemSalesPage: React.FC = () => {
             </div>
           </CardContent>
         </Card>
-        <Card className="glass-card">
+        <Card className="glass-card lg:col-span-2">
           <CardContent className="pt-5">
             <div className="flex items-center justify-between">
               <div>
@@ -427,11 +427,11 @@ export const PosItemSalesPage: React.FC = () => {
             {top10.length === 0 ? (
               <div className="h-[340px] flex items-center justify-center text-sm text-muted-foreground">لا توجد بيانات</div>
             ) : (
-              <div className="h-[500px] overflow-y-auto overflow-x-hidden pl-2">
+              <div className="h-[500px] overflow-y-auto overflow-x-hidden pl-2" dir="ltr">
                 <ResponsiveContainer width="100%" height={Math.max(500, top10.length * 52)}>
-                <BarChart data={top10} layout="vertical" margin={{ top: 12, right: 190, left: 96, bottom: 12 }} barSize={34} barCategoryGap={14}>
+                <BarChart data={top10} layout="vertical" margin={{ top: 12, right: 210, left: 118, bottom: 12 }} barSize={34} barCategoryGap={14} style={{ direction: "ltr" }}>
                   <CartesianGrid strokeDasharray="3 3" opacity={0.15} horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 10 }} domain={[0, "dataMax"]} hide />
+                  <XAxis type="number" tick={{ fontSize: 10 }} domain={[0, "dataMax"]} reversed hide />
                   <YAxis
                     dataKey="name"
                     type="category"

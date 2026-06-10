@@ -23,7 +23,7 @@ export const PosHeldInvoices: React.FC<PosHeldInvoicesProps> = ({ companyId, bra
     queryFn: async () => {
       let query = supabase
         .from("pos_sales")
-        .select("*, branches:branch_id(name)")
+        .select("*, branches:branch_id(name), delivery_companies:delivery_company_id(name)")
         .eq("company_id", companyId)
         .eq("status", "معلق")
         .order("created_at", { ascending: false });

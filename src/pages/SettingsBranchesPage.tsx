@@ -139,11 +139,13 @@ export const SettingsBranchesPage: React.FC = () => {
   const saveBranch = useMutation({
     mutationFn: async () => {
       if (!formName.trim()) throw new Error("اسم الفرع مطلوب");
+      const tablesCountSafe = Math.max(0, Math.floor(Number(formTablesCount) || 0));
       if (editBranch) {
         const { error } = await supabase.from("branches").update({
           name: formName, address: formAddress || null,
           manager_id: formManagerId || null, active: formActive,
-        }).eq("id", editBranch.id);
+          tables_count: tablesCountSafe,
+        } as any).eq("id", editBranch.id);
         if (error) throw error;
       } else {
         // Hard limit guard (applies to everyone including system admins)
@@ -166,8 +168,9 @@ export const SettingsBranchesPage: React.FC = () => {
         const { error } = await supabase.from("branches").insert({
           name: formName, address: formAddress || null,
           manager_id: formManagerId || null, active: formActive,
+          tables_count: tablesCountSafe,
           company_id: companyId!, code,
-        });
+        } as any);
         if (error) throw error;
       }
     },

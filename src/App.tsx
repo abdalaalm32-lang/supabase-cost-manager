@@ -63,6 +63,7 @@ const PnlPage = lazy(() => import("@/pages/PnlPage").then((m) => ({ default: m.P
 const BranchComparisonPage = lazy(() => import("@/pages/BranchComparisonPage").then((m) => ({ default: m.BranchComparisonPage })));
 const CallCenterPage = lazy(() => import("@/pages/CallCenterPage").then((m) => ({ default: m.CallCenterPage })));
 const DriverSettlementPage = lazy(() => import("@/pages/DriverSettlementPage").then((m) => ({ default: m.DriverSettlementPage })));
+const DeliveryCompaniesPage = lazy(() => import("@/pages/DeliveryCompaniesPage").then((m) => ({ default: m.DeliveryCompaniesPage })));
 const PosShiftsPage = lazy(() => import("@/pages/PosShiftsPage").then((m) => ({ default: m.PosShiftsPage })));
 
 const queryClient = new QueryClient();

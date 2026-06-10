@@ -31,6 +31,7 @@ import { PosShiftManager } from "@/components/pos/PosShiftManager";
 import { PosShiftExpenses } from "@/components/pos/PosShiftExpenses";
 import { PosReturnsManager } from "@/components/pos/PosReturnsManager";
 import { PosShiftSalesReprint } from "@/components/pos/PosShiftSalesReprint";
+import { PosTablePicker } from "@/components/pos/PosTablePicker";
 
 interface CartItem {
   id: string;

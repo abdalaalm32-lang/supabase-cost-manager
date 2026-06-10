@@ -473,6 +473,7 @@ export const PosScreenPage: React.FC = () => {
     setTaxInputVisible(sale.tax_enabled);
     setOrderType(sale.order_type || "صالة");
     setPaymentMethod(sale.payment_method || "كاش");
+    setTableNumber((sale as any).table_number || "");
     if (sale.discount_amount > 0) {
       setDiscountEnabled(true);
       setDiscountType("fixed");

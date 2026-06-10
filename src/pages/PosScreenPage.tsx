@@ -445,6 +445,7 @@ export const PosScreenPage: React.FC = () => {
     setCustomerPhone("");
     setCustomerAddress("");
     setDeliveryFee(0);
+    setTableNumber("");
     
     if (!keepOrderType) {
       setOrderType("صالة");

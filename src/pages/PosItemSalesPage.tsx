@@ -208,6 +208,8 @@ export const PosItemSalesPage: React.FC = () => {
     }));
   }, [aggregated.items]);
 
+  const topRevenueMax = useMemo(() => Math.max(1, ...top10.map((item) => item.revenue)), [top10]);
+
   // Group categories <5% into "أخرى" for cleaner pie chart
   const pieData = useMemo(() => {
     const total = aggregated.totalRevenue || 0;
@@ -426,42 +428,29 @@ export const PosItemSalesPage: React.FC = () => {
             {top10.length === 0 ? (
               <div className="h-[340px] flex items-center justify-center text-sm text-muted-foreground">لا توجد بيانات</div>
             ) : (
-              <div className="h-[500px] overflow-y-auto overflow-x-hidden pl-2" dir="ltr">
-                <ResponsiveContainer width="100%" height={Math.max(500, top10.length * 52)}>
-                <BarChart data={top10} layout="vertical" margin={{ top: 12, right: 210, left: 118, bottom: 12 }} barSize={34} barCategoryGap={14} style={{ direction: "ltr" }}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.15} horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 10 }} domain={[0, "dataMax"]} reversed hide />
-                  <YAxis
-                    dataKey="name"
-                    type="category"
-                    orientation="right"
-                    width={175}
-                    interval={0}
-                    tickLine={false}
-                    axisLine={false}
-                    tick={{ fontSize: 11, fill: "hsl(var(--foreground))", fontWeight: 700, textAnchor: "end" }}
-                    tickMargin={10}
-                    tickFormatter={(value: string) => (value.length > 24 ? value.slice(0, 24) + "…" : value)}
-                  />
-                  <Tooltip
-                    cursor={{ fill: "hsl(var(--muted) / 0.3)" }}
-                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12, color: "hsl(var(--foreground))" }}
-                    labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 700, marginBottom: 4 }}
-                    itemStyle={{ color: "hsl(var(--foreground))" }}
-                    formatter={(v: number) => [fmt(v) + " EGP", "الإيراد"]}
-                    labelFormatter={(_, p) => (p?.[0] as any)?.payload?.fullName || ""}
-                  />
-                  <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[6, 0, 0, 6]} minPointSize={14}>
-                    <LabelList
-                      dataKey="revenue"
-                      position="left"
-                      offset={8}
-                      style={{ fill: "hsl(var(--foreground))", fontSize: 11, fontWeight: 700 }}
-                      formatter={(v: number) => fmt(v) + " EGP"}
-                    />
-                  </Bar>
-                </BarChart>
-                </ResponsiveContainer>
+              <div className="h-[500px] overflow-y-auto overflow-x-hidden pl-2 pr-1">
+                <div className="min-h-[500px] space-y-4 py-3">
+                  {top10.map((item) => (
+                    <div
+                      key={item.fullName}
+                      className="grid grid-cols-[112px_minmax(220px,1fr)_190px] items-center gap-3"
+                      title={`${item.fullName} — ${fmt(item.revenue)} EGP`}
+                    >
+                      <div className="text-left text-xs font-black text-foreground tabular-nums whitespace-nowrap">
+                        {fmt(item.revenue)} EGP
+                      </div>
+                      <div className="h-9 rounded-sm bg-muted/35 overflow-hidden flex justify-end">
+                        <div
+                          className="h-full rounded-sm bg-primary transition-all"
+                          style={{ width: `${Math.max(4, (item.revenue / topRevenueMax) * 100)}%` }}
+                        />
+                      </div>
+                      <div className="text-right text-xs font-bold text-foreground truncate" dir="rtl">
+                        {item.name}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </CardContent>

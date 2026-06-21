@@ -409,8 +409,45 @@ export function useLocationStock(
       map.set(pi.stock_item_id, (map.get(pi.stock_item_id) ?? 0) + Number(pi.quantity));
     }
 
+    // Add production produced IN at the same branch/warehouse.
+    //   period mode → produced within [periodFrom, periodTo]
+    //   default     → produced strictly after baseline date (no upper cutoff)
+    for (const pr of productionRecords) {
+      if (locationType === "branch" ? pr.branch_id !== locationId : pr.warehouse_id !== locationId) continue;
+      if (!pr.product_id) continue;
+      const prDate = (pr as any).date || (pr as any).created_at || "";
+      if (usePeriod) {
+        if (!prDate) continue;
+        if (prDate < periodFrom!) continue;
+        if (periodTo && prDate > periodTo) continue;
+      } else {
+        const base = baseline.get(pr.product_id);
+        if (base && prDate && prDate <= base.date) continue;
+      }
+      map.set(pr.product_id, (map.get(pr.product_id) ?? 0) + Number(pr.produced_qty));
+    }
+
+    // Subtract production ingredients OUT consumed at the same location
+    // so that previously-used materials don't appear as available again.
+    for (const ing of productionIngredients) {
+      const pr = ing.production_records;
+      if (!pr) continue;
+      if (locationType === "branch" ? pr.branch_id !== locationId : pr.warehouse_id !== locationId) continue;
+      if (!ing.stock_item_id) continue;
+      const prDate = (pr as any).date || (pr as any).created_at || "";
+      if (usePeriod) {
+        if (!prDate) continue;
+        if (prDate < periodFrom!) continue;
+        if (periodTo && prDate > periodTo) continue;
+      } else {
+        const base = baseline.get(ing.stock_item_id);
+        if (base && prDate && prDate <= base.date) continue;
+      }
+      map.set(ing.stock_item_id, (map.get(ing.stock_item_id) ?? 0) - Number(ing.required_qty));
+    }
+
     return map;
-  }, [locationId, locationType, departmentId, asOfDate, periodFrom, periodTo, stocktakes, purchaseItems]);
+  }, [locationId, locationType, departmentId, asOfDate, periodFrom, periodTo, stocktakes, purchaseItems, productionRecords, productionIngredients]);
 
 
   const getProductionAvailable = (stockItemId: string): number => {

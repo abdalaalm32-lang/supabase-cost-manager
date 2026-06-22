@@ -803,8 +803,8 @@ export const PurchaseReportsPage: React.FC = () => {
                                     <TableHead className="text-center text-[11px] font-bold">#</TableHead>
                                     <TableHead className="text-center text-[11px] font-bold">التاريخ</TableHead>
                                     <TableHead className="text-center text-[11px] font-bold">رقم الفاتورة</TableHead>
-                                    <TableHead className="text-[11px] font-bold">المورد</TableHead>
-                                    <TableHead className="text-[11px] font-bold">الموقع المستلم</TableHead>
+                                    <TableHead className="text-center text-[11px] font-bold">المورد</TableHead>
+                                    <TableHead className="text-center text-[11px] font-bold">الموقع المستلم</TableHead>
                                     <TableHead className="text-center text-[11px] font-bold">الكمية</TableHead>
                                     <TableHead className="text-center text-[11px] font-bold">سعر الوحدة</TableHead>
                                     <TableHead className="text-center text-[11px] font-bold">الإجمالي</TableHead>

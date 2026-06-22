@@ -761,12 +761,12 @@ export const InventoryMovementPage: React.FC = () => {
             </h3>
             <div style={{ height: 250 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topVarianceItems} layout="vertical" margin={{ top: 20, right: 80, bottom: 20, left: 20 }}>
+                <BarChart data={topVarianceItems} layout="vertical" margin={{ top: 20, right: 20, bottom: 20, left: 80 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis type="number" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickMargin={10} />
-                  <YAxis dataKey="name" type="category" width={90} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickMargin={50} />
+                  <XAxis type="number" reversed tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickMargin={10} tickFormatter={(v) => `\u2066${v}\u2069`} />
+                  <YAxis dataKey="name" type="category" orientation="right" width={100} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickMargin={5} />
                   <Tooltip formatter={(v: number) => fmtNum(v)} contentStyle={{ color: "#000" }} />
-                  <Bar dataKey="تباين" fill={CHART_COLORS[4]} radius={[0, 4, 4, 0]}>
+                  <Bar dataKey="تباين" fill={CHART_COLORS[4]} radius={[4, 0, 0, 4]}>
                     {topVarianceItems.map((entry, idx) => (
                       <Cell key={idx} fill={entry.تباين >= 0 ? CHART_COLORS[1] : CHART_COLORS[5]} />
                     ))}

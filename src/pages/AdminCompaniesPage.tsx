@@ -27,6 +27,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 const ALL_PERMISSIONS = [
   { key: "dashboard", label: "لوحة التحكم" },
   { key: "pos", label: "نقطة البيع" },
+  { key: "view_pos_stats", label: "عرض إحصائيات الشيفت (POS)" },
   { key: "sales_management", label: "إدارة المبيعات" },
   { key: "call_center", label: "الكول سنتر" },
   { key: "inventory", label: "إدارة المخزون" },

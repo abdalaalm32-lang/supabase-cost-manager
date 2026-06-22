@@ -63,7 +63,7 @@ const DELIVERY_STATUSES = [
 ];
 
 export const PosScreenPage: React.FC = () => {
-  const { auth } = useAuth();
+  const { auth, hasPermission } = useAuth();
   const companyId = auth.profile?.company_id;
   const queryClient = useQueryClient();
   const location = useLocation();
@@ -638,7 +638,11 @@ export const PosScreenPage: React.FC = () => {
       <div className="flex flex-col h-[calc(100vh-4rem)]" dir="rtl">
         {/* Top bar */}
         <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-card/50 print:hidden flex-wrap gap-2">
-          <PosDailyStats companyId={companyId || ""} branchId={branchId} />
+          {hasPermission("view_pos_stats") ? (
+            <PosDailyStats companyId={companyId || ""} branchId={branchId} />
+          ) : (
+            <div />
+          )}
           <div className="flex items-center gap-2">
             {(pendingDeliveryOrders?.length ?? 0) > 0 && (
               <button

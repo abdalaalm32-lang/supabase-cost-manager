@@ -299,7 +299,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (ALWAYS_ALLOWED.has(key)) return true;
     if (auth.profile?.status && auth.profile.status !== "نشط") return false;
     if (auth.isAdmin) return true;
-    if (auth.isOwner && key === "settings") return true;
+    if (auth.isOwner && (key === "settings" || key === "view_pos_stats")) return true;
     if (!auth.profile) return false;
     const perms = auth.profile.permissions ?? [];
     return perms.includes(key);

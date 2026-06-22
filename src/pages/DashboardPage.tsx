@@ -32,6 +32,21 @@ const COLORS = [
   "hsl(0, 70%, 55%)",   // destructive
 ];
 
+const RadarTick: React.FC<any> = ({ payload, x, y, cx, cy, textAnchor }) => {
+  if (!cx || !cy || x == null || y == null) return null;
+  const dx = x - cx;
+  const dy = y - cy;
+  const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+  const offset = 16; // push labels outward
+  const nx = cx + (dx / dist) * (dist + offset);
+  const ny = cy + (dy / dist) * (dist + offset);
+  return (
+    <text x={nx} y={ny} textAnchor={textAnchor} fill="hsl(215, 20%, 55%)" fontSize={9}>
+      {payload?.value}
+    </text>
+  );
+};
+
 const KPICard: React.FC<{
   title: string; value: string; subtitle?: string;
   icon: React.ElementType; gradient: string; trend?: number;

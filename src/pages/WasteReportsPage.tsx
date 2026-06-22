@@ -771,8 +771,8 @@ export const WasteReportsPage: React.FC = () => {
                 <TableRow className="bg-muted/50">
                   <TableHead className="text-center text-xs font-bold w-10">#</TableHead>
                   <TableHead className="text-center text-xs font-bold">الكود</TableHead>
-                  <TableHead className="text-xs font-bold">اسم الصنف</TableHead>
-                  <TableHead className="text-xs font-bold">المجموعة</TableHead>
+                  <TableHead className="text-center text-xs font-bold">اسم الصنف</TableHead>
+                  <TableHead className="text-center text-xs font-bold">المجموعة</TableHead>
                   <TableHead className="text-center text-xs font-bold">إجمالي كمية الهالك</TableHead>
                   <TableHead className="text-center text-xs font-bold">الوحدة</TableHead>
                   <TableHead className="text-center text-xs font-bold">متوسط التكلفة</TableHead>
@@ -805,15 +805,15 @@ export const WasteReportsPage: React.FC = () => {
                       >
                         <TableCell className="text-center text-xs">{idx + 1}</TableCell>
                         <TableCell className="text-center text-xs font-mono">{item.code || "—"}</TableCell>
-                        <TableCell className="text-xs font-medium">
-                          <div className="flex items-center gap-1.5">
+                        <TableCell className="text-center text-xs font-medium">
+                          <div className="flex items-center justify-center gap-1.5">
                             {item.occurrences >= 5 && (
                               <AlertTriangle size={14} className="text-destructive flex-shrink-0" />
                             )}
                             {item.name}
                           </div>
                         </TableCell>
-                        <TableCell className="text-xs">{item.catName}</TableCell>
+                        <TableCell className="text-center text-xs">{item.catName}</TableCell>
                         <TableCell className="text-center text-xs font-bold">{fmt(item.totalWasteQty)}</TableCell>
                         <TableCell className="text-center text-xs">{item.unit}</TableCell>
                         <TableCell className="text-center text-xs">{fmt(item.avgCost)}</TableCell>

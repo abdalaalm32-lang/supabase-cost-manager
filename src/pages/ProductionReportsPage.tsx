@@ -19,7 +19,7 @@ import {
   BarChart3, Layers, TrendingUp, Package, CalendarIcon, Activity
 } from "lucide-react";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line,
 } from "recharts";
 
@@ -239,7 +239,9 @@ export const ProductionReportsPage: React.FC = () => {
     for (const i of processedData) {
       catMap.set(i.catName, (catMap.get(i.catName) || 0) + i.totalProductionCost);
     }
-    return Array.from(catMap.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+    const arr = Array.from(catMap.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+    const total = arr.reduce((s, x) => s + x.value, 0) || 1;
+    return arr.map(x => ({ ...x, pct: (x.value / total) * 100 }));
   }, [processedData]);
 
   // Totals
@@ -467,26 +469,46 @@ export const ProductionReportsPage: React.FC = () => {
             <CardTitle className="text-sm font-bold">توزيع تكلفة الإنتاج حسب المجموعة</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={260}>
-              <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                <Pie data={categoryDistChart} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70}
-                  label={({ name, percent, cx: cxx, cy: cyy, midAngle, outerRadius: or }: any) => {
-                    const rad = Math.PI / 180;
-                    const radius = or + 28;
-                    const x = cxx + radius * Math.cos(-midAngle * rad);
-                    const y = cyy + radius * Math.sin(-midAngle * rad);
-                    return (
-                      <text x={x} y={y} textAnchor={x > cxx ? "start" : "end"} dominantBaseline="central"
-                        fontSize={11} fill="hsl(var(--foreground))">
-                        {`${name} ${(percent * 100).toFixed(0)}%`}
-                      </text>
-                    );
-                  }}>
-                  {categoryDistChart.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                </Pie>
-                <Tooltip contentStyle={{ borderRadius: 12, fontSize: 12, color: "#000" }} />
-              </PieChart>
-            </ResponsiveContainer>
+            {categoryDistChart.length === 0 ? (
+              <div className="h-[260px] flex items-center justify-center text-sm text-muted-foreground">لا توجد بيانات</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={categoryDistChart}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="38%"
+                    cy="50%"
+                    outerRadius={90}
+                    innerRadius={40}
+                    paddingAngle={1}
+                  >
+                    {categoryDistChart.map((_, i) => (
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} stroke="hsl(var(--card))" strokeWidth={2} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12, color: "hsl(var(--foreground))" }}
+                    labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 700 }}
+                    itemStyle={{ color: "hsl(var(--foreground))" }}
+                    formatter={(v: number, _n, p: any) => [`${fmt(v)} EGP (${p?.payload?.pct?.toFixed(1)}%)`, p?.payload?.name]}
+                  />
+                  <Legend
+                    layout="vertical"
+                    verticalAlign="middle"
+                    align="right"
+                    iconType="circle"
+                    wrapperStyle={{ fontSize: 11, maxWidth: "45%", maxHeight: 280, overflowY: "auto", paddingInlineStart: 8 }}
+                    formatter={(value: string, entry: any) => (
+                      <span className="text-foreground" style={{ marginInlineStart: 4 }}>
+                        {value} <span className="text-muted-foreground">({entry?.payload?.pct?.toFixed(1)}%)</span>
+                      </span>
+                    )}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -525,8 +547,8 @@ export const ProductionReportsPage: React.FC = () => {
                 <TableRow className="bg-muted/50">
                   <TableHead className="text-center text-xs font-bold w-10">#</TableHead>
                   <TableHead className="text-center text-xs font-bold">الكود</TableHead>
-                  <TableHead className="text-xs font-bold">اسم الصنف</TableHead>
-                  <TableHead className="text-xs font-bold">المجموعة</TableHead>
+                  <TableHead className="text-center text-xs font-bold">اسم الصنف</TableHead>
+                  <TableHead className="text-center text-xs font-bold">المجموعة</TableHead>
                   <TableHead className="text-center text-xs font-bold">كثافة الإنتاج</TableHead>
                   <TableHead className="text-center text-xs font-bold">إجمالي الكمية</TableHead>
                   <TableHead className="text-center text-xs font-bold">الرصيد الحالي</TableHead>
@@ -550,8 +572,8 @@ export const ProductionReportsPage: React.FC = () => {
                     <TableRow key={item.productId} className="hover:bg-muted/30">
                       <TableCell className="text-center text-xs">{idx + 1}</TableCell>
                       <TableCell className="text-center text-xs font-mono">{item.code || "—"}</TableCell>
-                      <TableCell className="text-xs font-medium">{item.name}</TableCell>
-                      <TableCell className="text-xs">{item.catName}</TableCell>
+                      <TableCell className="text-center text-xs font-medium">{item.name}</TableCell>
+                      <TableCell className="text-center text-xs">{item.catName}</TableCell>
                       <TableCell className="text-center text-xs">
                         <span className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold text-[11px]">
                           {fmtInt(item.productionCount)} مرة

@@ -371,7 +371,7 @@ export const DashboardPage: React.FC = () => {
           <ResponsiveContainer width="100%" height={240}>
             <RadarChart data={d.operationsRadar}>
               <PolarGrid stroke="hsl(217, 33%, 18%)" />
-              <PolarAngleAxis dataKey="metric" tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 9 }} />
+              <PolarAngleAxis dataKey="metric" tick={<RadarTick />} />
               <PolarRadiusAxis tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 8 }} />
               <Radar name="العمليات" dataKey="value" stroke="hsl(199, 89%, 60%)" fill="hsl(199, 89%, 60%)" fillOpacity={0.2} strokeWidth={2} />
             </RadarChart>

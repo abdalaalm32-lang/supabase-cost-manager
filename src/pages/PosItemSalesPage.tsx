@@ -430,9 +430,9 @@ export const PosItemSalesPage: React.FC = () => {
             ) : (
               <div className="h-[500px] overflow-y-auto overflow-x-hidden pl-2 pr-1">
                 <div className="min-h-[500px] space-y-4 py-3">
-                  {top10.map((item) => (
+                  {top10.map((item, i) => (
                     <div
-                      key={item.fullName + idx}
+                      key={item.fullName + "_" + i}
                       className="grid grid-cols-[112px_minmax(220px,1fr)_190px] items-center gap-3"
                       title={`${item.fullName} — ${fmt(item.revenue)} EGP`}
                     >

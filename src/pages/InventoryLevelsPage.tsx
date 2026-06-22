@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell,
+  PieChart, Pie, Cell, Legend,
 } from "recharts";
 
 const COLORS = [
@@ -228,13 +228,17 @@ export const InventoryLevelsPage: React.FC = () => {
   }, [processedItems]);
 
   // Charts
-  const statusChart = useMemo(() => [
-    { name: "نفذ", value: stats.outOfStock },
-    { name: "حرج", value: stats.critical },
-    { name: "تحت الطلب", value: stats.reorder },
-    { name: "ناقص", value: stats.low },
-    { name: "متوفر", value: stats.available },
-  ].filter(i => i.value > 0), [stats]);
+  const statusChart = useMemo(() => {
+    const arr = [
+      { name: "نفذ", value: stats.outOfStock },
+      { name: "حرج", value: stats.critical },
+      { name: "تحت الطلب", value: stats.reorder },
+      { name: "ناقص", value: stats.low },
+      { name: "متوفر", value: stats.available },
+    ].filter(i => i.value > 0);
+    const total = arr.reduce((s, i) => s + i.value, 0);
+    return arr.map(x => ({ ...x, pct: total > 0 ? (x.value / total) * 100 : 0 }));
+  }, [stats]);
 
   const categoryValueChart = useMemo(() => {
     const catMap = new Map<string, number>();
@@ -404,22 +408,22 @@ export const InventoryLevelsPage: React.FC = () => {
           <CardContent>
             <ResponsiveContainer width="100%" height={280}>
               <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                <Pie data={statusChart} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70}
-                  label={({ name, percent, cx: cxx, cy: cyy, midAngle, outerRadius: or }) => {
-                    const rad = Math.PI / 180;
-                    const radius = or + 55;
-                    const x = cxx + radius * Math.cos(-midAngle * rad);
-                    const y = cyy + radius * Math.sin(-midAngle * rad);
-                    return (
-                      <text x={x} y={y} textAnchor={x > cxx ? "start" : "end"} dominantBaseline="central"
-                        fontSize={10} fill="hsl(var(--foreground))">
-                        {`${name} ${(percent * 100).toFixed(0)}%`}
-                      </text>
-                    );
-                  }}>
-                  {statusChart.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                <Pie data={statusChart} dataKey="value" nameKey="name" cx="38%" cy="50%" outerRadius={90} innerRadius={40} paddingAngle={1}>
+                  {statusChart.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} stroke="hsl(var(--card))" strokeWidth={2} />)}
                 </Pie>
-                <Tooltip contentStyle={{ borderRadius: 12, fontSize: 12, color: "#000" }} />
+                <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12, color: "hsl(var(--foreground))" }} labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 700 }} formatter={(v: number, _n, p: any) => [`${v} (${p?.payload?.pct?.toFixed(1)}%)`, p?.payload?.name]} />
+                <Legend
+                  layout="vertical"
+                  verticalAlign="middle"
+                  align="right"
+                  iconType="circle"
+                  wrapperStyle={{ fontSize: 11, maxWidth: "45%", maxHeight: 280, overflowY: "auto", paddingInlineStart: 8 }}
+                  formatter={(value: string, entry: any) => (
+                    <span className="text-foreground" style={{ marginInlineStart: 4 }}>
+                      {value} <span className="text-muted-foreground">({entry?.payload?.pct?.toFixed(1)}%)</span>
+                    </span>
+                  )}
+                />
               </PieChart>
             </ResponsiveContainer>
           </CardContent>
@@ -496,8 +500,8 @@ export const InventoryLevelsPage: React.FC = () => {
                 <TableRow className="bg-muted/50">
                   <TableHead className="text-center text-xs font-bold w-10">#</TableHead>
                   <TableHead className="text-center text-xs font-bold">الكود</TableHead>
-                  <TableHead className="text-xs font-bold">اسم الصنف</TableHead>
-                  <TableHead className="text-xs font-bold">المجموعة</TableHead>
+                  <TableHead className="text-center text-xs font-bold">اسم الصنف</TableHead>
+                  <TableHead className="text-center text-xs font-bold">المجموعة</TableHead>
                   <TableHead className="text-center text-xs font-bold">الرصيد الحالي</TableHead>
                   <TableHead className="text-center text-xs font-bold">الوحدة</TableHead>
                   <TableHead className="text-center text-xs font-bold">متوسط التكلفة</TableHead>
@@ -525,13 +529,13 @@ export const InventoryLevelsPage: React.FC = () => {
                       )}>
                         <TableCell className="text-center text-xs">{idx + 1}</TableCell>
                         <TableCell className="text-center text-xs font-mono">{item.code || "—"}</TableCell>
-                        <TableCell className="text-xs font-medium">
-                          <div className="flex items-center gap-2">
+                        <TableCell className="text-center text-xs font-medium">
+                          <div className="flex items-center justify-center gap-2">
                             {isCritical && <AlertTriangle size={14} className="text-red-500 flex-shrink-0 animate-pulse" />}
                             {item.name}
                           </div>
                         </TableCell>
-                        <TableCell className="text-xs">{item.catName}</TableCell>
+                        <TableCell className="text-center text-xs">{item.catName}</TableCell>
                         <TableCell className={cn("text-center text-xs font-bold", isCritical && "text-red-600")}>
                           {fmt(item.currentStock)}
                         </TableCell>

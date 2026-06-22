@@ -13,7 +13,7 @@ import { format } from "date-fns";
 import { CalendarIcon, Store, Printer, FileSpreadsheet, Layers, Building2, Download, FileText, BarChart3, TrendingUp, TrendingDown, Minus, Warehouse } from "lucide-react";
 import { exportToExcel, exportToPDF } from "@/lib/exportUtils";
 import { useBranchCosts } from "@/hooks/useBranchCosts";
-import { CostAlertsCard } from "@/components/CostAlertsCard";
+
 import { toast } from "sonner";
 import {
   Table, TableHeader, TableBody, TableFooter, TableHead, TableRow, TableCell,

@@ -432,7 +432,7 @@ export const PosItemSalesPage: React.FC = () => {
                 <div className="min-h-[500px] space-y-4 py-3">
                   {top10.map((item) => (
                     <div
-                      key={item.fullName}
+                      key={item.fullName + idx}
                       className="grid grid-cols-[112px_minmax(220px,1fr)_190px] items-center gap-3"
                       title={`${item.fullName} — ${fmt(item.revenue)} EGP`}
                     >

@@ -739,14 +739,14 @@ export const InventoryMovementPage: React.FC = () => {
             </h3>
             <div style={{ height: 250 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topMovementItems} layout="vertical" margin={{ top: 20, right: 60, bottom: 20, left: 20 }}>
+                <BarChart data={topMovementItems} layout="vertical" margin={{ top: 20, right: 20, bottom: 20, left: 60 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis type="number" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickMargin={0} />
-                  <YAxis dataKey="name" type="category" width={90} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickMargin={50} />
+                  <XAxis type="number" reversed tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickMargin={0} tickFormatter={(v) => `\u2066${v}\u2069`} />
+                  <YAxis dataKey="name" type="category" orientation="right" width={100} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickMargin={5} />
                   <Tooltip formatter={(v: number) => fmtQty(v)} contentStyle={{ color: "#000" }} />
                   <Legend />
-                  <Bar dataKey="وارد" fill={CHART_COLORS[1]} radius={[0, 4, 4, 0]} />
-                  <Bar dataKey="منصرف" fill={CHART_COLORS[5]} radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="وارد" fill={CHART_COLORS[1]} radius={[4, 0, 0, 4]} />
+                  <Bar dataKey="منصرف" fill={CHART_COLORS[5]} radius={[4, 0, 0, 4]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

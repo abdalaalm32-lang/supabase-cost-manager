@@ -348,8 +348,15 @@ export const PurchaseReportsPage: React.FC = () => {
     for (const i of filteredData) {
       catMap.set(i.categoryName, (catMap.get(i.categoryName) || 0) + i.totalValue);
     }
-    return Array.from(catMap.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+    const arr = Array.from(catMap.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+    const total = arr.reduce((s, x) => s + x.value, 0) || 1;
+    return arr.map(x => ({ ...x, pct: (x.value / total) * 100 }));
   }, [filteredData]);
+
+  const topItemsMax = useMemo(
+    () => Math.max(1, ...topItemsChart.map((i: any) => i.عدد_المشتريات || 0)),
+    [topItemsChart]
+  );
 
   const priceDiffChart = useMemo(() => {
     return filteredData.slice(0, 10).map(i => ({

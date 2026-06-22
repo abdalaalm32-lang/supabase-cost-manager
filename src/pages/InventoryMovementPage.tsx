@@ -716,8 +716,8 @@ export const InventoryMovementPage: React.FC = () => {
                       const x = cx + radius * Math.cos(-midAngle * RADIAN);
                       const y = cy + radius * Math.sin(-midAngle * RADIAN);
                       return (
-                        <text x={x} y={y} fill="hsl(var(--foreground))" textAnchor={x > cx ? "start" : "end"} dominantBaseline="central" fontSize={11}>
-                          {`${name} ${(percent * 100).toFixed(0)}%`}
+                        <text x={x} y={y} fill="hsl(var(--foreground))" textAnchor={x > cx ? "start" : "end"} dominantBaseline="central" fontSize={11} direction="rtl">
+                          {`${name} \u2066${(percent * 100).toFixed(0)}%\u2069`}
                         </text>
                       );
                     }}

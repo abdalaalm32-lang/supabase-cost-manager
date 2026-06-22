@@ -407,7 +407,11 @@ export const CostAdjustmentReportsPage: React.FC = () => {
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="month" fontSize={11} tick={{ fill: "hsl(var(--muted-foreground))" }} tickMargin={10} />
                   <YAxis fontSize={11} tick={{ fill: "hsl(var(--muted-foreground))" }} tickMargin={10} />
-                  <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
+                  <Tooltip
+                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12, color: "hsl(var(--foreground))" }}
+                    labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 700 }}
+                    itemStyle={{ color: "hsl(var(--foreground))" }}
+                  />
                   <Bar dataKey="increase" name="زيادة" fill="hsl(142, 76%, 36%)" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="decrease" name="تخفيض" fill="hsl(0, 84%, 60%)" radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -424,18 +428,33 @@ export const CostAdjustmentReportsPage: React.FC = () => {
             <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
               <Package size={16} className="text-primary" /> أكثر الأصناف تعديلاً
             </h3>
-            {topItemsChart.length > 0 ? (
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={topItemsChart} layout="vertical" margin={{ top: 20, right: 20, bottom: 20, left: 60 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis type="number" fontSize={11} tick={{ fill: "hsl(var(--muted-foreground))" }} tickMargin={10} />
-                  <YAxis dataKey="name" type="category" fontSize={11} tick={{ fill: "hsl(var(--muted-foreground))" }} width={90} tickMargin={60} />
-                  <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
-                  <Bar dataKey="value" name="إجمالي التغيير" fill="hsl(221, 83%, 53%)" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
+            {topItemsChart.length === 0 ? (
               <div className="h-[220px] flex items-center justify-center text-muted-foreground text-sm">لا توجد بيانات</div>
+            ) : (
+              <div className="h-[260px] overflow-y-auto overflow-x-hidden pl-2 pr-1">
+                <div className="space-y-3 py-2">
+                  {topItemsChart.map((item: any, i: number) => (
+                    <div
+                      key={item.name + "_" + i}
+                      className="grid grid-cols-[90px_minmax(120px,1fr)_140px] items-center gap-3"
+                      title={`${item.name} — ${fmt(item.value)}`}
+                    >
+                      <div className="text-left text-xs font-black text-foreground tabular-nums whitespace-nowrap">
+                        {fmt(item.value)}
+                      </div>
+                      <div className="h-7 rounded-sm bg-muted/35 overflow-hidden flex justify-end">
+                        <div
+                          className="h-full rounded-sm bg-primary transition-all"
+                          style={{ width: `${Math.max(4, (item.value / topItemsMax) * 100)}%` }}
+                        />
+                      </div>
+                      <div className="text-right text-xs font-bold text-foreground truncate" dir="rtl">
+                        {item.name}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -446,20 +465,45 @@ export const CostAdjustmentReportsPage: React.FC = () => {
             <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
               <Layers size={16} className="text-primary" /> اتجاه التعديلات
             </h3>
-            {directionChart.length > 0 ? (
-              <ResponsiveContainer width="100%" height={220}>
-                <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                  <Pie data={directionChart} cx="50%" cy="50%" outerRadius={65} dataKey="value"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+            {directionChart.length === 0 ? (
+              <div className="h-[220px] flex items-center justify-center text-muted-foreground text-sm">لا توجد بيانات</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={260}>
+                <PieChart>
+                  <Pie
+                    data={directionChart}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="38%"
+                    cy="50%"
+                    outerRadius={80}
+                    innerRadius={36}
+                    paddingAngle={1}
+                  >
                     {directionChart.map((_: any, i: number) => (
-                      <Cell key={i} fill={i === 0 ? "hsl(142, 76%, 36%)" : "hsl(0, 84%, 60%)"} />
+                      <Cell key={i} fill={i === 0 ? "hsl(142, 76%, 36%)" : "hsl(0, 84%, 60%)"} stroke="hsl(var(--card))" strokeWidth={2} />
                     ))}
                   </Pie>
-                  <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
+                  <Tooltip
+                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12, color: "hsl(var(--foreground))" }}
+                    labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 700 }}
+                    itemStyle={{ color: "hsl(var(--foreground))" }}
+                    formatter={(v: number, _n, p: any) => [`${fmtInt(v)} (${p?.payload?.pct?.toFixed(1)}%)`, p?.payload?.name]}
+                  />
+                  <Legend
+                    layout="vertical"
+                    verticalAlign="middle"
+                    align="right"
+                    iconType="circle"
+                    wrapperStyle={{ fontSize: 11, maxWidth: "45%", maxHeight: 240, overflowY: "auto", paddingInlineStart: 8 }}
+                    formatter={(value: string, entry: any) => (
+                      <span className="text-foreground" style={{ marginInlineStart: 4 }}>
+                        {value} <span className="text-muted-foreground">({entry?.payload?.pct?.toFixed(1)}%)</span>
+                      </span>
+                    )}
+                  />
                 </PieChart>
               </ResponsiveContainer>
-            ) : (
-              <div className="h-[220px] flex items-center justify-center text-muted-foreground text-sm">لا توجد بيانات</div>
             )}
           </CardContent>
         </Card>
@@ -470,20 +514,45 @@ export const CostAdjustmentReportsPage: React.FC = () => {
             <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
               <Layers size={16} className="text-primary" /> توزيع التعديلات حسب المجموعة
             </h3>
-            {categoryChart.length > 0 ? (
-              <ResponsiveContainer width="100%" height={220}>
-                <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                  <Pie data={categoryChart} cx="50%" cy="50%" outerRadius={65} dataKey="value"
-                    label={({ name, percent }) => `${name.length > 10 ? name.slice(0, 10) + ".." : name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+            {categoryChart.length === 0 ? (
+              <div className="h-[220px] flex items-center justify-center text-muted-foreground text-sm">لا توجد بيانات</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={260}>
+                <PieChart>
+                  <Pie
+                    data={categoryChart}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="38%"
+                    cy="50%"
+                    outerRadius={80}
+                    innerRadius={36}
+                    paddingAngle={1}
+                  >
                     {categoryChart.map((_: any, i: number) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} stroke="hsl(var(--card))" strokeWidth={2} />
                     ))}
                   </Pie>
-                  <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12 }} />
+                  <Tooltip
+                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12, color: "hsl(var(--foreground))" }}
+                    labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 700 }}
+                    itemStyle={{ color: "hsl(var(--foreground))" }}
+                    formatter={(v: number, _n, p: any) => [`${fmt(v)} (${p?.payload?.pct?.toFixed(1)}%)`, p?.payload?.name]}
+                  />
+                  <Legend
+                    layout="vertical"
+                    verticalAlign="middle"
+                    align="right"
+                    iconType="circle"
+                    wrapperStyle={{ fontSize: 11, maxWidth: "45%", maxHeight: 240, overflowY: "auto", paddingInlineStart: 8 }}
+                    formatter={(value: string, entry: any) => (
+                      <span className="text-foreground" style={{ marginInlineStart: 4 }}>
+                        {value} <span className="text-muted-foreground">({entry?.payload?.pct?.toFixed(1)}%)</span>
+                      </span>
+                    )}
+                  />
                 </PieChart>
               </ResponsiveContainer>
-            ) : (
-              <div className="h-[220px] flex items-center justify-center text-muted-foreground text-sm">لا توجد بيانات</div>
             )}
           </CardContent>
         </Card>

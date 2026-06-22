@@ -529,13 +529,13 @@ export const InventoryLevelsPage: React.FC = () => {
                       )}>
                         <TableCell className="text-center text-xs">{idx + 1}</TableCell>
                         <TableCell className="text-center text-xs font-mono">{item.code || "—"}</TableCell>
-                        <TableCell className="text-xs font-medium">
-                          <div className="flex items-center gap-2">
+                        <TableCell className="text-center text-xs font-medium">
+                          <div className="flex items-center justify-center gap-2">
                             {isCritical && <AlertTriangle size={14} className="text-red-500 flex-shrink-0 animate-pulse" />}
                             {item.name}
                           </div>
                         </TableCell>
-                        <TableCell className="text-xs">{item.catName}</TableCell>
+                        <TableCell className="text-center text-xs">{item.catName}</TableCell>
                         <TableCell className={cn("text-center text-xs font-bold", isCritical && "text-red-600")}>
                           {fmt(item.currentStock)}
                         </TableCell>

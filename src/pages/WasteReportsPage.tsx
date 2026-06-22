@@ -28,6 +28,8 @@ import {
   CalendarIcon,
   AlertTriangle,
   Activity,
+  ChevronDown,
+  ChevronLeft,
 } from "lucide-react";
 import {
   BarChart,
@@ -67,6 +69,7 @@ export const WasteReportsPage: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+  const [expandedItem, setExpandedItem] = useState<string | null>(null);
 
   // Fetch completed waste records
   const { data: wasteRecords = [], isLoading } = useQuery({
@@ -85,7 +88,7 @@ export const WasteReportsPage: React.FC = () => {
       fetchAllRows<any>((from, to) =>
         supabase
           .from("waste_items")
-          .select("*, waste_records!inner(status, date, branch_id, warehouse_id)")
+          .select("*, waste_records!inner(status, date, branch_id, warehouse_id, record_number, branch_name, total_cost, notes)")
           .eq("waste_records.status", "مكتمل").order("id").range(from, to)
       ),
     enabled: !!companyId,
@@ -241,6 +244,40 @@ export const WasteReportsPage: React.FC = () => {
     categoryFilter,
     searchQuery,
   ]);
+
+  const wasteDetailsByItem = useMemo(() => {
+    const m = new Map<string, any[]>();
+    const warehouseMap = new Map<string, string>();
+    for (const w of warehouses) warehouseMap.set(w.id, w.name);
+    for (const wi of wasteItems) {
+      const sid = wi.stock_item_id;
+      if (!sid) continue;
+      const rec = wi.waste_records;
+      if (!rec) continue;
+      if (dateFrom && rec.date < format(dateFrom, "yyyy-MM-dd")) continue;
+      if (dateTo && rec.date > format(dateTo, "yyyy-MM-dd")) continue;
+      if (locationFilter !== "all") {
+        if (locationType === "branch" && rec.branch_id !== locationFilter) continue;
+        if (locationType === "warehouse" && rec.warehouse_id !== locationFilter) continue;
+      }
+      const existing = m.get(sid) || [];
+      existing.push({
+        id: wi.id,
+        date: rec.date,
+        recordNumber: rec.record_number,
+        quantity: Number(wi.quantity || 0),
+        cost: Number(wi.cost || 0),
+        reason: wi.reason || "غير محدد",
+        location: rec.branch_name || warehouseMap.get(rec.warehouse_id) || "—",
+        notes: rec.notes || "",
+      });
+      m.set(sid, existing);
+    }
+    for (const arr of m.values()) {
+      arr.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }
+    return m;
+  }, [wasteItems, warehouses, dateFrom, dateTo, locationFilter, locationType]);
 
   // Stats
   const stats = useMemo(() => {
@@ -798,47 +835,101 @@ export const WasteReportsPage: React.FC = () => {
                 ) : (
                   processedData.map((item, idx) => {
                     const topReason = getTopReason(item.reasons);
+                    const isExpanded = expandedItem === item.stockItemId;
+                    const details = wasteDetailsByItem.get(item.stockItemId) || [];
                     return (
-                      <TableRow
-                        key={item.stockItemId}
-                        className={cn("hover:bg-muted/30", item.occurrences >= 5 && "bg-destructive/5")}
-                      >
-                        <TableCell className="text-center text-xs">{idx + 1}</TableCell>
-                        <TableCell className="text-center text-xs font-mono">{item.code || "—"}</TableCell>
-                        <TableCell className="text-center text-xs font-medium">
-                          <div className="flex items-center justify-center gap-1.5">
-                            {item.occurrences >= 5 && (
-                              <AlertTriangle size={14} className="text-destructive flex-shrink-0" />
-                            )}
-                            {item.name}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center text-xs">{item.catName}</TableCell>
-                        <TableCell className="text-center text-xs font-bold">{fmt(item.totalWasteQty)}</TableCell>
-                        <TableCell className="text-center text-xs">{item.unit}</TableCell>
-                        <TableCell className="text-center text-xs">{fmt(item.avgCost)}</TableCell>
-                        <TableCell className="text-center text-xs font-bold text-destructive">
-                          {fmt(item.totalLoss)}
-                        </TableCell>
-                        <TableCell className="text-xs">
-                          <span className="inline-flex items-center bg-amber-500/10 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full text-[11px] font-medium">
-                            {topReason}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-center text-xs">
-                          <span
-                            className={cn(
-                              "inline-flex items-center px-2 py-0.5 rounded-full font-bold text-[11px]",
-                              item.occurrences >= 5
-                                ? "bg-destructive/10 text-destructive"
-                                : "bg-primary/10 text-primary",
-                            )}
-                          >
-                            {fmtInt(item.occurrences)} مرة
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-center text-xs">{item.lastWasteDate}</TableCell>
-                      </TableRow>
+                      <React.Fragment key={item.stockItemId}>
+                        <TableRow
+                          className={cn("hover:bg-muted/30 cursor-pointer", item.occurrences >= 5 && "bg-destructive/5")}
+                          onClick={() => setExpandedItem(isExpanded ? null : item.stockItemId)}
+                        >
+                          <TableCell className="text-center text-xs">
+                            <div className="flex items-center justify-center gap-1">
+                              {isExpanded ? <ChevronDown size={12} /> : <ChevronLeft size={12} />}
+                              <span>{idx + 1}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center text-xs font-mono">{item.code || "—"}</TableCell>
+                          <TableCell className="text-center text-xs font-medium">
+                            <div className="flex items-center justify-center gap-1.5">
+                              {item.occurrences >= 5 && (
+                                <AlertTriangle size={14} className="text-destructive flex-shrink-0" />
+                              )}
+                              {item.name}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center text-xs">{item.catName}</TableCell>
+                          <TableCell className="text-center text-xs font-bold">{fmt(item.totalWasteQty)}</TableCell>
+                          <TableCell className="text-center text-xs">{item.unit}</TableCell>
+                          <TableCell className="text-center text-xs">{fmt(item.avgCost)}</TableCell>
+                          <TableCell className="text-center text-xs font-bold text-destructive">
+                            {fmt(item.totalLoss)}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            <span className="inline-flex items-center bg-amber-500/10 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full text-[11px] font-medium">
+                              {topReason}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-center text-xs">
+                            <span
+                              className={cn(
+                                "inline-flex items-center px-2 py-0.5 rounded-full font-bold text-[11px]",
+                                item.occurrences >= 5
+                                  ? "bg-destructive/10 text-destructive"
+                                  : "bg-primary/10 text-primary",
+                              )}
+                            >
+                              {fmtInt(item.occurrences)} مرة
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-center text-xs">{item.lastWasteDate}</TableCell>
+                        </TableRow>
+                        {isExpanded && (
+                          <TableRow className="bg-muted/20">
+                            <TableCell colSpan={11} className="p-0">
+                              <div className="p-3">
+                                <p className="text-xs font-bold text-foreground mb-2 flex items-center gap-2">
+                                  <Trash2 size={14} /> تفاصيل عمليات الهالك ({details.length})
+                                </p>
+                                <div className="overflow-x-auto rounded-md border border-border/40">
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow className="bg-muted/40">
+                                        <TableHead className="text-center text-[11px] font-bold">#</TableHead>
+                                        <TableHead className="text-center text-[11px] font-bold">التاريخ</TableHead>
+                                        <TableHead className="text-center text-[11px] font-bold">رقم العملية</TableHead>
+                                        <TableHead className="text-center text-[11px] font-bold">الكمية</TableHead>
+                                        <TableHead className="text-center text-[11px] font-bold">التكلفة</TableHead>
+                                        <TableHead className="text-center text-[11px] font-bold">السبب</TableHead>
+                                        <TableHead className="text-center text-[11px] font-bold">الموقع</TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {details.length === 0 ? (
+                                        <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground text-xs py-4">لا توجد عمليات هالك</TableCell></TableRow>
+                                      ) : details.map((d, di) => (
+                                        <TableRow key={d.id}>
+                                          <TableCell className="text-center text-[11px]">{di + 1}</TableCell>
+                                          <TableCell className="text-center text-[11px]">{d.date}</TableCell>
+                                          <TableCell className="text-center text-[11px] font-mono">{d.recordNumber}</TableCell>
+                                          <TableCell className="text-center text-[11px] font-bold">{fmt(d.quantity)}</TableCell>
+                                          <TableCell className="text-center text-[11px] font-bold">{fmt(d.cost)}</TableCell>
+                                          <TableCell className="text-center text-[11px]">
+                                            <span className="inline-flex items-center bg-amber-500/10 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full text-[10px] font-medium">
+                                              {d.reason}
+                                            </span>
+                                          </TableCell>
+                                          <TableCell className="text-center text-[11px]">{d.location}</TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
+                                </div>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </React.Fragment>
                     );
                   })
                 )}

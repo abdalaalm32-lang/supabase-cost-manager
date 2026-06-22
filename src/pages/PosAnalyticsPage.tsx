@@ -153,6 +153,11 @@ export const PosAnalyticsPage: React.FC = () => {
     return Object.values(map).sort((a, b) => b.total - a.total);
   }, [saleItems]);
 
+  const categoryPieData = useMemo(() => {
+    const sum = categoryBreakdown.reduce((a, b) => a + b.total, 0) || 1;
+    return categoryBreakdown.map(c => ({ ...c, pct: (c.total / sum) * 100 }));
+  }, [categoryBreakdown]);
+
   // ── Branch comparison ──
   const branchComparison = useMemo(() => {
     if (branchFilter !== "all") return [];
@@ -177,6 +182,9 @@ export const PosAnalyticsPage: React.FC = () => {
     });
     return map;
   }, [sales]);
+
+  const dayOfWeekMax = useMemo(() => Math.max(1, ...dayOfWeekData.map(d => d.sales)), [dayOfWeekData]);
+
 
   const tooltipStyle = { contentStyle: { background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12, color: "#000" } };
 

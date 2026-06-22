@@ -22,7 +22,7 @@ import {
   FileText, Printer, AlertCircle, Archive, LayoutGrid, Percent, Tag,
   Search, Maximize, Minimize, Pause, User, Keyboard,
   UtensilsCrossed, ShoppingBag, Truck, Banknote, CreditCard, Bell,
-  ChefHat, CheckCircle2, Clock, MapPin, Phone, PlayCircle
+  ChefHat, CheckCircle2, Clock, MapPin, Phone, PlayCircle, Eye, EyeOff
 } from "lucide-react";
 import { printCustomerReceipt, printKitchenReceipt, printViaIframe } from "@/lib/posPrintUtils";
 import { PosHeldInvoices } from "@/components/pos/PosHeldInvoices";
@@ -69,6 +69,16 @@ export const PosScreenPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const receiptRef = useRef<HTMLDivElement>(null);
+
+  const [statsVisible, setStatsVisible] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("pos_stats_visible") !== "false";
+  });
+  useEffect(() => {
+    localStorage.setItem("pos_stats_visible", String(statsVisible));
+  }, [statsVisible]);
+
+
 
   // Restore state from sessionStorage
   const saved = useMemo(() => {
@@ -639,7 +649,18 @@ export const PosScreenPage: React.FC = () => {
         {/* Top bar */}
         <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-card/50 print:hidden flex-wrap gap-2">
           {hasPermission("view_pos_stats") ? (
-            <PosDailyStats companyId={companyId || ""} branchId={branchId} />
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 shrink-0"
+                onClick={() => setStatsVisible(v => !v)}
+                title={statsVisible ? "إخفاء إحصائيات الشيفت" : "إظهار إحصائيات الشيفت"}
+              >
+                {statsVisible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+              </Button>
+              {statsVisible && <PosDailyStats companyId={companyId || ""} branchId={branchId} />}
+            </div>
           ) : (
             <div />
           )}

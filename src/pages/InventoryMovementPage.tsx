@@ -482,34 +482,39 @@ export const InventoryMovementPage: React.FC = () => {
   const fmtNum = (n: number) => Number(n.toFixed(2)).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   // Chart data
-  const movementChartData = useMemo(() => [
-    { name: "مشتريات", value: totals.inPurchases, fill: CHART_COLORS[0] },
-    { name: "إنتاج", value: totals.inProduction, fill: CHART_COLORS[1] },
-    { name: "استلامات", value: totals.inReceipts, fill: CHART_COLORS[2] },
-    { name: "تحويلات", value: totals.outTransfers, fill: CHART_COLORS[3] },
-    { name: "استهلاك", value: totals.outConsumption, fill: CHART_COLORS[4] },
-    { name: "هالك", value: totals.outWaste, fill: CHART_COLORS[5] },
-  ], [totals]);
+  const movementChartData = useMemo(() => {
+    const arr = [
+      { name: "مشتريات", value: totals.inPurchases, fill: CHART_COLORS[0] },
+      { name: "إنتاج", value: totals.inProduction, fill: CHART_COLORS[1] },
+      { name: "استلامات", value: totals.inReceipts, fill: CHART_COLORS[2] },
+      { name: "تحويلات", value: totals.outTransfers, fill: CHART_COLORS[3] },
+      { name: "استهلاك", value: totals.outConsumption, fill: CHART_COLORS[4] },
+      { name: "هالك", value: totals.outWaste, fill: CHART_COLORS[5] },
+    ];
+    const sum = arr.reduce((s, d) => s + (d.value || 0), 0) || 1;
+    return arr.map(d => ({ ...d, pct: (d.value / sum) * 100 }));
+  }, [totals]);
 
   const inOutChartData = useMemo(() => [
     { name: "الوارد", كمية: totals.totalIn },
     { name: "المنصرف", كمية: totals.totalOut },
   ], [totals]);
 
-  const topVarianceItems = useMemo(() =>
-    [...filteredData].sort((a, b) => Math.abs(b.varVal) - Math.abs(a.varVal)).slice(0, 8).map(i => ({
-      name: i.name.length > 15 ? i.name.substring(0, 15) + "…" : i.name,
-      تباين: i.varVal,
-    }))
-    , [filteredData]);
-
   const topMovementItems = useMemo(() =>
-    [...filteredData].sort((a, b) => (b.totalIn + b.totalOut) - (a.totalIn + a.totalOut)).slice(0, 8).map(i => ({
-      name: i.name.length > 15 ? i.name.substring(0, 15) + "…" : i.name,
-      وارد: i.totalIn,
-      منصرف: i.totalOut,
-    }))
+    [...filteredData]
+      .map(i => ({ name: i.name, total: i.totalIn + i.totalOut }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 8)
     , [filteredData]);
+  const topMovementMax = useMemo(() => Math.max(1, ...topMovementItems.map(i => i.total)), [topMovementItems]);
+
+  const topVarianceItems = useMemo(() =>
+    [...filteredData]
+      .map(i => ({ name: i.name, value: i.varVal }))
+      .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
+      .slice(0, 8)
+    , [filteredData]);
+  const topVarianceMax = useMemo(() => Math.max(1, ...topVarianceItems.map(i => Math.abs(i.value))), [topVarianceItems]);
 
   return (
     <div className="space-y-6" dir="rtl">

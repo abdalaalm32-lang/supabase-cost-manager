@@ -643,41 +643,46 @@ export const WasteReportsPage: React.FC = () => {
             <CardTitle className="text-sm font-bold">توزيع أسباب الهالك</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={260}>
-              <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                <Pie
-                  data={reasonDistChart}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={70}
-                  label={({ name, percent, cx: cxx, cy: cyy, midAngle, outerRadius: or }: any) => {
-                    const rad = Math.PI / 180;
-                    const radius = or + 60;
-                    const x = cxx + radius * Math.cos(-midAngle * rad);
-                    const y = cyy + radius * Math.sin(-midAngle * rad);
-                    return (
-                      <text
-                        x={x}
-                        y={y}
-                        textAnchor={x > cxx ? "start" : "end"}
-                        dominantBaseline="central"
-                        fontSize={11}
-                        fill="hsl(var(--foreground))"
-                      >
-                        {`${name} ${(percent * 100).toFixed(0)}%`}
-                      </text>
-                    );
-                  }}
-                >
-                  {reasonDistChart.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={{ borderRadius: 12, fontSize: 12, color: "#000" }} />
-              </PieChart>
-            </ResponsiveContainer>
+            {reasonDistChart.length === 0 ? (
+              <div className="h-[260px] flex items-center justify-center text-sm text-muted-foreground">لا توجد بيانات</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={280}>
+                <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                  <Pie
+                    data={reasonDistChart}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="38%"
+                    cy="50%"
+                    outerRadius={90}
+                    innerRadius={40}
+                    paddingAngle={1}
+                  >
+                    {reasonDistChart.map((_, i) => (
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} stroke="hsl(var(--card))" strokeWidth={2} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12, color: "hsl(var(--foreground))" }}
+                    labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 700 }}
+                    itemStyle={{ color: "hsl(var(--foreground))" }}
+                    formatter={(v: number, _n, p: any) => [`${fmtInt(v)} (${p?.payload?.pct?.toFixed(1)}%)`, p?.payload?.name]}
+                  />
+                  <Legend
+                    layout="vertical"
+                    verticalAlign="middle"
+                    align="right"
+                    iconType="circle"
+                    wrapperStyle={{ fontSize: 11, maxWidth: "45%", maxHeight: 280, overflowY: "auto", paddingInlineStart: 8 }}
+                    formatter={(value: string, entry: any) => (
+                      <span className="text-foreground" style={{ marginInlineStart: 4 }}>
+                        {value} <span className="text-muted-foreground">({entry?.payload?.pct?.toFixed(1)}%)</span>
+                      </span>
+                    )}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 
@@ -687,41 +692,46 @@ export const WasteReportsPage: React.FC = () => {
             <CardTitle className="text-sm font-bold">توزيع الخسائر حسب المجموعة</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={260}>
-              <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                <Pie
-                  data={categoryLossChart}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={70}
-                  label={({ name, percent, cx: cxx, cy: cyy, midAngle, outerRadius: or }: any) => {
-                    const rad = Math.PI / 180;
-                    const radius = or + 70;
-                    const x = cxx + radius * Math.cos(-midAngle * rad);
-                    const y = cyy + radius * Math.sin(-midAngle * rad);
-                    return (
-                      <text
-                        x={x}
-                        y={y}
-                        textAnchor={x > cxx ? "start" : "end"}
-                        dominantBaseline="central"
-                        fontSize={11}
-                        fill="hsl(var(--foreground))"
-                      >
-                        {`${name} ${(percent * 100).toFixed(0)}%`}
-                      </text>
-                    );
-                  }}
-                >
-                  {categoryLossChart.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={{ borderRadius: 12, fontSize: 12, color: "#000" }} />
-              </PieChart>
-            </ResponsiveContainer>
+            {categoryLossChart.length === 0 ? (
+              <div className="h-[260px] flex items-center justify-center text-sm text-muted-foreground">لا توجد بيانات</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={280}>
+                <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                  <Pie
+                    data={categoryLossChart}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="38%"
+                    cy="50%"
+                    outerRadius={90}
+                    innerRadius={40}
+                    paddingAngle={1}
+                  >
+                    {categoryLossChart.map((_, i) => (
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} stroke="hsl(var(--card))" strokeWidth={2} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12, color: "hsl(var(--foreground))" }}
+                    labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 700 }}
+                    itemStyle={{ color: "hsl(var(--foreground))" }}
+                    formatter={(v: number, _n, p: any) => [`${fmt(v)} EGP (${p?.payload?.pct?.toFixed(1)}%)`, p?.payload?.name]}
+                  />
+                  <Legend
+                    layout="vertical"
+                    verticalAlign="middle"
+                    align="right"
+                    iconType="circle"
+                    wrapperStyle={{ fontSize: 11, maxWidth: "45%", maxHeight: 280, overflowY: "auto", paddingInlineStart: 8 }}
+                    formatter={(value: string, entry: any) => (
+                      <span className="text-foreground" style={{ marginInlineStart: 4 }}>
+                        {value} <span className="text-muted-foreground">({entry?.payload?.pct?.toFixed(1)}%)</span>
+                      </span>
+                    )}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
       </div>

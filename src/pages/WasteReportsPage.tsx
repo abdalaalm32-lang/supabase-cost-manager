@@ -186,14 +186,15 @@ export const WasteReportsPage: React.FC = () => {
       if (!sid) continue;
       const si = stockMap.get(sid);
       const reason = wi.reason || "غير محدد";
-      const cost = Number(wi.cost || 0);
+      const unitCost = Number(wi.cost || 0);
       const qty = Number(wi.quantity || 0);
+      const lineLoss = qty * unitCost;
       const rec = wi.waste_records;
 
       const existing = itemMap.get(sid);
       if (existing) {
         existing.totalWasteQty += qty;
-        existing.totalLoss += cost;
+        existing.totalLoss += lineLoss;
         existing.occurrences += 1;
         existing.reasons.set(reason, (existing.reasons.get(reason) || 0) + 1);
         if (rec?.date > existing.lastWasteDate) existing.lastWasteDate = rec.date;
@@ -209,7 +210,7 @@ export const WasteReportsPage: React.FC = () => {
           categoryId: si?.category_id || "",
           totalWasteQty: qty,
           avgCost: si ? Number(si.avg_cost) : 0,
-          totalLoss: cost,
+          totalLoss: lineLoss,
           reasons,
           occurrences: 1,
           unit: wi.unit || si?.stock_unit || "",
@@ -913,7 +914,7 @@ export const WasteReportsPage: React.FC = () => {
                                           <TableCell className="text-center text-[11px]">{d.date}</TableCell>
                                           <TableCell className="text-center text-[11px] font-mono">{d.recordNumber}</TableCell>
                                           <TableCell className="text-center text-[11px] font-bold">{fmt(d.quantity)}</TableCell>
-                                          <TableCell className="text-center text-[11px] font-bold">{fmt(d.cost)}</TableCell>
+                                          <TableCell className="text-center text-[11px] font-bold">{fmt(d.quantity * d.cost)}</TableCell>
                                           <TableCell className="text-center text-[11px]">
                                             <span className="inline-flex items-center bg-amber-500/10 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full text-[10px] font-medium">
                                               {d.reason}

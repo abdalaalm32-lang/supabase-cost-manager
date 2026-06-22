@@ -478,20 +478,6 @@ export const PosItemSalesPage: React.FC = () => {
                     outerRadius={90}
                     innerRadius={40}
                     paddingAngle={1}
-                    label={(props: any) => {
-                      const { cx, cy, midAngle, outerRadius, pct } = props;
-                      if (pct < 2) return null;
-                      const RAD = Math.PI / 180;
-                      const r = outerRadius + 18;
-                      const x = cx + r * Math.cos(-midAngle * RAD);
-                      const y = cy + r * Math.sin(-midAngle * RAD);
-                      return (
-                        <text x={x} y={y} fill="hsl(var(--foreground))" textAnchor={x > cx ? "start" : "end"} dominantBaseline="central" fontSize={11} fontWeight={600}>
-                          {`${pct.toFixed(1)}%`}
-                        </text>
-                      );
-                    }}
-                    labelLine={{ stroke: "hsl(var(--muted-foreground))", strokeWidth: 1 }}
                   >
                     {pieData.map((_, i) => (
                       <Cell key={i} fill={COLORS[i % COLORS.length]} stroke="hsl(var(--card))" strokeWidth={2} />

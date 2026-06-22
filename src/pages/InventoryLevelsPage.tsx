@@ -500,8 +500,8 @@ export const InventoryLevelsPage: React.FC = () => {
                 <TableRow className="bg-muted/50">
                   <TableHead className="text-center text-xs font-bold w-10">#</TableHead>
                   <TableHead className="text-center text-xs font-bold">الكود</TableHead>
-                  <TableHead className="text-xs font-bold">اسم الصنف</TableHead>
-                  <TableHead className="text-xs font-bold">المجموعة</TableHead>
+                  <TableHead className="text-center text-xs font-bold">اسم الصنف</TableHead>
+                  <TableHead className="text-center text-xs font-bold">المجموعة</TableHead>
                   <TableHead className="text-center text-xs font-bold">الرصيد الحالي</TableHead>
                   <TableHead className="text-center text-xs font-bold">الوحدة</TableHead>
                   <TableHead className="text-center text-xs font-bold">متوسط التكلفة</TableHead>

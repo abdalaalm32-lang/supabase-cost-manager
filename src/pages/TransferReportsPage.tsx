@@ -308,6 +308,11 @@ export const TransferReportsPage: React.FC = () => {
     }));
   }, [processedData]);
 
+  const topTransferredMax = useMemo(
+    () => Math.max(1, ...topTransferredChart.map((i: any) => i.cost || 0)),
+    [topTransferredChart]
+  );
+
   // Route distribution
   const routeDistChart = useMemo(() => {
     const routeMap = new Map<string, number>();
@@ -316,10 +321,12 @@ export const TransferReportsPage: React.FC = () => {
         routeMap.set(route, (routeMap.get(route) || 0) + count);
       }
     }
-    return Array.from(routeMap.entries())
+    const arr = Array.from(routeMap.entries())
       .map(([name, value]) => ({ name: name.replace("→", " ← "), value }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 6);
+    const total = arr.reduce((s, x) => s + x.value, 0) || 1;
+    return arr.map(x => ({ ...x, pct: (x.value / total) * 100 }));
   }, [processedData]);
 
   // Category distribution
@@ -328,7 +335,9 @@ export const TransferReportsPage: React.FC = () => {
     for (const i of processedData) {
       catMap.set(i.catName, (catMap.get(i.catName) || 0) + i.totalCost);
     }
-    return Array.from(catMap.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+    const arr = Array.from(catMap.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+    const total = arr.reduce((s, x) => s + x.value, 0) || 1;
+    return arr.map(x => ({ ...x, pct: (x.value / total) * 100 }));
   }, [processedData]);
 
   const getTopRoute = (routes: Map<string, number>): { source: string; destination: string } => {

@@ -36,6 +36,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
   ResponsiveContainer,
   PieChart,
   Pie,
@@ -301,9 +302,11 @@ export const WasteReportsPage: React.FC = () => {
         reasonMap.set(reason, (reasonMap.get(reason) || 0) + count);
       }
     }
-    return Array.from(reasonMap.entries())
+    const arr = Array.from(reasonMap.entries())
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
+    const total = arr.reduce((s, x) => s + x.value, 0) || 1;
+    return arr.map((x) => ({ ...x, pct: (x.value / total) * 100 }));
   }, [processedData]);
 
   // Category loss distribution
@@ -312,9 +315,11 @@ export const WasteReportsPage: React.FC = () => {
     for (const i of processedData) {
       catMap.set(i.catName, (catMap.get(i.catName) || 0) + i.totalLoss);
     }
-    return Array.from(catMap.entries())
+    const arr = Array.from(catMap.entries())
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
+    const total = arr.reduce((s, x) => s + x.value, 0) || 1;
+    return arr.map((x) => ({ ...x, pct: (x.value / total) * 100 }));
   }, [processedData]);
 
   const totals = useMemo(

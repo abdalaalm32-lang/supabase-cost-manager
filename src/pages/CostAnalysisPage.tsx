@@ -1108,8 +1108,6 @@ export const CostAnalysisPage: React.FC = () => {
         </Button>
       </div>
 
-      {/* Cost alerts banner */}
-      <CostAlertsCard threshold={15} />
 
       {/* Filters */}
       <div className="glass-card rounded-2xl p-4">

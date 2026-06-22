@@ -245,6 +245,40 @@ export const WasteReportsPage: React.FC = () => {
     searchQuery,
   ]);
 
+  const wasteDetailsByItem = useMemo(() => {
+    const m = new Map<string, any[]>();
+    const warehouseMap = new Map<string, string>();
+    for (const w of warehouses) warehouseMap.set(w.id, w.name);
+    for (const wi of wasteItems) {
+      const sid = wi.stock_item_id;
+      if (!sid) continue;
+      const rec = wi.waste_records;
+      if (!rec) continue;
+      if (dateFrom && rec.date < format(dateFrom, "yyyy-MM-dd")) continue;
+      if (dateTo && rec.date > format(dateTo, "yyyy-MM-dd")) continue;
+      if (locationFilter !== "all") {
+        if (locationType === "branch" && rec.branch_id !== locationFilter) continue;
+        if (locationType === "warehouse" && rec.warehouse_id !== locationFilter) continue;
+      }
+      const existing = m.get(sid) || [];
+      existing.push({
+        id: wi.id,
+        date: rec.date,
+        recordNumber: rec.record_number,
+        quantity: Number(wi.quantity || 0),
+        cost: Number(wi.cost || 0),
+        reason: wi.reason || "غير محدد",
+        location: rec.branch_name || warehouseMap.get(rec.warehouse_id) || "—",
+        notes: rec.notes || "",
+      });
+      m.set(sid, existing);
+    }
+    for (const arr of m.values()) {
+      arr.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }
+    return m;
+  }, [wasteItems, warehouses, dateFrom, dateTo, locationFilter, locationType]);
+
   // Stats
   const stats = useMemo(() => {
     let filteredRecords = [...wasteRecords];

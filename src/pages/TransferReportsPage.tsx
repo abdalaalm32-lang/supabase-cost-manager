@@ -21,7 +21,7 @@ import {
   ChevronDown, ChevronLeft
 } from "lucide-react";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line,
 } from "recharts";
 
@@ -308,6 +308,11 @@ export const TransferReportsPage: React.FC = () => {
     }));
   }, [processedData]);
 
+  const topTransferredMax = useMemo(
+    () => Math.max(1, ...topTransferredChart.map((i: any) => i.cost || 0)),
+    [topTransferredChart]
+  );
+
   // Route distribution
   const routeDistChart = useMemo(() => {
     const routeMap = new Map<string, number>();
@@ -316,10 +321,12 @@ export const TransferReportsPage: React.FC = () => {
         routeMap.set(route, (routeMap.get(route) || 0) + count);
       }
     }
-    return Array.from(routeMap.entries())
+    const arr = Array.from(routeMap.entries())
       .map(([name, value]) => ({ name: name.replace("→", " ← "), value }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 6);
+    const total = arr.reduce((s, x) => s + x.value, 0) || 1;
+    return arr.map(x => ({ ...x, pct: (x.value / total) * 100 }));
   }, [processedData]);
 
   // Category distribution
@@ -328,7 +335,9 @@ export const TransferReportsPage: React.FC = () => {
     for (const i of processedData) {
       catMap.set(i.catName, (catMap.get(i.catName) || 0) + i.totalCost);
     }
-    return Array.from(catMap.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+    const arr = Array.from(catMap.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+    const total = arr.reduce((s, x) => s + x.value, 0) || 1;
+    return arr.map(x => ({ ...x, pct: (x.value / total) * 100 }));
   }, [processedData]);
 
   const getTopRoute = (routes: Map<string, number>): { source: string; destination: string } => {
@@ -553,19 +562,34 @@ export const TransferReportsPage: React.FC = () => {
         <Card>
           <CardContent className="pt-4 pb-2">
             <h3 className="text-sm font-bold mb-3 flex items-center gap-1"><ArrowRightLeft size={16} /> أكثر الأصناف تحويلاً</h3>
-            <div className="h-56">
-              {topTransferredChart.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={topTransferredChart} layout="vertical" margin={{ top: 20, right: 60, bottom: 20, left: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis type="number" tick={{ fontSize: 11 }} tickMargin={10} />
-                    <YAxis dataKey="name" type="category" tick={{ fontSize: 10 }} width={55} tickMargin={10} />
-                    <Tooltip formatter={(v: any) => fmt(v)} />
-                    <Bar dataKey="cost" fill="hsl(221, 83%, 53%)" radius={[0, 4, 4, 0]} name="التكلفة" />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : <p className="text-center text-muted-foreground text-sm mt-16">لا توجد بيانات</p>}
-            </div>
+            {topTransferredChart.length === 0 ? (
+              <div className="h-56 flex items-center justify-center text-sm text-muted-foreground">لا توجد بيانات</div>
+            ) : (
+              <div className="h-56 overflow-y-auto overflow-x-hidden pl-2 pr-1">
+                <div className="space-y-3 py-2">
+                  {topTransferredChart.map((item: any, i: number) => (
+                    <div
+                      key={item.name + "_" + i}
+                      className="grid grid-cols-[90px_minmax(120px,1fr)_140px] items-center gap-3"
+                      title={`${item.name} — ${fmt(item.cost)}`}
+                    >
+                      <div className="text-left text-xs font-black text-foreground tabular-nums whitespace-nowrap">
+                        {fmt(item.cost)}
+                      </div>
+                      <div className="h-7 rounded-sm bg-muted/35 overflow-hidden flex justify-end">
+                        <div
+                          className="h-full rounded-sm bg-primary transition-all"
+                          style={{ width: `${Math.max(4, (item.cost / topTransferredMax) * 100)}%` }}
+                        />
+                      </div>
+                      <div className="text-right text-xs font-bold text-foreground truncate" dir="rtl">
+                        {item.name}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -573,43 +597,46 @@ export const TransferReportsPage: React.FC = () => {
         <Card>
           <CardContent className="pt-4 pb-2">
             <h3 className="text-sm font-bold mb-3 flex items-center gap-1"><Store size={16} /> توزيع المسارات</h3>
-            <div className="h-56">
-              {routeDistChart.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                    <Pie 
-                      data={routeDistChart} 
-                      cx="50%" 
-                      cy="50%" 
-                      outerRadius={70} 
-                      dataKey="value" 
-                      labelLine={true}
-                      label={({ cx, cy, midAngle, outerRadius, percent, name }) => {
-                        const RADIAN = Math.PI / 180;
-                        const radius = outerRadius + 120;
-                        const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                        const y = cy + radius * Math.sin(-midAngle * RADIAN);
-                        return (
-                          <text 
-                            x={x} 
-                            y={y} 
-                            fill="hsl(var(--foreground))" 
-                            textAnchor={x > cx ? "start" : "end"} 
-                            dominantBaseline="central"
-                            className="text-[10px] font-medium"
-                          >
-                            {name} {(percent * 100).toFixed(0)}%
-                          </text>
-                        );
-                      }}
-                    >
-                      {routeDistChart.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : <p className="text-center text-muted-foreground text-sm mt-16">لا توجد بيانات</p>}
-            </div>
+            {routeDistChart.length === 0 ? (
+              <div className="h-56 flex items-center justify-center text-sm text-muted-foreground">لا توجد بيانات</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={240}>
+                <PieChart>
+                  <Pie
+                    data={routeDistChart}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="38%"
+                    cy="50%"
+                    outerRadius={80}
+                    innerRadius={36}
+                    paddingAngle={1}
+                  >
+                    {routeDistChart.map((_, i) => (
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} stroke="hsl(var(--card))" strokeWidth={2} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12, color: "hsl(var(--foreground))" }}
+                    labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 700 }}
+                    itemStyle={{ color: "hsl(var(--foreground))" }}
+                    formatter={(v: number, _n, p: any) => [`${fmt(v)} (${p?.payload?.pct?.toFixed(1)}%)`, p?.payload?.name]}
+                  />
+                  <Legend
+                    layout="vertical"
+                    verticalAlign="middle"
+                    align="right"
+                    iconType="circle"
+                    wrapperStyle={{ fontSize: 11, maxWidth: "45%", maxHeight: 220, overflowY: "auto", paddingInlineStart: 8 }}
+                    formatter={(value: string, entry: any) => (
+                      <span className="text-foreground" style={{ marginInlineStart: 4 }}>
+                        {value} <span className="text-muted-foreground">({entry?.payload?.pct?.toFixed(1)}%)</span>
+                      </span>
+                    )}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 
@@ -617,46 +644,50 @@ export const TransferReportsPage: React.FC = () => {
         <Card>
           <CardContent className="pt-4 pb-2">
             <h3 className="text-sm font-bold mb-3 flex items-center gap-1"><Layers size={16} /> توزيع التكلفة حسب المجموعة</h3>
-            <div className="h-56">
-              {categoryDistChart.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                    <Pie 
-                      data={categoryDistChart} 
-                      cx="50%" 
-                      cy="50%" 
-                      outerRadius={70} 
-                      dataKey="value" 
-                      labelLine={true}
-                      label={({ cx, cy, midAngle, outerRadius, percent, name }) => {
-                        const RADIAN = Math.PI / 180;
-                        const radius = outerRadius + 80;
-                        const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                        const y = cy + radius * Math.sin(-midAngle * RADIAN);
-                        return (
-                          <text 
-                            x={x} 
-                            y={y} 
-                            fill="hsl(var(--foreground))" 
-                            textAnchor={x > cx ? "start" : "end"} 
-                            dominantBaseline="central"
-                            className="text-[10px] font-medium"
-                          >
-                            {name} {(percent * 100).toFixed(0)}%
-                          </text>
-                        );
-                      }}
-                    >
-                      {categoryDistChart.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : <p className="text-center text-muted-foreground text-sm mt-16">لا توجد بيانات</p>}
-            </div>
+            {categoryDistChart.length === 0 ? (
+              <div className="h-56 flex items-center justify-center text-sm text-muted-foreground">لا توجد بيانات</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={240}>
+                <PieChart>
+                  <Pie
+                    data={categoryDistChart}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="38%"
+                    cy="50%"
+                    outerRadius={80}
+                    innerRadius={36}
+                    paddingAngle={1}
+                  >
+                    {categoryDistChart.map((_, i) => (
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} stroke="hsl(var(--card))" strokeWidth={2} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12, color: "hsl(var(--foreground))" }}
+                    labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 700 }}
+                    itemStyle={{ color: "hsl(var(--foreground))" }}
+                    formatter={(v: number, _n, p: any) => [`${fmt(v)} (${p?.payload?.pct?.toFixed(1)}%)`, p?.payload?.name]}
+                  />
+                  <Legend
+                    layout="vertical"
+                    verticalAlign="middle"
+                    align="right"
+                    iconType="circle"
+                    wrapperStyle={{ fontSize: 11, maxWidth: "45%", maxHeight: 220, overflowY: "auto", paddingInlineStart: 8 }}
+                    formatter={(value: string, entry: any) => (
+                      <span className="text-foreground" style={{ marginInlineStart: 4 }}>
+                        {value} <span className="text-muted-foreground">({entry?.payload?.pct?.toFixed(1)}%)</span>
+                      </span>
+                    )}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
       </div>
+
 
       {/* Table */}
       <Card>

@@ -600,28 +600,46 @@ export const PurchaseReportsPage: React.FC = () => {
             <CardTitle className="text-sm font-bold">توزيع المشتريات حسب المجموعة</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={260}>
-              <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                <Pie data={categoryChart} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={70}
-                  label={({ name, percent, cx, cy, midAngle, outerRadius: or }) => {
-                    const rad = Math.PI / 180;
-                    const radius = or + 70;
-                    const x = cx + radius * Math.cos(-midAngle * rad);
-                    const y = cy + radius * Math.sin(-midAngle * rad);
-                    return (
-                      <text x={x} y={y} textAnchor={x > cx ? "start" : "end"} dominantBaseline="central"
-                        fontSize={10} fill="hsl(var(--foreground))">
-                        {`${name} ${(percent * 100).toFixed(0)}%`}
-                      </text>
-                    );
-                  }}>
-                  {categoryChart.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={{ borderRadius: 12, fontSize: 12, color: "#000" }} />
-              </PieChart>
-            </ResponsiveContainer>
+            {categoryChart.length === 0 ? (
+              <div className="h-[260px] flex items-center justify-center text-sm text-muted-foreground">لا توجد بيانات</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={categoryChart}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="38%"
+                    cy="50%"
+                    outerRadius={90}
+                    innerRadius={40}
+                    paddingAngle={1}
+                  >
+                    {categoryChart.map((_, i) => (
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} stroke="hsl(var(--card))" strokeWidth={2} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12, color: "hsl(var(--foreground))" }}
+                    labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 700 }}
+                    itemStyle={{ color: "hsl(var(--foreground))" }}
+                    formatter={(v: number, _n, p: any) => [`${fmt(v)} EGP (${p?.payload?.pct?.toFixed(1)}%)`, p?.payload?.name]}
+                  />
+                  <Legend
+                    layout="vertical"
+                    verticalAlign="middle"
+                    align="right"
+                    iconType="circle"
+                    wrapperStyle={{ fontSize: 11, maxWidth: "45%", maxHeight: 280, overflowY: "auto", paddingInlineStart: 8 }}
+                    formatter={(value: string, entry: any) => (
+                      <span className="text-foreground" style={{ marginInlineStart: 4 }}>
+                        {value} <span className="text-muted-foreground">({entry?.payload?.pct?.toFixed(1)}%)</span>
+                      </span>
+                    )}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 
@@ -631,16 +649,34 @@ export const PurchaseReportsPage: React.FC = () => {
             <CardTitle className="text-sm font-bold">أكثر الخامات شراءً</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={topItemsChart} layout="vertical" margin={{ top: 20, right: 100, bottom: 20, left: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis type="number" tick={{ fontSize: 11 }} tickMargin={10} />
-                <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10 }} tickMargin={50} />
-                <Tooltip contentStyle={{ borderRadius: 12, fontSize: 12, color: "#000" }} />
-                <Legend />
-                <Bar dataKey="عدد_المشتريات" fill="hsl(221, 83%, 53%)" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            {topItemsChart.length === 0 ? (
+              <div className="h-[260px] flex items-center justify-center text-sm text-muted-foreground">لا توجد بيانات</div>
+            ) : (
+              <div className="h-[300px] overflow-y-auto overflow-x-hidden pl-2 pr-1">
+                <div className="space-y-3 py-2">
+                  {topItemsChart.map((item: any, i: number) => (
+                    <div
+                      key={item.name + "_" + i}
+                      className="grid grid-cols-[80px_minmax(140px,1fr)_140px] items-center gap-3"
+                      title={`${item.name} — ${item.عدد_المشتريات}`}
+                    >
+                      <div className="text-left text-xs font-black text-foreground tabular-nums whitespace-nowrap">
+                        {item.عدد_المشتريات}
+                      </div>
+                      <div className="h-7 rounded-sm bg-muted/35 overflow-hidden flex justify-end">
+                        <div
+                          className="h-full rounded-sm bg-primary transition-all"
+                          style={{ width: `${Math.max(4, (item.عدد_المشتريات / topItemsMax) * 100)}%` }}
+                        />
+                      </div>
+                      <div className="text-right text-xs font-bold text-foreground truncate" dir="rtl">
+                        {item.name}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

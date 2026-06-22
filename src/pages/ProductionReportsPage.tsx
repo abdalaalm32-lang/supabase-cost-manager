@@ -16,7 +16,8 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
   Search, Store, Warehouse, Factory, FileSpreadsheet, FileText,
-  BarChart3, Layers, TrendingUp, Package, CalendarIcon, Activity
+  BarChart3, Layers, TrendingUp, Package, CalendarIcon, Activity,
+  ChevronDown, ChevronLeft
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -41,6 +42,7 @@ export const ProductionReportsPage: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+  const [expandedItem, setExpandedItem] = useState<string | null>(null);
 
   const { data: productionRecords = [], isLoading } = useQuery({
     queryKey: ["production-records-report", companyId],
@@ -180,6 +182,53 @@ export const ProductionReportsPage: React.FC = () => {
 
     return result;
   }, [productionRecords, stockItems, dateFrom, dateTo, locationFilter, locationType, categoryFilter, searchQuery]);
+
+  const productionDetailsByItem = useMemo(() => {
+    const m = new Map<string, Array<{
+      id: string;
+      date: string;
+      recordNumber: string;
+      producedQty: number;
+      totalCost: number;
+      unitCost: number;
+      location: string;
+    }>>();
+
+    const branchMap = new Map((branches || []).map((b: any) => [b.id, b.name]));
+    const warehouseMap = new Map((warehouses || []).map((w: any) => [w.id, w.name]));
+
+    for (const rec of productionRecords) {
+      const pid = rec.product_id;
+      if (!pid) continue;
+
+      if (dateFrom && rec.date < format(dateFrom, "yyyy-MM-dd")) continue;
+      if (dateTo && rec.date > format(dateTo, "yyyy-MM-dd")) continue;
+
+      if (locationFilter !== "all") {
+        if (locationType === "branch" && rec.branch_id !== locationFilter) continue;
+        if (locationType === "warehouse" && rec.warehouse_id !== locationFilter) continue;
+      }
+
+      const loc = rec.branch_id ? branchMap.get(rec.branch_id) : rec.warehouse_id ? warehouseMap.get(rec.warehouse_id) : "";
+      const qty = Number(rec.produced_qty) || 0;
+      const totalCost = Number(rec.total_production_cost) || 0;
+
+      const arr = m.get(pid) || [];
+      arr.push({
+        id: rec.id,
+        date: rec.date,
+        recordNumber: rec.record_number || "—",
+        producedQty: qty,
+        totalCost,
+        unitCost: qty > 0 ? totalCost / qty : 0,
+        location: loc || "—",
+      });
+      m.set(pid, arr);
+    }
+
+    for (const [, arr] of m) arr.sort((a, b) => b.date.localeCompare(a.date));
+    return m;
+  }, [productionRecords, branches, warehouses, dateFrom, dateTo, locationFilter, locationType]);
 
   // Stats
   const stats = useMemo(() => {
@@ -568,25 +617,77 @@ export const ProductionReportsPage: React.FC = () => {
                     <TableCell colSpan={11} className="text-center py-12 text-muted-foreground">لا توجد بيانات إنتاج</TableCell>
                   </TableRow>
                 ) : (
-                  processedData.map((item, idx) => (
-                    <TableRow key={item.productId} className="hover:bg-muted/30">
-                      <TableCell className="text-center text-xs">{idx + 1}</TableCell>
-                      <TableCell className="text-center text-xs font-mono">{item.code || "—"}</TableCell>
-                      <TableCell className="text-center text-xs font-medium">{item.name}</TableCell>
-                      <TableCell className="text-center text-xs">{item.catName}</TableCell>
-                      <TableCell className="text-center text-xs">
-                        <span className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold text-[11px]">
-                          {fmtInt(item.productionCount)} مرة
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center text-xs font-bold">{fmt(item.totalProducedQty)}</TableCell>
-                      <TableCell className="text-center text-xs">{fmt(item.currentStock)}</TableCell>
-                      <TableCell className="text-center text-xs">{item.stockUnit}</TableCell>
-                      <TableCell className="text-center text-xs">{fmt(item.avgCost)}</TableCell>
-                      <TableCell className="text-center text-xs font-bold">{fmt(item.totalProductionCost)}</TableCell>
-                      <TableCell className="text-center text-xs">{item.lastProductionDate}</TableCell>
-                    </TableRow>
-                  ))
+                  processedData.map((item, idx) => {
+                    const isExpanded = expandedItem === item.productId;
+                    const details = productionDetailsByItem.get(item.productId) || [];
+                    return (
+                      <React.Fragment key={item.productId}>
+                        <TableRow className="hover:bg-muted/30 cursor-pointer" onClick={() => setExpandedItem(isExpanded ? null : item.productId)}>
+                          <TableCell className="text-center text-xs">
+                            <div className="flex items-center justify-center gap-1">
+                              {isExpanded ? <ChevronDown size={12} /> : <ChevronLeft size={12} />}
+                              <span>{idx + 1}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center text-xs font-mono">{item.code || "—"}</TableCell>
+                          <TableCell className="text-center text-xs font-medium">{item.name}</TableCell>
+                          <TableCell className="text-center text-xs">{item.catName}</TableCell>
+                          <TableCell className="text-center text-xs">
+                            <span className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold text-[11px]">
+                              {fmtInt(item.productionCount)} مرة
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-center text-xs font-bold">{fmt(item.totalProducedQty)}</TableCell>
+                          <TableCell className="text-center text-xs">{fmt(item.currentStock)}</TableCell>
+                          <TableCell className="text-center text-xs">{item.stockUnit}</TableCell>
+                          <TableCell className="text-center text-xs">{fmt(item.avgCost)}</TableCell>
+                          <TableCell className="text-center text-xs font-bold">{fmt(item.totalProductionCost)}</TableCell>
+                          <TableCell className="text-center text-xs">{item.lastProductionDate}</TableCell>
+                        </TableRow>
+                        {isExpanded && (
+                          <TableRow className="bg-muted/20">
+                            <TableCell colSpan={11} className="p-0">
+                              <div className="p-3">
+                                <p className="text-xs font-bold text-foreground mb-2 flex items-center gap-2">
+                                  <Factory size={14} /> تفاصيل عمليات الإنتاج ({details.length})
+                                </p>
+                                <div className="overflow-x-auto rounded-md border border-border/40">
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow className="bg-muted/40">
+                                        <TableHead className="text-center text-[11px] font-bold">#</TableHead>
+                                        <TableHead className="text-center text-[11px] font-bold">التاريخ</TableHead>
+                                        <TableHead className="text-center text-[11px] font-bold">رقم العملية</TableHead>
+                                        <TableHead className="text-center text-[11px] font-bold">الكمية المنتجة</TableHead>
+                                        <TableHead className="text-center text-[11px] font-bold">تكلفة الوحدة</TableHead>
+                                        <TableHead className="text-center text-[11px] font-bold">إجمالي التكلفة</TableHead>
+                                        <TableHead className="text-center text-[11px] font-bold">الموقع</TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {details.length === 0 ? (
+                                        <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground text-xs py-4">لا توجد عمليات إنتاج</TableCell></TableRow>
+                                      ) : details.map((d, di) => (
+                                        <TableRow key={d.id}>
+                                          <TableCell className="text-center text-[11px]">{di + 1}</TableCell>
+                                          <TableCell className="text-center text-[11px]">{format(new Date(d.date), "yyyy/MM/dd")}</TableCell>
+                                          <TableCell className="text-center text-[11px] font-mono">{d.recordNumber}</TableCell>
+                                          <TableCell className="text-center text-[11px] font-bold">{fmt(d.producedQty)}</TableCell>
+                                          <TableCell className="text-center text-[11px]">{fmt(d.unitCost)}</TableCell>
+                                          <TableCell className="text-center text-[11px] font-bold">{fmt(d.totalCost)}</TableCell>
+                                          <TableCell className="text-center text-[11px]">{d.location}</TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
+                                </div>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </React.Fragment>
+                    );
+                  })
                 )}
               </TableBody>
               {processedData.length > 0 && (

@@ -88,7 +88,7 @@ export const WasteReportsPage: React.FC = () => {
       fetchAllRows<any>((from, to) =>
         supabase
           .from("waste_items")
-          .select("*, waste_records!inner(status, date, branch_id, warehouse_id)")
+          .select("*, waste_records!inner(status, date, branch_id, warehouse_id, record_number, branch_name, total_cost, notes)")
           .eq("waste_records.status", "مكتمل").order("id").range(from, to)
       ),
     enabled: !!companyId,

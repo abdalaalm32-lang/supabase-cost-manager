@@ -32,6 +32,21 @@ const COLORS = [
   "hsl(0, 70%, 55%)",   // destructive
 ];
 
+const RadarTick: React.FC<any> = ({ payload, x, y, cx, cy, textAnchor }) => {
+  if (!cx || !cy || x == null || y == null) return null;
+  const dx = x - cx;
+  const dy = y - cy;
+  const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+  const offset = 16; // push labels outward
+  const nx = cx + (dx / dist) * (dist + offset);
+  const ny = cy + (dy / dist) * (dist + offset);
+  return (
+    <text x={nx} y={ny} textAnchor={textAnchor} fill="hsl(215, 20%, 55%)" fontSize={9}>
+      {payload?.value}
+    </text>
+  );
+};
+
 const KPICard: React.FC<{
   title: string; value: string; subtitle?: string;
   icon: React.ElementType; gradient: string; trend?: number;
@@ -356,7 +371,7 @@ export const DashboardPage: React.FC = () => {
           <ResponsiveContainer width="100%" height={240}>
             <RadarChart data={d.operationsRadar}>
               <PolarGrid stroke="hsl(217, 33%, 18%)" />
-              <PolarAngleAxis dataKey="metric" tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 9 }} />
+              <PolarAngleAxis dataKey="metric" tick={<RadarTick />} />
               <PolarRadiusAxis tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 8 }} />
               <Radar name="العمليات" dataKey="value" stroke="hsl(199, 89%, 60%)" fill="hsl(199, 89%, 60%)" fillOpacity={0.2} strokeWidth={2} />
             </RadarChart>

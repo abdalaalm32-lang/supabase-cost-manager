@@ -20,7 +20,7 @@ import {
   Calculator, TrendingUp, TrendingDown, Activity, Package, Layers, CalendarIcon
 } from "lucide-react";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line,
 } from "recharts";
 

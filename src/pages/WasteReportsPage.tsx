@@ -914,7 +914,7 @@ export const WasteReportsPage: React.FC = () => {
                                           <TableCell className="text-center text-[11px]">{d.date}</TableCell>
                                           <TableCell className="text-center text-[11px] font-mono">{d.recordNumber}</TableCell>
                                           <TableCell className="text-center text-[11px] font-bold">{fmt(d.quantity)}</TableCell>
-                                          <TableCell className="text-center text-[11px] font-bold">{fmt(d.cost)}</TableCell>
+                                          <TableCell className="text-center text-[11px] font-bold">{fmt(d.quantity * d.cost)}</TableCell>
                                           <TableCell className="text-center text-[11px]">
                                             <span className="inline-flex items-center bg-amber-500/10 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full text-[10px] font-medium">
                                               {d.reason}

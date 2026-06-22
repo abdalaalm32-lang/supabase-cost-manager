@@ -63,7 +63,7 @@ const DELIVERY_STATUSES = [
 ];
 
 export const PosScreenPage: React.FC = () => {
-  const { auth } = useAuth();
+  const { auth, hasPermission } = useAuth();
   const companyId = auth.profile?.company_id;
   const queryClient = useQueryClient();
   const location = useLocation();

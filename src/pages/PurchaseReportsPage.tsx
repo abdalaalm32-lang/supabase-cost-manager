@@ -803,8 +803,8 @@ export const PurchaseReportsPage: React.FC = () => {
                                     <TableHead className="text-center text-[11px] font-bold">#</TableHead>
                                     <TableHead className="text-center text-[11px] font-bold">التاريخ</TableHead>
                                     <TableHead className="text-center text-[11px] font-bold">رقم الفاتورة</TableHead>
-                                    <TableHead className="text-[11px] font-bold">المورد</TableHead>
-                                    <TableHead className="text-[11px] font-bold">الموقع المستلم</TableHead>
+                                    <TableHead className="text-center text-[11px] font-bold">المورد</TableHead>
+                                    <TableHead className="text-center text-[11px] font-bold">الموقع المستلم</TableHead>
                                     <TableHead className="text-center text-[11px] font-bold">الكمية</TableHead>
                                     <TableHead className="text-center text-[11px] font-bold">سعر الوحدة</TableHead>
                                     <TableHead className="text-center text-[11px] font-bold">الإجمالي</TableHead>
@@ -818,8 +818,8 @@ export const PurchaseReportsPage: React.FC = () => {
                                       <TableCell className="text-center text-[11px]">{ri + 1}</TableCell>
                                       <TableCell className="text-center text-[11px]">{format(new Date(r.date), "yyyy/MM/dd")}</TableCell>
                                       <TableCell className="text-center text-[11px] font-mono">{r.invoice}</TableCell>
-                                      <TableCell className="text-[11px]">{r.supplier}</TableCell>
-                                      <TableCell className="text-[11px]">{r.location}</TableCell>
+                                      <TableCell className="text-center text-[11px]">{r.supplier}</TableCell>
+                                      <TableCell className="text-center text-[11px]">{r.location}</TableCell>
                                       <TableCell className="text-center text-[11px] font-bold">{fmt(r.qty)}</TableCell>
                                       <TableCell className="text-center text-[11px]">{fmt(r.unitCost)}</TableCell>
                                       <TableCell className="text-center text-[11px] font-bold">{fmt(r.total)}</TableCell>

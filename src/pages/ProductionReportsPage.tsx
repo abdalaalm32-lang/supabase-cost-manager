@@ -19,7 +19,7 @@ import {
   BarChart3, Layers, TrendingUp, Package, CalendarIcon, Activity
 } from "lucide-react";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line,
 } from "recharts";
 
@@ -239,7 +239,9 @@ export const ProductionReportsPage: React.FC = () => {
     for (const i of processedData) {
       catMap.set(i.catName, (catMap.get(i.catName) || 0) + i.totalProductionCost);
     }
-    return Array.from(catMap.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+    const arr = Array.from(catMap.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+    const total = arr.reduce((s, x) => s + x.value, 0) || 1;
+    return arr.map(x => ({ ...x, pct: (x.value / total) * 100 }));
   }, [processedData]);
 
   // Totals

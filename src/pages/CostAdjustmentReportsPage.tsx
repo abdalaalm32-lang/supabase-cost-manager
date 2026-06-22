@@ -206,15 +206,22 @@ export const CostAdjustmentReportsPage: React.FC = () => {
     return Array.from(itemMap.values())
       .sort((a, b) => b.totalDiff - a.totalDiff)
       .slice(0, 8)
-      .map(i => ({ name: i.name.length > 15 ? i.name.slice(0, 15) + "..." : i.name, value: i.totalDiff }));
+      .map(i => ({ name: i.name, value: i.totalDiff }));
   }, [processedData]);
+
+  const topItemsMax = useMemo(
+    () => Math.max(1, ...topItemsChart.map((i: any) => i.value || 0)),
+    [topItemsChart]
+  );
 
   // Direction distribution
   const directionChart = useMemo(() => {
-    return [
+    const arr = [
       { name: "زيادة", value: stats.increaseCount },
       { name: "تخفيض", value: stats.decreaseCount },
     ].filter(d => d.value > 0);
+    const total = arr.reduce((s, d) => s + d.value, 0) || 1;
+    return arr.map(d => ({ ...d, pct: (d.value / total) * 100 }));
   }, [stats]);
 
   // Category distribution
@@ -223,7 +230,9 @@ export const CostAdjustmentReportsPage: React.FC = () => {
     for (const r of processedData) {
       catMap.set(r.catName, (catMap.get(r.catName) || 0) + Math.abs(r.diff));
     }
-    return Array.from(catMap.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+    const arr = Array.from(catMap.entries()).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+    const total = arr.reduce((s, d) => s + d.value, 0) || 1;
+    return arr.map(d => ({ ...d, pct: (d.value / total) * 100 }));
   }, [processedData]);
 
   const exportCSV = () => {

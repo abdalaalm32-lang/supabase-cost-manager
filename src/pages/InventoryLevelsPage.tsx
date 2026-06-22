@@ -228,13 +228,17 @@ export const InventoryLevelsPage: React.FC = () => {
   }, [processedItems]);
 
   // Charts
-  const statusChart = useMemo(() => [
-    { name: "نفذ", value: stats.outOfStock },
-    { name: "حرج", value: stats.critical },
-    { name: "تحت الطلب", value: stats.reorder },
-    { name: "ناقص", value: stats.low },
-    { name: "متوفر", value: stats.available },
-  ].filter(i => i.value > 0), [stats]);
+  const statusChart = useMemo(() => {
+    const arr = [
+      { name: "نفذ", value: stats.outOfStock },
+      { name: "حرج", value: stats.critical },
+      { name: "تحت الطلب", value: stats.reorder },
+      { name: "ناقص", value: stats.low },
+      { name: "متوفر", value: stats.available },
+    ].filter(i => i.value > 0);
+    const total = arr.reduce((s, i) => s + i.value, 0);
+    return arr.map(x => ({ ...x, pct: total > 0 ? (x.value / total) * 100 : 0 }));
+  }, [stats]);
 
   const categoryValueChart = useMemo(() => {
     const catMap = new Map<string, number>();

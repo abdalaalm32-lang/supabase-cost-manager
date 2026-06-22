@@ -70,6 +70,16 @@ export const PosScreenPage: React.FC = () => {
   const navigate = useNavigate();
   const receiptRef = useRef<HTMLDivElement>(null);
 
+  const [statsVisible, setStatsVisible] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("pos_stats_visible") !== "false";
+  });
+  useEffect(() => {
+    localStorage.setItem("pos_stats_visible", String(statsVisible));
+  }, [statsVisible]);
+
+
+
   // Restore state from sessionStorage
   const saved = useMemo(() => {
     try {

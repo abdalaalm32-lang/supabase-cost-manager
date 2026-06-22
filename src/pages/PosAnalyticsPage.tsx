@@ -153,6 +153,11 @@ export const PosAnalyticsPage: React.FC = () => {
     return Object.values(map).sort((a, b) => b.total - a.total);
   }, [saleItems]);
 
+  const categoryPieData = useMemo(() => {
+    const sum = categoryBreakdown.reduce((a, b) => a + b.total, 0) || 1;
+    return categoryBreakdown.map(c => ({ ...c, pct: (c.total / sum) * 100 }));
+  }, [categoryBreakdown]);
+
   // ── Branch comparison ──
   const branchComparison = useMemo(() => {
     if (branchFilter !== "all") return [];
@@ -177,6 +182,9 @@ export const PosAnalyticsPage: React.FC = () => {
     });
     return map;
   }, [sales]);
+
+  const dayOfWeekMax = useMemo(() => Math.max(1, ...dayOfWeekData.map(d => d.sales)), [dayOfWeekData]);
+
 
   const tooltipStyle = { contentStyle: { background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 12, color: "#000" } };
 
@@ -302,18 +310,36 @@ export const PosAnalyticsPage: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="h-[280px]">
-              {categoryBreakdown.length > 0 ? (
+              {categoryPieData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <RPieChart>
-                    <Pie data={categoryBreakdown} dataKey="total" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false} style={{ fontSize: 10 }}>
-                      {categoryBreakdown.map((_, i) => (<Cell key={i} fill={COLORS[i % COLORS.length]} />))}
+                    <Pie data={categoryPieData} dataKey="total" nameKey="name" cx="38%" cy="50%" outerRadius={90} innerRadius={40} paddingAngle={1}>
+                      {categoryPieData.map((_, i) => (<Cell key={i} fill={COLORS[i % COLORS.length]} stroke="hsl(var(--card))" strokeWidth={2} />))}
                     </Pie>
-                    <Tooltip {...tooltipStyle} formatter={(v: number) => [fmt(v) + " EGP", ""]} />
+                    <Tooltip
+                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12, color: "hsl(var(--foreground))" }}
+                      labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 700 }}
+                      itemStyle={{ color: "hsl(var(--foreground))" }}
+                      formatter={(v: number, _n, p: any) => [`${fmt(v)} EGP (${p?.payload?.pct?.toFixed(1)}%)`, p?.payload?.name]}
+                    />
+                    <Legend
+                      layout="vertical"
+                      verticalAlign="middle"
+                      align="right"
+                      iconType="circle"
+                      wrapperStyle={{ fontSize: 11, maxWidth: "45%", maxHeight: 260, overflowY: "auto", paddingInlineStart: 8 }}
+                      formatter={(value: string, entry: any) => (
+                        <span className="text-foreground" style={{ marginInlineStart: 4 }}>
+                          {value} <span className="text-muted-foreground">({entry?.payload?.pct?.toFixed(1)}%)</span>
+                        </span>
+                      )}
+                    />
                   </RPieChart>
                 </ResponsiveContainer>
               ) : (
                 <div className="flex items-center justify-center h-full text-muted-foreground text-sm">لا توجد بيانات</div>
               )}
+
             </div>
           </CardContent>
         </Card>
@@ -351,18 +377,36 @@ export const PosAnalyticsPage: React.FC = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[250px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dayOfWeekData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis type="number" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                  <YAxis dataKey="day" type="category" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} width={60} />
-                  <Tooltip {...tooltipStyle} formatter={(v: number) => [fmt(v), ""]} />
-                  <Bar dataKey="sales" fill="hsl(38, 92%, 50%)" radius={[0, 4, 4, 0]} name="المبيعات" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            {dayOfWeekData.every(d => d.sales === 0) ? (
+              <div className="h-[250px] flex items-center justify-center text-sm text-muted-foreground">لا توجد بيانات</div>
+            ) : (
+              <div className="h-[250px] overflow-y-auto overflow-x-hidden pl-2 pr-1">
+                <div className="space-y-3 py-2">
+                  {dayOfWeekData.map((d, i) => (
+                    <div
+                      key={d.day + "_" + i}
+                      className="grid grid-cols-[112px_minmax(160px,1fr)_90px] items-center gap-3"
+                      title={`${d.day} — ${fmt(d.sales)} EGP`}
+                    >
+                      <div className="text-left text-xs font-black text-foreground tabular-nums whitespace-nowrap">
+                        {fmt(d.sales)} EGP
+                      </div>
+                      <div className="h-8 rounded-sm bg-muted/35 overflow-hidden flex justify-end">
+                        <div
+                          className="h-full rounded-sm bg-warning transition-all"
+                          style={{ width: `${Math.max(4, (d.sales / dayOfWeekMax) * 100)}%`, background: "hsl(38, 92%, 50%)" }}
+                        />
+                      </div>
+                      <div className="text-right text-xs font-bold text-foreground truncate" dir="rtl">
+                        {d.day}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
+
         </Card>
       </div>
 

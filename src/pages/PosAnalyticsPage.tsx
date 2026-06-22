@@ -377,18 +377,36 @@ export const PosAnalyticsPage: React.FC = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-[250px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dayOfWeekData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis type="number" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                  <YAxis dataKey="day" type="category" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} width={60} />
-                  <Tooltip {...tooltipStyle} formatter={(v: number) => [fmt(v), ""]} />
-                  <Bar dataKey="sales" fill="hsl(38, 92%, 50%)" radius={[0, 4, 4, 0]} name="المبيعات" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            {dayOfWeekData.every(d => d.sales === 0) ? (
+              <div className="h-[250px] flex items-center justify-center text-sm text-muted-foreground">لا توجد بيانات</div>
+            ) : (
+              <div className="h-[250px] overflow-y-auto overflow-x-hidden pl-2 pr-1">
+                <div className="space-y-3 py-2">
+                  {dayOfWeekData.map((d, i) => (
+                    <div
+                      key={d.day + "_" + i}
+                      className="grid grid-cols-[112px_minmax(160px,1fr)_90px] items-center gap-3"
+                      title={`${d.day} — ${fmt(d.sales)} EGP`}
+                    >
+                      <div className="text-left text-xs font-black text-foreground tabular-nums whitespace-nowrap">
+                        {fmt(d.sales)} EGP
+                      </div>
+                      <div className="h-8 rounded-sm bg-muted/35 overflow-hidden flex justify-end">
+                        <div
+                          className="h-full rounded-sm bg-warning transition-all"
+                          style={{ width: `${Math.max(4, (d.sales / dayOfWeekMax) * 100)}%`, background: "hsl(38, 92%, 50%)" }}
+                        />
+                      </div>
+                      <div className="text-right text-xs font-bold text-foreground truncate" dir="rtl">
+                        {d.day}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
+
         </Card>
       </div>
 

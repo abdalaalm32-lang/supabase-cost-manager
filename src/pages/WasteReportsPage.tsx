@@ -69,6 +69,7 @@ export const WasteReportsPage: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+  const [expandedItem, setExpandedItem] = useState<string | null>(null);
 
   // Fetch completed waste records
   const { data: wasteRecords = [], isLoading } = useQuery({

@@ -482,34 +482,39 @@ export const InventoryMovementPage: React.FC = () => {
   const fmtNum = (n: number) => Number(n.toFixed(2)).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   // Chart data
-  const movementChartData = useMemo(() => [
-    { name: "مشتريات", value: totals.inPurchases, fill: CHART_COLORS[0] },
-    { name: "إنتاج", value: totals.inProduction, fill: CHART_COLORS[1] },
-    { name: "استلامات", value: totals.inReceipts, fill: CHART_COLORS[2] },
-    { name: "تحويلات", value: totals.outTransfers, fill: CHART_COLORS[3] },
-    { name: "استهلاك", value: totals.outConsumption, fill: CHART_COLORS[4] },
-    { name: "هالك", value: totals.outWaste, fill: CHART_COLORS[5] },
-  ], [totals]);
+  const movementChartData = useMemo(() => {
+    const arr = [
+      { name: "مشتريات", value: totals.inPurchases, fill: CHART_COLORS[0] },
+      { name: "إنتاج", value: totals.inProduction, fill: CHART_COLORS[1] },
+      { name: "استلامات", value: totals.inReceipts, fill: CHART_COLORS[2] },
+      { name: "تحويلات", value: totals.outTransfers, fill: CHART_COLORS[3] },
+      { name: "استهلاك", value: totals.outConsumption, fill: CHART_COLORS[4] },
+      { name: "هالك", value: totals.outWaste, fill: CHART_COLORS[5] },
+    ];
+    const sum = arr.reduce((s, d) => s + (d.value || 0), 0) || 1;
+    return arr.map(d => ({ ...d, pct: (d.value / sum) * 100 }));
+  }, [totals]);
 
   const inOutChartData = useMemo(() => [
     { name: "الوارد", كمية: totals.totalIn },
     { name: "المنصرف", كمية: totals.totalOut },
   ], [totals]);
 
-  const topVarianceItems = useMemo(() =>
-    [...filteredData].sort((a, b) => Math.abs(b.varVal) - Math.abs(a.varVal)).slice(0, 8).map(i => ({
-      name: i.name.length > 15 ? i.name.substring(0, 15) + "…" : i.name,
-      تباين: i.varVal,
-    }))
-    , [filteredData]);
-
   const topMovementItems = useMemo(() =>
-    [...filteredData].sort((a, b) => (b.totalIn + b.totalOut) - (a.totalIn + a.totalOut)).slice(0, 8).map(i => ({
-      name: i.name.length > 15 ? i.name.substring(0, 15) + "…" : i.name,
-      وارد: i.totalIn,
-      منصرف: i.totalOut,
-    }))
+    [...filteredData]
+      .map(i => ({ name: i.name, total: i.totalIn + i.totalOut }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 8)
     , [filteredData]);
+  const topMovementMax = useMemo(() => Math.max(1, ...topMovementItems.map(i => i.total)), [topMovementItems]);
+
+  const topVarianceItems = useMemo(() =>
+    [...filteredData]
+      .map(i => ({ name: i.name, value: i.varVal }))
+      .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
+      .slice(0, 8)
+    , [filteredData]);
+  const topVarianceMax = useMemo(() => Math.max(1, ...topVarianceItems.map(i => Math.abs(i.value))), [topVarianceItems]);
 
   return (
     <div className="space-y-6" dir="rtl">
@@ -700,34 +705,46 @@ export const InventoryMovementPage: React.FC = () => {
             <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
               <BarChart3 className="h-4 w-4 text-primary" /> توزيع الحركات
             </h3>
-            <div style={{ height: 250 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+            {movementChartData.filter(d => d.value > 0).length === 0 ? (
+              <div className="h-[260px] flex items-center justify-center text-sm text-muted-foreground">لا توجد بيانات</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={260}>
+                <PieChart>
                   <Pie
                     data={movementChartData.filter(d => d.value > 0)}
                     dataKey="value"
                     nameKey="name"
-                    cx="50%"
+                    cx="38%"
                     cy="50%"
-                    outerRadius={70}
-                    label={({ name, percent, cx, cy, midAngle, outerRadius }) => {
-                      const RADIAN = Math.PI / 180;
-                      const radius = outerRadius + 80;
-                      const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                      const y = cy + radius * Math.sin(-midAngle * RADIAN);
-                      return (
-                        <text x={x} y={y} fill="hsl(var(--foreground))" textAnchor={x > cx ? "start" : "end"} dominantBaseline="central" fontSize={11} direction="rtl">
-                          {`${name} \u2066${(percent * 100).toFixed(0)}%\u2069`}
-                        </text>
-                      );
-                    }}
+                    outerRadius={80}
+                    innerRadius={36}
+                    paddingAngle={1}
                   >
-                    {movementChartData.map((d, i) => <Cell key={i} fill={d.fill} />)}
+                    {movementChartData.filter(d => d.value > 0).map((d, i) => (
+                      <Cell key={i} fill={d.fill} stroke="hsl(var(--card))" strokeWidth={2} />
+                    ))}
                   </Pie>
-                  <Tooltip formatter={(v: number) => fmtQty(v)} contentStyle={{ color: "#000" }} />
+                  <Tooltip
+                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12, color: "hsl(var(--foreground))" }}
+                    labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 700 }}
+                    itemStyle={{ color: "hsl(var(--foreground))" }}
+                    formatter={(v: number, _n, p: any) => [`${fmtQty(v)} (${p?.payload?.pct?.toFixed(1)}%)`, p?.payload?.name]}
+                  />
+                  <Legend
+                    layout="vertical"
+                    verticalAlign="middle"
+                    align="right"
+                    iconType="circle"
+                    wrapperStyle={{ fontSize: 11, maxWidth: "45%", maxHeight: 240, overflowY: "auto", paddingInlineStart: 8 }}
+                    formatter={(value: string, entry: any) => (
+                      <span className="text-foreground" style={{ marginInlineStart: 4 }}>
+                        {value} <span className="text-muted-foreground">({entry?.payload?.pct?.toFixed(1)}%)</span>
+                      </span>
+                    )}
+                  />
                 </PieChart>
               </ResponsiveContainer>
-            </div>
+            )}
           </CardContent>
         </Card>
 
@@ -737,19 +754,34 @@ export const InventoryMovementPage: React.FC = () => {
             <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
               <ArrowRightLeft className="h-4 w-4 text-primary" /> أكثر الأصناف حركة
             </h3>
-            <div style={{ height: 250 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topMovementItems} layout="vertical" margin={{ top: 20, right: 20, bottom: 20, left: 60 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis type="number" reversed tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickMargin={0} tickFormatter={(v) => `\u2066${v}\u2069`} />
-                  <YAxis dataKey="name" type="category" orientation="right" width={100} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickMargin={5} />
-                  <Tooltip formatter={(v: number) => fmtQty(v)} contentStyle={{ color: "#000" }} />
-                  <Legend />
-                  <Bar dataKey="وارد" fill={CHART_COLORS[1]} radius={[4, 0, 0, 4]} />
-                  <Bar dataKey="منصرف" fill={CHART_COLORS[5]} radius={[4, 0, 0, 4]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            {topMovementItems.length === 0 ? (
+              <div className="h-[260px] flex items-center justify-center text-sm text-muted-foreground">لا توجد بيانات</div>
+            ) : (
+              <div className="h-[260px] overflow-y-auto overflow-x-hidden pl-2 pr-1">
+                <div className="space-y-3 py-2">
+                  {topMovementItems.map((item, i) => (
+                    <div
+                      key={item.name + "_" + i}
+                      className="grid grid-cols-[80px_minmax(140px,1fr)_140px] items-center gap-3"
+                      title={`${item.name} — ${fmtQty(item.total)}`}
+                    >
+                      <div className="text-left text-xs font-black text-foreground tabular-nums whitespace-nowrap">
+                        {fmtQty(item.total)}
+                      </div>
+                      <div className="h-7 rounded-sm bg-muted/35 overflow-hidden flex justify-end">
+                        <div
+                          className="h-full rounded-sm bg-primary transition-all"
+                          style={{ width: `${Math.max(4, (item.total / topMovementMax) * 100)}%` }}
+                        />
+                      </div>
+                      <div className="text-right text-xs font-bold text-foreground truncate" dir="rtl">
+                        {item.name}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -759,21 +791,37 @@ export const InventoryMovementPage: React.FC = () => {
             <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
               <ClipboardCheck className="h-4 w-4 text-primary" /> أعلى تباين (قيمة)
             </h3>
-            <div style={{ height: 250 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topVarianceItems} layout="vertical" margin={{ top: 20, right: 20, bottom: 20, left: 80 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis type="number" reversed tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickMargin={10} tickFormatter={(v) => `\u2066${v}\u2069`} />
-                  <YAxis dataKey="name" type="category" orientation="right" width={100} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickMargin={5} />
-                  <Tooltip formatter={(v: number) => fmtNum(v)} contentStyle={{ color: "#000" }} />
-                  <Bar dataKey="تباين" fill={CHART_COLORS[4]} radius={[4, 0, 0, 4]}>
-                    {topVarianceItems.map((entry, idx) => (
-                      <Cell key={idx} fill={entry.تباين >= 0 ? CHART_COLORS[1] : CHART_COLORS[5]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            {topVarianceItems.length === 0 ? (
+              <div className="h-[260px] flex items-center justify-center text-sm text-muted-foreground">لا توجد بيانات</div>
+            ) : (
+              <div className="h-[260px] overflow-y-auto overflow-x-hidden pl-2 pr-1">
+                <div className="space-y-3 py-2">
+                  {topVarianceItems.map((item, i) => (
+                    <div
+                      key={item.name + "_" + i}
+                      className="grid grid-cols-[90px_minmax(140px,1fr)_140px] items-center gap-3"
+                      title={`${item.name} — ${fmtNum(item.value)}`}
+                    >
+                      <div className={cn("text-left text-xs font-black tabular-nums whitespace-nowrap", item.value >= 0 ? "text-emerald-600" : "text-destructive")}>
+                        {fmtNum(item.value)}
+                      </div>
+                      <div className="h-7 rounded-sm bg-muted/35 overflow-hidden flex justify-end">
+                        <div
+                          className="h-full rounded-sm transition-all"
+                          style={{
+                            width: `${Math.max(4, (Math.abs(item.value) / topVarianceMax) * 100)}%`,
+                            background: item.value >= 0 ? "hsl(142, 76%, 36%)" : "hsl(0, 84%, 60%)",
+                          }}
+                        />
+                      </div>
+                      <div className="text-right text-xs font-bold text-foreground truncate" dir="rtl">
+                        {item.name}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

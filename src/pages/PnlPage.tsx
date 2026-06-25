@@ -303,12 +303,13 @@ export const PnlPage: React.FC = () => {
     return rows;
   };
 
-  // Build variance rows for main view: positive amount when deficit
-  const mainVarianceRows = deptVariances.variances.map((v) => ({
+  // Build variance rows for main view (hidden when comparison is active to keep row alignment)
+  const showVariances = !comparisonActive;
+  const mainVarianceRows = showVariances ? deptVariances.variances.map((v) => ({
     name: v.varianceValue < 0 ? `عجز ${v.departmentName}` : `زيادة ${v.departmentName}`,
-    amount: -v.varianceValue, // deficit becomes positive expense-like value
-  }));
-  const rows = buildRows(pnl, mainVarianceRows, deptVariances.totalDeficit);
+    amount: -v.varianceValue,
+  })) : [];
+  const rows = buildRows(pnl, mainVarianceRows, showVariances ? deptVariances.totalDeficit : 0);
 
   const getBranchName = (id: string) =>
     id === "all" ? "جميع الفروع" : branches?.find((b) => b.id === id)?.name || "";

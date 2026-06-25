@@ -533,14 +533,14 @@ export const PnlPage: React.FC = () => {
       suffix: `(${pnl.grossProfitPct.toFixed(1)}%)`,
     },
     {
-      title: "صافي الربح",
-      value: fmt(pnl.netProfit),
-      icon: pnl.netProfit >= 0 ? TrendingUp : TrendingDown,
-      color: pnl.netProfit >= 0
+      title: adjustedNetProfit >= 0 ? "صافي الربح التشغيلي" : "صافي خسارة تشغيلية",
+      value: fmt(adjustedNetProfit),
+      icon: adjustedNetProfit >= 0 ? TrendingUp : TrendingDown,
+      color: adjustedNetProfit >= 0
         ? "from-green-500/20 to-green-600/10 border-green-500/30"
         : "from-red-500/20 to-red-600/10 border-red-500/30",
-      textColor: pnl.netProfit >= 0 ? "text-green-600" : "text-red-600",
-      suffix: `(${pnl.netProfitPct.toFixed(1)}%)`,
+      textColor: adjustedNetProfit >= 0 ? "text-green-600" : "text-red-600",
+      suffix: `(${adjustedNetProfitPct.toFixed(1)}%)`,
     },
     {
       title: "تكلفة البضاعة",

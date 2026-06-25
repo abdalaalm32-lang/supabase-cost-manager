@@ -279,47 +279,15 @@ export function usePnlData(
     (p) => p.start_date <= dateTo && p.end_date >= dateFrom
   );
 
+  // Indirect expenses are now ONLY manual entries added by the user in the P&L page.
+  // Auto-import from menu costing periods has been disabled per user request.
   const autoExpenses: IndirectExpenseItem[] = [];
-  if (lockedAutoExpenses) {
-    lockedAutoExpenses.forEach((expense) => {
-      const name = expense.name;
-      if (deletedAutoExpenses.has(name)) return;
-      const rawAmount = Number(expense.amount ?? 0);
-      const val = name in autoExpenseOverrides ? autoExpenseOverrides[name] : rawAmount;
-      if (val > 0) autoExpenses.push({ name, amount: val });
-    });
-  } else if (relevantPeriod) {
-    const fields: [string, string][] = [
-      ["rent", "الإيجار"],
-      ["salaries", "الرواتب"],
-      ["bills", "الفواتير"],
-      ["maintenance", "الصيانة"],
-      ["media", "الدعاية والإعلان"],
-      ["other_expenses", "مصاريف أخرى"],
-    ];
-    fields.forEach(([key, name]) => {
-      if (deletedAutoExpenses.has(name)) return;
-      const rawVal = Number((relevantPeriod as any)[key] || 0);
-      const val = name in autoExpenseOverrides ? autoExpenseOverrides[name] : rawVal;
-      if (val > 0) autoExpenses.push({ name, amount: val });
-    });
-    const custom = relevantPeriod.custom_expenses as any;
-    if (Array.isArray(custom)) {
-      custom.forEach((ce: any) => {
-        const ceName = ce.name;
-        if (deletedAutoExpenses.has(ceName)) return;
-        const rawAmount = Number(ce.amount || ce.value || 0);
-        const val = ceName in autoExpenseOverrides ? autoExpenseOverrides[ceName] : rawAmount;
-        if (val > 0)
-          autoExpenses.push({
-            name: ceName,
-            amount: val,
-          });
-      });
-    }
-  }
+  void relevantPeriod;
+  void deletedAutoExpenses;
+  void autoExpenseOverrides;
+  void lockedAutoExpenses;
 
-  const allExpenses = [...autoExpenses, ...manualExpenses];
+  const allExpenses = [...manualExpenses];
   const totalIndirectExpenses = allExpenses.reduce(
     (s, e) => s + e.amount,
     0

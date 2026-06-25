@@ -891,6 +891,16 @@ export const PnlPage: React.FC = () => {
           onData={handleBranchCompareData}
         />
       ))}
+      {showComparison && compareMode === "branch" && compareBranchIds.map((id) => (
+        <CompareVariancesLoader
+          key={`var-${id}`}
+          branchId={id}
+          dateFrom={dateFromStr}
+          dateTo={dateToStr}
+          onData={handleBranchCompareVariances}
+        />
+      ))}
+
 
       {/* Comparison summary banner */}
       {comparisonActive && compareColumns.length > 0 && (

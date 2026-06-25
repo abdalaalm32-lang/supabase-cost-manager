@@ -388,8 +388,35 @@ export const PnlPage: React.FC = () => {
     });
   };
 
+  // Union of expense names across main + compare columns (for aligned rendering)
+  const unionExpenseNames = useMemo(() => {
+    const seen = new Set<string>();
+    const names: string[] = [];
+    const add = (list: { name: string }[]) => list.forEach((e) => { if (!seen.has(e.name)) { seen.add(e.name); names.push(e.name); } });
+    add(pnl.indirectExpenses);
+    if (comparisonActive) {
+      if (compareMode === "period") {
+        add(pnlComparePeriod.indirectExpenses);
+      } else {
+        compareBranchIds.forEach((id) => {
+          const data = branchCompareData[id];
+          if (data) add(data.indirectExpenses);
+        });
+      }
+    }
+    return names;
+  }, [pnl.indirectExpenses, comparisonActive, compareMode, pnlComparePeriod.indirectExpenses, compareBranchIds, branchCompareData]);
+
+  // Should we render the waste row? Show if any column has waste > 0 (keeps rows aligned)
+  const wasteRowEnabled = useMemo(() => {
+    if (pnl.wasteCost > 0) return true;
+    if (!comparisonActive) return false;
+    if (compareMode === "period") return pnlComparePeriod.wasteCost > 0;
+    return compareBranchIds.some((id) => (branchCompareData[id]?.wasteCost ?? 0) > 0);
+  }, [pnl.wasteCost, comparisonActive, compareMode, pnlComparePeriod.wasteCost, compareBranchIds, branchCompareData]);
+
   const mainVarianceRows = buildAlignedVarianceRows(deptVariances.variances);
-  const rows = buildRows(pnl, mainVarianceRows, deptVariances.totalDeficit);
+  const rows = buildRows(pnl, mainVarianceRows, deptVariances.totalDeficit, unionExpenseNames, wasteRowEnabled);
 
   // Build the unified list of comparison columns (1 entry for period mode, N for branch mode)
   const compareColumns = useMemo(() => {
@@ -400,7 +427,7 @@ export const PnlPage: React.FC = () => {
         key: "period",
         label: `${format(compareDateFrom, "yyyy/MM/dd")} - ${format(compareDateTo, "yyyy/MM/dd")}`,
         data: pnlComparePeriod,
-        rows: buildRows(pnlComparePeriod, vRows, pnlComparePeriodVariances.totalDeficit),
+        rows: buildRows(pnlComparePeriod, vRows, pnlComparePeriodVariances.totalDeficit, unionExpenseNames, wasteRowEnabled),
       }];
     }
     return compareBranchIds
@@ -409,11 +436,11 @@ export const PnlPage: React.FC = () => {
         if (!data) return null;
         const v = branchCompareVariances[id];
         const vRows = buildAlignedVarianceRows(v?.variances || []);
-        return { key: id, label: getBranchName(id), data, rows: buildRows(data, vRows, v?.totalDeficit || 0) };
+        return { key: id, label: getBranchName(id), data, rows: buildRows(data, vRows, v?.totalDeficit || 0, unionExpenseNames, wasteRowEnabled) };
       })
       .filter(Boolean) as { key: string; label: string; data: typeof pnl; rows: ReturnType<typeof buildRows> }[];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [comparisonActive, compareMode, compareDateFrom, compareDateTo, pnlComparePeriod, pnlComparePeriodVariances, compareBranchIds, branchCompareData, branchCompareVariances, branches, unionDeptNames]);
+  }, [comparisonActive, compareMode, compareDateFrom, compareDateTo, pnlComparePeriod, pnlComparePeriodVariances, compareBranchIds, branchCompareData, branchCompareVariances, branches, unionDeptNames, unionExpenseNames, wasteRowEnabled]);
 
 
   const mainLabel = compareMode === "period"

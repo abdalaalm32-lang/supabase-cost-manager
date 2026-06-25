@@ -336,37 +336,76 @@ export const PnlPage: React.FC = () => {
     return rows;
   };
 
-  // Build variance rows for main view (hidden when comparison is active to keep row alignment)
-  const showVariances = !comparisonActive;
-  const mainVarianceRows = showVariances ? deptVariances.variances.map((v) => ({
-    name: v.varianceValue < 0 ? `عجز ${v.departmentName}` : `زيادة ${v.departmentName}`,
-    amount: -v.varianceValue,
-  })) : [];
-  const rows = buildRows(pnl, mainVarianceRows, showVariances ? deptVariances.totalDeficit : 0);
-
   const getBranchName = (id: string) =>
     id === "all" ? "جميع الفروع" : branches?.find((b) => b.id === id)?.name || "";
+
+  // Collect variances per column (main + compares) and union of department names for alignment
+  const varianceColumnsData = useMemo(() => {
+    const list: { key: string; variances: { departmentName: string; varianceValue: number }[]; totalDeficit: number }[] = [];
+    list.push({ key: "__main__", variances: deptVariances.variances, totalDeficit: deptVariances.totalDeficit });
+    if (comparisonActive) {
+      if (compareMode === "period") {
+        list.push({ key: "period", variances: pnlComparePeriodVariances.variances, totalDeficit: pnlComparePeriodVariances.totalDeficit });
+      } else {
+        compareBranchIds.forEach((id) => {
+          const v = branchCompareVariances[id];
+          if (v) list.push({ key: id, variances: v.variances, totalDeficit: v.totalDeficit });
+        });
+      }
+    }
+    return list;
+  }, [deptVariances, comparisonActive, compareMode, pnlComparePeriodVariances, compareBranchIds, branchCompareVariances]);
+
+  const unionDeptNames = useMemo(() => {
+    const seen = new Set<string>();
+    const names: string[] = [];
+    varianceColumnsData.forEach((col) => {
+      col.variances.forEach((v) => {
+        if (!seen.has(v.departmentName)) {
+          seen.add(v.departmentName);
+          names.push(v.departmentName);
+        }
+      });
+    });
+    return names;
+  }, [varianceColumnsData]);
+
+  const buildAlignedVarianceRows = (variances: { departmentName: string; varianceValue: number }[]) => {
+    if (unionDeptNames.length === 0) return [];
+    const map = new Map(variances.map((v) => [v.departmentName, v.varianceValue]));
+    return unionDeptNames.map((name) => {
+      const val = map.get(name) ?? 0;
+      return { name: `تسوية مخزون - ${name}`, amount: -val };
+    });
+  };
+
+  const mainVarianceRows = buildAlignedVarianceRows(deptVariances.variances);
+  const rows = buildRows(pnl, mainVarianceRows, deptVariances.totalDeficit);
 
   // Build the unified list of comparison columns (1 entry for period mode, N for branch mode)
   const compareColumns = useMemo(() => {
     if (!comparisonActive) return [] as { key: string; label: string; data: typeof pnl; rows: ReturnType<typeof buildRows> }[];
     if (compareMode === "period") {
+      const vRows = buildAlignedVarianceRows(pnlComparePeriodVariances.variances);
       return [{
         key: "period",
         label: `${format(compareDateFrom, "yyyy/MM/dd")} - ${format(compareDateTo, "yyyy/MM/dd")}`,
         data: pnlComparePeriod,
-        rows: buildRows(pnlComparePeriod),
+        rows: buildRows(pnlComparePeriod, vRows, pnlComparePeriodVariances.totalDeficit),
       }];
     }
     return compareBranchIds
       .map((id) => {
         const data = branchCompareData[id];
         if (!data) return null;
-        return { key: id, label: getBranchName(id), data, rows: buildRows(data) };
+        const v = branchCompareVariances[id];
+        const vRows = buildAlignedVarianceRows(v?.variances || []);
+        return { key: id, label: getBranchName(id), data, rows: buildRows(data, vRows, v?.totalDeficit || 0) };
       })
       .filter(Boolean) as { key: string; label: string; data: typeof pnl; rows: ReturnType<typeof buildRows> }[];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [comparisonActive, compareMode, compareDateFrom, compareDateTo, pnlComparePeriod, compareBranchIds, branchCompareData, branches]);
+  }, [comparisonActive, compareMode, compareDateFrom, compareDateTo, pnlComparePeriod, pnlComparePeriodVariances, compareBranchIds, branchCompareData, branchCompareVariances, branches, unionDeptNames]);
+
 
   const mainLabel = compareMode === "period"
     ? `${format(dateFrom, "yyyy/MM/dd")} - ${format(dateTo, "yyyy/MM/dd")}`

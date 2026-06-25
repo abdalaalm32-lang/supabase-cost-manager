@@ -251,7 +251,11 @@ export const PnlPage: React.FC = () => {
   };
 
   // Build P&L rows
-  const buildRows = (d: typeof pnl) => {
+  const buildRows = (
+    d: typeof pnl,
+    variances: { name: string; amount: number }[] = [],
+    totalDeficit = 0,
+  ) => {
     const rows: { label: string; amount: number; pctVal: string; type: "item" | "subtotal" | "total" | "header" | "separator"; indent?: boolean; expenseName?: string; isAutoExpense?: boolean }[] = [];
     rows.push({ label: "إجمالي المبيعات", amount: d.grossSales, pctVal: pct(d.grossSales, d.netSales), type: "item" });
     rows.push({ label: "(-) ضريبة المبيعات", amount: d.taxAmount, pctVal: pct(d.taxAmount, d.netSales), type: "item", indent: true });
@@ -264,6 +268,20 @@ export const PnlPage: React.FC = () => {
     rows.push({ label: "إجمالي تكلفة البضاعة المباعة", amount: d.totalCogs, pctVal: pct(d.totalCogs, d.netSales), type: "subtotal" });
     rows.push({ label: "", amount: 0, pctVal: "", type: "separator" });
     rows.push({ label: "إجمالي الربح", amount: d.grossProfit, pctVal: pct(d.grossProfit, d.netSales), type: "total" });
+
+    // Variances section (between Gross Profit and Operating Expenses)
+    if (variances.length > 0) {
+      rows.push({ label: "", amount: 0, pctVal: "", type: "separator" });
+      rows.push({ label: "فروقات وتسويات التكلفة", amount: 0, pctVal: "", type: "header" });
+      variances.forEach((v) => {
+        rows.push({ label: v.name, amount: v.amount, pctVal: pct(Math.abs(v.amount), d.netSales), type: "item", indent: true });
+      });
+      rows.push({ label: "إجمالي فروقات التكلفة", amount: totalDeficit, pctVal: pct(Math.abs(totalDeficit), d.netSales), type: "subtotal" });
+      rows.push({ label: "", amount: 0, pctVal: "", type: "separator" });
+      const adjustedGP = d.grossProfit - totalDeficit;
+      rows.push({ label: "إجمالي الربح بعد التسويات", amount: adjustedGP, pctVal: pct(adjustedGP, d.netSales), type: "total" });
+    }
+
     rows.push({ label: "", amount: 0, pctVal: "", type: "separator" });
     rows.push({ label: "المصاريف التشغيلية", amount: 0, pctVal: "", type: "header" });
     d.indirectExpenses.forEach((e) => {
@@ -275,11 +293,22 @@ export const PnlPage: React.FC = () => {
       rows.push({ label: "الهالك والفاقد", amount: d.wasteCost, pctVal: pct(d.wasteCost, d.netSales), type: "item" });
     }
     rows.push({ label: "", amount: 0, pctVal: "", type: "separator" });
-    rows.push({ label: "صافي الربح التشغيلي", amount: d.netProfit, pctVal: pct(d.netProfit, d.netSales), type: "total" });
+    const finalNet = d.grossProfit - totalDeficit - d.totalIndirectExpenses - d.wasteCost;
+    rows.push({
+      label: finalNet >= 0 ? "صافي الربح التشغيلي" : "صافي خسارة تشغيلية",
+      amount: finalNet,
+      pctVal: pct(finalNet, d.netSales),
+      type: "total",
+    });
     return rows;
   };
 
-  const rows = buildRows(pnl);
+  // Build variance rows for main view: positive amount when deficit
+  const mainVarianceRows = deptVariances.variances.map((v) => ({
+    name: v.varianceValue < 0 ? `عجز ${v.departmentName}` : `زيادة ${v.departmentName}`,
+    amount: -v.varianceValue, // deficit becomes positive expense-like value
+  }));
+  const rows = buildRows(pnl, mainVarianceRows, deptVariances.totalDeficit);
 
   const getBranchName = (id: string) =>
     id === "all" ? "جميع الفروع" : branches?.find((b) => b.id === id)?.name || "";

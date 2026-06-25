@@ -288,6 +288,8 @@ export const PnlPage: React.FC = () => {
     d: typeof pnl,
     variances: { name: string; amount: number }[] = [],
     totalDeficit = 0,
+    expenseNames: string[] | null = null,
+    wasteRowEnabled = true,
   ) => {
     const rows: { label: string; amount: number; pctVal: string; type: "item" | "subtotal" | "total" | "header" | "separator"; indent?: boolean; expenseName?: string; isAutoExpense?: boolean }[] = [];
     rows.push({ label: "إجمالي المبيعات", amount: d.grossSales, pctVal: pct(d.grossSales, d.netSales), type: "item" });
@@ -317,11 +319,18 @@ export const PnlPage: React.FC = () => {
 
     rows.push({ label: "", amount: 0, pctVal: "", type: "separator" });
     rows.push({ label: "المصاريف التشغيلية", amount: 0, pctVal: "", type: "header" });
-    d.indirectExpenses.forEach((e) => {
-      rows.push({ label: e.name + (e.isManual ? " ⚡" : ""), amount: e.amount, pctVal: pct(e.amount, d.netSales), type: "item", indent: true, expenseName: e.name, isAutoExpense: !e.isManual });
+    // Use aligned union list across columns when provided, otherwise this column's own expenses
+    const expMap = new Map<string, { amount: number; isManual: boolean }>();
+    d.indirectExpenses.forEach((e) => expMap.set(e.name, { amount: e.amount, isManual: !!e.isManual }));
+    const namesToRender = expenseNames ?? d.indirectExpenses.map((e) => e.name);
+    namesToRender.forEach((name) => {
+      const entry = expMap.get(name);
+      const amount = entry?.amount ?? 0;
+      const isManual = entry?.isManual ?? true;
+      rows.push({ label: name + (isManual ? " ⚡" : ""), amount, pctVal: pct(amount, d.netSales), type: "item", indent: true, expenseName: name, isAutoExpense: !isManual });
     });
     rows.push({ label: "إجمالي المصاريف التشغيلية", amount: d.totalIndirectExpenses, pctVal: pct(d.totalIndirectExpenses, d.netSales), type: "subtotal" });
-    if (d.wasteCost > 0) {
+    if (wasteRowEnabled) {
       rows.push({ label: "", amount: 0, pctVal: "", type: "separator" });
       rows.push({ label: "الهالك والفاقد", amount: d.wasteCost, pctVal: pct(d.wasteCost, d.netSales), type: "item" });
     }

@@ -949,7 +949,7 @@ export const PnlPage: React.FC = () => {
           branchId={id}
           dateFrom={dateFromStr}
           dateTo={dateToStr}
-          manualExpenses={manualExpensesCompare}
+          companyId={companyId}
           onData={handleBranchCompareData}
         />
       ))}

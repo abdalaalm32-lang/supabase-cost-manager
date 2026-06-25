@@ -428,7 +428,7 @@ export const PnlPage: React.FC = () => {
   <div class="kpi-row">
     <div class="kpi-box"><div class="title">صافي المبيعات</div><div class="value">${fmt(pnl.netSales)}</div></div>
     <div class="kpi-box"><div class="title">إجمالي الربح</div><div class="value">${fmt(pnl.grossProfit)} (${pnl.grossProfitPct.toFixed(1)}%)</div></div>
-    <div class="kpi-box"><div class="title">صافي الربح</div><div class="value">${fmt(pnl.netProfit)} (${pnl.netProfitPct.toFixed(1)}%)</div></div>
+    <div class="kpi-box"><div class="title">${adjustedNetProfit >= 0 ? "صافي الربح التشغيلي" : "صافي خسارة تشغيلية"}</div><div class="value">${fmt(adjustedNetProfit)} (${adjustedNetProfitPct.toFixed(1)}%)</div></div>
     <div class="kpi-box"><div class="title">تكلفة البضاعة</div><div class="value">${fmt(pnl.totalCogs)}</div></div>
   </div>
   <table>

@@ -922,11 +922,18 @@ export const PnlPage: React.FC = () => {
                     مقابل: <span className="text-primary">{col.label}</span>
                   </div>
                   <div className="flex items-center gap-4 flex-wrap">
-                    {[
-                      { label: "صافي المبيعات", a: pnl.netSales, b: col.data.netSales },
-                      { label: "إجمالي الربح", a: pnl.grossProfit, b: col.data.grossProfit },
-                      { label: "صافي الربح", a: pnl.netProfit, b: col.data.netProfit },
-                    ].map((m, i) => {
+                    {(() => {
+                      const colDeficit = compareMode === "period"
+                        ? pnlComparePeriodVariances.totalDeficit
+                        : (branchCompareVariances[col.key]?.totalDeficit || 0);
+                      const colAdjNet = col.data.grossProfit - colDeficit - col.data.totalIndirectExpenses - col.data.wasteCost;
+                      return [
+                       { label: "صافي المبيعات", a: pnl.netSales, b: col.data.netSales },
+                       { label: "إجمالي الربح", a: pnl.grossProfit, b: col.data.grossProfit },
+                       { label: "صافي الربح", a: adjustedNetProfit, b: colAdjNet },
+                      ];
+                    })().map((m, i) => {
+
                       const diff = m.a - m.b;
                       const pctDiff = m.b !== 0 ? (diff / Math.abs(m.b)) * 100 : 0;
                       const positive = diff >= 0;

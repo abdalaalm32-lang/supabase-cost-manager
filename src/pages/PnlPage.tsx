@@ -79,6 +79,22 @@ const CompareBranchLoader: React.FC<{
   return null;
 };
 
+// Child component: fetches department variances for a compare branch
+const CompareVariancesLoader: React.FC<{
+  branchId: string;
+  dateFrom: string;
+  dateTo: string;
+  onData: (branchId: string, data: ReturnType<typeof useDepartmentVariances>) => void;
+}> = ({ branchId, dateFrom, dateTo, onData }) => {
+  const data = useDepartmentVariances(dateFrom, dateTo, branchId);
+  React.useEffect(() => {
+    onData(branchId, data);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [branchId, data.totalDeficit, data.isLoading, data.variances.length]);
+  return null;
+};
+
+
 export const PnlPage: React.FC = () => {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;
@@ -220,12 +236,29 @@ export const PnlPage: React.FC = () => {
     []
   );
 
+  // Department variances for compare period (period mode)
+  const pnlComparePeriodVariances = useDepartmentVariances(
+    compareMode === "period" ? compareDateFromStr : dateFromStr,
+    compareMode === "period" ? compareDateToStr : dateToStr,
+    compareMode === "period" ? branchId : "___none___",
+  );
+
+  // Department variances per compare branch (branch mode)
+  const [branchCompareVariances, setBranchCompareVariances] = useState<Record<string, ReturnType<typeof useDepartmentVariances>>>({});
+  const handleBranchCompareVariances = React.useCallback(
+    (id: string, data: ReturnType<typeof useDepartmentVariances>) => {
+      setBranchCompareVariances((prev) => ({ ...prev, [id]: data }));
+    },
+    []
+  );
+
   // Should comparison columns render?
   const comparisonActive =
     showComparison &&
     (compareMode === "period" || (compareMode === "branch" && compareBranchIds.length > 0));
 
   const addManualExpense = () => {
+
     if (!newExpName.trim() || !Number(newExpAmount)) return;
     const entry: IndirectExpenseItem = {
       name: newExpName.trim(),
@@ -303,37 +336,76 @@ export const PnlPage: React.FC = () => {
     return rows;
   };
 
-  // Build variance rows for main view (hidden when comparison is active to keep row alignment)
-  const showVariances = !comparisonActive;
-  const mainVarianceRows = showVariances ? deptVariances.variances.map((v) => ({
-    name: v.varianceValue < 0 ? `عجز ${v.departmentName}` : `زيادة ${v.departmentName}`,
-    amount: -v.varianceValue,
-  })) : [];
-  const rows = buildRows(pnl, mainVarianceRows, showVariances ? deptVariances.totalDeficit : 0);
-
   const getBranchName = (id: string) =>
     id === "all" ? "جميع الفروع" : branches?.find((b) => b.id === id)?.name || "";
+
+  // Collect variances per column (main + compares) and union of department names for alignment
+  const varianceColumnsData = useMemo(() => {
+    const list: { key: string; variances: { departmentName: string; varianceValue: number }[]; totalDeficit: number }[] = [];
+    list.push({ key: "__main__", variances: deptVariances.variances, totalDeficit: deptVariances.totalDeficit });
+    if (comparisonActive) {
+      if (compareMode === "period") {
+        list.push({ key: "period", variances: pnlComparePeriodVariances.variances, totalDeficit: pnlComparePeriodVariances.totalDeficit });
+      } else {
+        compareBranchIds.forEach((id) => {
+          const v = branchCompareVariances[id];
+          if (v) list.push({ key: id, variances: v.variances, totalDeficit: v.totalDeficit });
+        });
+      }
+    }
+    return list;
+  }, [deptVariances, comparisonActive, compareMode, pnlComparePeriodVariances, compareBranchIds, branchCompareVariances]);
+
+  const unionDeptNames = useMemo(() => {
+    const seen = new Set<string>();
+    const names: string[] = [];
+    varianceColumnsData.forEach((col) => {
+      col.variances.forEach((v) => {
+        if (!seen.has(v.departmentName)) {
+          seen.add(v.departmentName);
+          names.push(v.departmentName);
+        }
+      });
+    });
+    return names;
+  }, [varianceColumnsData]);
+
+  const buildAlignedVarianceRows = (variances: { departmentName: string; varianceValue: number }[]) => {
+    if (unionDeptNames.length === 0) return [];
+    const map = new Map(variances.map((v) => [v.departmentName, v.varianceValue]));
+    return unionDeptNames.map((name) => {
+      const val = map.get(name) ?? 0;
+      return { name: `تسوية مخزون - ${name}`, amount: -val };
+    });
+  };
+
+  const mainVarianceRows = buildAlignedVarianceRows(deptVariances.variances);
+  const rows = buildRows(pnl, mainVarianceRows, deptVariances.totalDeficit);
 
   // Build the unified list of comparison columns (1 entry for period mode, N for branch mode)
   const compareColumns = useMemo(() => {
     if (!comparisonActive) return [] as { key: string; label: string; data: typeof pnl; rows: ReturnType<typeof buildRows> }[];
     if (compareMode === "period") {
+      const vRows = buildAlignedVarianceRows(pnlComparePeriodVariances.variances);
       return [{
         key: "period",
         label: `${format(compareDateFrom, "yyyy/MM/dd")} - ${format(compareDateTo, "yyyy/MM/dd")}`,
         data: pnlComparePeriod,
-        rows: buildRows(pnlComparePeriod),
+        rows: buildRows(pnlComparePeriod, vRows, pnlComparePeriodVariances.totalDeficit),
       }];
     }
     return compareBranchIds
       .map((id) => {
         const data = branchCompareData[id];
         if (!data) return null;
-        return { key: id, label: getBranchName(id), data, rows: buildRows(data) };
+        const v = branchCompareVariances[id];
+        const vRows = buildAlignedVarianceRows(v?.variances || []);
+        return { key: id, label: getBranchName(id), data, rows: buildRows(data, vRows, v?.totalDeficit || 0) };
       })
       .filter(Boolean) as { key: string; label: string; data: typeof pnl; rows: ReturnType<typeof buildRows> }[];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [comparisonActive, compareMode, compareDateFrom, compareDateTo, pnlComparePeriod, compareBranchIds, branchCompareData, branches]);
+  }, [comparisonActive, compareMode, compareDateFrom, compareDateTo, pnlComparePeriod, pnlComparePeriodVariances, compareBranchIds, branchCompareData, branchCompareVariances, branches, unionDeptNames]);
+
 
   const mainLabel = compareMode === "period"
     ? `${format(dateFrom, "yyyy/MM/dd")} - ${format(dateTo, "yyyy/MM/dd")}`
@@ -819,6 +891,16 @@ export const PnlPage: React.FC = () => {
           onData={handleBranchCompareData}
         />
       ))}
+      {showComparison && compareMode === "branch" && compareBranchIds.map((id) => (
+        <CompareVariancesLoader
+          key={`var-${id}`}
+          branchId={id}
+          dateFrom={dateFromStr}
+          dateTo={dateToStr}
+          onData={handleBranchCompareVariances}
+        />
+      ))}
+
 
       {/* Comparison summary banner */}
       {comparisonActive && compareColumns.length > 0 && (
@@ -840,11 +922,18 @@ export const PnlPage: React.FC = () => {
                     مقابل: <span className="text-primary">{col.label}</span>
                   </div>
                   <div className="flex items-center gap-4 flex-wrap">
-                    {[
-                      { label: "صافي المبيعات", a: pnl.netSales, b: col.data.netSales },
-                      { label: "إجمالي الربح", a: pnl.grossProfit, b: col.data.grossProfit },
-                      { label: "صافي الربح", a: pnl.netProfit, b: col.data.netProfit },
-                    ].map((m, i) => {
+                    {(() => {
+                      const colDeficit = compareMode === "period"
+                        ? pnlComparePeriodVariances.totalDeficit
+                        : (branchCompareVariances[col.key]?.totalDeficit || 0);
+                      const colAdjNet = col.data.grossProfit - colDeficit - col.data.totalIndirectExpenses - col.data.wasteCost;
+                      return [
+                       { label: "صافي المبيعات", a: pnl.netSales, b: col.data.netSales },
+                       { label: "إجمالي الربح", a: pnl.grossProfit, b: col.data.grossProfit },
+                       { label: "صافي الربح", a: adjustedNetProfit, b: colAdjNet },
+                      ];
+                    })().map((m, i) => {
+
                       const diff = m.a - m.b;
                       const pctDiff = m.b !== 0 ? (diff / Math.abs(m.b)) * 100 : 0;
                       const positive = diff >= 0;

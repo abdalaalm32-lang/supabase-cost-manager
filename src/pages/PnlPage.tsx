@@ -79,6 +79,22 @@ const CompareBranchLoader: React.FC<{
   return null;
 };
 
+// Child component: fetches department variances for a compare branch
+const CompareVariancesLoader: React.FC<{
+  branchId: string;
+  dateFrom: string;
+  dateTo: string;
+  onData: (branchId: string, data: ReturnType<typeof useDepartmentVariances>) => void;
+}> = ({ branchId, dateFrom, dateTo, onData }) => {
+  const data = useDepartmentVariances(dateFrom, dateTo, branchId);
+  React.useEffect(() => {
+    onData(branchId, data);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [branchId, data.totalDeficit, data.isLoading, data.variances.length]);
+  return null;
+};
+
+
 export const PnlPage: React.FC = () => {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;

@@ -187,6 +187,12 @@ export const PnlPage: React.FC = () => {
   // P&L data (main)
   const pnl = usePnlData(dateFromStr, dateToStr, branchId, manualExpenses, deletedAutoExpenses, autoExpenseOverrides, lockedAutoExpenses);
 
+  // Department variances (deficit/surplus) — appear between Gross Profit and Operating Expenses
+  const deptVariances = useDepartmentVariances(dateFromStr, dateToStr, branchId);
+  // Adjusted net profit after variances
+  const adjustedNetProfit = pnl.grossProfit - deptVariances.totalDeficit - pnl.totalIndirectExpenses - pnl.wasteCost;
+  const adjustedNetProfitPct = pnl.netSales > 0 ? (adjustedNetProfit / pnl.netSales) * 100 : 0;
+
   React.useEffect(() => {
     if (lockedAutoExpenses || pnl.isLoading) return;
     const initialAutoExpenses = pnl.indirectExpenses

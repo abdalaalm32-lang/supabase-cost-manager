@@ -55,14 +55,39 @@ function getPresetDates(preset: Preset): [Date, Date] {
 }
 
 // Child component: fetches P&L for a single compare branch and reports up
+// Loads that branch's own persisted overrides (manual expenses, deletions, edits)
+// so the comparison column reflects exactly what the user saved on that branch.
 const CompareBranchLoader: React.FC<{
   branchId: string;
   dateFrom: string;
   dateTo: string;
-  manualExpenses: IndirectExpenseItem[];
+  companyId: string | undefined;
   onData: (branchId: string, data: ReturnType<typeof usePnlData>) => void;
-}> = ({ branchId, dateFrom, dateTo, manualExpenses, onData }) => {
-  const data = usePnlData(dateFrom, dateTo, branchId, manualExpenses);
+}> = ({ branchId, dateFrom, dateTo, companyId, onData }) => {
+  const overrides = React.useMemo(() => {
+    try {
+      const key = `pnl-overrides-${companyId || "none"}-${branchId || "all"}`;
+      const raw = typeof window !== "undefined" ? localStorage.getItem(key) : null;
+      const parsed = raw ? JSON.parse(raw) : null;
+      return {
+        manualExpenses: (parsed?.manualExpenses || []) as IndirectExpenseItem[],
+        deletedAutoExpenses: new Set<string>(parsed?.deletedAutoExpenses || []),
+        autoExpenseOverrides: (parsed?.autoExpenseOverrides || {}) as Record<string, number>,
+        lockedAutoExpenses: (parsed?.lockedAutoExpenses || null) as IndirectExpenseItem[] | null,
+      };
+    } catch {
+      return { manualExpenses: [], deletedAutoExpenses: new Set<string>(), autoExpenseOverrides: {}, lockedAutoExpenses: null };
+    }
+  }, [companyId, branchId, dateFrom, dateTo]);
+  const data = usePnlData(
+    dateFrom,
+    dateTo,
+    branchId,
+    overrides.manualExpenses,
+    overrides.deletedAutoExpenses,
+    overrides.autoExpenseOverrides,
+    overrides.lockedAutoExpenses,
+  );
   React.useEffect(() => {
     onData(branchId, data);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -75,6 +100,7 @@ const CompareBranchLoader: React.FC<{
     data.totalIndirectExpenses,
     data.wasteCost,
     data.isLoading,
+    data.indirectExpenses.length,
   ]);
   return null;
 };

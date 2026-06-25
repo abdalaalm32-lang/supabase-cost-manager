@@ -236,12 +236,29 @@ export const PnlPage: React.FC = () => {
     []
   );
 
+  // Department variances for compare period (period mode)
+  const pnlComparePeriodVariances = useDepartmentVariances(
+    compareMode === "period" ? compareDateFromStr : dateFromStr,
+    compareMode === "period" ? compareDateToStr : dateToStr,
+    compareMode === "period" ? branchId : "___none___",
+  );
+
+  // Department variances per compare branch (branch mode)
+  const [branchCompareVariances, setBranchCompareVariances] = useState<Record<string, ReturnType<typeof useDepartmentVariances>>>({});
+  const handleBranchCompareVariances = React.useCallback(
+    (id: string, data: ReturnType<typeof useDepartmentVariances>) => {
+      setBranchCompareVariances((prev) => ({ ...prev, [id]: data }));
+    },
+    []
+  );
+
   // Should comparison columns render?
   const comparisonActive =
     showComparison &&
     (compareMode === "period" || (compareMode === "branch" && compareBranchIds.length > 0));
 
   const addManualExpense = () => {
+
     if (!newExpName.trim() || !Number(newExpAmount)) return;
     const entry: IndirectExpenseItem = {
       name: newExpName.trim(),

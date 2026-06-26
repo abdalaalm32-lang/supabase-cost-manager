@@ -11,6 +11,9 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { Plus, Search, Pencil, Eye, Trash2, ToggleLeft, ToggleRight, History, Printer } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
 import { toast } from "sonner";
@@ -26,6 +29,7 @@ export const PurchaseInvoicesTab: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<FilterStatus>("الكل");
+  const [locationFilter, setLocationFilter] = useState<string>("all");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteOrder, setDeleteOrder] = useState<any>(null);
 
@@ -125,6 +129,10 @@ export const PurchaseInvoicesTab: React.FC = () => {
     else if (filter === "مكتمل") result = result.filter((o: any) => o.status === "مكتمل");
     else if (filter === "مؤرشف") result = result.filter((o: any) => o.status === "مؤرشف");
 
+    if (locationFilter !== "all") {
+      result = result.filter((o: any) => o.branch_id === locationFilter || o.warehouse_id === locationFilter);
+    }
+
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       result = result.filter((o: any) =>
@@ -135,7 +143,7 @@ export const PurchaseInvoicesTab: React.FC = () => {
       );
     }
     return result;
-  }, [orders, filter, searchQuery, locationMap]);
+  }, [orders, filter, searchQuery, locationFilter, locationMap]);
 
   const handlePrintInvoice = async (order: any) => {
     const { data: items } = await supabase
@@ -265,6 +273,30 @@ export const PurchaseInvoicesTab: React.FC = () => {
             <Button key={s} variant={filter === s ? "default" : "outline"} size="sm" onClick={() => setFilter(s)}>{s}</Button>
           ))}
         </div>
+        <Select value={locationFilter} onValueChange={setLocationFilter}>
+          <SelectTrigger className="glass-input w-[200px]">
+            <SelectValue placeholder="كل المواقع" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">كل المواقع</SelectItem>
+            {branches.length > 0 && (
+              <>
+                <div className="px-2 py-1 text-xs text-muted-foreground font-semibold">الفروع</div>
+                {branches.map((b: any) => (
+                  <SelectItem key={`b-${b.id}`} value={b.id}>{b.name}</SelectItem>
+                ))}
+              </>
+            )}
+            {warehouses.length > 0 && (
+              <>
+                <div className="px-2 py-1 text-xs text-muted-foreground font-semibold">المخازن</div>
+                {warehouses.map((w: any) => (
+                  <SelectItem key={`w-${w.id}`} value={w.id}>{w.name}</SelectItem>
+                ))}
+              </>
+            )}
+          </SelectContent>
+        </Select>
         <ExportButtons
           data={filtered.map((o: any) => ({ invoice: o.invoice_number || "—", supplier: o.supplier_name, location: getLocationName(o), date: new Date(o.date).toLocaleDateString("ar-EG"), creator: o.creator_name || "—", status: o.is_edited ? "معدل" : o.status, total: Number(o.total_amount).toFixed(2) }))}
           columns={[{ key: "invoice", label: "رقم الفاتورة" }, { key: "supplier", label: "المورد" }, { key: "location", label: "الموقع المستلم" }, { key: "date", label: "التاريخ" }, { key: "creator", label: "المنشئ" }, { key: "status", label: "الحالة" }, { key: "total", label: "الإجمالي" }]}

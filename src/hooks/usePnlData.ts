@@ -15,6 +15,16 @@ export interface IndirectExpenseItem {
   isManual?: boolean;
 }
 
+export type CostingMethod = "perpetual" | "periodic";
+
+export interface PeriodicBreakdown {
+  openingStock: number;
+  purchases: number;
+  closingStock: number;
+  openingDate: string | null;
+  closingDate: string | null;
+}
+
 export interface PnlResult {
   grossSales: number;
   taxAmount: number;
@@ -30,6 +40,8 @@ export interface PnlResult {
   netProfit: number;
   netProfitPct: number;
   salesCount: number;
+  costingMethod: CostingMethod;
+  periodicBreakdown?: PeriodicBreakdown;
   isLoading: boolean;
 }
 
@@ -40,8 +52,10 @@ export function usePnlData(
   manualExpenses: IndirectExpenseItem[] = [],
   deletedAutoExpenses: Set<string> = new Set(),
   autoExpenseOverrides: Record<string, number> = {},
-  lockedAutoExpenses: IndirectExpenseItem[] | null = null
+  lockedAutoExpenses: IndirectExpenseItem[] | null = null,
+  costingMethod: CostingMethod = "perpetual",
 ): PnlResult {
+
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;
   const enabled = !!companyId && !!dateFrom && !!dateTo;

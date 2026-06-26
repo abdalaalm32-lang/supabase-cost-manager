@@ -29,6 +29,7 @@ export const PurchaseInvoicesTab: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<FilterStatus>("الكل");
+  const [locationFilter, setLocationFilter] = useState<string>("all");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteOrder, setDeleteOrder] = useState<any>(null);
 

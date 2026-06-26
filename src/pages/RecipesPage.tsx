@@ -437,8 +437,8 @@ export const RecipesPage: React.FC = () => {
   }, [ingredients]);
 
   const sellingPrice = selectedProduct ? Number(selectedProduct.price) : 0;
-  const netProfit = sellingPrice - totalIngredientsCost;
-  const profitMargin = sellingPrice > 0 ? (netProfit / sellingPrice) * 100 : 0;
+  const grossProfit = sellingPrice - totalIngredientsCost;
+  const profitMargin = sellingPrice > 0 ? (grossProfit / sellingPrice) * 100 : 0;
 
   const getMarginColor = (margin: number) => {
     if (margin < 10) return "text-red-400";
@@ -1260,9 +1260,9 @@ th { border:1px solid #000; padding:5px 6px; font-size:10px; text-align:center; 
                   <div className="flex items-center justify-center mb-2">
                     <TrendingUp size={18} className="text-green-400" />
                   </div>
-                  <p className="text-xs text-muted-foreground mb-1">صافي الربح</p>
-                  <p className={cn("font-bold text-lg", netProfit >= 0 ? "text-green-400" : "text-red-400")}>
-                    {netProfit.toFixed(2)}
+                  <p className="text-xs text-muted-foreground mb-1">مجمل الربح</p>
+                  <p className={cn("font-bold text-lg", grossProfit >= 0 ? "text-green-400" : "text-red-400")}>
+                    {grossProfit.toFixed(2)}
                   </p>
                 </div>
                 <div className="glass-card p-4 text-center">

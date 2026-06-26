@@ -244,7 +244,12 @@ export const PnlPage: React.FC = () => {
   const pnl = usePnlData(dateFromStr, dateToStr, branchId, manualExpenses, deletedAutoExpenses, autoExpenseOverrides, lockedAutoExpenses, costingMethod);
 
   // Department variances (deficit/surplus) — appear between Gross Profit and Operating Expenses
-  const deptVariances = useDepartmentVariances(dateFromStr, dateToStr, branchId);
+  // Only relevant for perpetual costing; periodic costing already incorporates inventory differences
+  // through the (Opening + Purchases - Closing) formula, so showing them again would double-count.
+  const rawDeptVariances = useDepartmentVariances(dateFromStr, dateToStr, branchId);
+  const deptVariances = costingMethod === "periodic"
+    ? { variances: [], totalDeficit: 0, isLoading: rawDeptVariances.isLoading }
+    : rawDeptVariances;
   // Adjusted net profit after variances
   const adjustedNetProfit = pnl.grossProfit - deptVariances.totalDeficit - pnl.totalIndirectExpenses - pnl.wasteCost;
   const adjustedNetProfitPct = pnl.netSales > 0 ? (adjustedNetProfit / pnl.netSales) * 100 : 0;

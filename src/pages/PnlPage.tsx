@@ -2,7 +2,7 @@ import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { usePnlData, IndirectExpenseItem } from "@/hooks/usePnlData";
+import { usePnlData, IndirectExpenseItem, CostingMethod } from "@/hooks/usePnlData";
 import { useDepartmentVariances } from "@/hooks/useDepartmentVariances";
 import { Card, CardContent } from "@/components/ui/card";
 import { Pencil } from "lucide-react";

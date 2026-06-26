@@ -321,7 +321,60 @@ export function usePnlData(
     }))
     .sort((a, b) => b.amount - a.amount);
 
-  const totalCogs = cogsByCategory.reduce((s, c) => s + c.amount, 0);
+  let totalCogs = cogsByCategory.reduce((s, c) => s + c.amount, 0);
+  let finalCogsByCategory = cogsByCategory;
+  let periodicBreakdown: PeriodicBreakdown | undefined;
+
+  if (costingMethod === "periodic") {
+    // First & last completed stocktake within the period (per branch when filtered)
+    const stk = (periodStocktakes || []).slice().sort((a, b) =>
+      String(a.date).localeCompare(String(b.date))
+    );
+    // When "all" branches, sum first stocktake per branch and last stocktake per branch
+    let openingStock = 0;
+    let closingStock = 0;
+    let openingDate: string | null = null;
+    let closingDate: string | null = null;
+    if (branchId && branchId !== "all") {
+      if (stk.length > 0) {
+        openingStock = Number(stk[0].total_actual_value || 0);
+        openingDate = stk[0].date;
+        closingStock = Number(stk[stk.length - 1].total_actual_value || 0);
+        closingDate = stk[stk.length - 1].date;
+      }
+    } else {
+      const byBranchFirst = new Map<string, any>();
+      const byBranchLast = new Map<string, any>();
+      stk.forEach((s) => {
+        const key = s.branch_id || "__none__";
+        if (!byBranchFirst.has(key)) byBranchFirst.set(key, s);
+        byBranchLast.set(key, s);
+      });
+      byBranchFirst.forEach((s) => {
+        openingStock += Number(s.total_actual_value || 0);
+        if (!openingDate || String(s.date) < openingDate) openingDate = s.date;
+      });
+      byBranchLast.forEach((s) => {
+        closingStock += Number(s.total_actual_value || 0);
+        if (!closingDate || String(s.date) > closingDate) closingDate = s.date;
+      });
+    }
+    const purchases = (periodPurchases || []).reduce(
+      (sum, p) => sum + Number(p.total_amount || 0),
+      0
+    );
+    const periodicCogs = openingStock + purchases - closingStock;
+    totalCogs = periodicCogs;
+    finalCogsByCategory = [];
+    periodicBreakdown = {
+      openingStock,
+      purchases,
+      closingStock,
+      openingDate,
+      closingDate,
+    };
+  }
+
   const grossProfit = netSales - totalCogs;
   const grossProfitPct = netSales > 0 ? (grossProfit / netSales) * 100 : 0;
 
@@ -337,6 +390,7 @@ export function usePnlData(
   void deletedAutoExpenses;
   void autoExpenseOverrides;
   void lockedAutoExpenses;
+  void autoExpenses;
 
   const allExpenses = [...manualExpenses];
   const totalIndirectExpenses = allExpenses.reduce(
@@ -357,7 +411,7 @@ export function usePnlData(
     taxAmount,
     discountAmount,
     netSales,
-    cogsByCategory,
+    cogsByCategory: finalCogsByCategory,
     totalCogs,
     grossProfit,
     grossProfitPct,
@@ -367,6 +421,9 @@ export function usePnlData(
     netProfit,
     netProfitPct,
     salesCount: (sales || []).length,
-    isLoading: l1 || l2 || l3,
+    costingMethod,
+    periodicBreakdown,
+    isLoading: l1 || l2 || l3 || (costingMethod === "periodic" && (lStk || lPur)),
   };
 }
+

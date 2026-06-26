@@ -190,9 +190,28 @@ export function usePnlData(
     enabled: !!companyId,
   });
   // 9. Periodic costing data (only when method === "periodic")
+  // Opening stock = LAST completed stocktake strictly BEFORE dateFrom (per branch).
+  // Closing stock = LAST completed stocktake within [dateFrom, dateTo] (per branch).
   const periodicEnabled = enabled && costingMethod === "periodic";
-  const { data: periodStocktakes, isLoading: lStk } = useQuery({
-    queryKey: ["pnl-periodic-stocktakes", companyId, dateFrom, dateTo, branchId],
+  const { data: openingStocktakes, isLoading: lStkOpen } = useQuery({
+    queryKey: ["pnl-periodic-stk-opening", companyId, dateFrom, branchId],
+    queryFn: async () =>
+      fetchAllRows<any>((from, to) => {
+        let q = supabase
+          .from("stocktakes")
+          .select("id, date, branch_id, status, type, total_actual_value")
+          .eq("company_id", companyId!)
+          .eq("status", "مكتمل")
+          .neq("type", "فحص مخزون فوري")
+          .lt("date", dateFrom);
+        if (branchId && branchId !== "all") q = q.eq("branch_id", branchId);
+        return q.order("date", { ascending: false }).range(from, to);
+      }),
+    enabled: periodicEnabled,
+  });
+
+  const { data: closingStocktakes, isLoading: lStkClose } = useQuery({
+    queryKey: ["pnl-periodic-stk-closing", companyId, dateFrom, dateTo, branchId],
     queryFn: async () =>
       fetchAllRows<any>((from, to) => {
         let q = supabase
@@ -204,10 +223,11 @@ export function usePnlData(
           .gte("date", dateFrom)
           .lte("date", dateTo);
         if (branchId && branchId !== "all") q = q.eq("branch_id", branchId);
-        return q.order("date").range(from, to);
+        return q.order("date", { ascending: false }).range(from, to);
       }),
     enabled: periodicEnabled,
   });
+  const lStk = lStkOpen || lStkClose;
 
   const { data: periodPurchases, isLoading: lPur } = useQuery({
     queryKey: ["pnl-periodic-purchases", companyId, dateFrom, dateTo, branchId],

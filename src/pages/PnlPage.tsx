@@ -62,8 +62,9 @@ const CompareBranchLoader: React.FC<{
   dateFrom: string;
   dateTo: string;
   companyId: string | undefined;
+  costingMethod: CostingMethod;
   onData: (branchId: string, data: ReturnType<typeof usePnlData>) => void;
-}> = ({ branchId, dateFrom, dateTo, companyId, onData }) => {
+}> = ({ branchId, dateFrom, dateTo, companyId, costingMethod, onData }) => {
   const overrides = React.useMemo(() => {
     try {
       const key = `pnl-overrides-${companyId || "none"}-${branchId || "all"}`;
@@ -87,7 +88,9 @@ const CompareBranchLoader: React.FC<{
     overrides.deletedAutoExpenses,
     overrides.autoExpenseOverrides,
     overrides.lockedAutoExpenses,
+    costingMethod,
   );
+
   React.useEffect(() => {
     onData(branchId, data);
     // eslint-disable-next-line react-hooks/exhaustive-deps

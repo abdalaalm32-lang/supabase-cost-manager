@@ -189,24 +189,43 @@ export function usePnlData(
     },
     enabled: !!companyId,
   });
-
-  // 8. Waste
-  const { data: wasteRecords, isLoading: l3 } = useQuery({
-    queryKey: ["pnl-waste", companyId, dateFrom, dateTo, branchId],
+  // 9. Periodic costing data (only when method === "periodic")
+  const periodicEnabled = enabled && costingMethod === "periodic";
+  const { data: periodStocktakes, isLoading: lStk } = useQuery({
+    queryKey: ["pnl-periodic-stocktakes", companyId, dateFrom, dateTo, branchId],
     queryFn: async () =>
       fetchAllRows<any>((from, to) => {
         let q = supabase
-          .from("waste_records" as any)
-          .select("total_cost")
+          .from("stocktakes")
+          .select("id, date, branch_id, status, type, total_actual_value")
+          .eq("company_id", companyId!)
+          .eq("status", "مكتمل")
+          .neq("type", "فحص مخزون فوري")
+          .gte("date", dateFrom)
+          .lte("date", dateTo);
+        if (branchId && branchId !== "all") q = q.eq("branch_id", branchId);
+        return q.order("date").range(from, to);
+      }),
+    enabled: periodicEnabled,
+  });
+
+  const { data: periodPurchases, isLoading: lPur } = useQuery({
+    queryKey: ["pnl-periodic-purchases", companyId, dateFrom, dateTo, branchId],
+    queryFn: async () =>
+      fetchAllRows<any>((from, to) => {
+        let q = supabase
+          .from("purchase_orders")
+          .select("id, date, branch_id, status, total_amount")
           .eq("company_id", companyId!)
           .eq("status", "مكتمل")
           .gte("date", dateFrom)
           .lte("date", dateTo);
         if (branchId && branchId !== "all") q = q.eq("branch_id", branchId);
-        return q.order("id").range(from, to);
+        return q.order("date").range(from, to);
       }),
-    enabled,
+    enabled: periodicEnabled,
   });
+
 
   // ---- Compute P&L ----
   const grossSales = (sales || []).reduce(

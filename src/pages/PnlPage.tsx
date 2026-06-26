@@ -410,8 +410,10 @@ export const PnlPage: React.FC = () => {
     id === "all" ? "جميع الفروع" : branches?.find((b) => b.id === id)?.name || "";
 
   // Collect variances per column (main + compares) and union of department names for alignment
+  // Periodic costing: hide variances entirely (already captured in COGS formula).
   const varianceColumnsData = useMemo(() => {
     const list: { key: string; variances: { departmentName: string; varianceValue: number }[]; totalDeficit: number }[] = [];
+    if (costingMethod === "periodic") return list;
     list.push({ key: "__main__", variances: deptVariances.variances, totalDeficit: deptVariances.totalDeficit });
     if (comparisonActive) {
       if (compareMode === "period") {
@@ -424,7 +426,7 @@ export const PnlPage: React.FC = () => {
       }
     }
     return list;
-  }, [deptVariances, comparisonActive, compareMode, pnlComparePeriodVariances, compareBranchIds, branchCompareVariances]);
+  }, [costingMethod, deptVariances, comparisonActive, compareMode, pnlComparePeriodVariances, compareBranchIds, branchCompareVariances]);
 
   const unionDeptNames = useMemo(() => {
     const seen = new Set<string>();

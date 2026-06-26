@@ -241,7 +241,7 @@ export const PnlPage: React.FC = () => {
   });
 
   // P&L data (main)
-  const pnl = usePnlData(dateFromStr, dateToStr, branchId, manualExpenses, deletedAutoExpenses, autoExpenseOverrides, lockedAutoExpenses);
+  const pnl = usePnlData(dateFromStr, dateToStr, branchId, manualExpenses, deletedAutoExpenses, autoExpenseOverrides, lockedAutoExpenses, costingMethod);
 
   // Department variances (deficit/surplus) — appear between Gross Profit and Operating Expenses
   const deptVariances = useDepartmentVariances(dateFromStr, dateToStr, branchId);

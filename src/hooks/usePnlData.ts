@@ -226,6 +226,24 @@ export function usePnlData(
     enabled: periodicEnabled,
   });
 
+  // 8. Waste
+  const { data: wasteRecords, isLoading: l3 } = useQuery({
+    queryKey: ["pnl-waste", companyId, dateFrom, dateTo, branchId],
+    queryFn: async () =>
+      fetchAllRows<any>((from, to) => {
+        let q = supabase
+          .from("waste_records" as any)
+          .select("total_cost")
+          .eq("company_id", companyId!)
+          .eq("status", "مكتمل")
+          .gte("date", dateFrom)
+          .lte("date", dateTo);
+        if (branchId && branchId !== "all") q = q.eq("branch_id", branchId);
+        return q.order("id").range(from, to);
+      }),
+    enabled,
+  });
+
 
   // ---- Compute P&L ----
   const grossSales = (sales || []).reduce(

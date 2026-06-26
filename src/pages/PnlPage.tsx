@@ -969,7 +969,9 @@ export const PnlPage: React.FC = () => {
           dateFrom={dateFromStr}
           dateTo={dateToStr}
           companyId={companyId}
+          costingMethod={costingMethod}
           onData={handleBranchCompareData}
+
         />
       ))}
       {showComparison && compareMode === "branch" && compareBranchIds.map((id) => (

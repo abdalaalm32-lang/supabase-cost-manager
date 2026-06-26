@@ -11,6 +11,9 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { Plus, Search, Pencil, Eye, Trash2, ToggleLeft, ToggleRight, History, Printer } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
 import { toast } from "sonner";

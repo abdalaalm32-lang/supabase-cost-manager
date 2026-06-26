@@ -342,10 +342,18 @@ export const PnlPage: React.FC = () => {
     rows.push({ label: "(-) خصم المبيعات", amount: d.discountAmount, pctVal: pct(d.discountAmount, d.netSales), type: "item", indent: true });
     rows.push({ label: "صافي المبيعات", amount: d.netSales, pctVal: "100%", type: "subtotal" });
     rows.push({ label: "تكلفة البضاعة المباعة", amount: 0, pctVal: "", type: "header" });
-    d.cogsByCategory.forEach((c) => {
-      rows.push({ label: c.category, amount: c.amount, pctVal: pct(c.amount, d.netSales), type: "item", indent: true });
-    });
+    if (d.costingMethod === "periodic" && d.periodicBreakdown) {
+      const pb = d.periodicBreakdown;
+      rows.push({ label: "جرد أول المدة" + (pb.openingDate ? ` (${pb.openingDate})` : ""), amount: pb.openingStock, pctVal: pct(pb.openingStock, d.netSales), type: "item", indent: true });
+      rows.push({ label: "(+) المشتريات خلال الفترة", amount: pb.purchases, pctVal: pct(pb.purchases, d.netSales), type: "item", indent: true });
+      rows.push({ label: "(-) جرد آخر المدة" + (pb.closingDate ? ` (${pb.closingDate})` : ""), amount: pb.closingStock, pctVal: pct(pb.closingStock, d.netSales), type: "item", indent: true });
+    } else {
+      d.cogsByCategory.forEach((c) => {
+        rows.push({ label: c.category, amount: c.amount, pctVal: pct(c.amount, d.netSales), type: "item", indent: true });
+      });
+    }
     rows.push({ label: "إجمالي تكلفة البضاعة المباعة", amount: d.totalCogs, pctVal: pct(d.totalCogs, d.netSales), type: "subtotal" });
+
     rows.push({ label: "", amount: 0, pctVal: "", type: "separator" });
     rows.push({ label: "إجمالي الربح", amount: d.grossProfit, pctVal: pct(d.grossProfit, d.netSales), type: "total" });
 

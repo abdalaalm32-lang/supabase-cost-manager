@@ -339,6 +339,7 @@ export function usePnlData(
       amount: cost,
       salesAmount,
     }))
+    .filter((c) => c.amount > 0)
     .sort((a, b) => b.amount - a.amount);
 
   let totalCogs = cogsByCategory.reduce((s, c) => s + c.amount, 0);

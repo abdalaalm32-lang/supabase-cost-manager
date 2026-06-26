@@ -1039,9 +1039,11 @@ export const PnlPage: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-4 flex-wrap">
                     {(() => {
-                      const colDeficit = compareMode === "period"
-                        ? pnlComparePeriodVariances.totalDeficit
-                        : (branchCompareVariances[col.key]?.totalDeficit || 0);
+                      const colDeficit = costingMethod === "periodic"
+                        ? 0
+                        : compareMode === "period"
+                          ? pnlComparePeriodVariances.totalDeficit
+                          : (branchCompareVariances[col.key]?.totalDeficit || 0);
                       const colAdjNet = col.data.grossProfit - colDeficit - col.data.totalIndirectExpenses - col.data.wasteCost;
                       return [
                        { label: "صافي المبيعات", a: pnl.netSales, b: col.data.netSales },

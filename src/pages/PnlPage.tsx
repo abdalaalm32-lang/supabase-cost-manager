@@ -2,7 +2,7 @@ import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { usePnlData, IndirectExpenseItem } from "@/hooks/usePnlData";
+import { usePnlData, IndirectExpenseItem, CostingMethod } from "@/hooks/usePnlData";
 import { useDepartmentVariances } from "@/hooks/useDepartmentVariances";
 import { Card, CardContent } from "@/components/ui/card";
 import { Pencil } from "lucide-react";
@@ -62,8 +62,9 @@ const CompareBranchLoader: React.FC<{
   dateFrom: string;
   dateTo: string;
   companyId: string | undefined;
+  costingMethod: CostingMethod;
   onData: (branchId: string, data: ReturnType<typeof usePnlData>) => void;
-}> = ({ branchId, dateFrom, dateTo, companyId, onData }) => {
+}> = ({ branchId, dateFrom, dateTo, companyId, costingMethod, onData }) => {
   const overrides = React.useMemo(() => {
     try {
       const key = `pnl-overrides-${companyId || "none"}-${branchId || "all"}`;
@@ -87,7 +88,9 @@ const CompareBranchLoader: React.FC<{
     overrides.deletedAutoExpenses,
     overrides.autoExpenseOverrides,
     overrides.lockedAutoExpenses,
+    costingMethod,
   );
+
   React.useEffect(() => {
     onData(branchId, data);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -139,6 +142,17 @@ export const PnlPage: React.FC = () => {
   const [comparePreset, setComparePreset] = useState<Preset>("lastMonth");
   const [compareCustomFrom, setCompareCustomFrom] = useState<Date>(startOfMonth(subMonths(new Date(), 1)));
   const [compareCustomTo, setCompareCustomTo] = useState<Date>(endOfMonth(subMonths(new Date(), 1)));
+  // Inventory costing method: perpetual (default, uses recipes & WAC) or periodic (Opening + Purchases - Closing)
+  const [costingMethod, setCostingMethod] = useState<CostingMethod>(() => {
+    try {
+      const v = typeof window !== "undefined" ? localStorage.getItem("pnl-costing-method") : null;
+      return v === "periodic" ? "periodic" : "perpetual";
+    } catch { return "perpetual"; }
+  });
+  React.useEffect(() => {
+    try { localStorage.setItem("pnl-costing-method", costingMethod); } catch {}
+  }, [costingMethod]);
+
 
   // Persistence key (per company + per branch so each branch keeps its own edits)
   const storageKey = `pnl-overrides-${companyId || "none"}-${branchId || "all"}`;
@@ -227,7 +241,7 @@ export const PnlPage: React.FC = () => {
   });
 
   // P&L data (main)
-  const pnl = usePnlData(dateFromStr, dateToStr, branchId, manualExpenses, deletedAutoExpenses, autoExpenseOverrides, lockedAutoExpenses);
+  const pnl = usePnlData(dateFromStr, dateToStr, branchId, manualExpenses, deletedAutoExpenses, autoExpenseOverrides, lockedAutoExpenses, costingMethod);
 
   // Department variances (deficit/surplus) — appear between Gross Profit and Operating Expenses
   const deptVariances = useDepartmentVariances(dateFromStr, dateToStr, branchId);
@@ -250,8 +264,13 @@ export const PnlPage: React.FC = () => {
     compareMode === "period" ? compareDateFromStr : dateFromStr,
     compareMode === "period" ? compareDateToStr : dateToStr,
     compareMode === "period" ? branchId : "___none___",
-    manualExpensesCompare
+    manualExpensesCompare,
+    new Set<string>(),
+    {},
+    null,
+    costingMethod,
   );
+
 
   // Branch mode: results collected from child loaders, keyed by branchId
   const [branchCompareData, setBranchCompareData] = useState<Record<string, ReturnType<typeof usePnlData>>>({});
@@ -323,10 +342,18 @@ export const PnlPage: React.FC = () => {
     rows.push({ label: "(-) خصم المبيعات", amount: d.discountAmount, pctVal: pct(d.discountAmount, d.netSales), type: "item", indent: true });
     rows.push({ label: "صافي المبيعات", amount: d.netSales, pctVal: "100%", type: "subtotal" });
     rows.push({ label: "تكلفة البضاعة المباعة", amount: 0, pctVal: "", type: "header" });
-    d.cogsByCategory.forEach((c) => {
-      rows.push({ label: c.category, amount: c.amount, pctVal: pct(c.amount, d.netSales), type: "item", indent: true });
-    });
+    if (d.costingMethod === "periodic" && d.periodicBreakdown) {
+      const pb = d.periodicBreakdown;
+      rows.push({ label: "جرد أول المدة" + (pb.openingDate ? ` (${pb.openingDate})` : ""), amount: pb.openingStock, pctVal: pct(pb.openingStock, d.netSales), type: "item", indent: true });
+      rows.push({ label: "(+) المشتريات خلال الفترة", amount: pb.purchases, pctVal: pct(pb.purchases, d.netSales), type: "item", indent: true });
+      rows.push({ label: "(-) جرد آخر المدة" + (pb.closingDate ? ` (${pb.closingDate})` : ""), amount: pb.closingStock, pctVal: pct(pb.closingStock, d.netSales), type: "item", indent: true });
+    } else {
+      d.cogsByCategory.forEach((c) => {
+        rows.push({ label: c.category, amount: c.amount, pctVal: pct(c.amount, d.netSales), type: "item", indent: true });
+      });
+    }
     rows.push({ label: "إجمالي تكلفة البضاعة المباعة", amount: d.totalCogs, pctVal: pct(d.totalCogs, d.netSales), type: "subtotal" });
+
     rows.push({ label: "", amount: 0, pctVal: "", type: "separator" });
     rows.push({ label: "إجمالي الربح", amount: d.grossProfit, pctVal: pct(d.grossProfit, d.netSales), type: "total" });
 
@@ -785,6 +812,21 @@ export const PnlPage: React.FC = () => {
               </Select>
             </div>
 
+            {/* Costing method (Perpetual vs Periodic) */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">طريقة التقفيل</label>
+              <Select value={costingMethod} onValueChange={(v) => setCostingMethod(v as CostingMethod)}>
+                <SelectTrigger className="w-48 h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="perpetual">جرد مستمر (Recipes/WAC)</SelectItem>
+                  <SelectItem value="periodic">جرد دوري (جرد + مشتريات)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+
             {/* Comparison toggle */}
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">مقارنة</label>
@@ -950,7 +992,9 @@ export const PnlPage: React.FC = () => {
           dateFrom={dateFromStr}
           dateTo={dateToStr}
           companyId={companyId}
+          costingMethod={costingMethod}
           onData={handleBranchCompareData}
+
         />
       ))}
       {showComparison && compareMode === "branch" && compareBranchIds.map((id) => (

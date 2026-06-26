@@ -142,6 +142,17 @@ export const PnlPage: React.FC = () => {
   const [comparePreset, setComparePreset] = useState<Preset>("lastMonth");
   const [compareCustomFrom, setCompareCustomFrom] = useState<Date>(startOfMonth(subMonths(new Date(), 1)));
   const [compareCustomTo, setCompareCustomTo] = useState<Date>(endOfMonth(subMonths(new Date(), 1)));
+  // Inventory costing method: perpetual (default, uses recipes & WAC) or periodic (Opening + Purchases - Closing)
+  const [costingMethod, setCostingMethod] = useState<CostingMethod>(() => {
+    try {
+      const v = typeof window !== "undefined" ? localStorage.getItem("pnl-costing-method") : null;
+      return v === "periodic" ? "periodic" : "perpetual";
+    } catch { return "perpetual"; }
+  });
+  React.useEffect(() => {
+    try { localStorage.setItem("pnl-costing-method", costingMethod); } catch {}
+  }, [costingMethod]);
+
 
   // Persistence key (per company + per branch so each branch keeps its own edits)
   const storageKey = `pnl-overrides-${companyId || "none"}-${branchId || "all"}`;

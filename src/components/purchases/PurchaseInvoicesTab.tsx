@@ -273,6 +273,30 @@ export const PurchaseInvoicesTab: React.FC = () => {
             <Button key={s} variant={filter === s ? "default" : "outline"} size="sm" onClick={() => setFilter(s)}>{s}</Button>
           ))}
         </div>
+        <Select value={locationFilter} onValueChange={setLocationFilter}>
+          <SelectTrigger className="glass-input w-[200px]">
+            <SelectValue placeholder="كل المواقع" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">كل المواقع</SelectItem>
+            {branches.length > 0 && (
+              <>
+                <div className="px-2 py-1 text-xs text-muted-foreground font-semibold">الفروع</div>
+                {branches.map((b: any) => (
+                  <SelectItem key={`b-${b.id}`} value={b.id}>{b.name}</SelectItem>
+                ))}
+              </>
+            )}
+            {warehouses.length > 0 && (
+              <>
+                <div className="px-2 py-1 text-xs text-muted-foreground font-semibold">المخازن</div>
+                {warehouses.map((w: any) => (
+                  <SelectItem key={`w-${w.id}`} value={w.id}>{w.name}</SelectItem>
+                ))}
+              </>
+            )}
+          </SelectContent>
+        </Select>
         <ExportButtons
           data={filtered.map((o: any) => ({ invoice: o.invoice_number || "—", supplier: o.supplier_name, location: getLocationName(o), date: new Date(o.date).toLocaleDateString("ar-EG"), creator: o.creator_name || "—", status: o.is_edited ? "معدل" : o.status, total: Number(o.total_amount).toFixed(2) }))}
           columns={[{ key: "invoice", label: "رقم الفاتورة" }, { key: "supplier", label: "المورد" }, { key: "location", label: "الموقع المستلم" }, { key: "date", label: "التاريخ" }, { key: "creator", label: "المنشئ" }, { key: "status", label: "الحالة" }, { key: "total", label: "الإجمالي" }]}

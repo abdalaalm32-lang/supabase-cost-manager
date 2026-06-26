@@ -286,12 +286,15 @@ export const PnlPage: React.FC = () => {
     []
   );
 
-  // Department variances for compare period (period mode)
-  const pnlComparePeriodVariances = useDepartmentVariances(
+  // Department variances for compare period (period mode) — empty for periodic costing
+  const rawPnlComparePeriodVariances = useDepartmentVariances(
     compareMode === "period" ? compareDateFromStr : dateFromStr,
     compareMode === "period" ? compareDateToStr : dateToStr,
     compareMode === "period" ? branchId : "___none___",
   );
+  const pnlComparePeriodVariances = costingMethod === "periodic"
+    ? { variances: [], totalDeficit: 0, isLoading: rawPnlComparePeriodVariances.isLoading }
+    : rawPnlComparePeriodVariances;
 
   // Department variances per compare branch (branch mode)
   const [branchCompareVariances, setBranchCompareVariances] = useState<Record<string, ReturnType<typeof useDepartmentVariances>>>({});

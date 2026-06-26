@@ -497,7 +497,7 @@ export const PnlPage: React.FC = () => {
       .map((id) => {
         const data = branchCompareData[id];
         if (!data) return null;
-        const v = branchCompareVariances[id];
+        const v = costingMethod === "periodic" ? null : branchCompareVariances[id];
         const vRows = buildAlignedVarianceRows(v?.variances || []);
         return { key: id, label: getBranchName(id), data, rows: buildRows(data, vRows, v?.totalDeficit || 0, unionExpenseNames, wasteRowEnabled) };
       })

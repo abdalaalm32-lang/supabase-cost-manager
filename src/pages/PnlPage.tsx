@@ -244,7 +244,12 @@ export const PnlPage: React.FC = () => {
   const pnl = usePnlData(dateFromStr, dateToStr, branchId, manualExpenses, deletedAutoExpenses, autoExpenseOverrides, lockedAutoExpenses, costingMethod);
 
   // Department variances (deficit/surplus) — appear between Gross Profit and Operating Expenses
-  const deptVariances = useDepartmentVariances(dateFromStr, dateToStr, branchId);
+  // Only relevant for perpetual costing; periodic costing already incorporates inventory differences
+  // through the (Opening + Purchases - Closing) formula, so showing them again would double-count.
+  const rawDeptVariances = useDepartmentVariances(dateFromStr, dateToStr, branchId);
+  const deptVariances = costingMethod === "periodic"
+    ? { variances: [], totalDeficit: 0, isLoading: rawDeptVariances.isLoading }
+    : rawDeptVariances;
   // Adjusted net profit after variances
   const adjustedNetProfit = pnl.grossProfit - deptVariances.totalDeficit - pnl.totalIndirectExpenses - pnl.wasteCost;
   const adjustedNetProfitPct = pnl.netSales > 0 ? (adjustedNetProfit / pnl.netSales) * 100 : 0;
@@ -281,12 +286,15 @@ export const PnlPage: React.FC = () => {
     []
   );
 
-  // Department variances for compare period (period mode)
-  const pnlComparePeriodVariances = useDepartmentVariances(
+  // Department variances for compare period (period mode) — empty for periodic costing
+  const rawPnlComparePeriodVariances = useDepartmentVariances(
     compareMode === "period" ? compareDateFromStr : dateFromStr,
     compareMode === "period" ? compareDateToStr : dateToStr,
     compareMode === "period" ? branchId : "___none___",
   );
+  const pnlComparePeriodVariances = costingMethod === "periodic"
+    ? { variances: [], totalDeficit: 0, isLoading: rawPnlComparePeriodVariances.isLoading }
+    : rawPnlComparePeriodVariances;
 
   // Department variances per compare branch (branch mode)
   const [branchCompareVariances, setBranchCompareVariances] = useState<Record<string, ReturnType<typeof useDepartmentVariances>>>({});
@@ -402,8 +410,10 @@ export const PnlPage: React.FC = () => {
     id === "all" ? "جميع الفروع" : branches?.find((b) => b.id === id)?.name || "";
 
   // Collect variances per column (main + compares) and union of department names for alignment
+  // Periodic costing: hide variances entirely (already captured in COGS formula).
   const varianceColumnsData = useMemo(() => {
     const list: { key: string; variances: { departmentName: string; varianceValue: number }[]; totalDeficit: number }[] = [];
+    if (costingMethod === "periodic") return list;
     list.push({ key: "__main__", variances: deptVariances.variances, totalDeficit: deptVariances.totalDeficit });
     if (comparisonActive) {
       if (compareMode === "period") {
@@ -416,7 +426,7 @@ export const PnlPage: React.FC = () => {
       }
     }
     return list;
-  }, [deptVariances, comparisonActive, compareMode, pnlComparePeriodVariances, compareBranchIds, branchCompareVariances]);
+  }, [costingMethod, deptVariances, comparisonActive, compareMode, pnlComparePeriodVariances, compareBranchIds, branchCompareVariances]);
 
   const unionDeptNames = useMemo(() => {
     const seen = new Set<string>();
@@ -487,7 +497,7 @@ export const PnlPage: React.FC = () => {
       .map((id) => {
         const data = branchCompareData[id];
         if (!data) return null;
-        const v = branchCompareVariances[id];
+        const v = costingMethod === "periodic" ? null : branchCompareVariances[id];
         const vRows = buildAlignedVarianceRows(v?.variances || []);
         return { key: id, label: getBranchName(id), data, rows: buildRows(data, vRows, v?.totalDeficit || 0, unionExpenseNames, wasteRowEnabled) };
       })
@@ -1029,9 +1039,11 @@ export const PnlPage: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-4 flex-wrap">
                     {(() => {
-                      const colDeficit = compareMode === "period"
-                        ? pnlComparePeriodVariances.totalDeficit
-                        : (branchCompareVariances[col.key]?.totalDeficit || 0);
+                      const colDeficit = costingMethod === "periodic"
+                        ? 0
+                        : compareMode === "period"
+                          ? pnlComparePeriodVariances.totalDeficit
+                          : (branchCompareVariances[col.key]?.totalDeficit || 0);
                       const colAdjNet = col.data.grossProfit - colDeficit - col.data.totalIndirectExpenses - col.data.wasteCost;
                       return [
                        { label: "صافي المبيعات", a: pnl.netSales, b: col.data.netSales },

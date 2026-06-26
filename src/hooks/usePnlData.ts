@@ -190,9 +190,28 @@ export function usePnlData(
     enabled: !!companyId,
   });
   // 9. Periodic costing data (only when method === "periodic")
+  // Opening stock = LAST completed stocktake strictly BEFORE dateFrom (per branch).
+  // Closing stock = LAST completed stocktake within [dateFrom, dateTo] (per branch).
   const periodicEnabled = enabled && costingMethod === "periodic";
-  const { data: periodStocktakes, isLoading: lStk } = useQuery({
-    queryKey: ["pnl-periodic-stocktakes", companyId, dateFrom, dateTo, branchId],
+  const { data: openingStocktakes, isLoading: lStkOpen } = useQuery({
+    queryKey: ["pnl-periodic-stk-opening", companyId, dateFrom, branchId],
+    queryFn: async () =>
+      fetchAllRows<any>((from, to) => {
+        let q = supabase
+          .from("stocktakes")
+          .select("id, date, branch_id, status, type, total_actual_value")
+          .eq("company_id", companyId!)
+          .eq("status", "مكتمل")
+          .neq("type", "فحص مخزون فوري")
+          .lt("date", dateFrom);
+        if (branchId && branchId !== "all") q = q.eq("branch_id", branchId);
+        return q.order("date", { ascending: false }).range(from, to);
+      }),
+    enabled: periodicEnabled,
+  });
+
+  const { data: closingStocktakes, isLoading: lStkClose } = useQuery({
+    queryKey: ["pnl-periodic-stk-closing", companyId, dateFrom, dateTo, branchId],
     queryFn: async () =>
       fetchAllRows<any>((from, to) => {
         let q = supabase
@@ -204,10 +223,11 @@ export function usePnlData(
           .gte("date", dateFrom)
           .lte("date", dateTo);
         if (branchId && branchId !== "all") q = q.eq("branch_id", branchId);
-        return q.order("date").range(from, to);
+        return q.order("date", { ascending: false }).range(from, to);
       }),
     enabled: periodicEnabled,
   });
+  const lStk = lStkOpen || lStkClose;
 
   const { data: periodPurchases, isLoading: lPur } = useQuery({
     queryKey: ["pnl-periodic-purchases", companyId, dateFrom, dateTo, branchId],
@@ -326,39 +346,34 @@ export function usePnlData(
   let periodicBreakdown: PeriodicBreakdown | undefined;
 
   if (costingMethod === "periodic") {
-    // First & last completed stocktake within the period (per branch when filtered)
-    const stk = (periodStocktakes || []).slice().sort((a, b) =>
-      String(a.date).localeCompare(String(b.date))
-    );
-    // When "all" branches, sum first stocktake per branch and last stocktake per branch
+    // Opening: pick the latest stocktake strictly before dateFrom, per branch
+    const openingByBranch = new Map<string, any>();
+    (openingStocktakes || []).forEach((s) => {
+      const key = s.branch_id || "__none__";
+      const prev = openingByBranch.get(key);
+      if (!prev || String(s.date) > String(prev.date)) openingByBranch.set(key, s);
+    });
+    // Closing: pick the latest stocktake within the period, per branch
+    const closingByBranch = new Map<string, any>();
+    (closingStocktakes || []).forEach((s) => {
+      const key = s.branch_id || "__none__";
+      const prev = closingByBranch.get(key);
+      if (!prev || String(s.date) > String(prev.date)) closingByBranch.set(key, s);
+    });
+
     let openingStock = 0;
     let closingStock = 0;
     let openingDate: string | null = null;
     let closingDate: string | null = null;
-    if (branchId && branchId !== "all") {
-      if (stk.length > 0) {
-        openingStock = Number(stk[0].total_actual_value || 0);
-        openingDate = stk[0].date;
-        closingStock = Number(stk[stk.length - 1].total_actual_value || 0);
-        closingDate = stk[stk.length - 1].date;
-      }
-    } else {
-      const byBranchFirst = new Map<string, any>();
-      const byBranchLast = new Map<string, any>();
-      stk.forEach((s) => {
-        const key = s.branch_id || "__none__";
-        if (!byBranchFirst.has(key)) byBranchFirst.set(key, s);
-        byBranchLast.set(key, s);
-      });
-      byBranchFirst.forEach((s) => {
-        openingStock += Number(s.total_actual_value || 0);
-        if (!openingDate || String(s.date) < openingDate) openingDate = s.date;
-      });
-      byBranchLast.forEach((s) => {
-        closingStock += Number(s.total_actual_value || 0);
-        if (!closingDate || String(s.date) > closingDate) closingDate = s.date;
-      });
-    }
+    openingByBranch.forEach((s) => {
+      openingStock += Number(s.total_actual_value || 0);
+      if (!openingDate || String(s.date) > openingDate) openingDate = s.date;
+    });
+    closingByBranch.forEach((s) => {
+      closingStock += Number(s.total_actual_value || 0);
+      if (!closingDate || String(s.date) > closingDate) closingDate = s.date;
+    });
+
     const purchases = (periodPurchases || []).reduce(
       (sum, p) => sum + Number(p.total_amount || 0),
       0

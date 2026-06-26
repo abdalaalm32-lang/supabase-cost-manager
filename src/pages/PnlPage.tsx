@@ -804,6 +804,21 @@ export const PnlPage: React.FC = () => {
               </Select>
             </div>
 
+            {/* Costing method (Perpetual vs Periodic) */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">طريقة التقفيل</label>
+              <Select value={costingMethod} onValueChange={(v) => setCostingMethod(v as CostingMethod)}>
+                <SelectTrigger className="w-48 h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="perpetual">جرد مستمر (Recipes/WAC)</SelectItem>
+                  <SelectItem value="periodic">جرد دوري (جرد + مشتريات)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+
             {/* Comparison toggle */}
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">مقارنة</label>

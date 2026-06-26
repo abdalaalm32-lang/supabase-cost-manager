@@ -264,8 +264,13 @@ export const PnlPage: React.FC = () => {
     compareMode === "period" ? compareDateFromStr : dateFromStr,
     compareMode === "period" ? compareDateToStr : dateToStr,
     compareMode === "period" ? branchId : "___none___",
-    manualExpensesCompare
+    manualExpensesCompare,
+    new Set<string>(),
+    {},
+    null,
+    costingMethod,
   );
+
 
   // Branch mode: results collected from child loaders, keyed by branchId
   const [branchCompareData, setBranchCompareData] = useState<Record<string, ReturnType<typeof usePnlData>>>({});

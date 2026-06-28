@@ -452,9 +452,11 @@ export const TransferDetailPage: React.FC = () => {
         // Note: Transfers move stock between locations but don't change global current_stock
         // PER-BRANCH cost: option 1 → destination branch absorbs source branch cost
         if (finalStatus === "مكتمل" && destLocationType === "branch" && destinationId) {
-          // Load branch supply policy + pricing rows once (for warehouse→branch supply pricing)
           let branchPolicy: any = null;
           let pricingMap: Record<string, any> = {};
+          let transportShareByItem: Record<string, number> = {};
+          let loadingShareByItem: Record<string, number> = {};
+
           if (sourceLocationType === "warehouse") {
             const [{ data: pol }, { data: prc }] = await Promise.all([
               (supabase as any).from("branch_supply_policies").select("*").eq("branch_id", destinationId).maybeSingle(),
@@ -462,6 +464,27 @@ export const TransferDetailPage: React.FC = () => {
             ]);
             branchPolicy = pol;
             (prc ?? []).forEach((r: any) => { pricingMap[r.stock_item_id] = r; });
+
+            // Allocate transport + loading across all eligible items by policy.allocation_method
+            if (branchPolicy && branchPolicy.is_active !== false) {
+              const method: AllocationMethod = (branchPolicy.allocation_method as AllocationMethod) || "value";
+              const allocItems = items
+                .filter((it) => it.stock_item_id && Number(it.quantity) > 0)
+                .filter((it) => pricingMap[it.stock_item_id!]?.is_available_for_transfer !== false)
+                .map((it) => ({
+                  id: it.stock_item_id!,
+                  current_stock: Number(it.current_stock) || 0,
+                  avg_cost: Number(it.avg_cost) || 0,
+                  unit_weight: Number(pricingMap[it.stock_item_id!]?.unit_weight) || 0,
+                  unit_volume: Number(pricingMap[it.stock_item_id!]?.unit_volume) || 0,
+                  manual_share: Number(pricingMap[it.stock_item_id!]?.manual_overhead_share) || 0,
+                  quantity: Number(it.quantity),
+                }));
+              const totalTransport = Number(branchPolicy.transportation_cost) || 0;
+              const totalLoading = Number(branchPolicy.loading_cost) || 0;
+              transportShareByItem = allocateCharge(allocItems, totalTransport, method, true);
+              loadingShareByItem = allocateCharge(allocItems, totalLoading, method, true);
+            }
           }
 
           for (const item of items) {
@@ -471,17 +494,25 @@ export const TransferDetailPage: React.FC = () => {
               if (sourceLocationType === "branch" && sourceId) {
                 sourceUnitCost = await getBranchCost(item.stock_item_id, sourceId);
               } else if (sourceLocationType === "warehouse" && branchPolicy && branchPolicy.is_active !== false) {
-                // Apply central-warehouse supply pricing (cost + profit + transport + loading)
                 const pricing = pricingMap[item.stock_item_id];
-                const r = computeSupplyPrice({
-                  wac: Number(item.avg_cost) || 0,
-                  currentStock: Number(item.current_stock) || 0,
-                  pricing,
-                  policy: branchPolicy,
-                  quantity: Number(item.quantity),
-                });
-                sourceUnitCost = r.finalUnitPrice;
-                // Save breakdown for transparency (best-effort; transfer_item id needed after insert below)
+                // Skip supply pricing if the item is flagged as unavailable for internal transfer
+                if (pricing?.is_available_for_transfer === false) {
+                  sourceUnitCost = Number(item.avg_cost) || 0;
+                } else {
+                  const qty = Math.max(Number(item.quantity), 1);
+                  const transportPerUnit = (transportShareByItem[item.stock_item_id] || 0) / qty;
+                  const loadingPerUnit = (loadingShareByItem[item.stock_item_id] || 0) / qty;
+                  const r = computeSupplyPrice({
+                    wac: Number(item.avg_cost) || 0,
+                    currentStock: Number(item.current_stock) || 0,
+                    pricing,
+                    policy: branchPolicy,
+                    quantity: Number(item.quantity),
+                    transportPerUnitOverride: transportPerUnit,
+                    loadingPerUnitOverride: loadingPerUnit,
+                  });
+                  sourceUnitCost = r.finalUnitPrice;
+                }
               }
               await applyBranchCostIn({
                 companyId: companyId!,

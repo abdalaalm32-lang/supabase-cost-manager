@@ -26,6 +26,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ExportButtons } from "@/components/ExportButtons";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { fetchAllRows } from "@/lib/fetchAllRows";
+
 
 type FilterStatus = "نشط" | "غير نشط" | "الكل";
 

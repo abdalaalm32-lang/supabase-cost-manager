@@ -1,143 +1,111 @@
+# تطوير صفحة تسعير المخزن المركزي
 
-# خطة بناء: تسعير المخزن المركزي (Internal Supply Pricing)
+## 1) تحديد الأصناف المتاحة للتوريد الداخلي
+ليس كل صنف مربوط بالمخزن يُحوَّل للفروع. هنضيف **Toggle "متاح للتوريد"** على مستوى كل صنف داخل جدول التسعير. الأصناف الغير مفعلة تظهر بشكل باهت ولا تُحسب في معاينة أسعار الفروع، ولا يقترحها السيستم تلقائياً في أذونات التحويل.
 
-## 🎯 الهدف
-المخزن المركزي يعمل كـ"مورّد داخلي" يبيع الخامات/المصنعات للفروع بسعر = تكلفة + هامش ربح + تكلفة نقل + تحميل. السعر يتحدّث تلقائياً عند كل استلام جديد، ويُطبَّق تلقائياً على أذونات التحويل.
-
----
-
-## 📍 الموقع في النظام
-- **Sidebar:** صفحة جديدة تحت **"إدارة المخزون"** بعنوان **"تسعير المخزن المركزي"** (`/inventory/supply-pricing`).
-- **Settings/الفروع:** إضافة تبويب **"سياسة التوريد الداخلي"** داخل صفحة إدارة الفروع.
+- حقل جديد: `stock_item_supply_pricing.is_available_for_transfer` (boolean, default true)
+- فلتر سريع في الهيدر: **الكل / متاح للتوريد فقط / غير متاح**
 
 ---
 
-## 🗄️ تغييرات قاعدة البيانات
+## 2) المصاريف غير المباشرة للمخزن (Overhead)
+قسم جديد في أعلى الصفحة: **"المصاريف غير المباشرة للمخزن"** — جدول بنود ديناميكية يقدر العميل يضيف/يحذف بنود (إيجار، مرتبات، فواتير، صيانة، أمن، …).
 
-### 1) جدول جديد: `branch_supply_policies`
-سياسة التوريد لكل فرع.
-- `branch_id` (FK)
-- `profit_percentage` (هامش الربح %)
-- `transportation_cost` (تكلفة نقل ثابتة لكل تحويل)
-- `loading_cost` (تكلفة تحميل ثابتة)
-- `minimum_order_value` (اختياري)
-- `is_active`
+- جدول جديد: `warehouse_overhead_expenses`
+  - `warehouse_id`, `expense_name`, `monthly_amount`, `is_active`
+- KPI: **إجمالي المصاريف الشهرية** + **عدد البنود النشطة**
+- Dialog "إضافة/تعديل بند" بسيط (اسم + مبلغ شهري + نشط)
 
-### 2) جدول جديد: `stock_item_supply_pricing`
-إعدادات التسعير لكل خامة في المخزن المركزي.
-- `stock_item_id` (FK)
-- `supply_type` (`cost` / `cost_plus_profit`)
-- `manufacturing_cost` (تكلفة تصنيع — للمصنعات)
-- `packaging_cost` (تعبئة)
-- `auto_calculate` (boolean)
-- `manual_base_price` (لو auto = false)
-- `last_calculated_at`
+### طريقة التوزيع على الأصناف (Allocation Basis)
+Select واحد في أعلى القسم — يطبّق على كل المصاريف:
+- 💰 **حسب القيمة (Recommended)** — نسبة قيمة الصنف (الكمية × WAC) من إجمالي قيمة المخزن
+- ⚖️ **حسب الوزن** — يستخدم `unit_weight` × الكمية
+- 📦 **حسب الحجم** — يستخدم `unit_volume` × الكمية
+- 🔢 **حسب الكمية** — كل صنف ياخد نصيب متساوي حسب الكمية
+- ✋ **يدوي** — العميل يحدد نسبة لكل صنف
 
-### 3) جدول جديد: `transfer_pricing_breakdown`
-تفاصيل تكوين السعر لكل بند تحويل (للشفافية).
-- `transfer_item_id` (FK)
-- `base_cost`, `manufacturing_cost`, `packaging_cost`, `transport_cost`, `loading_cost`, `profit_amount`, `final_unit_price`
+النتيجة: لكل صنف **"نصيب من المصاريف غير المباشرة لكل وحدة"** (per-unit overhead share).
 
 ---
 
-## 🧮 معادلة التسعير
+## 3) خانة "تكلفة التصنيع" تتعبأ تلقائياً
+حالياً `manufacturing_cost` يدوية. نخليها تعرض نصيب الصنف من المصاريف غير المباشرة كقيمة افتراضية، مع إمكانية override يدوي.
 
-```text
-سعر التوريد للوحدة =
-  ( WAC + Manufacturing + Packaging )
-  × ( 1 + Branch.profit_% / 100 )
-  + ( Branch.transport_cost / quantity )
-  + ( Branch.loading_cost   / quantity )
+- زر صغير 🔄 جنب الحقل: "أعد الحساب من المصاريف غير المباشرة"
+- Tooltip يوضح: `(إجمالي المصاريف الشهرية × نسبة الصنف) ÷ كمية المخزن`
+
+---
+
+## 4) توزيع تكلفة النقل والتحميل (Allocate Charges By)
+نفس الفكرة بس على مستوى **عملية التحويل** (مش شهري):
+
+في `branch_supply_policies` نضيف:
+- `allocation_method` (`value` / `weight` / `volume` / `quantity` / `manual`)
+
+عند بناء التحويل في `TransferDetailPage`:
+- بدل قسمة `transportation_cost / qty` على كل صنف بالتساوي
+- يحسب نسبة كل صنف حسب الطريقة المختارة
+- ويوزع `transportation_cost + loading_cost` بشكل متناسب
+- يظهر breakdown شفاف تحت كل بند
+
+---
+
+## 5) تحديثات قاعدة البيانات (Migration)
+
+```sql
+-- 1) Overhead expenses per warehouse
+CREATE TABLE warehouse_overhead_expenses (
+  id, company_id, warehouse_id,
+  expense_name, monthly_amount,
+  is_active, created_at, updated_at
+);
+
+-- 2) Overhead allocation settings (per warehouse)
+ALTER TABLE warehouses ADD COLUMN
+  overhead_allocation_method text DEFAULT 'value';
+
+-- 3) Toggle availability per stock item
+ALTER TABLE stock_item_supply_pricing ADD COLUMN
+  is_available_for_transfer boolean DEFAULT true,
+  manual_overhead_share numeric DEFAULT 0,
+  unit_weight numeric DEFAULT 0,
+  unit_volume numeric DEFAULT 0;
+
+-- 4) Per-policy transport allocation
+ALTER TABLE branch_supply_policies ADD COLUMN
+  allocation_method text DEFAULT 'value';
 ```
 
-**قواعد:**
-- لو المخزون = 0 → يستخدم آخر سعر شراء بدل WAC.
-- لو `supply_type = cost` → الربح = 0 (تكلفة فقط).
-- لو `auto_calculate = false` → يستخدم `manual_base_price`.
-- التحديث تلقائي عند: استلام فاتورة شراء، تعديل WAC، تغيير سياسة الفرع.
+كل جدول جديد ياخد GRANT + RLS.
 
 ---
 
-## 🖥️ صفحة "تسعير المخزن المركزي"
+## 6) تحديثات الواجهة
 
-### الهيدر
-- KPI Cards: إجمالي عدد الخامات المسعّرة، متوسط هامش الربح، عدد الخامات اللي محتاجة مراجعة.
-- زر "تحديث جميع الأسعار" (recalculate bulk).
-- زر "تطبيق نسبة ربح موحّدة" (bulk apply).
+### `SupplyPricingPage.tsx`
+- قسم جديد فوق: **بطاقة المصاريف غير المباشرة** (CRUD + select طريقة التوزيع)
+- عمود جديد في الجدول: **متاح للتوريد** (Switch)
+- عمود جديد: **نصيب من المصاريف** (محسوب)
+- زر إعادة حساب تكلفة التصنيع من المصاريف
+- فلتر "متاح للتوريد"
 
-### الفلاتر
-- بحث بالاسم/الكود.
-- فلتر المجموعة.
-- فلتر نوع التوريد (Cost / Cost+Profit).
-- فلتر "محتاج تحديث" (آخر تحديث > 7 أيام).
+### `TransferDetailPage.tsx`
+- استخدام `allocation_method` لتوزيع النقل/التحميل
+- إخفاء/تعطيل الأصناف غير المتاحة للتوريد عند المصدر = مخزن مركزي
+- تحديث breakdown ليعكس التوزيع المتناسب
 
-### الجدول الرئيسي
-| الكود | الاسم | المجموعة | الرصيد بالمخزن | WAC | آخر سعر شراء | نوع التوريد | تكلفة تصنيع | تعبئة | حساب تلقائي | السعر الأساسي | آخر تحديث | إجراءات |
-
-- صف قابل للتوسيع يظهر **معاينة السعر لكل فرع** (لأن السعر النهائي يختلف حسب الفرع).
-- Inline edit للحقول.
-
-### Dialog "معاينة الأسعار حسب الفرع"
-جدول صغير: الفرع | الربح% | نقل | تحميل | السعر النهائي للوحدة.
-
----
-
-## ⚙️ تبويب "سياسة التوريد" في صفحة الفروع
-نموذج بسيط لكل فرع:
-- نسبة الربح %
-- تكلفة النقل (للتحويل الواحد)
-- تكلفة التحميل
-- حد أدنى للأمر (اختياري)
-- زر "حفظ السياسة"
-
----
-
-## 🔄 التكامل مع أذونات التحويل
-في `AddTransferPage` / `TransferDetailPage`:
-- لما المصدر = مخزن مركزي والوجهة = فرع:
-  - يُحسب سعر التوريد تلقائياً لكل بند بناءً على سياسة الفرع المستلم.
-  - يظهر **breakdown صغير** أسفل كل بند: التكلفة + الربح + النقل = السعر النهائي.
-  - يُحفظ في `transfer_pricing_breakdown`.
-- التكلفة المُسجّلة عند الفرع (WAC) = سعر التوريد (مع الربح)، علشان P&L الفرع يطلع مظبوط والمخزن المركزي يطلع له ربح إداري.
-
----
-
-## 🔁 التحديث التلقائي عند الشراء
-في hook `useBranchCosts` أو عند حفظ فاتورة شراء (`AddPurchaseInvoicePage`):
-- بعد تحديث WAC للخامة → trigger إعادة حساب `stock_item_supply_pricing.last_calculated_at` وأي cached prices.
-- إشعار في NotificationBell: "تم تحديث سعر توريد X خامة بعد فاتورة جديدة".
-
----
-
-## 🎨 التصميم
-- يتبع الـ Design System الحالي (dark mode، glass-card، gradient-primary).
-- جدول بنفس نمط `InventoryLevelsPage` للاتساق.
-- ألوان دلالية: 
-  - 🟢 سعر محدّث (< 7 أيام)
-  - 🟡 يحتاج مراجعة (7-30 يوم)
-  - 🔴 قديم (> 30 يوم)
-- Tooltip على كل سعر يشرح المعادلة.
-
----
-
-## 📋 خطوات التنفيذ بالترتيب
-
-1. **Migration** — إنشاء الجداول الثلاثة + GRANTs + RLS policies.
-2. **Hook** `useSupplyPricing` — جلب وحساب الأسعار.
-3. **صفحة** `SupplyPricingPage.tsx` تحت `/inventory/supply-pricing`.
-4. **Sidebar** — إضافة الرابط تحت إدارة المخزون.
-5. **تبويب سياسة الفرع** في `SettingsBranchesPage` / `CompanySettingsPage`.
-6. **تكامل التحويل** — تعديل `AddTransferPage` و `TransferDetailPage` لتطبيق السعر تلقائياً.
-7. **Hook للتحديث التلقائي** عند الشراء.
-8. **اختبار شامل** (Playwright على Dev).
+### `useSupplyPricing.ts`
+- دالة جديدة `computeOverheadShare(item, allocationMethod, totals)`
+- دالة `allocateTransportCharges(items, policy)` تُرجع نصيب كل بند
+- تعديل `computeSupplyPrice` يقبل `overheadPerUnit` و `transportPerUnit` محسوبين من برّه
 
 ---
 
 ## ✅ المخرجات
-- صفحة احترافية لإدارة أسعار التوريد الداخلي.
-- سياسة تسعير مرنة لكل فرع (ربح + نقل + تحميل).
-- تحديث تلقائي مع كل فاتورة شراء.
-- تكامل سلس مع نظام التحويلات الموجود.
-- شفافية كاملة (breakdown لكل سعر تحويل).
+- كل صنف يقدر يتفعّل/يتعطّل من التوريد الداخلي بشكل صريح.
+- المخزن له بنود مصاريف غير مباشرة قابلة للإدارة.
+- 5 طرق توزيع للمصاريف + للنقل والتحميل، مع توصية بـ "حسب القيمة".
+- تكلفة التصنيع تتحدّث تلقائياً من نصيب الصنف من الـ Overhead.
+- تسعير التوريد النهائي يطلع دقيق وشفاف.
 
-هل أبدأ التنفيذ؟
+أبدأ التنفيذ؟

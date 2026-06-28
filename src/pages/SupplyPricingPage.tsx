@@ -275,7 +275,10 @@ export const SupplyPricingPage: React.FC = () => {
   const [expenseAmount, setExpenseAmount] = useState<number>(0);
 
   const addExpense = async () => {
-    if (!companyId || !selectedWarehouseId || !expenseName.trim()) return;
+    if (!companyId || !selectedWarehouseId || !expenseName.trim()) {
+      toast({ title: "تنبيه", description: "اختر مخزن واكتب اسم البند", variant: "destructive" });
+      return;
+    }
     const { error } = await (supabase as any).from("warehouse_overhead_expenses").insert({
       company_id: companyId,
       warehouse_id: selectedWarehouseId,
@@ -290,7 +293,8 @@ export const SupplyPricingPage: React.FC = () => {
     setExpenseName("");
     setExpenseAmount(0);
     setShowAddExpense(false);
-    qc.invalidateQueries({ queryKey: ["warehouse-overhead", companyId, selectedWarehouseId] });
+    await qc.refetchQueries({ queryKey: ["warehouse-overhead", companyId, selectedWarehouseId] });
+    toast({ title: "تم", description: "تم إضافة البند بنجاح" });
   };
 
   const updateExpense = async (id: string, patch: any) => {
@@ -299,7 +303,7 @@ export const SupplyPricingPage: React.FC = () => {
       toast({ title: "خطأ", description: error.message, variant: "destructive" });
       return;
     }
-    qc.invalidateQueries({ queryKey: ["warehouse-overhead", companyId, selectedWarehouseId] });
+    await qc.refetchQueries({ queryKey: ["warehouse-overhead", companyId, selectedWarehouseId] });
   };
 
   const deleteExpense = async (id: string) => {
@@ -308,7 +312,8 @@ export const SupplyPricingPage: React.FC = () => {
       toast({ title: "خطأ", description: error.message, variant: "destructive" });
       return;
     }
-    qc.invalidateQueries({ queryKey: ["warehouse-overhead", companyId, selectedWarehouseId] });
+    await qc.refetchQueries({ queryKey: ["warehouse-overhead", companyId, selectedWarehouseId] });
+    toast({ title: "تم", description: "تم حذف البند" });
   };
 
   // Bulk: apply overhead share to manufacturing_cost for all filtered items

@@ -457,18 +457,19 @@ export const SupplyPricingPage: React.FC = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-center">الفرع</TableHead>
+                    <TableHead className="text-center">تفعيل التوريد الداخلي</TableHead>
                     <TableHead className="text-center">نسبة الربح %</TableHead>
                     <TableHead className="text-center">تكلفة النقل (للتحويل)</TableHead>
                     <TableHead className="text-center">تكلفة التحميل</TableHead>
                     <TableHead className="text-center">حد أدنى للأمر</TableHead>
-                    <TableHead className="text-center">نشطة</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {branches.map((br: any) => {
                     const pol = policies.find((p) => p.branch_id === br.id);
+                    const isActive = pol?.is_active ?? true;
                     return (
-                      <TableRow key={br.id}>
+                      <TableRow key={br.id} className={!isActive ? "opacity-60" : ""}>
                         <TableCell className="text-center font-medium">
                           <div className="flex items-center gap-2 justify-center">
                             <Building2 size={14} className="text-primary"/>
@@ -477,9 +478,27 @@ export const SupplyPricingPage: React.FC = () => {
                           </div>
                         </TableCell>
                         <TableCell className="text-center">
+                          <div className="flex flex-col items-center gap-1">
+                            <Switch
+                              checked={isActive}
+                              onCheckedChange={(v) => upsertPolicy(br.id, { is_active: v })}
+                            />
+                            <Badge
+                              variant={isActive ? "default" : "outline"}
+                              className={cn(
+                                "text-[10px] font-bold",
+                                isActive ? "bg-emerald-500/15 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/15" : "text-muted-foreground"
+                              )}
+                            >
+                              {isActive ? "مُفعَّل — يطبق سعر التوريد" : "مُعطَّل — ينتقل بالتكلفة فقط"}
+                            </Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">
                           <Input
                             type="number"
                             step="0.1"
+                            disabled={!isActive}
                             className="h-8 w-24 mx-auto text-center"
                             defaultValue={pol?.profit_percentage ?? 0}
                             onBlur={(e) => upsertPolicy(br.id, { profit_percentage: Number(e.target.value) || 0 })}
@@ -488,6 +507,7 @@ export const SupplyPricingPage: React.FC = () => {
                         <TableCell className="text-center">
                           <Input
                             type="number"
+                            disabled={!isActive}
                             className="h-8 w-28 mx-auto text-center"
                             defaultValue={pol?.transportation_cost ?? 0}
                             onBlur={(e) => upsertPolicy(br.id, { transportation_cost: Number(e.target.value) || 0 })}
@@ -496,6 +516,7 @@ export const SupplyPricingPage: React.FC = () => {
                         <TableCell className="text-center">
                           <Input
                             type="number"
+                            disabled={!isActive}
                             className="h-8 w-28 mx-auto text-center"
                             defaultValue={pol?.loading_cost ?? 0}
                             onBlur={(e) => upsertPolicy(br.id, { loading_cost: Number(e.target.value) || 0 })}
@@ -504,15 +525,10 @@ export const SupplyPricingPage: React.FC = () => {
                         <TableCell className="text-center">
                           <Input
                             type="number"
+                            disabled={!isActive}
                             className="h-8 w-28 mx-auto text-center"
                             defaultValue={pol?.minimum_order_value ?? 0}
                             onBlur={(e) => upsertPolicy(br.id, { minimum_order_value: Number(e.target.value) || 0 })}
-                          />
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Switch
-                            checked={pol?.is_active ?? true}
-                            onCheckedChange={(v) => upsertPolicy(br.id, { is_active: v })}
                           />
                         </TableCell>
                       </TableRow>

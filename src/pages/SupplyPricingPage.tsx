@@ -839,6 +839,7 @@ export const SupplyPricingPage: React.FC = () => {
                 {branches.map((br: any) => {
                   const p = pricingByItem.get(previewItem.id);
                   const pol = policies.find((x) => x.branch_id === br.id);
+                  const tl = transportPerUnitByBranch.get(br.id)?.[previewItem.id];
                   const r = computeSupplyPrice({
                     wac: Number(previewItem.avg_cost) || 0,
                     lastPurchasePrice: previewItem.lastP,
@@ -846,6 +847,8 @@ export const SupplyPricingPage: React.FC = () => {
                     pricing: p,
                     policy: pol,
                     overheadPerUnit: previewItem.overheadPerUnit,
+                    transportPerUnitOverride: tl?.transport ?? 0,
+                    loadingPerUnitOverride: tl?.loading ?? 0,
                     quantity: 1,
                   });
                   return (

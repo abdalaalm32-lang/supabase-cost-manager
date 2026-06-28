@@ -584,7 +584,7 @@ export const SupplyPricingPage: React.FC = () => {
                   })}
                   {filteredItems.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={15} className="text-center py-8 text-muted-foreground">لا توجد خامات</TableCell>
+                      <TableCell colSpan={14} className="text-center py-8 text-muted-foreground">لا توجد خامات</TableCell>
                     </TableRow>
                   )}
                 </TableBody>

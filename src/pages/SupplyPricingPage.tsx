@@ -430,9 +430,6 @@ export const SupplyPricingPage: React.FC = () => {
                   <SelectItem value="cost_plus_profit">تكلفة + ربح</SelectItem>
                 </SelectContent>
               </Select>
-              <Button size="sm" variant="outline" className="gap-1 mr-auto" onClick={applyOverheadToManufacturing}>
-                <RefreshCw size={14}/> تحميل نصيب المصاريف على تكلفة التصنيع
-              </Button>
             </CardContent>
           </Card>
 

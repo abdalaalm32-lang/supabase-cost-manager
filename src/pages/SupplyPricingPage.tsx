@@ -457,7 +457,7 @@ export const SupplyPricingPage: React.FC = () => {
                     </TableHead>
                     <TableHead className="text-center">متاح للتوريد</TableHead>
                     <TableHead className="text-center">نوع التوريد</TableHead>
-                    <TableHead className="text-center">تكلفة تصنيع</TableHead>
+                    
                     <TableHead className="text-center">تعبئة</TableHead>
                     <TableHead className="text-center">حساب تلقائي</TableHead>
                     <TableHead className="text-center">السعر الأساسي</TableHead>

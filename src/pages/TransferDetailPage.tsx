@@ -470,7 +470,7 @@ export const TransferDetailPage: React.FC = () => {
               let sourceUnitCost = Number(item.avg_cost) || 0;
               if (sourceLocationType === "branch" && sourceId) {
                 sourceUnitCost = await getBranchCost(item.stock_item_id, sourceId);
-              } else if (sourceLocationType === "warehouse" && branchPolicy) {
+              } else if (sourceLocationType === "warehouse" && branchPolicy && branchPolicy.is_active !== false) {
                 // Apply central-warehouse supply pricing (cost + profit + transport + loading)
                 const pricing = pricingMap[item.stock_item_id];
                 const r = computeSupplyPrice({

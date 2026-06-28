@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       branch_supply_policies: {
         Row: {
+          allocation_method: string
           branch_id: string
           company_id: string
           created_at: string
@@ -28,6 +29,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          allocation_method?: string
           branch_id: string
           company_id: string
           created_at?: string
@@ -40,6 +42,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          allocation_method?: string
           branch_id?: string
           company_id?: string
           created_at?: string
@@ -2391,12 +2394,16 @@ export type Database = {
           company_id: string
           created_at: string
           id: string
+          is_available_for_transfer: boolean
           last_calculated_at: string | null
           manual_base_price: number | null
+          manual_overhead_share: number
           manufacturing_cost: number
           packaging_cost: number
           stock_item_id: string
           supply_type: string
+          unit_volume: number
+          unit_weight: number
           updated_at: string
         }
         Insert: {
@@ -2404,12 +2411,16 @@ export type Database = {
           company_id: string
           created_at?: string
           id?: string
+          is_available_for_transfer?: boolean
           last_calculated_at?: string | null
           manual_base_price?: number | null
+          manual_overhead_share?: number
           manufacturing_cost?: number
           packaging_cost?: number
           stock_item_id: string
           supply_type?: string
+          unit_volume?: number
+          unit_weight?: number
           updated_at?: string
         }
         Update: {
@@ -2417,12 +2428,16 @@ export type Database = {
           company_id?: string
           created_at?: string
           id?: string
+          is_available_for_transfer?: boolean
           last_calculated_at?: string | null
           manual_base_price?: number | null
+          manual_overhead_share?: number
           manufacturing_cost?: number
           packaging_cost?: number
           stock_item_id?: string
           supply_type?: string
+          unit_volume?: number
+          unit_weight?: number
           updated_at?: string
         }
         Relationships: []
@@ -3053,6 +3068,39 @@ export type Database = {
           },
         ]
       }
+      warehouse_overhead_expenses: {
+        Row: {
+          company_id: string
+          created_at: string
+          expense_name: string
+          id: string
+          is_active: boolean
+          monthly_amount: number
+          updated_at: string
+          warehouse_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          expense_name: string
+          id?: string
+          is_active?: boolean
+          monthly_amount?: number
+          updated_at?: string
+          warehouse_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          expense_name?: string
+          id?: string
+          is_active?: boolean
+          monthly_amount?: number
+          updated_at?: string
+          warehouse_id?: string
+        }
+        Relationships: []
+      }
       warehouses: {
         Row: {
           active: boolean
@@ -3064,6 +3112,7 @@ export type Database = {
           id: string
           manager_id: string | null
           name: string
+          overhead_allocation_method: string
         }
         Insert: {
           active?: boolean
@@ -3075,6 +3124,7 @@ export type Database = {
           id?: string
           manager_id?: string | null
           name: string
+          overhead_allocation_method?: string
         }
         Update: {
           active?: boolean
@@ -3086,6 +3136,7 @@ export type Database = {
           id?: string
           manager_id?: string | null
           name?: string
+          overhead_allocation_method?: string
         }
         Relationships: [
           {

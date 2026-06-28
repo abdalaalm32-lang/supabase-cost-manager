@@ -21,7 +21,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Pencil, Trash2, Search, Warehouse, Building2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Warehouse, Building2, Link2 } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ExportButtons } from "@/components/ExportButtons";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
@@ -45,6 +46,14 @@ export const StockItemsTab: React.FC = () => {
   const [filterCodePrefix, setFilterCodePrefix] = useState("all");
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [submitted, setSubmitted] = useState(false);
+
+  // Bulk link
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkBranches, setBulkBranches] = useState<string[]>([]);
+  const [bulkWarehouses, setBulkWarehouses] = useState<string[]>([]);
+  const [bulkScope, setBulkScope] = useState<"all" | "filtered">("filtered");
+  const [bulkMode, setBulkMode] = useState<"append" | "replace">("append");
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
 
   // Form fields
   const [itemName, setItemName] = useState("");
@@ -503,13 +512,79 @@ export const StockItemsTab: React.FC = () => {
     else setSelectedWarehouses(warehouses.map((w: any) => w.id));
   };
 
+  const bulkLinkMutation = useMutation({
+    mutationFn: async () => {
+      const targetItems = bulkScope === "all" ? items : filtered;
+      if (targetItems.length === 0) throw new Error("لا توجد أصناف للربط");
+      if (bulkBranches.length === 0 && bulkWarehouses.length === 0)
+        throw new Error("اختر فرع أو مخزن واحد على الأقل");
+
+      const itemIds = targetItems.map((i: any) => i.id);
+
+      if (bulkMode === "replace") {
+        const { error: delErr } = await supabase
+          .from("stock_item_locations")
+          .delete()
+          .in("stock_item_id", itemIds);
+        if (delErr) throw delErr;
+      }
+
+      // Build rows; if append, skip ones that already exist
+      const existing = bulkMode === "append" ? itemLocations : [];
+      const rows: any[] = [];
+      itemIds.forEach((iid) => {
+        bulkBranches.forEach((bId) => {
+          const exists = existing.some(
+            (l: any) => l.stock_item_id === iid && l.branch_id === bId
+          );
+          if (!exists) rows.push({ stock_item_id: iid, branch_id: bId, company_id: companyId });
+        });
+        bulkWarehouses.forEach((wId) => {
+          const exists = existing.some(
+            (l: any) => l.stock_item_id === iid && l.warehouse_id === wId
+          );
+          if (!exists) rows.push({ stock_item_id: iid, warehouse_id: wId, company_id: companyId });
+        });
+      });
+
+      if (rows.length > 0) {
+        // chunk to avoid large payloads
+        const chunkSize = 500;
+        for (let i = 0; i < rows.length; i += chunkSize) {
+          const { error } = await supabase
+            .from("stock_item_locations")
+            .insert(rows.slice(i, i + chunkSize));
+          if (error) throw error;
+        }
+      }
+      return { itemsCount: itemIds.length, rowsCount: rows.length };
+    },
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ["stock-item-locations"] });
+      toast.success(`تم ربط ${res.itemsCount} صنف (${res.rowsCount} ارتباط جديد)`);
+      setBulkConfirmOpen(false);
+      setBulkOpen(false);
+      setBulkBranches([]);
+      setBulkWarehouses([]);
+    },
+    onError: (e: any) => {
+      toast.error(e.message);
+      setBulkConfirmOpen(false);
+    },
+  });
+
   return (
     <div className="space-y-4 mt-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">الأصناف</h2>
-        <Button className="gap-2" onClick={() => { resetForm(); setOpen(true); }}>
-          <Plus size={18} /> إضافة صنف
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" className="gap-2" onClick={() => setBulkOpen(true)}>
+            <Link2 size={18} /> ربط جماعي بالمواقع
+          </Button>
+          <Button className="gap-2" onClick={() => { resetForm(); setOpen(true); }}>
+            <Plus size={18} /> إضافة صنف
+          </Button>
+        </div>
       </div>
 
       {/* Search + Filters */}
@@ -892,6 +967,190 @@ export const StockItemsTab: React.FC = () => {
             <AlertDialogCancel>إلغاء</AlertDialogCancel>
             <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={(e) => { e.preventDefault(); handleDelete(); }}>
               حذف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Link Dialog */}
+      <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Link2 size={18} /> ربط جماعي للأصناف بالمواقع
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-5 pt-2">
+            {/* Scope */}
+            <div className="rounded-lg border p-3 space-y-2">
+              <Label className="text-sm font-bold text-primary">نطاق الربط</Label>
+              <RadioGroup value={bulkScope} onValueChange={(v) => setBulkScope(v as any)} className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="filtered" id="scope-filtered" />
+                  <Label htmlFor="scope-filtered" className="cursor-pointer text-sm">
+                    الأصناف الظاهرة حسب الفلتر الحالي ({filtered.length} صنف)
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="all" id="scope-all" />
+                  <Label htmlFor="scope-all" className="cursor-pointer text-sm">
+                    جميع الأصناف ({items.length} صنف)
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            {/* Mode */}
+            <div className="rounded-lg border p-3 space-y-2">
+              <Label className="text-sm font-bold text-primary">طريقة الربط</Label>
+              <RadioGroup value={bulkMode} onValueChange={(v) => setBulkMode(v as any)} className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="append" id="mode-append" />
+                  <Label htmlFor="mode-append" className="cursor-pointer text-sm">
+                    إضافة للروابط الحالية (الموصى به)
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="replace" id="mode-replace" />
+                  <Label htmlFor="mode-replace" className="cursor-pointer text-sm text-destructive">
+                    استبدال الروابط الحالية (سيتم حذف كل الروابط القديمة)
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            {/* Locations */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* Branches */}
+              <div className="rounded-lg border p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-bold flex items-center gap-2">
+                    <Building2 size={14} /> الفروع
+                  </Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      setBulkBranches(
+                        bulkBranches.length === branches.length ? [] : branches.map((b: any) => b.id)
+                      )
+                    }
+                  >
+                    {bulkBranches.length === branches.length ? "إلغاء الكل" : "تحديد الكل"}
+                  </Button>
+                </div>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {branches.length === 0 && (
+                    <p className="text-xs text-muted-foreground">لا توجد فروع</p>
+                  )}
+                  {branches.map((b: any) => (
+                    <div key={b.id} className="flex items-center gap-2">
+                      <Checkbox
+                        checked={bulkBranches.includes(b.id)}
+                        onCheckedChange={() =>
+                          setBulkBranches((p) =>
+                            p.includes(b.id) ? p.filter((x) => x !== b.id) : [...p, b.id]
+                          )
+                        }
+                      />
+                      <Label className="text-sm cursor-pointer">{b.name}</Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Warehouses */}
+              <div className="rounded-lg border p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-bold flex items-center gap-2">
+                    <Warehouse size={14} /> المخازن
+                  </Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      setBulkWarehouses(
+                        bulkWarehouses.length === warehouses.length ? [] : warehouses.map((w: any) => w.id)
+                      )
+                    }
+                  >
+                    {bulkWarehouses.length === warehouses.length ? "إلغاء الكل" : "تحديد الكل"}
+                  </Button>
+                </div>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {warehouses.length === 0 && (
+                    <p className="text-xs text-muted-foreground">لا توجد مخازن</p>
+                  )}
+                  {warehouses.map((w: any) => (
+                    <div key={w.id} className="flex items-center gap-2">
+                      <Checkbox
+                        checked={bulkWarehouses.includes(w.id)}
+                        onCheckedChange={() =>
+                          setBulkWarehouses((p) =>
+                            p.includes(w.id) ? p.filter((x) => x !== w.id) : [...p, w.id]
+                          )
+                        }
+                      />
+                      <Label className="text-sm cursor-pointer">{w.name}</Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Summary */}
+            <div className="rounded-lg bg-muted/50 p-3 text-sm">
+              سيتم ربط{" "}
+              <span className="font-bold text-primary">
+                {bulkScope === "all" ? items.length : filtered.length}
+              </span>{" "}
+              صنف بـ{" "}
+              <span className="font-bold text-primary">{bulkBranches.length}</span> فرع و{" "}
+              <span className="font-bold text-primary">{bulkWarehouses.length}</span> مخزن.
+            </div>
+
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setBulkOpen(false)}>
+                إلغاء
+              </Button>
+              <Button
+                className="flex-1 gap-2"
+                disabled={bulkBranches.length === 0 && bulkWarehouses.length === 0}
+                onClick={() => setBulkConfirmOpen(true)}
+              >
+                <Link2 size={16} /> تنفيذ الربط
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={bulkConfirmOpen} onOpenChange={setBulkConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>تأكيد الربط الجماعي</AlertDialogTitle>
+            <AlertDialogDescription>
+              هل أنت متأكد من ربط{" "}
+              {bulkScope === "all" ? items.length : filtered.length} صنف بـ{" "}
+              {bulkBranches.length} فرع و {bulkWarehouses.length} مخزن؟
+              {bulkMode === "replace" && (
+                <span className="block mt-2 text-destructive font-medium">
+                  تنبيه: سيتم حذف كل روابط المواقع الحالية لهذه الأصناف قبل الربط.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={bulkLinkMutation.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                bulkLinkMutation.mutate();
+              }}
+            >
+              {bulkLinkMutation.isPending ? "جاري الربط..." : "تأكيد"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

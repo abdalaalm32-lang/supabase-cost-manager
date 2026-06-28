@@ -534,7 +534,7 @@ export const SupplyPricingPage: React.FC = () => {
 
                         {isExpanded && (
                           <TableRow className="bg-muted/20">
-                            <TableCell colSpan={15} className="p-4">
+                            <TableCell colSpan={14} className="p-4">
                               <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                                 <div>
                                   <label className="text-xs text-muted-foreground">سعر يدوي</label>

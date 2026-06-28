@@ -266,7 +266,8 @@ export const SupplyPricingPage: React.FC = () => {
       toast({ title: "خطأ", description: error.message, variant: "destructive" });
       return;
     }
-    qc.invalidateQueries({ queryKey: ["warehouses-supply", companyId] });
+    await qc.refetchQueries({ queryKey: ["warehouses-supply", companyId] });
+    toast({ title: "تم", description: `تم تحديث طريقة التوزيع إلى: ${allocationLabels[method]}` });
   };
 
   // Overhead CRUD
@@ -275,7 +276,10 @@ export const SupplyPricingPage: React.FC = () => {
   const [expenseAmount, setExpenseAmount] = useState<number>(0);
 
   const addExpense = async () => {
-    if (!companyId || !selectedWarehouseId || !expenseName.trim()) return;
+    if (!companyId || !selectedWarehouseId || !expenseName.trim()) {
+      toast({ title: "تنبيه", description: "اختر مخزن واكتب اسم البند", variant: "destructive" });
+      return;
+    }
     const { error } = await (supabase as any).from("warehouse_overhead_expenses").insert({
       company_id: companyId,
       warehouse_id: selectedWarehouseId,
@@ -290,7 +294,8 @@ export const SupplyPricingPage: React.FC = () => {
     setExpenseName("");
     setExpenseAmount(0);
     setShowAddExpense(false);
-    qc.invalidateQueries({ queryKey: ["warehouse-overhead", companyId, selectedWarehouseId] });
+    await qc.refetchQueries({ queryKey: ["warehouse-overhead", companyId, selectedWarehouseId] });
+    toast({ title: "تم", description: "تم إضافة البند بنجاح" });
   };
 
   const updateExpense = async (id: string, patch: any) => {
@@ -299,7 +304,7 @@ export const SupplyPricingPage: React.FC = () => {
       toast({ title: "خطأ", description: error.message, variant: "destructive" });
       return;
     }
-    qc.invalidateQueries({ queryKey: ["warehouse-overhead", companyId, selectedWarehouseId] });
+    await qc.refetchQueries({ queryKey: ["warehouse-overhead", companyId, selectedWarehouseId] });
   };
 
   const deleteExpense = async (id: string) => {
@@ -308,7 +313,8 @@ export const SupplyPricingPage: React.FC = () => {
       toast({ title: "خطأ", description: error.message, variant: "destructive" });
       return;
     }
-    qc.invalidateQueries({ queryKey: ["warehouse-overhead", companyId, selectedWarehouseId] });
+    await qc.refetchQueries({ queryKey: ["warehouse-overhead", companyId, selectedWarehouseId] });
+    toast({ title: "تم", description: "تم حذف البند" });
   };
 
   // Bulk: apply overhead share to manufacturing_cost for all filtered items
@@ -424,9 +430,6 @@ export const SupplyPricingPage: React.FC = () => {
                   <SelectItem value="cost_plus_profit">تكلفة + ربح</SelectItem>
                 </SelectContent>
               </Select>
-              <Button size="sm" variant="outline" className="gap-1 mr-auto" onClick={applyOverheadToManufacturing}>
-                <RefreshCw size={14}/> تحميل نصيب المصاريف على تكلفة التصنيع
-              </Button>
             </CardContent>
           </Card>
 
@@ -454,7 +457,7 @@ export const SupplyPricingPage: React.FC = () => {
                     </TableHead>
                     <TableHead className="text-center">متاح للتوريد</TableHead>
                     <TableHead className="text-center">نوع التوريد</TableHead>
-                    <TableHead className="text-center">تكلفة تصنيع</TableHead>
+                    
                     <TableHead className="text-center">تعبئة</TableHead>
                     <TableHead className="text-center">حساب تلقائي</TableHead>
                     <TableHead className="text-center">السعر الأساسي</TableHead>
@@ -472,6 +475,7 @@ export const SupplyPricingPage: React.FC = () => {
                       lastPurchasePrice: lastP,
                       currentStock: Number(it.current_stock) || 0,
                       pricing: p,
+                      overheadPerUnit,
                     }).baseCost;
                     const isExpanded = expandedId === it.id;
                     return (
@@ -508,16 +512,7 @@ export const SupplyPricingPage: React.FC = () => {
                             </Select>
                           </TableCell>
                           <TableCell className="text-center">
-                            <Input type="number" className="h-8 w-20 mx-auto text-xs text-center"
-                              defaultValue={p?.manufacturing_cost ?? 0}
-                              key={`mfg-${p?.manufacturing_cost ?? 0}-${it.id}`}
-                              onBlur={(e) => {
-                                const v = Number(e.target.value) || 0;
-                                if (v !== Number(p?.manufacturing_cost ?? 0)) upsertPricing({ stock_item_id: it.id, manufacturing_cost: v });
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell className="text-center">
+
                             <Input type="number" className="h-8 w-20 mx-auto text-xs text-center"
                               defaultValue={p?.packaging_cost ?? 0}
                               onBlur={(e) => {
@@ -539,7 +534,7 @@ export const SupplyPricingPage: React.FC = () => {
 
                         {isExpanded && (
                           <TableRow className="bg-muted/20">
-                            <TableCell colSpan={15} className="p-4">
+                            <TableCell colSpan={14} className="p-4">
                               <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                                 <div>
                                   <label className="text-xs text-muted-foreground">سعر يدوي</label>
@@ -575,12 +570,9 @@ export const SupplyPricingPage: React.FC = () => {
                                 <div className="md:col-span-4 rounded-lg bg-card p-3 text-xs space-y-1 border">
                                   <p className="font-bold mb-1">معادلة السعر الأساسي:</p>
                                   <p>WAC: <span className="font-mono">{fmt(Number(it.avg_cost)||0)}</span>
-                                    {" + تصنيع: "}<span className="font-mono">{fmt(Number(p?.manufacturing_cost ?? 0))}</span>
                                     {" + تعبئة: "}<span className="font-mono">{fmt(Number(p?.packaging_cost ?? 0))}</span>
+                                    {" + نصيب مصاريف غير مباشرة: "}<span className="font-mono text-amber-600">{fmt(overheadPerUnit)}</span>
                                     {" = "}<span className="font-bold text-primary">{fmt(basePreview)}</span>
-                                  </p>
-                                  <p className="text-muted-foreground">
-                                    نصيب المصاريف غير المباشرة لكل وحدة (محسوب تلقائيًا): <span className="font-mono text-amber-600">{fmt(overheadPerUnit)}</span> — استخدم زر "تحميل نصيب المصاريف على تكلفة التصنيع" لتحميله رسميًا في الحساب.
                                   </p>
                                 </div>
                               </div>
@@ -592,7 +584,7 @@ export const SupplyPricingPage: React.FC = () => {
                   })}
                   {filteredItems.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={15} className="text-center py-8 text-muted-foreground">لا توجد خامات</TableCell>
+                      <TableCell colSpan={14} className="text-center py-8 text-muted-foreground">لا توجد خامات</TableCell>
                     </TableRow>
                   )}
                 </TableBody>

@@ -26,6 +26,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ExportButtons } from "@/components/ExportButtons";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { fetchAllRows } from "@/lib/fetchAllRows";
+
 
 type FilterStatus = "نشط" | "غير نشط" | "الكل";
 
@@ -145,14 +147,14 @@ export const StockItemsTab: React.FC = () => {
   const { data: itemLocations = [] } = useQuery({
     queryKey: ["stock-item-locations", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("stock_item_locations")
-        .select("*");
-      if (error) throw error;
-      return data as any[];
+      const rows = await fetchAllRows<any>((from, to) =>
+        supabase.from("stock_item_locations").select("*").range(from, to)
+      );
+      return rows;
     },
     enabled: !!companyId,
   });
+
 
   const { data: itemDepartments = [] } = useQuery({
     queryKey: ["stock-item-departments", companyId],

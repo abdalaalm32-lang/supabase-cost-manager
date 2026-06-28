@@ -55,6 +55,7 @@ const mainNavItems: NavItem[] = [
     children: [
       { id: "inventory-materials", path: "/inventory/materials", label: "مواد المخزون", icon: Package },
       { id: "inventory-balances", path: "/inventory/balances", label: "أرصدة المخزون", icon: Layers },
+      { id: "inventory-supply-pricing", path: "/inventory/supply-pricing", label: "تسعير المخزن المركزي", icon: Calculator },
     ],
   },
   { id: "transfers", path: "/transfers", label: "أذونات الصرف والتحويل", icon: ArrowRightLeft },

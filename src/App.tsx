@@ -26,6 +26,7 @@ const SettingsBranchesPage = lazy(() => import("@/pages/SettingsBranchesPage").t
 const SettingsWarehousesPage = lazy(() => import("@/pages/SettingsWarehousesPage").then((m) => ({ default: m.SettingsWarehousesPage })));
 const InventoryMaterialsPage = lazy(() => import("@/pages/InventoryMaterialsPage").then((m) => ({ default: m.InventoryMaterialsPage })));
 const InventoryBalancesPage = lazy(() => import("@/pages/InventoryBalancesPage").then((m) => ({ default: m.InventoryBalancesPage })));
+const SupplyPricingPage = lazy(() => import("@/pages/SupplyPricingPage").then((m) => ({ default: m.SupplyPricingPage })));
 const PurchaseInvoicesPage = lazy(() => import("@/pages/PurchaseInvoicesPage").then((m) => ({ default: m.PurchaseInvoicesPage })));
 const PurchaseSuppliersPage = lazy(() => import("@/pages/PurchaseSuppliersPage").then((m) => ({ default: m.PurchaseSuppliersPage })));
 const AddPurchaseInvoicePage = lazy(() => import("@/pages/AddPurchaseInvoicePage").then((m) => ({ default: m.AddPurchaseInvoicePage })));
@@ -459,6 +460,7 @@ const AppRoutes = () => {
                   <Route path="/inventory" element={<PermissionGuard permKey="inventory"><Navigate to="/inventory/materials" replace /></PermissionGuard>} />
                   <Route path="/inventory/materials" element={<PermissionGuard permKey="inventory"><InventoryMaterialsPage /></PermissionGuard>} />
                   <Route path="/inventory/balances" element={<PermissionGuard permKey="inventory"><InventoryBalancesPage /></PermissionGuard>} />
+                  <Route path="/inventory/supply-pricing" element={<PermissionGuard permKey="inventory"><SupplyPricingPage /></PermissionGuard>} />
                   <Route path="/transfers" element={<PermissionGuard permKey="transfers"><TransferListPage /></PermissionGuard>} />
                   <Route path="/transfers/add" element={<PermissionGuard permKey="transfers"><TransferDetailPage /></PermissionGuard>} />
                   <Route path="/transfers/:id" element={<PermissionGuard permKey="transfers"><TransferDetailPage /></PermissionGuard>} />

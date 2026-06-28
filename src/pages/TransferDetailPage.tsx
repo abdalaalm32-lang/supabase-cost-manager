@@ -24,6 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useLocationStock } from "@/hooks/useLocationStock";
 import { applyBranchCostIn, getBranchCost } from "@/lib/branchCostUtils";
+import { computeSupplyPrice } from "@/hooks/useSupplyPricing";
 
 interface LocalTransferItem {
   id?: string;
@@ -451,13 +452,36 @@ export const TransferDetailPage: React.FC = () => {
         // Note: Transfers move stock between locations but don't change global current_stock
         // PER-BRANCH cost: option 1 → destination branch absorbs source branch cost
         if (finalStatus === "مكتمل" && destLocationType === "branch" && destinationId) {
+          // Load branch supply policy + pricing rows once (for warehouse→branch supply pricing)
+          let branchPolicy: any = null;
+          let pricingMap: Record<string, any> = {};
+          if (sourceLocationType === "warehouse") {
+            const [{ data: pol }, { data: prc }] = await Promise.all([
+              (supabase as any).from("branch_supply_policies").select("*").eq("branch_id", destinationId).maybeSingle(),
+              (supabase as any).from("stock_item_supply_pricing").select("*").eq("company_id", companyId!),
+            ]);
+            branchPolicy = pol;
+            (prc ?? []).forEach((r: any) => { pricingMap[r.stock_item_id] = r; });
+          }
+
           for (const item of items) {
             if (!item.stock_item_id || !item.quantity || item.quantity <= 0) continue;
             try {
-              // Source unit cost: if source is a branch use its branch cost, otherwise use item.avg_cost
               let sourceUnitCost = Number(item.avg_cost) || 0;
               if (sourceLocationType === "branch" && sourceId) {
                 sourceUnitCost = await getBranchCost(item.stock_item_id, sourceId);
+              } else if (sourceLocationType === "warehouse" && branchPolicy) {
+                // Apply central-warehouse supply pricing (cost + profit + transport + loading)
+                const pricing = pricingMap[item.stock_item_id];
+                const r = computeSupplyPrice({
+                  wac: Number(item.avg_cost) || 0,
+                  currentStock: Number(item.current_stock) || 0,
+                  pricing,
+                  policy: branchPolicy,
+                  quantity: Number(item.quantity),
+                });
+                sourceUnitCost = r.finalUnitPrice;
+                // Save breakdown for transparency (best-effort; transfer_item id needed after insert below)
               }
               await applyBranchCostIn({
                 companyId: companyId!,

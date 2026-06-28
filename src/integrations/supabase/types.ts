@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      branch_supply_policies: {
+        Row: {
+          branch_id: string
+          company_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          loading_cost: number
+          minimum_order_value: number
+          profit_percentage: number
+          transportation_cost: number
+          updated_at: string
+        }
+        Insert: {
+          branch_id: string
+          company_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          loading_cost?: number
+          minimum_order_value?: number
+          profit_percentage?: number
+          transportation_cost?: number
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          loading_cost?: number
+          minimum_order_value?: number
+          profit_percentage?: number
+          transportation_cost?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       branches: {
         Row: {
           active: boolean
@@ -2346,6 +2385,48 @@ export type Database = {
           },
         ]
       }
+      stock_item_supply_pricing: {
+        Row: {
+          auto_calculate: boolean
+          company_id: string
+          created_at: string
+          id: string
+          last_calculated_at: string | null
+          manual_base_price: number | null
+          manufacturing_cost: number
+          packaging_cost: number
+          stock_item_id: string
+          supply_type: string
+          updated_at: string
+        }
+        Insert: {
+          auto_calculate?: boolean
+          company_id: string
+          created_at?: string
+          id?: string
+          last_calculated_at?: string | null
+          manual_base_price?: number | null
+          manufacturing_cost?: number
+          packaging_cost?: number
+          stock_item_id: string
+          supply_type?: string
+          updated_at?: string
+        }
+        Update: {
+          auto_calculate?: boolean
+          company_id?: string
+          created_at?: string
+          id?: string
+          last_calculated_at?: string | null
+          manual_base_price?: number | null
+          manufacturing_cost?: number
+          packaging_cost?: number
+          stock_item_id?: string
+          supply_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       stock_items: {
         Row: {
           active: boolean
@@ -2782,6 +2863,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      transfer_pricing_breakdown: {
+        Row: {
+          base_cost: number
+          company_id: string
+          created_at: string
+          final_unit_price: number
+          id: string
+          loading_cost: number
+          manufacturing_cost: number
+          packaging_cost: number
+          profit_amount: number
+          transfer_item_id: string
+          transport_cost: number
+        }
+        Insert: {
+          base_cost?: number
+          company_id: string
+          created_at?: string
+          final_unit_price?: number
+          id?: string
+          loading_cost?: number
+          manufacturing_cost?: number
+          packaging_cost?: number
+          profit_amount?: number
+          transfer_item_id: string
+          transport_cost?: number
+        }
+        Update: {
+          base_cost?: number
+          company_id?: string
+          created_at?: string
+          final_unit_price?: number
+          id?: string
+          loading_cost?: number
+          manufacturing_cost?: number
+          packaging_cost?: number
+          profit_amount?: number
+          transfer_item_id?: string
+          transport_cost?: number
+        }
+        Relationships: []
       }
       transfers: {
         Row: {

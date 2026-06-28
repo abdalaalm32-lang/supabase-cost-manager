@@ -172,6 +172,41 @@ export const SupplyPricingPage: React.FC = () => {
     return perUnit;
   }, [stockItems, pricingByItem, totalOverhead, allocationMethod]);
 
+  // Allocate transport+loading per branch policy across available items -> per unit
+  const transportPerUnitByBranch = useMemo(() => {
+    const out = new Map<string, Record<string, { transport: number; loading: number }>>();
+    const availableItems = stockItems.filter((it: any) => {
+      const p = pricingByItem.get(it.id);
+      return (p?.is_available_for_transfer ?? true);
+    });
+    const itemsForAllocation = availableItems.map((it: any) => {
+      const p = pricingByItem.get(it.id);
+      return {
+        id: it.id,
+        current_stock: Number(it.current_stock) || 0,
+        avg_cost: Number(it.avg_cost) || 0,
+        unit_weight: Number(p?.unit_weight) || 0,
+        unit_volume: Number(p?.unit_volume) || 0,
+        manual_share: Number(p?.manual_overhead_share) || 0,
+      };
+    });
+    policies.forEach((pol) => {
+      const method = (pol.allocation_method as AllocationMethod) || "value";
+      const tShares = allocateCharge(itemsForAllocation, Number(pol.transportation_cost) || 0, method, false);
+      const lShares = allocateCharge(itemsForAllocation, Number(pol.loading_cost) || 0, method, false);
+      const map: Record<string, { transport: number; loading: number }> = {};
+      availableItems.forEach((it: any) => {
+        const qty = Math.max(Number(it.current_stock) || 0, 1);
+        map[it.id] = {
+          transport: (tShares[it.id] || 0) / qty,
+          loading: (lShares[it.id] || 0) / qty,
+        };
+      });
+      out.set(pol.branch_id, map);
+    });
+    return out;
+  }, [stockItems, pricingByItem, policies]);
+
   // Filters
   const [search, setSearch] = useState("");
   const [supplyTypeFilter, setSupplyTypeFilter] = useState<"all" | "cost" | "cost_plus_profit">("all");
@@ -804,6 +839,7 @@ export const SupplyPricingPage: React.FC = () => {
                 {branches.map((br: any) => {
                   const p = pricingByItem.get(previewItem.id);
                   const pol = policies.find((x) => x.branch_id === br.id);
+                  const tl = transportPerUnitByBranch.get(br.id)?.[previewItem.id];
                   const r = computeSupplyPrice({
                     wac: Number(previewItem.avg_cost) || 0,
                     lastPurchasePrice: previewItem.lastP,
@@ -811,6 +847,8 @@ export const SupplyPricingPage: React.FC = () => {
                     pricing: p,
                     policy: pol,
                     overheadPerUnit: previewItem.overheadPerUnit,
+                    transportPerUnitOverride: tl?.transport ?? 0,
+                    loadingPerUnitOverride: tl?.loading ?? 0,
                     quantity: 1,
                   });
                   return (

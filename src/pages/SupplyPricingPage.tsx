@@ -475,6 +475,7 @@ export const SupplyPricingPage: React.FC = () => {
                       lastPurchasePrice: lastP,
                       currentStock: Number(it.current_stock) || 0,
                       pricing: p,
+                      overheadPerUnit,
                     }).baseCost;
                     const isExpanded = expandedId === it.id;
                     return (

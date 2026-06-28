@@ -34,16 +34,25 @@ export const SupplyPricingPage: React.FC = () => {
   const qc = useQueryClient();
   const { toast } = useToast();
 
-  // Data
+  // Data — only items linked to at least one warehouse
   const { data: stockItems = [] } = useQuery({
     queryKey: ["stock-items-supply", companyId],
     enabled: !!companyId,
     queryFn: async () => {
+      // 1) get stock_item ids that exist in a warehouse location
+      const { data: locs } = await supabase
+        .from("stock_item_locations")
+        .select("stock_item_id, warehouse_id")
+        .eq("company_id", companyId!)
+        .not("warehouse_id", "is", null);
+      const ids = Array.from(new Set((locs ?? []).map((r: any) => r.stock_item_id))).filter(Boolean);
+      if (ids.length === 0) return [];
       const { data } = await supabase
         .from("stock_items")
         .select("id, code, name, stock_unit, current_stock, avg_cost, category_id, inventory_categories(name)")
         .eq("company_id", companyId!)
         .eq("active", true)
+        .in("id", ids)
         .order("code", { ascending: true });
       return data ?? [];
     },

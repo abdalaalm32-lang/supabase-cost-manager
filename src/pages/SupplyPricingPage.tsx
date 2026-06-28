@@ -570,12 +570,9 @@ export const SupplyPricingPage: React.FC = () => {
                                 <div className="md:col-span-4 rounded-lg bg-card p-3 text-xs space-y-1 border">
                                   <p className="font-bold mb-1">معادلة السعر الأساسي:</p>
                                   <p>WAC: <span className="font-mono">{fmt(Number(it.avg_cost)||0)}</span>
-                                    {" + تصنيع: "}<span className="font-mono">{fmt(Number(p?.manufacturing_cost ?? 0))}</span>
                                     {" + تعبئة: "}<span className="font-mono">{fmt(Number(p?.packaging_cost ?? 0))}</span>
+                                    {" + نصيب مصاريف غير مباشرة: "}<span className="font-mono text-amber-600">{fmt(overheadPerUnit)}</span>
                                     {" = "}<span className="font-bold text-primary">{fmt(basePreview)}</span>
-                                  </p>
-                                  <p className="text-muted-foreground">
-                                    نصيب المصاريف غير المباشرة لكل وحدة (محسوب تلقائيًا): <span className="font-mono text-amber-600">{fmt(overheadPerUnit)}</span> — استخدم زر "تحميل نصيب المصاريف على تكلفة التصنيع" لتحميله رسميًا في الحساب.
                                   </p>
                                 </div>
                               </div>

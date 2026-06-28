@@ -47,6 +47,14 @@ export const StockItemsTab: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [submitted, setSubmitted] = useState(false);
 
+  // Bulk link
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkBranches, setBulkBranches] = useState<string[]>([]);
+  const [bulkWarehouses, setBulkWarehouses] = useState<string[]>([]);
+  const [bulkScope, setBulkScope] = useState<"all" | "filtered">("filtered");
+  const [bulkMode, setBulkMode] = useState<"append" | "replace">("append");
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
+
   // Form fields
   const [itemName, setItemName] = useState("");
   const [categoryId, setCategoryId] = useState("");

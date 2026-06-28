@@ -512,16 +512,7 @@ export const SupplyPricingPage: React.FC = () => {
                             </Select>
                           </TableCell>
                           <TableCell className="text-center">
-                            <Input type="number" className="h-8 w-20 mx-auto text-xs text-center"
-                              defaultValue={p?.manufacturing_cost ?? 0}
-                              key={`mfg-${p?.manufacturing_cost ?? 0}-${it.id}`}
-                              onBlur={(e) => {
-                                const v = Number(e.target.value) || 0;
-                                if (v !== Number(p?.manufacturing_cost ?? 0)) upsertPricing({ stock_item_id: it.id, manufacturing_cost: v });
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell className="text-center">
+
                             <Input type="number" className="h-8 w-20 mx-auto text-xs text-center"
                               defaultValue={p?.packaging_cost ?? 0}
                               onBlur={(e) => {

@@ -971,6 +971,190 @@ export const StockItemsTab: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk Link Dialog */}
+      <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Link2 size={18} /> ربط جماعي للأصناف بالمواقع
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-5 pt-2">
+            {/* Scope */}
+            <div className="rounded-lg border p-3 space-y-2">
+              <Label className="text-sm font-bold text-primary">نطاق الربط</Label>
+              <RadioGroup value={bulkScope} onValueChange={(v) => setBulkScope(v as any)} className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="filtered" id="scope-filtered" />
+                  <Label htmlFor="scope-filtered" className="cursor-pointer text-sm">
+                    الأصناف الظاهرة حسب الفلتر الحالي ({filtered.length} صنف)
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="all" id="scope-all" />
+                  <Label htmlFor="scope-all" className="cursor-pointer text-sm">
+                    جميع الأصناف ({items.length} صنف)
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            {/* Mode */}
+            <div className="rounded-lg border p-3 space-y-2">
+              <Label className="text-sm font-bold text-primary">طريقة الربط</Label>
+              <RadioGroup value={bulkMode} onValueChange={(v) => setBulkMode(v as any)} className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="append" id="mode-append" />
+                  <Label htmlFor="mode-append" className="cursor-pointer text-sm">
+                    إضافة للروابط الحالية (الموصى به)
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="replace" id="mode-replace" />
+                  <Label htmlFor="mode-replace" className="cursor-pointer text-sm text-destructive">
+                    استبدال الروابط الحالية (سيتم حذف كل الروابط القديمة)
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            {/* Locations */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* Branches */}
+              <div className="rounded-lg border p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-bold flex items-center gap-2">
+                    <Building2 size={14} /> الفروع
+                  </Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      setBulkBranches(
+                        bulkBranches.length === branches.length ? [] : branches.map((b: any) => b.id)
+                      )
+                    }
+                  >
+                    {bulkBranches.length === branches.length ? "إلغاء الكل" : "تحديد الكل"}
+                  </Button>
+                </div>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {branches.length === 0 && (
+                    <p className="text-xs text-muted-foreground">لا توجد فروع</p>
+                  )}
+                  {branches.map((b: any) => (
+                    <div key={b.id} className="flex items-center gap-2">
+                      <Checkbox
+                        checked={bulkBranches.includes(b.id)}
+                        onCheckedChange={() =>
+                          setBulkBranches((p) =>
+                            p.includes(b.id) ? p.filter((x) => x !== b.id) : [...p, b.id]
+                          )
+                        }
+                      />
+                      <Label className="text-sm cursor-pointer">{b.name}</Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Warehouses */}
+              <div className="rounded-lg border p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-bold flex items-center gap-2">
+                    <Warehouse size={14} /> المخازن
+                  </Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      setBulkWarehouses(
+                        bulkWarehouses.length === warehouses.length ? [] : warehouses.map((w: any) => w.id)
+                      )
+                    }
+                  >
+                    {bulkWarehouses.length === warehouses.length ? "إلغاء الكل" : "تحديد الكل"}
+                  </Button>
+                </div>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {warehouses.length === 0 && (
+                    <p className="text-xs text-muted-foreground">لا توجد مخازن</p>
+                  )}
+                  {warehouses.map((w: any) => (
+                    <div key={w.id} className="flex items-center gap-2">
+                      <Checkbox
+                        checked={bulkWarehouses.includes(w.id)}
+                        onCheckedChange={() =>
+                          setBulkWarehouses((p) =>
+                            p.includes(w.id) ? p.filter((x) => x !== w.id) : [...p, w.id]
+                          )
+                        }
+                      />
+                      <Label className="text-sm cursor-pointer">{w.name}</Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Summary */}
+            <div className="rounded-lg bg-muted/50 p-3 text-sm">
+              سيتم ربط{" "}
+              <span className="font-bold text-primary">
+                {bulkScope === "all" ? items.length : filtered.length}
+              </span>{" "}
+              صنف بـ{" "}
+              <span className="font-bold text-primary">{bulkBranches.length}</span> فرع و{" "}
+              <span className="font-bold text-primary">{bulkWarehouses.length}</span> مخزن.
+            </div>
+
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setBulkOpen(false)}>
+                إلغاء
+              </Button>
+              <Button
+                className="flex-1 gap-2"
+                disabled={bulkBranches.length === 0 && bulkWarehouses.length === 0}
+                onClick={() => setBulkConfirmOpen(true)}
+              >
+                <Link2 size={16} /> تنفيذ الربط
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={bulkConfirmOpen} onOpenChange={setBulkConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>تأكيد الربط الجماعي</AlertDialogTitle>
+            <AlertDialogDescription>
+              هل أنت متأكد من ربط{" "}
+              {bulkScope === "all" ? items.length : filtered.length} صنف بـ{" "}
+              {bulkBranches.length} فرع و {bulkWarehouses.length} مخزن؟
+              {bulkMode === "replace" && (
+                <span className="block mt-2 text-destructive font-medium">
+                  تنبيه: سيتم حذف كل روابط المواقع الحالية لهذه الأصناف قبل الربط.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={bulkLinkMutation.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                bulkLinkMutation.mutate();
+              }}
+            >
+              {bulkLinkMutation.isPending ? "جاري الربط..." : "تأكيد"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

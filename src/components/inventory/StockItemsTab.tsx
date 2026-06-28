@@ -145,14 +145,14 @@ export const StockItemsTab: React.FC = () => {
   const { data: itemLocations = [] } = useQuery({
     queryKey: ["stock-item-locations", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("stock_item_locations")
-        .select("*");
-      if (error) throw error;
-      return data as any[];
+      const rows = await fetchAllRows<any>((from, to) =>
+        supabase.from("stock_item_locations").select("*").range(from, to)
+      );
+      return rows;
     },
     enabled: !!companyId,
   });
+
 
   const { data: itemDepartments = [] } = useQuery({
     queryKey: ["stock-item-departments", companyId],

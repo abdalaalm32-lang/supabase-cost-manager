@@ -512,13 +512,79 @@ export const StockItemsTab: React.FC = () => {
     else setSelectedWarehouses(warehouses.map((w: any) => w.id));
   };
 
+  const bulkLinkMutation = useMutation({
+    mutationFn: async () => {
+      const targetItems = bulkScope === "all" ? items : filtered;
+      if (targetItems.length === 0) throw new Error("لا توجد أصناف للربط");
+      if (bulkBranches.length === 0 && bulkWarehouses.length === 0)
+        throw new Error("اختر فرع أو مخزن واحد على الأقل");
+
+      const itemIds = targetItems.map((i: any) => i.id);
+
+      if (bulkMode === "replace") {
+        const { error: delErr } = await supabase
+          .from("stock_item_locations")
+          .delete()
+          .in("stock_item_id", itemIds);
+        if (delErr) throw delErr;
+      }
+
+      // Build rows; if append, skip ones that already exist
+      const existing = bulkMode === "append" ? itemLocations : [];
+      const rows: any[] = [];
+      itemIds.forEach((iid) => {
+        bulkBranches.forEach((bId) => {
+          const exists = existing.some(
+            (l: any) => l.stock_item_id === iid && l.branch_id === bId
+          );
+          if (!exists) rows.push({ stock_item_id: iid, branch_id: bId, company_id: companyId });
+        });
+        bulkWarehouses.forEach((wId) => {
+          const exists = existing.some(
+            (l: any) => l.stock_item_id === iid && l.warehouse_id === wId
+          );
+          if (!exists) rows.push({ stock_item_id: iid, warehouse_id: wId, company_id: companyId });
+        });
+      });
+
+      if (rows.length > 0) {
+        // chunk to avoid large payloads
+        const chunkSize = 500;
+        for (let i = 0; i < rows.length; i += chunkSize) {
+          const { error } = await supabase
+            .from("stock_item_locations")
+            .insert(rows.slice(i, i + chunkSize));
+          if (error) throw error;
+        }
+      }
+      return { itemsCount: itemIds.length, rowsCount: rows.length };
+    },
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ["stock-item-locations"] });
+      toast.success(`تم ربط ${res.itemsCount} صنف (${res.rowsCount} ارتباط جديد)`);
+      setBulkConfirmOpen(false);
+      setBulkOpen(false);
+      setBulkBranches([]);
+      setBulkWarehouses([]);
+    },
+    onError: (e: any) => {
+      toast.error(e.message);
+      setBulkConfirmOpen(false);
+    },
+  });
+
   return (
     <div className="space-y-4 mt-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">الأصناف</h2>
-        <Button className="gap-2" onClick={() => { resetForm(); setOpen(true); }}>
-          <Plus size={18} /> إضافة صنف
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" className="gap-2" onClick={() => setBulkOpen(true)}>
+            <Link2 size={18} /> ربط جماعي بالمواقع
+          </Button>
+          <Button className="gap-2" onClick={() => { resetForm(); setOpen(true); }}>
+            <Plus size={18} /> إضافة صنف
+          </Button>
+        </div>
       </div>
 
       {/* Search + Filters */}

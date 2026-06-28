@@ -266,7 +266,8 @@ export const SupplyPricingPage: React.FC = () => {
       toast({ title: "خطأ", description: error.message, variant: "destructive" });
       return;
     }
-    qc.invalidateQueries({ queryKey: ["warehouses-supply", companyId] });
+    await qc.refetchQueries({ queryKey: ["warehouses-supply", companyId] });
+    toast({ title: "تم", description: `تم تحديث طريقة التوزيع إلى: ${allocationLabels[method]}` });
   };
 
   // Overhead CRUD

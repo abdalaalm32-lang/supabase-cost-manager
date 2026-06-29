@@ -182,6 +182,7 @@ export const SupplyPricingPage: React.FC = () => {
       const p = pricingByItem.get(it.id);
       return (p?.is_available_for_transfer ?? true);
     });
+    // Items dataset for transport/loading allocation — uses manual_transport_share for "manual" method
     const itemsForAllocation = availableItems.map((it: any) => {
       const p = pricingByItem.get(it.id);
       return {
@@ -190,7 +191,7 @@ export const SupplyPricingPage: React.FC = () => {
         avg_cost: Number(it.avg_cost) || 0,
         unit_weight: Number(p?.unit_weight) || 0,
         unit_volume: Number(p?.unit_volume) || 0,
-        manual_share: Number(p?.manual_overhead_share) || 0,
+        manual_share: Number((p as any)?.manual_transport_share) || 0,
       };
     });
     policies.forEach((pol) => {
@@ -209,6 +210,7 @@ export const SupplyPricingPage: React.FC = () => {
     });
     return out;
   }, [stockItems, pricingByItem, policies]);
+
 
   // Filters
   const [search, setSearch] = useState("");

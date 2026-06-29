@@ -736,6 +736,26 @@ export const SupplyPricingPage: React.FC = () => {
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Info banner: how each allocation method works */}
+              <div className="rounded-xl border bg-muted/30 p-4 text-xs space-y-2">
+                <div className="flex items-center gap-2 font-bold text-sm">
+                  <Info size={14} className="text-primary"/> طريقة التوزيع — كيف تُحسب؟
+                </div>
+                <p className="text-muted-foreground">
+                  إجمالي المصاريف الشهرية المُفعَّلة يُقسَّم على كل صنف مرتبط بالمخزن بنسبة "أساس التوزيع"، ثم يُقسَّم نصيب الصنف على رصيده الحالي للحصول على نصيب كل وحدة، ويُضاف إلى السعر الأساسي.
+                </p>
+                <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                  <li className="rounded-lg bg-card p-2 border"><b>حسب القيمة (موصى به):</b> الأساس = الرصيد × WAC. الأصناف الأغلى تحمل نصيب أكبر — مناسب لمخزن متنوع الأسعار.</li>
+                  <li className="rounded-lg bg-card p-2 border"><b>حسب الوزن (كجم):</b> الأساس = الرصيد × وزن الوحدة. يتطلب إدخال "وزن الوحدة" لكل صنف — مناسب للأصناف الثقيلة.</li>
+                  <li className="rounded-lg bg-card p-2 border"><b>حسب الحجم (لتر):</b> الأساس = الرصيد × حجم الوحدة. مناسب للسوائل والأصناف الكبيرة الحجم.</li>
+                  <li className="rounded-lg bg-card p-2 border"><b>حسب الكمية:</b> الأساس = الرصيد فقط. كل وحدة تحمل نصيب متساوٍ — بسيط لكن غير عادل بين قطعة وكجم.</li>
+                  <li className="rounded-lg bg-card p-2 border md:col-span-2"><b>توزيع يدوي:</b> الأساس = "نصيب يدوي" المُدخل لكل صنف من تبويب تسعير الخامات (داخل صف الصنف الموسَّع). أنت تحدد النِسَب.</li>
+                </ul>
+                <p className="text-muted-foreground pt-1">
+                  ⚠️ لو الصنف يُقاس بالقطعة وآخر بالكجم/لتر، طريقة <b>القيمة</b> أو <b>اليدوي</b> أعدل — التوزيع بالوزن/الحجم/الكمية فقط لو وحدات القياس متجانسة.
+                </p>
+              </div>
+
               <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2">
                   <span className="text-sm">طريقة التوزيع:</span>
@@ -753,6 +773,7 @@ export const SupplyPricingPage: React.FC = () => {
                   <Button size="sm" onClick={() => setShowAddExpense(true)} className="gap-1"><Plus size={14}/> إضافة بند</Button>
                 </div>
               </div>
+
 
               <Table>
                 <TableHeader>

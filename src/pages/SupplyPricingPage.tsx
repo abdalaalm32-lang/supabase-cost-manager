@@ -442,7 +442,7 @@ export const SupplyPricingPage: React.FC = () => {
               تسعير الخامات للفروع بناءً على التكلفة + الربح + النقل + التحميل، مع توزيع المصاريف غير المباشرة.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <WarehouseIcon size={16} className="text-muted-foreground" />
             <Select value={selectedWarehouseId} onValueChange={setSelectedWarehouseId}>
               <SelectTrigger className="w-[220px]">
@@ -454,7 +454,21 @@ export const SupplyPricingPage: React.FC = () => {
                 ))}
               </SelectContent>
             </Select>
+            <PrintButton
+              data={exportData}
+              columns={exportColumns}
+              title={`تسعير المخزن المركزي — ${selectedWarehouse?.name ?? ""}`}
+              filters={exportFilters}
+            />
+            <ExportButtons
+              data={exportData}
+              columns={exportColumns}
+              filename={`supply-pricing-${selectedWarehouse?.name ?? "warehouse"}`}
+              title={`تسعير المخزن المركزي — ${selectedWarehouse?.name ?? ""}`}
+              filters={exportFilters}
+            />
           </div>
+
         </div>
 
         {/* KPIs */}

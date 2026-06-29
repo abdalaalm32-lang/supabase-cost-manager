@@ -26,9 +26,12 @@ import {
 import {
   Search, Package, Building2, Eye,
   Calculator, Truck, Boxes, Percent, ChevronDown, ChevronUp,
-  Plus, Trash2, RefreshCw, Receipt, Warehouse as WarehouseIcon,
+  Plus, Trash2, RefreshCw, Receipt, Warehouse as WarehouseIcon, Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PrintButton } from "@/components/PrintButton";
+import { ExportButtons } from "@/components/ExportButtons";
+
 
 const fmt = (n: number) => `${(Number(n) || 0).toLocaleString("ar-EG", { maximumFractionDigits: 2 })} ج.م`;
 const fmtPct = (n: number) => `${Number(n || 0).toFixed(1)}%`;

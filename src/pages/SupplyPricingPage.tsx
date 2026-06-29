@@ -830,6 +830,22 @@ export const SupplyPricingPage: React.FC = () => {
               </p>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
+              <div className="p-4 rounded-xl border bg-muted/30 m-4 mb-2 text-xs space-y-2">
+                <div className="flex items-center gap-2 font-bold text-sm">
+                  <Info size={14} className="text-primary"/> طريقة توزيع النقل/التحميل — كيف تُحسب؟
+                </div>
+                <p className="text-muted-foreground">
+                  إجمالي (تكلفة النقل + التحميل) للفرع يُقسَّم على الأصناف <b>المتاحة للتوريد</b> بنفس الطريقة المُختارة، ثم يُقسَّم نصيب الصنف على رصيده للحصول على نصيب الوحدة المُضاف لسعر البيع للفرع:
+                </p>
+                <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-1">
+                  <li className="rounded-lg bg-card p-2 border"><b>حسب القيمة:</b> الأصناف الأغلى تحمل نصيب أكبر من النقل (موصى به للأصناف متنوعة السعر).</li>
+                  <li className="rounded-lg bg-card p-2 border"><b>حسب الوزن:</b> يستخدم "وزن الوحدة" المُدخل لكل صنف — الأنسب لو سيارة النقل محسوبة بالحمولة.</li>
+                  <li className="rounded-lg bg-card p-2 border"><b>حسب الحجم:</b> يستخدم "حجم الوحدة" — الأنسب لو محسوبة بحجم الكرتون/البالتة.</li>
+                  <li className="rounded-lg bg-card p-2 border"><b>حسب الكمية:</b> كل وحدة تحمل نصيب متساوٍ بصرف النظر عن السعر أو الوزن.</li>
+                  <li className="rounded-lg bg-card p-2 border md:col-span-2"><b>توزيع يدوي:</b> يستخدم "نصيب تحميل/نقل يدوي" المُدخل لكل صنف (في تبويب تسعير الخامات — الصف الموسَّع).</li>
+                </ul>
+              </div>
+
               <Table>
                 <TableHeader>
                   <TableRow>

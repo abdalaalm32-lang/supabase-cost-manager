@@ -584,7 +584,7 @@ export const SupplyPricingPage: React.FC = () => {
                     }).baseCost;
                     const isExpanded = expandedId === it.id;
                     return (
-                      <React.Fragment key={it.id}>
+                      <React.Fragment key={`${it.id}-${p?.id ?? "new"}-${p?.last_calculated_at ?? ""}`}>
                         <TableRow className={cn("hover:bg-muted/30", !avail && "opacity-50")}>
                           <TableCell className="text-center">
                             <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setExpandedId(isExpanded ? null : it.id)}>
@@ -617,7 +617,6 @@ export const SupplyPricingPage: React.FC = () => {
                             </Select>
                           </TableCell>
                           <TableCell className="text-center">
-
                             <Input type="number" className="h-8 w-20 mx-auto text-xs text-center"
                               defaultValue={p?.packaging_cost ?? 0}
                               onBlur={(e) => {
@@ -640,44 +639,71 @@ export const SupplyPricingPage: React.FC = () => {
                         {isExpanded && (
                           <TableRow className="bg-muted/20">
                             <TableCell colSpan={14} className="p-4">
-                              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                              <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                                 <div>
-                                  <label className="text-xs text-muted-foreground">سعر يدوي</label>
+                                  <label className="text-xs text-muted-foreground flex items-center gap-1">
+                                    سعر يدوي
+                                    <span className="text-[10px] text-amber-600">(يلغي الحساب التلقائي)</span>
+                                  </label>
                                   <Input type="number" className="mt-1 h-9"
+                                    placeholder="فارغ = استخدام التلقائي"
                                     defaultValue={p?.manual_base_price ?? ""}
                                     onBlur={(e) => {
-                                      const v = e.target.value === "" ? null : Number(e.target.value);
-                                      upsertPricing({ stock_item_id: it.id, manual_base_price: v as any });
+                                      const raw = e.target.value;
+                                      if (raw === "") {
+                                        // clear manual and re-enable auto
+                                        upsertPricing({ stock_item_id: it.id, manual_base_price: null as any, auto_calculate: true });
+                                      } else {
+                                        const v = Number(raw) || 0;
+                                        // entering a manual price disables auto-calc so it actually applies
+                                        upsertPricing({ stock_item_id: it.id, manual_base_price: v as any, auto_calculate: false });
+                                      }
                                     }}
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-xs text-muted-foreground">وزن الوحدة (كجم)</label>
-                                  <Input type="number" step="0.01" className="mt-1 h-9"
+                                  <label className="text-xs text-muted-foreground">
+                                    وزن الوحدة (كجم) <span className="text-[10px]">— للتوزيع حسب الوزن</span>
+                                  </label>
+                                  <Input type="number" step="0.001" className="mt-1 h-9"
                                     defaultValue={p?.unit_weight ?? 0}
                                     onBlur={(e) => upsertPricing({ stock_item_id: it.id, unit_weight: Number(e.target.value) || 0 })}
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-xs text-muted-foreground">حجم الوحدة (لتر)</label>
-                                  <Input type="number" step="0.01" className="mt-1 h-9"
+                                  <label className="text-xs text-muted-foreground">
+                                    حجم الوحدة (لتر) <span className="text-[10px]">— للتوزيع حسب الحجم</span>
+                                  </label>
+                                  <Input type="number" step="0.001" className="mt-1 h-9"
                                     defaultValue={p?.unit_volume ?? 0}
                                     onBlur={(e) => upsertPricing({ stock_item_id: it.id, unit_volume: Number(e.target.value) || 0 })}
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-xs text-muted-foreground">نصيب يدوي من المصاريف</label>
+                                  <label className="text-xs text-muted-foreground">
+                                    نصيب يدوي من المصاريف <span className="text-[10px]">— للتوزيع اليدوي</span>
+                                  </label>
                                   <Input type="number" step="0.01" className="mt-1 h-9"
                                     defaultValue={p?.manual_overhead_share ?? 0}
                                     onBlur={(e) => upsertPricing({ stock_item_id: it.id, manual_overhead_share: Number(e.target.value) || 0 })}
                                   />
                                 </div>
-                                <div className="md:col-span-4 rounded-lg bg-card p-3 text-xs space-y-1 border">
+                                <div>
+                                  <label className="text-xs text-muted-foreground">
+                                    نصيب تحميل/نقل يدوي <span className="text-[10px]">— للتوزيع اليدوي بالفروع</span>
+                                  </label>
+                                  <Input type="number" step="0.01" className="mt-1 h-9"
+                                    defaultValue={(p as any)?.manual_transport_share ?? 0}
+                                    onBlur={(e) => upsertPricing({ stock_item_id: it.id, manual_transport_share: Number(e.target.value) || 0 } as any)}
+                                  />
+                                </div>
+                                <div className="md:col-span-5 rounded-lg bg-card p-3 text-xs space-y-1 border">
                                   <p className="font-bold mb-1">معادلة السعر الأساسي:</p>
                                   <p>WAC: <span className="font-mono">{fmt(Number(it.avg_cost)||0)}</span>
                                     {" + تعبئة: "}<span className="font-mono">{fmt(Number(p?.packaging_cost ?? 0))}</span>
                                     {" + نصيب مصاريف غير مباشرة: "}<span className="font-mono text-amber-600">{fmt(overheadPerUnit)}</span>
                                     {" = "}<span className="font-bold text-primary">{fmt(basePreview)}</span>
+
                                   </p>
                                 </div>
                               </div>

@@ -2398,6 +2398,7 @@ export type Database = {
           last_calculated_at: string | null
           manual_base_price: number | null
           manual_overhead_share: number
+          manual_transport_share: number
           manufacturing_cost: number
           packaging_cost: number
           stock_item_id: string
@@ -2415,6 +2416,7 @@ export type Database = {
           last_calculated_at?: string | null
           manual_base_price?: number | null
           manual_overhead_share?: number
+          manual_transport_share?: number
           manufacturing_cost?: number
           packaging_cost?: number
           stock_item_id: string
@@ -2432,6 +2434,7 @@ export type Database = {
           last_calculated_at?: string | null
           manual_base_price?: number | null
           manual_overhead_share?: number
+          manual_transport_share?: number
           manufacturing_cost?: number
           packaging_cost?: number
           stock_item_id?: string

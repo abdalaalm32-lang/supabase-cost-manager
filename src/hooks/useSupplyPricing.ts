@@ -27,9 +27,11 @@ export type SupplyPricingRow = {
   last_calculated_at: string | null;
   is_available_for_transfer?: boolean;
   manual_overhead_share?: number;
+  manual_transport_share?: number;
   unit_weight?: number;
   unit_volume?: number;
 };
+
 
 export type WarehouseOverheadExpense = {
   id: string;

@@ -26,9 +26,12 @@ import {
 import {
   Search, Package, Building2, Eye,
   Calculator, Truck, Boxes, Percent, ChevronDown, ChevronUp,
-  Plus, Trash2, RefreshCw, Receipt, Warehouse as WarehouseIcon,
+  Plus, Trash2, RefreshCw, Receipt, Warehouse as WarehouseIcon, Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PrintButton } from "@/components/PrintButton";
+import { ExportButtons } from "@/components/ExportButtons";
+
 
 const fmt = (n: number) => `${(Number(n) || 0).toLocaleString("ar-EG", { maximumFractionDigits: 2 })} ج.م`;
 const fmtPct = (n: number) => `${Number(n || 0).toFixed(1)}%`;
@@ -179,6 +182,7 @@ export const SupplyPricingPage: React.FC = () => {
       const p = pricingByItem.get(it.id);
       return (p?.is_available_for_transfer ?? true);
     });
+    // Items dataset for transport/loading allocation — uses manual_transport_share for "manual" method
     const itemsForAllocation = availableItems.map((it: any) => {
       const p = pricingByItem.get(it.id);
       return {
@@ -187,7 +191,7 @@ export const SupplyPricingPage: React.FC = () => {
         avg_cost: Number(it.avg_cost) || 0,
         unit_weight: Number(p?.unit_weight) || 0,
         unit_volume: Number(p?.unit_volume) || 0,
-        manual_share: Number(p?.manual_overhead_share) || 0,
+        manual_share: Number((p as any)?.manual_transport_share) || 0,
       };
     });
     policies.forEach((pol) => {
@@ -206,6 +210,7 @@ export const SupplyPricingPage: React.FC = () => {
     });
     return out;
   }, [stockItems, pricingByItem, policies]);
+
 
   // Filters
   const [search, setSearch] = useState("");
@@ -260,14 +265,16 @@ export const SupplyPricingPage: React.FC = () => {
           manual_base_price: row.manual_base_price ?? null,
           is_available_for_transfer: row.is_available_for_transfer ?? true,
           manual_overhead_share: row.manual_overhead_share ?? 0,
+          manual_transport_share: (row as any).manual_transport_share ?? 0,
           unit_weight: row.unit_weight ?? 0,
           unit_volume: row.unit_volume ?? 0,
           last_calculated_at: new Date().toISOString(),
         });
       if (error) throw error;
     }
-    await qc.invalidateQueries({ queryKey: ["supply-pricing", companyId] });
+    await qc.refetchQueries({ queryKey: ["supply-pricing", companyId] });
   };
+
 
   const upsertPolicy = async (branchId: string, patch: Partial<BranchSupplyPolicy>) => {
     if (!companyId) return;
@@ -372,6 +379,55 @@ export const SupplyPricingPage: React.FC = () => {
   const [previewItem, setPreviewItem] = useState<any | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // Export columns & data for items table
+  const exportColumns = [
+    { key: "code", label: "الكود" },
+    { key: "name", label: "اسم الخامة" },
+    { key: "category", label: "المجموعة" },
+    { key: "stock", label: "الرصيد" },
+    { key: "unit", label: "الوحدة" },
+    { key: "wac", label: "WAC" },
+    { key: "last_purchase", label: "آخر شراء" },
+    { key: "overhead_share", label: "نصيب مصاريف/وحدة" },
+    { key: "packaging", label: "تعبئة" },
+    { key: "base_price", label: "السعر الأساسي" },
+    { key: "available", label: "متاح للتوريد" },
+    { key: "supply_type", label: "نوع التوريد" },
+  ];
+  const exportData = filteredItems.map((it: any) => {
+    const p = pricingByItem.get(it.id);
+    const lastP = lastPurchases[it.id] ?? 0;
+    const overheadPerUnit = overheadByItem[it.id] || 0;
+    const base = computeSupplyPrice({
+      wac: Number(it.avg_cost) || 0,
+      lastPurchasePrice: lastP,
+      currentStock: Number(it.current_stock) || 0,
+      pricing: p,
+      overheadPerUnit,
+    }).baseCost;
+    return {
+      code: it.code ?? "—",
+      name: it.name,
+      category: it.inventory_categories?.name ?? "—",
+      stock: Number(it.current_stock).toFixed(2),
+      unit: it.stock_unit ?? "—",
+      wac: Number(it.avg_cost || 0).toFixed(2),
+      last_purchase: Number(lastP).toFixed(2),
+      overhead_share: overheadPerUnit.toFixed(2),
+      packaging: Number(p?.packaging_cost ?? 0).toFixed(2),
+      base_price: base.toFixed(2),
+      available: (p?.is_available_for_transfer ?? true) ? "نعم" : "لا",
+      supply_type: (p?.supply_type ?? "cost_plus_profit") === "cost" ? "تكلفة فقط" : "تكلفة + ربح",
+    };
+  });
+  const exportFilters = [
+    { label: "المخزن", value: selectedWarehouse?.name ?? "" },
+    { label: "طريقة التوزيع", value: allocationLabels[allocationMethod] },
+    { label: "إجمالي المصاريف الشهرية", value: fmt(totalOverhead) },
+  ];
+
+
+
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto" dir="rtl">
       {/* Header */}
@@ -386,7 +442,7 @@ export const SupplyPricingPage: React.FC = () => {
               تسعير الخامات للفروع بناءً على التكلفة + الربح + النقل + التحميل، مع توزيع المصاريف غير المباشرة.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <WarehouseIcon size={16} className="text-muted-foreground" />
             <Select value={selectedWarehouseId} onValueChange={setSelectedWarehouseId}>
               <SelectTrigger className="w-[220px]">
@@ -398,7 +454,21 @@ export const SupplyPricingPage: React.FC = () => {
                 ))}
               </SelectContent>
             </Select>
+            <PrintButton
+              data={exportData}
+              columns={exportColumns}
+              title={`تسعير المخزن المركزي — ${selectedWarehouse?.name ?? ""}`}
+              filters={exportFilters}
+            />
+            <ExportButtons
+              data={exportData}
+              columns={exportColumns}
+              filename={`supply-pricing-${selectedWarehouse?.name ?? "warehouse"}`}
+              title={`تسعير المخزن المركزي — ${selectedWarehouse?.name ?? ""}`}
+              filters={exportFilters}
+            />
           </div>
+
         </div>
 
         {/* KPIs */}
@@ -514,7 +584,7 @@ export const SupplyPricingPage: React.FC = () => {
                     }).baseCost;
                     const isExpanded = expandedId === it.id;
                     return (
-                      <React.Fragment key={it.id}>
+                      <React.Fragment key={`${it.id}-${p?.id ?? "new"}-${p?.last_calculated_at ?? ""}`}>
                         <TableRow className={cn("hover:bg-muted/30", !avail && "opacity-50")}>
                           <TableCell className="text-center">
                             <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setExpandedId(isExpanded ? null : it.id)}>
@@ -547,7 +617,6 @@ export const SupplyPricingPage: React.FC = () => {
                             </Select>
                           </TableCell>
                           <TableCell className="text-center">
-
                             <Input type="number" className="h-8 w-20 mx-auto text-xs text-center"
                               defaultValue={p?.packaging_cost ?? 0}
                               onBlur={(e) => {
@@ -570,44 +639,71 @@ export const SupplyPricingPage: React.FC = () => {
                         {isExpanded && (
                           <TableRow className="bg-muted/20">
                             <TableCell colSpan={14} className="p-4">
-                              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                              <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                                 <div>
-                                  <label className="text-xs text-muted-foreground">سعر يدوي</label>
+                                  <label className="text-xs text-muted-foreground flex items-center gap-1">
+                                    سعر يدوي
+                                    <span className="text-[10px] text-amber-600">(يلغي الحساب التلقائي)</span>
+                                  </label>
                                   <Input type="number" className="mt-1 h-9"
+                                    placeholder="فارغ = استخدام التلقائي"
                                     defaultValue={p?.manual_base_price ?? ""}
                                     onBlur={(e) => {
-                                      const v = e.target.value === "" ? null : Number(e.target.value);
-                                      upsertPricing({ stock_item_id: it.id, manual_base_price: v as any });
+                                      const raw = e.target.value;
+                                      if (raw === "") {
+                                        // clear manual and re-enable auto
+                                        upsertPricing({ stock_item_id: it.id, manual_base_price: null as any, auto_calculate: true });
+                                      } else {
+                                        const v = Number(raw) || 0;
+                                        // entering a manual price disables auto-calc so it actually applies
+                                        upsertPricing({ stock_item_id: it.id, manual_base_price: v as any, auto_calculate: false });
+                                      }
                                     }}
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-xs text-muted-foreground">وزن الوحدة (كجم)</label>
-                                  <Input type="number" step="0.01" className="mt-1 h-9"
+                                  <label className="text-xs text-muted-foreground">
+                                    وزن الوحدة (كجم) <span className="text-[10px]">— للتوزيع حسب الوزن</span>
+                                  </label>
+                                  <Input type="number" step="0.001" className="mt-1 h-9"
                                     defaultValue={p?.unit_weight ?? 0}
                                     onBlur={(e) => upsertPricing({ stock_item_id: it.id, unit_weight: Number(e.target.value) || 0 })}
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-xs text-muted-foreground">حجم الوحدة (لتر)</label>
-                                  <Input type="number" step="0.01" className="mt-1 h-9"
+                                  <label className="text-xs text-muted-foreground">
+                                    حجم الوحدة (لتر) <span className="text-[10px]">— للتوزيع حسب الحجم</span>
+                                  </label>
+                                  <Input type="number" step="0.001" className="mt-1 h-9"
                                     defaultValue={p?.unit_volume ?? 0}
                                     onBlur={(e) => upsertPricing({ stock_item_id: it.id, unit_volume: Number(e.target.value) || 0 })}
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-xs text-muted-foreground">نصيب يدوي من المصاريف</label>
+                                  <label className="text-xs text-muted-foreground">
+                                    نصيب يدوي من المصاريف <span className="text-[10px]">— للتوزيع اليدوي</span>
+                                  </label>
                                   <Input type="number" step="0.01" className="mt-1 h-9"
                                     defaultValue={p?.manual_overhead_share ?? 0}
                                     onBlur={(e) => upsertPricing({ stock_item_id: it.id, manual_overhead_share: Number(e.target.value) || 0 })}
                                   />
                                 </div>
-                                <div className="md:col-span-4 rounded-lg bg-card p-3 text-xs space-y-1 border">
+                                <div>
+                                  <label className="text-xs text-muted-foreground">
+                                    نصيب تحميل/نقل يدوي <span className="text-[10px]">— للتوزيع اليدوي بالفروع</span>
+                                  </label>
+                                  <Input type="number" step="0.01" className="mt-1 h-9"
+                                    defaultValue={(p as any)?.manual_transport_share ?? 0}
+                                    onBlur={(e) => upsertPricing({ stock_item_id: it.id, manual_transport_share: Number(e.target.value) || 0 } as any)}
+                                  />
+                                </div>
+                                <div className="md:col-span-5 rounded-lg bg-card p-3 text-xs space-y-1 border">
                                   <p className="font-bold mb-1">معادلة السعر الأساسي:</p>
                                   <p>WAC: <span className="font-mono">{fmt(Number(it.avg_cost)||0)}</span>
                                     {" + تعبئة: "}<span className="font-mono">{fmt(Number(p?.packaging_cost ?? 0))}</span>
                                     {" + نصيب مصاريف غير مباشرة: "}<span className="font-mono text-amber-600">{fmt(overheadPerUnit)}</span>
                                     {" = "}<span className="font-bold text-primary">{fmt(basePreview)}</span>
+
                                   </p>
                                 </div>
                               </div>
@@ -640,6 +736,26 @@ export const SupplyPricingPage: React.FC = () => {
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Info banner: how each allocation method works */}
+              <div className="rounded-xl border bg-muted/30 p-4 text-xs space-y-2">
+                <div className="flex items-center gap-2 font-bold text-sm">
+                  <Info size={14} className="text-primary"/> طريقة التوزيع — كيف تُحسب؟
+                </div>
+                <p className="text-muted-foreground">
+                  إجمالي المصاريف الشهرية المُفعَّلة يُقسَّم على كل صنف مرتبط بالمخزن بنسبة "أساس التوزيع"، ثم يُقسَّم نصيب الصنف على رصيده الحالي للحصول على نصيب كل وحدة، ويُضاف إلى السعر الأساسي.
+                </p>
+                <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                  <li className="rounded-lg bg-card p-2 border"><b>حسب القيمة (موصى به):</b> الأساس = الرصيد × WAC. الأصناف الأغلى تحمل نصيب أكبر — مناسب لمخزن متنوع الأسعار.</li>
+                  <li className="rounded-lg bg-card p-2 border"><b>حسب الوزن (كجم):</b> الأساس = الرصيد × وزن الوحدة. يتطلب إدخال "وزن الوحدة" لكل صنف — مناسب للأصناف الثقيلة.</li>
+                  <li className="rounded-lg bg-card p-2 border"><b>حسب الحجم (لتر):</b> الأساس = الرصيد × حجم الوحدة. مناسب للسوائل والأصناف الكبيرة الحجم.</li>
+                  <li className="rounded-lg bg-card p-2 border"><b>حسب الكمية:</b> الأساس = الرصيد فقط. كل وحدة تحمل نصيب متساوٍ — بسيط لكن غير عادل بين قطعة وكجم.</li>
+                  <li className="rounded-lg bg-card p-2 border md:col-span-2"><b>توزيع يدوي:</b> الأساس = "نصيب يدوي" المُدخل لكل صنف من تبويب تسعير الخامات (داخل صف الصنف الموسَّع). أنت تحدد النِسَب.</li>
+                </ul>
+                <p className="text-muted-foreground pt-1">
+                  ⚠️ لو الصنف يُقاس بالقطعة وآخر بالكجم/لتر، طريقة <b>القيمة</b> أو <b>اليدوي</b> أعدل — التوزيع بالوزن/الحجم/الكمية فقط لو وحدات القياس متجانسة.
+                </p>
+              </div>
+
               <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2">
                   <span className="text-sm">طريقة التوزيع:</span>
@@ -657,6 +773,7 @@ export const SupplyPricingPage: React.FC = () => {
                   <Button size="sm" onClick={() => setShowAddExpense(true)} className="gap-1"><Plus size={14}/> إضافة بند</Button>
                 </div>
               </div>
+
 
               <Table>
                 <TableHeader>
@@ -713,6 +830,22 @@ export const SupplyPricingPage: React.FC = () => {
               </p>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
+              <div className="p-4 rounded-xl border bg-muted/30 m-4 mb-2 text-xs space-y-2">
+                <div className="flex items-center gap-2 font-bold text-sm">
+                  <Info size={14} className="text-primary"/> طريقة توزيع النقل/التحميل — كيف تُحسب؟
+                </div>
+                <p className="text-muted-foreground">
+                  إجمالي (تكلفة النقل + التحميل) للفرع يُقسَّم على الأصناف <b>المتاحة للتوريد</b> بنفس الطريقة المُختارة، ثم يُقسَّم نصيب الصنف على رصيده للحصول على نصيب الوحدة المُضاف لسعر البيع للفرع:
+                </p>
+                <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-1">
+                  <li className="rounded-lg bg-card p-2 border"><b>حسب القيمة:</b> الأصناف الأغلى تحمل نصيب أكبر من النقل (موصى به للأصناف متنوعة السعر).</li>
+                  <li className="rounded-lg bg-card p-2 border"><b>حسب الوزن:</b> يستخدم "وزن الوحدة" المُدخل لكل صنف — الأنسب لو سيارة النقل محسوبة بالحمولة.</li>
+                  <li className="rounded-lg bg-card p-2 border"><b>حسب الحجم:</b> يستخدم "حجم الوحدة" — الأنسب لو محسوبة بحجم الكرتون/البالتة.</li>
+                  <li className="rounded-lg bg-card p-2 border"><b>حسب الكمية:</b> كل وحدة تحمل نصيب متساوٍ بصرف النظر عن السعر أو الوزن.</li>
+                  <li className="rounded-lg bg-card p-2 border md:col-span-2"><b>توزيع يدوي:</b> يستخدم "نصيب تحميل/نقل يدوي" المُدخل لكل صنف (في تبويب تسعير الخامات — الصف الموسَّع).</li>
+                </ul>
+              </div>
+
               <Table>
                 <TableHeader>
                   <TableRow>

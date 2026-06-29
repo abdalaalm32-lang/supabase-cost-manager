@@ -379,6 +379,55 @@ export const SupplyPricingPage: React.FC = () => {
   const [previewItem, setPreviewItem] = useState<any | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // Export columns & data for items table
+  const exportColumns = [
+    { key: "code", label: "الكود" },
+    { key: "name", label: "اسم الخامة" },
+    { key: "category", label: "المجموعة" },
+    { key: "stock", label: "الرصيد" },
+    { key: "unit", label: "الوحدة" },
+    { key: "wac", label: "WAC" },
+    { key: "last_purchase", label: "آخر شراء" },
+    { key: "overhead_share", label: "نصيب مصاريف/وحدة" },
+    { key: "packaging", label: "تعبئة" },
+    { key: "base_price", label: "السعر الأساسي" },
+    { key: "available", label: "متاح للتوريد" },
+    { key: "supply_type", label: "نوع التوريد" },
+  ];
+  const exportData = filteredItems.map((it: any) => {
+    const p = pricingByItem.get(it.id);
+    const lastP = lastPurchases[it.id] ?? 0;
+    const overheadPerUnit = overheadByItem[it.id] || 0;
+    const base = computeSupplyPrice({
+      wac: Number(it.avg_cost) || 0,
+      lastPurchasePrice: lastP,
+      currentStock: Number(it.current_stock) || 0,
+      pricing: p,
+      overheadPerUnit,
+    }).baseCost;
+    return {
+      code: it.code ?? "—",
+      name: it.name,
+      category: it.inventory_categories?.name ?? "—",
+      stock: Number(it.current_stock).toFixed(2),
+      unit: it.stock_unit ?? "—",
+      wac: Number(it.avg_cost || 0).toFixed(2),
+      last_purchase: Number(lastP).toFixed(2),
+      overhead_share: overheadPerUnit.toFixed(2),
+      packaging: Number(p?.packaging_cost ?? 0).toFixed(2),
+      base_price: base.toFixed(2),
+      available: (p?.is_available_for_transfer ?? true) ? "نعم" : "لا",
+      supply_type: (p?.supply_type ?? "cost_plus_profit") === "cost" ? "تكلفة فقط" : "تكلفة + ربح",
+    };
+  });
+  const exportFilters = [
+    { label: "المخزن", value: selectedWarehouse?.name ?? "" },
+    { label: "طريقة التوزيع", value: allocationLabels[allocationMethod] },
+    { label: "إجمالي المصاريف الشهرية", value: fmt(totalOverhead) },
+  ];
+
+
+
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto" dir="rtl">
       {/* Header */}

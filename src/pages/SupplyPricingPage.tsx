@@ -265,14 +265,16 @@ export const SupplyPricingPage: React.FC = () => {
           manual_base_price: row.manual_base_price ?? null,
           is_available_for_transfer: row.is_available_for_transfer ?? true,
           manual_overhead_share: row.manual_overhead_share ?? 0,
+          manual_transport_share: (row as any).manual_transport_share ?? 0,
           unit_weight: row.unit_weight ?? 0,
           unit_volume: row.unit_volume ?? 0,
           last_calculated_at: new Date().toISOString(),
         });
       if (error) throw error;
     }
-    await qc.invalidateQueries({ queryKey: ["supply-pricing", companyId] });
+    await qc.refetchQueries({ queryKey: ["supply-pricing", companyId] });
   };
+
 
   const upsertPolicy = async (branchId: string, patch: Partial<BranchSupplyPolicy>) => {
     if (!companyId) return;

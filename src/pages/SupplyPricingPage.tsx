@@ -216,6 +216,7 @@ export const SupplyPricingPage: React.FC = () => {
   const [search, setSearch] = useState("");
   const [supplyTypeFilter, setSupplyTypeFilter] = useState<"all" | "cost" | "cost_plus_profit">("all");
   const [availFilter, setAvailFilter] = useState<"all" | "yes" | "no">("all");
+  const [selectedBranchId, setSelectedBranchId] = useState<string>("all");
 
   const filteredItems = useMemo(() => {
     const q = search.trim().toLowerCase();

@@ -10,9 +10,10 @@ interface PrintButtonProps {
   headerGroups?: { label: string; colSpan: number }[];
   filters?: { label: string; value: string }[];
   companyName?: string;
+  landscape?: boolean;
 }
 
-export const PrintButton: React.FC<PrintButtonProps> = ({ data, columns, title, headerGroups, filters, companyName }) => {
+export const PrintButton: React.FC<PrintButtonProps> = ({ data, columns, title, headerGroups, filters, companyName, landscape }) => {
 
   const [loading, setLoading] = useState(false);
 

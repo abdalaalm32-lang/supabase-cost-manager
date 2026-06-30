@@ -490,6 +490,7 @@ export const SupplyPricingPage: React.FC = () => {
               </SelectContent>
             </Select>
             <PrintButton
+              landscape
               data={exportData}
               columns={exportColumns}
               title={`تسعير المخزن المركزي — ${selectedWarehouse?.name ?? ""}`}

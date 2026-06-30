@@ -80,8 +80,10 @@ export const PrintButton: React.FC<PrintButtonProps> = ({ data, columns, title, 
       background: #fff;
     }
     @media print {
-      @page { size: auto; margin: 10mm; }
+      @page { size: ${landscape ? "A4 landscape" : "A4"}; margin: 8mm; }
       body { padding: 0; }
+      table { font-size: 9px !important; }
+      th, td { padding: 3px 4px !important; word-break: break-word; }
     }
     .header {
       text-align: center;

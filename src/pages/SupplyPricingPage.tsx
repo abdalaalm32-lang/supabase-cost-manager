@@ -614,6 +614,11 @@ export const SupplyPricingPage: React.FC = () => {
                     <TableHead className="text-center">تعبئة</TableHead>
                     <TableHead className="text-center">حساب تلقائي</TableHead>
                     <TableHead className="text-center">السعر الأساسي</TableHead>
+                    {selectedBranchId !== "all" && (
+                      <TableHead className="text-center text-emerald-600">
+                        السعر النهائي — {selectedBranch?.name}
+                      </TableHead>
+                    )}
                     <TableHead className="text-center">إجراءات</TableHead>
                   </TableRow>
                 </TableHeader>

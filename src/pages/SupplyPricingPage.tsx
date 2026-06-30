@@ -682,6 +682,11 @@ export const SupplyPricingPage: React.FC = () => {
                             <Switch checked={p?.auto_calculate ?? true} onCheckedChange={(v) => upsertPricing({ stock_item_id: it.id, auto_calculate: v })} />
                           </TableCell>
                           <TableCell className="text-center text-xs font-bold text-primary">{fmt(basePreview)}</TableCell>
+                          {selectedBranchId !== "all" && (
+                            <TableCell className="text-center text-sm font-black text-emerald-600">
+                              {fmt(computeBranchFinal(it, selectedBranchId))}
+                            </TableCell>
+                          )}
                           <TableCell className="text-center">
                             <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setPreviewItem({ ...it, lastP, overheadPerUnit })}>
                               <Eye size={12}/> الأسعار

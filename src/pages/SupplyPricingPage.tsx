@@ -380,6 +380,28 @@ export const SupplyPricingPage: React.FC = () => {
   const [previewItem, setPreviewItem] = useState<any | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // Per-branch final unit price
+  const computeBranchFinal = (it: any, branchId: string): number => {
+    const p = pricingByItem.get(it.id);
+    const pol = policies.find((x) => x.branch_id === branchId);
+    if (!pol) return 0;
+    const tl = transportPerUnitByBranch.get(branchId)?.[it.id];
+    const r = computeSupplyPrice({
+      wac: Number(it.avg_cost) || 0,
+      lastPurchasePrice: lastPurchases[it.id] ?? 0,
+      currentStock: Number(it.current_stock) || 0,
+      pricing: p,
+      policy: pol,
+      overheadPerUnit: overheadByItem[it.id] || 0,
+      transportPerUnitOverride: tl?.transport ?? 0,
+      loadingPerUnitOverride: tl?.loading ?? 0,
+      quantity: 1,
+    });
+    return r.finalUnitPrice;
+  };
+
+  const selectedBranch = branches.find((b: any) => b.id === selectedBranchId);
+
   // Export columns & data for items table
   const exportColumns = [
     { key: "code", label: "الكود" },
@@ -394,6 +416,9 @@ export const SupplyPricingPage: React.FC = () => {
     { key: "base_price", label: "السعر الأساسي" },
     { key: "available", label: "متاح للتوريد" },
     { key: "supply_type", label: "نوع التوريد" },
+    ...(selectedBranchId !== "all" && selectedBranch
+      ? [{ key: "final_price", label: `السعر النهائي — ${selectedBranch.name}` }]
+      : branches.map((b: any) => ({ key: `final_${b.id}`, label: `سعر ${b.name}` }))),
   ];
   const exportData = filteredItems.map((it: any) => {
     const p = pricingByItem.get(it.id);
@@ -406,7 +431,7 @@ export const SupplyPricingPage: React.FC = () => {
       pricing: p,
       overheadPerUnit,
     }).baseCost;
-    return {
+    const row: Record<string, any> = {
       code: it.code ?? "—",
       name: it.name,
       category: it.inventory_categories?.name ?? "—",
@@ -420,9 +445,18 @@ export const SupplyPricingPage: React.FC = () => {
       available: (p?.is_available_for_transfer ?? true) ? "نعم" : "لا",
       supply_type: (p?.supply_type ?? "cost_plus_profit") === "cost" ? "تكلفة فقط" : "تكلفة + ربح",
     };
+    if (selectedBranchId !== "all" && selectedBranch) {
+      row.final_price = computeBranchFinal(it, selectedBranchId).toFixed(2);
+    } else {
+      branches.forEach((b: any) => {
+        row[`final_${b.id}`] = computeBranchFinal(it, b.id).toFixed(2);
+      });
+    }
+    return row;
   });
   const exportFilters = [
     { label: "المخزن", value: selectedWarehouse?.name ?? "" },
+    { label: "الفرع", value: selectedBranch?.name ?? "كل الفروع" },
     { label: "طريقة التوزيع", value: allocationLabels[allocationMethod] },
     { label: "إجمالي المصاريف الشهرية", value: fmt(totalOverhead) },
   ];

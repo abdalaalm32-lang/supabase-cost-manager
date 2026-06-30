@@ -216,6 +216,7 @@ export const SupplyPricingPage: React.FC = () => {
   const [search, setSearch] = useState("");
   const [supplyTypeFilter, setSupplyTypeFilter] = useState<"all" | "cost" | "cost_plus_profit">("all");
   const [availFilter, setAvailFilter] = useState<"all" | "yes" | "no">("all");
+  const [selectedBranchId, setSelectedBranchId] = useState<string>("all");
 
   const filteredItems = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -379,6 +380,28 @@ export const SupplyPricingPage: React.FC = () => {
   const [previewItem, setPreviewItem] = useState<any | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // Per-branch final unit price
+  const computeBranchFinal = (it: any, branchId: string): number => {
+    const p = pricingByItem.get(it.id);
+    const pol = policies.find((x) => x.branch_id === branchId);
+    if (!pol) return 0;
+    const tl = transportPerUnitByBranch.get(branchId)?.[it.id];
+    const r = computeSupplyPrice({
+      wac: Number(it.avg_cost) || 0,
+      lastPurchasePrice: lastPurchases[it.id] ?? 0,
+      currentStock: Number(it.current_stock) || 0,
+      pricing: p,
+      policy: pol,
+      overheadPerUnit: overheadByItem[it.id] || 0,
+      transportPerUnitOverride: tl?.transport ?? 0,
+      loadingPerUnitOverride: tl?.loading ?? 0,
+      quantity: 1,
+    });
+    return r.finalUnitPrice;
+  };
+
+  const selectedBranch = branches.find((b: any) => b.id === selectedBranchId);
+
   // Export columns & data for items table
   const exportColumns = [
     { key: "code", label: "الكود" },
@@ -393,6 +416,9 @@ export const SupplyPricingPage: React.FC = () => {
     { key: "base_price", label: "السعر الأساسي" },
     { key: "available", label: "متاح للتوريد" },
     { key: "supply_type", label: "نوع التوريد" },
+    ...(selectedBranchId !== "all" && selectedBranch
+      ? [{ key: "final_price", label: `السعر النهائي — ${selectedBranch.name}` }]
+      : branches.map((b: any) => ({ key: `final_${b.id}`, label: `سعر ${b.name}` }))),
   ];
   const exportData = filteredItems.map((it: any) => {
     const p = pricingByItem.get(it.id);
@@ -405,7 +431,7 @@ export const SupplyPricingPage: React.FC = () => {
       pricing: p,
       overheadPerUnit,
     }).baseCost;
-    return {
+    const row: Record<string, any> = {
       code: it.code ?? "—",
       name: it.name,
       category: it.inventory_categories?.name ?? "—",
@@ -419,9 +445,18 @@ export const SupplyPricingPage: React.FC = () => {
       available: (p?.is_available_for_transfer ?? true) ? "نعم" : "لا",
       supply_type: (p?.supply_type ?? "cost_plus_profit") === "cost" ? "تكلفة فقط" : "تكلفة + ربح",
     };
+    if (selectedBranchId !== "all" && selectedBranch) {
+      row.final_price = computeBranchFinal(it, selectedBranchId).toFixed(2);
+    } else {
+      branches.forEach((b: any) => {
+        row[`final_${b.id}`] = computeBranchFinal(it, b.id).toFixed(2);
+      });
+    }
+    return row;
   });
   const exportFilters = [
     { label: "المخزن", value: selectedWarehouse?.name ?? "" },
+    { label: "الفرع", value: selectedBranch?.name ?? "كل الفروع" },
     { label: "طريقة التوزيع", value: allocationLabels[allocationMethod] },
     { label: "إجمالي المصاريف الشهرية", value: fmt(totalOverhead) },
   ];
@@ -455,6 +490,7 @@ export const SupplyPricingPage: React.FC = () => {
               </SelectContent>
             </Select>
             <PrintButton
+              landscape
               data={exportData}
               columns={exportColumns}
               title={`تسعير المخزن المركزي — ${selectedWarehouse?.name ?? ""}`}
@@ -535,6 +571,18 @@ export const SupplyPricingPage: React.FC = () => {
                   <SelectItem value="cost_plus_profit">تكلفة + ربح</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
+                <SelectTrigger className="w-[200px]">
+                  <Building2 size={14} className="ml-1 text-muted-foreground" />
+                  <SelectValue placeholder="اختر الفرع" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">كل الفروع (سعر أساسي)</SelectItem>
+                  {branches.map((b: any) => (
+                    <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </CardContent>
           </Card>
 
@@ -566,6 +614,11 @@ export const SupplyPricingPage: React.FC = () => {
                     <TableHead className="text-center">تعبئة</TableHead>
                     <TableHead className="text-center">حساب تلقائي</TableHead>
                     <TableHead className="text-center">السعر الأساسي</TableHead>
+                    {selectedBranchId !== "all" && (
+                      <TableHead className="text-center text-emerald-600">
+                        السعر النهائي — {selectedBranch?.name}
+                      </TableHead>
+                    )}
                     <TableHead className="text-center">إجراءات</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -629,6 +682,11 @@ export const SupplyPricingPage: React.FC = () => {
                             <Switch checked={p?.auto_calculate ?? true} onCheckedChange={(v) => upsertPricing({ stock_item_id: it.id, auto_calculate: v })} />
                           </TableCell>
                           <TableCell className="text-center text-xs font-bold text-primary">{fmt(basePreview)}</TableCell>
+                          {selectedBranchId !== "all" && (
+                            <TableCell className="text-center text-sm font-black text-emerald-600">
+                              {fmt(computeBranchFinal(it, selectedBranchId))}
+                            </TableCell>
+                          )}
                           <TableCell className="text-center">
                             <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setPreviewItem({ ...it, lastP, overheadPerUnit })}>
                               <Eye size={12}/> الأسعار
@@ -638,7 +696,7 @@ export const SupplyPricingPage: React.FC = () => {
 
                         {isExpanded && (
                           <TableRow className="bg-muted/20">
-                            <TableCell colSpan={14} className="p-4">
+                            <TableCell colSpan={selectedBranchId !== "all" ? 15 : 14} className="p-4">
                               <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                                 <div>
                                   <label className="text-xs text-muted-foreground flex items-center gap-1">
@@ -715,7 +773,7 @@ export const SupplyPricingPage: React.FC = () => {
                   })}
                   {filteredItems.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={14} className="text-center py-8 text-muted-foreground">لا توجد خامات</TableCell>
+                      <TableCell colSpan={selectedBranchId !== "all" ? 15 : 14} className="text-center py-8 text-muted-foreground">لا توجد خامات</TableCell>
                     </TableRow>
                   )}
                 </TableBody>

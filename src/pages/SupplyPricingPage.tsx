@@ -571,6 +571,18 @@ export const SupplyPricingPage: React.FC = () => {
                   <SelectItem value="cost_plus_profit">تكلفة + ربح</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
+                <SelectTrigger className="w-[200px]">
+                  <Building2 size={14} className="ml-1 text-muted-foreground" />
+                  <SelectValue placeholder="اختر الفرع" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">كل الفروع (سعر أساسي)</SelectItem>
+                  {branches.map((b: any) => (
+                    <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </CardContent>
           </Card>
 

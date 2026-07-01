@@ -11,37 +11,46 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
+import { useLocationStock } from "@/hooks/useLocationStock";
 import {
-  allocateCharge,
   computeSupplyPrice,
+  computeMonthlyRate,
   useBranchPolicies,
   useSupplyPricing,
   useWarehouseOverhead,
-  type AllocationMethod,
+  useWarehouseMonthlyRates,
   type BranchSupplyPolicy,
   type SupplyPricingRow,
 } from "@/hooks/useSupplyPricing";
 import {
   Search, Package, Building2, Eye,
   Calculator, Truck, Boxes, Percent, ChevronDown, ChevronUp,
-  Plus, Trash2, RefreshCw, Receipt, Warehouse as WarehouseIcon, Info,
+  Plus, Trash2, Receipt, Warehouse as WarehouseIcon, Info,
+  CheckCircle2, TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PrintButton } from "@/components/PrintButton";
 import { ExportButtons } from "@/components/ExportButtons";
 
-
 const fmt = (n: number) => `${(Number(n) || 0).toLocaleString("ar-EG", { maximumFractionDigits: 2 })} ج.م`;
-const fmtPct = (n: number) => `${Number(n || 0).toFixed(1)}%`;
+const fmtPct = (n: number) => `${Number(n || 0).toFixed(2)}%`;
 
-const allocationLabels: Record<AllocationMethod, string> = {
-  value: "حسب القيمة (موصى به)",
-  weight: "حسب الوزن",
-  volume: "حسب الحجم",
-  quantity: "حسب الكمية",
-  manual: "توزيع يدوي",
+const currentMonthStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+};
+
+const prevMonthStr = (m: string) => {
+  const [y, mm] = m.split("-").map(Number);
+  const d = new Date(y, mm - 2, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+};
+
+const monthLabel = (m: string) => {
+  const [y, mm] = m.split("-").map(Number);
+  const d = new Date(y, mm - 1, 1);
+  return d.toLocaleDateString("ar-EG", { year: "numeric", month: "long" });
 };
 
 export const SupplyPricingPage: React.FC = () => {
@@ -57,7 +66,7 @@ export const SupplyPricingPage: React.FC = () => {
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("warehouses")
-        .select("id, name, code, overhead_allocation_method")
+        .select("id, name, code, estimated_overhead_rate")
         .eq("company_id", companyId!)
         .eq("active", true)
         .order("name");
@@ -73,8 +82,6 @@ export const SupplyPricingPage: React.FC = () => {
   }, [warehouses, selectedWarehouseId]);
 
   const selectedWarehouse = warehouses.find((w: any) => w.id === selectedWarehouseId);
-  const allocationMethod: AllocationMethod =
-    (selectedWarehouse?.overhead_allocation_method as AllocationMethod) || "value";
 
   // Items linked to the selected warehouse
   const { data: stockItems = [] } = useQuery({
@@ -99,6 +106,9 @@ export const SupplyPricingPage: React.FC = () => {
     },
   });
 
+  // Per-warehouse live balance
+  const { getLocationStock } = useLocationStock(selectedWarehouseId || null, "warehouse");
+
   const { data: branches = [] } = useQuery({
     queryKey: ["branches-supply", companyId],
     enabled: !!companyId,
@@ -116,6 +126,7 @@ export const SupplyPricingPage: React.FC = () => {
   const { data: pricing = [] } = useSupplyPricing(companyId);
   const { data: policies = [] } = useBranchPolicies(companyId);
   const { data: overhead = [] } = useWarehouseOverhead(companyId, selectedWarehouseId);
+  const { data: monthlyRates = [] } = useWarehouseMonthlyRates(companyId, selectedWarehouseId);
 
   // last purchase prices
   const { data: lastPurchases = {} } = useQuery({
@@ -142,75 +153,25 @@ export const SupplyPricingPage: React.FC = () => {
     return m;
   }, [pricing]);
 
-  // Total monthly overhead
+  // Total monthly overhead (active)
   const totalOverhead = useMemo(
     () => overhead.filter((o) => o.is_active).reduce((s, o) => s + Number(o.monthly_amount || 0), 0),
     [overhead],
   );
 
-  // Allocate overhead per item -> per unit
-  const overheadByItem = useMemo(() => {
-    if (!stockItems.length || !totalOverhead) {
-      const m: Record<string, number> = {};
-      stockItems.forEach((i: any) => (m[i.id] = 0));
-      return m;
-    }
-    const itemsForAllocation = stockItems.map((it: any) => {
-      const p = pricingByItem.get(it.id);
-      return {
-        id: it.id,
-        current_stock: Number(it.current_stock) || 0,
-        avg_cost: Number(it.avg_cost) || 0,
-        unit_weight: Number(p?.unit_weight) || 0,
-        unit_volume: Number(p?.unit_volume) || 0,
-        manual_share: Number(p?.manual_overhead_share) || 0,
-      };
-    });
-    const totalShares = allocateCharge(itemsForAllocation, totalOverhead, allocationMethod, false);
-    const perUnit: Record<string, number> = {};
-    stockItems.forEach((it: any) => {
-      const qty = Math.max(Number(it.current_stock) || 0, 1);
-      perUnit[it.id] = (totalShares[it.id] || 0) / qty;
-    });
-    return perUnit;
-  }, [stockItems, pricingByItem, totalOverhead, allocationMethod]);
-
-  // Allocate transport+loading per branch policy across available items -> per unit
-  const transportPerUnitByBranch = useMemo(() => {
-    const out = new Map<string, Record<string, { transport: number; loading: number }>>();
-    const availableItems = stockItems.filter((it: any) => {
-      const p = pricingByItem.get(it.id);
-      return (p?.is_available_for_transfer ?? true);
-    });
-    // Items dataset for transport/loading allocation — uses manual_transport_share for "manual" method
-    const itemsForAllocation = availableItems.map((it: any) => {
-      const p = pricingByItem.get(it.id);
-      return {
-        id: it.id,
-        current_stock: Number(it.current_stock) || 0,
-        avg_cost: Number(it.avg_cost) || 0,
-        unit_weight: Number(p?.unit_weight) || 0,
-        unit_volume: Number(p?.unit_volume) || 0,
-        manual_share: Number((p as any)?.manual_transport_share) || 0,
-      };
-    });
-    policies.forEach((pol) => {
-      const method = (pol.allocation_method as AllocationMethod) || "value";
-      const tShares = allocateCharge(itemsForAllocation, Number(pol.transportation_cost) || 0, method, false);
-      const lShares = allocateCharge(itemsForAllocation, Number(pol.loading_cost) || 0, method, false);
-      const map: Record<string, { transport: number; loading: number }> = {};
-      availableItems.forEach((it: any) => {
-        const qty = Math.max(Number(it.current_stock) || 0, 1);
-        map[it.id] = {
-          transport: (tShares[it.id] || 0) / qty,
-          loading: (lShares[it.id] || 0) / qty,
-        };
-      });
-      out.set(pol.branch_id, map);
-    });
-    return out;
-  }, [stockItems, pricingByItem, policies]);
-
+  // Current effective rate = current-month saved rate → most recent prior → estimated
+  const currentRate = useMemo(() => {
+    const cm = currentMonthStr();
+    const thisMonth = monthlyRates.find((r) => r.month === cm);
+    if (thisMonth) return { rate: Number(thisMonth.rate) || 0, source: "current" as const, month: cm };
+    const prior = monthlyRates.find((r) => r.month < cm);
+    if (prior) return { rate: Number(prior.rate) || 0, source: "prior" as const, month: prior.month };
+    return {
+      rate: Number(selectedWarehouse?.estimated_overhead_rate ?? 0),
+      source: "estimated" as const,
+      month: cm,
+    };
+  }, [monthlyRates, selectedWarehouse]);
 
   // Filters
   const [search, setSearch] = useState("");
@@ -234,13 +195,12 @@ export const SupplyPricingPage: React.FC = () => {
 
   const kpis = useMemo(() => {
     const total = stockItems.length;
-    const configured = stockItems.filter((it: any) => pricingByItem.has(it.id)).length;
     const available = stockItems.filter((it: any) => (pricingByItem.get(it.id)?.is_available_for_transfer ?? true)).length;
     const avgProfit =
       policies.length > 0
         ? policies.reduce((s, p) => s + Number(p.profit_percentage ?? 0), 0) / policies.length
         : 0;
-    return { total, configured, available, avgProfit };
+    return { total, available, avgProfit };
   }, [stockItems, pricing, policies, pricingByItem]);
 
   // Save handlers
@@ -260,22 +220,16 @@ export const SupplyPricingPage: React.FC = () => {
           company_id: companyId,
           stock_item_id: row.stock_item_id,
           supply_type: row.supply_type ?? "cost_plus_profit",
-          manufacturing_cost: row.manufacturing_cost ?? 0,
           packaging_cost: row.packaging_cost ?? 0,
           auto_calculate: row.auto_calculate ?? true,
           manual_base_price: row.manual_base_price ?? null,
           is_available_for_transfer: row.is_available_for_transfer ?? true,
-          manual_overhead_share: row.manual_overhead_share ?? 0,
-          manual_transport_share: (row as any).manual_transport_share ?? 0,
-          unit_weight: row.unit_weight ?? 0,
-          unit_volume: row.unit_volume ?? 0,
           last_calculated_at: new Date().toISOString(),
         });
       if (error) throw error;
     }
     await qc.refetchQueries({ queryKey: ["supply-pricing", companyId] });
   };
-
 
   const upsertPolicy = async (branchId: string, patch: Partial<BranchSupplyPolicy>) => {
     if (!companyId) return;
@@ -292,28 +246,27 @@ export const SupplyPricingPage: React.FC = () => {
         loading_cost: patch.loading_cost ?? 0,
         minimum_order_value: patch.minimum_order_value ?? 0,
         is_active: patch.is_active ?? true,
-        allocation_method: patch.allocation_method ?? "value",
       });
       if (error) throw error;
     }
     await qc.invalidateQueries({ queryKey: ["branch-supply-policies", companyId] });
   };
 
-  const setWarehouseAllocation = async (method: AllocationMethod) => {
+  const setEstimatedRate = async (rate: number) => {
     if (!selectedWarehouseId) return;
     const { error } = await (supabase as any)
       .from("warehouses")
-      .update({ overhead_allocation_method: method })
+      .update({ estimated_overhead_rate: rate })
       .eq("id", selectedWarehouseId);
     if (error) {
       toast({ title: "خطأ", description: error.message, variant: "destructive" });
       return;
     }
     await qc.refetchQueries({ queryKey: ["warehouses-supply", companyId] });
-    toast({ title: "تم", description: `تم تحديث طريقة التوزيع إلى: ${allocationLabels[method]}` });
+    toast({ title: "تم", description: `تم حفظ المعدل التقديري: ${rate.toFixed(2)}%` });
   };
 
-  // Overhead CRUD
+  // Overhead expense CRUD
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [expenseName, setExpenseName] = useState("");
   const [expenseAmount, setExpenseAmount] = useState<number>(0);
@@ -338,63 +291,85 @@ export const SupplyPricingPage: React.FC = () => {
     setExpenseAmount(0);
     setShowAddExpense(false);
     await qc.refetchQueries({ queryKey: ["warehouse-overhead", companyId, selectedWarehouseId] });
-    toast({ title: "تم", description: "تم إضافة البند بنجاح" });
+    toast({ title: "تم", description: "تم إضافة البند" });
   };
 
   const updateExpense = async (id: string, patch: any) => {
     const { error } = await (supabase as any).from("warehouse_overhead_expenses").update(patch).eq("id", id);
-    if (error) {
-      toast({ title: "خطأ", description: error.message, variant: "destructive" });
-      return;
-    }
+    if (error) { toast({ title: "خطأ", description: error.message, variant: "destructive" }); return; }
     await qc.refetchQueries({ queryKey: ["warehouse-overhead", companyId, selectedWarehouseId] });
   };
 
   const deleteExpense = async (id: string) => {
     const { error } = await (supabase as any).from("warehouse_overhead_expenses").delete().eq("id", id);
-    if (error) {
-      toast({ title: "خطأ", description: error.message, variant: "destructive" });
-      return;
-    }
+    if (error) { toast({ title: "خطأ", description: error.message, variant: "destructive" }); return; }
     await qc.refetchQueries({ queryKey: ["warehouse-overhead", companyId, selectedWarehouseId] });
-    toast({ title: "تم", description: "تم حذف البند" });
   };
 
-  // Bulk: apply overhead share to manufacturing_cost for all filtered items
-  const applyOverheadToManufacturing = async () => {
-    try {
-      for (const it of filteredItems) {
-        const share = overheadByItem[it.id] || 0;
-        await upsertPricing({ stock_item_id: it.id, manufacturing_cost: Number(share.toFixed(4)) });
-      }
-      toast({
-        title: "تم",
-        description: `تم تحميل نصيب المصاريف غير المباشرة على ${filteredItems.length} صنف`,
+  // Monthly rate actions
+  const calculateAndSaveMonthRate = async (month: string, status: "estimated" | "actual" | "approved" = "actual") => {
+    if (!companyId || !selectedWarehouseId) return;
+    const { expenses, transfers, rate } = await computeMonthlyRate(companyId, selectedWarehouseId, month);
+    const existing = monthlyRates.find((r) => r.month === month);
+    if (existing) {
+      const { error } = await (supabase as any)
+        .from("warehouse_overhead_monthly_rates")
+        .update({ expenses_total: expenses, transfers_total: transfers, rate, status })
+        .eq("id", existing.id);
+      if (error) { toast({ title: "خطأ", description: error.message, variant: "destructive" }); return; }
+    } else {
+      const { error } = await (supabase as any).from("warehouse_overhead_monthly_rates").insert({
+        company_id: companyId,
+        warehouse_id: selectedWarehouseId,
+        month,
+        expenses_total: expenses,
+        transfers_total: transfers,
+        rate,
+        status,
       });
-    } catch (e: any) {
-      toast({ title: "خطأ", description: e.message, variant: "destructive" });
+      if (error) { toast({ title: "خطأ", description: error.message, variant: "destructive" }); return; }
     }
+    await qc.refetchQueries({ queryKey: ["warehouse-monthly-rates", companyId, selectedWarehouseId] });
+    toast({ title: "تم", description: `تم احتساب معدل ${monthLabel(month)}: ${rate.toFixed(2)}%` });
+  };
+
+  const approveMonthRate = async (id: string) => {
+    const { error } = await (supabase as any)
+      .from("warehouse_overhead_monthly_rates")
+      .update({ status: "approved" }).eq("id", id);
+    if (error) { toast({ title: "خطأ", description: error.message, variant: "destructive" }); return; }
+    await qc.refetchQueries({ queryKey: ["warehouse-monthly-rates", companyId, selectedWarehouseId] });
+    toast({ title: "تم اعتماد المعدل" });
+  };
+
+  const deleteMonthRate = async (id: string) => {
+    const { error } = await (supabase as any).from("warehouse_overhead_monthly_rates").delete().eq("id", id);
+    if (error) { toast({ title: "خطأ", description: error.message, variant: "destructive" }); return; }
+    await qc.refetchQueries({ queryKey: ["warehouse-monthly-rates", companyId, selectedWarehouseId] });
   };
 
   // Per-row preview
   const [previewItem, setPreviewItem] = useState<any | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // Helper: live per-warehouse balance for an item
+  const liveBalance = (it: any) => {
+    const v = getLocationStock(it.id);
+    return Number.isFinite(v) ? v : Number(it.current_stock) || 0;
+  };
+
   // Per-branch final unit price
   const computeBranchFinal = (it: any, branchId: string): number => {
     const p = pricingByItem.get(it.id);
     const pol = policies.find((x) => x.branch_id === branchId);
     if (!pol) return 0;
-    const tl = transportPerUnitByBranch.get(branchId)?.[it.id];
     const r = computeSupplyPrice({
       wac: Number(it.avg_cost) || 0,
       lastPurchasePrice: lastPurchases[it.id] ?? 0,
-      currentStock: Number(it.current_stock) || 0,
+      currentStock: liveBalance(it),
       pricing: p,
       policy: pol,
-      overheadPerUnit: overheadByItem[it.id] || 0,
-      transportPerUnitOverride: tl?.transport ?? 0,
-      loadingPerUnitOverride: tl?.loading ?? 0,
+      overheadRate: currentRate.rate,
       quantity: 1,
     });
     return r.finalUnitPrice;
@@ -402,18 +377,18 @@ export const SupplyPricingPage: React.FC = () => {
 
   const selectedBranch = branches.find((b: any) => b.id === selectedBranchId);
 
-  // Export columns & data for items table
+  // Export columns & data
   const exportColumns = [
     { key: "code", label: "الكود" },
     { key: "name", label: "اسم الخامة" },
     { key: "category", label: "المجموعة" },
-    { key: "stock", label: "الرصيد" },
+    { key: "stock", label: "الرصيد الحالي" },
     { key: "unit", label: "الوحدة" },
     { key: "wac", label: "WAC" },
     { key: "last_purchase", label: "آخر شراء" },
-    { key: "overhead_share", label: "نصيب مصاريف/وحدة" },
     { key: "packaging", label: "تعبئة" },
-    { key: "base_price", label: "السعر الأساسي" },
+    { key: "overhead_rate", label: "معدل التحميل %" },
+    { key: "base_price", label: "السعر الأساسي بعد التحميل" },
     { key: "available", label: "متاح للتوريد" },
     { key: "supply_type", label: "نوع التوريد" },
     ...(selectedBranchId !== "all" && selectedBranch
@@ -423,25 +398,25 @@ export const SupplyPricingPage: React.FC = () => {
   const exportData = filteredItems.map((it: any) => {
     const p = pricingByItem.get(it.id);
     const lastP = lastPurchases[it.id] ?? 0;
-    const overheadPerUnit = overheadByItem[it.id] || 0;
-    const base = computeSupplyPrice({
+    const bal = liveBalance(it);
+    const r = computeSupplyPrice({
       wac: Number(it.avg_cost) || 0,
       lastPurchasePrice: lastP,
-      currentStock: Number(it.current_stock) || 0,
+      currentStock: bal,
       pricing: p,
-      overheadPerUnit,
-    }).baseCost;
+      overheadRate: currentRate.rate,
+    });
     const row: Record<string, any> = {
       code: it.code ?? "—",
       name: it.name,
       category: it.inventory_categories?.name ?? "—",
-      stock: Number(it.current_stock).toFixed(2),
+      stock: bal.toFixed(2),
       unit: it.stock_unit ?? "—",
       wac: Number(it.avg_cost || 0).toFixed(2),
       last_purchase: Number(lastP).toFixed(2),
-      overhead_share: overheadPerUnit.toFixed(2),
       packaging: Number(p?.packaging_cost ?? 0).toFixed(2),
-      base_price: base.toFixed(2),
+      overhead_rate: fmtPct(currentRate.rate),
+      base_price: r.withOverhead.toFixed(2),
       available: (p?.is_available_for_transfer ?? true) ? "نعم" : "لا",
       supply_type: (p?.supply_type ?? "cost_plus_profit") === "cost" ? "تكلفة فقط" : "تكلفة + ربح",
     };
@@ -457,11 +432,9 @@ export const SupplyPricingPage: React.FC = () => {
   const exportFilters = [
     { label: "المخزن", value: selectedWarehouse?.name ?? "" },
     { label: "الفرع", value: selectedBranch?.name ?? "كل الفروع" },
-    { label: "طريقة التوزيع", value: allocationLabels[allocationMethod] },
+    { label: "معدل التحميل الحالي", value: fmtPct(currentRate.rate) },
     { label: "إجمالي المصاريف الشهرية", value: fmt(totalOverhead) },
   ];
-
-
 
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto" dir="rtl">
@@ -474,37 +447,23 @@ export const SupplyPricingPage: React.FC = () => {
               تسعير المخزن المركزي
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              تسعير الخامات للفروع بناءً على التكلفة + الربح + النقل + التحميل، مع توزيع المصاريف غير المباشرة.
+              تسعير الخامات للفروع بناءً على WAC + معدل التحميل الشهري للمصاريف غير المباشرة + هامش الربح.
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <WarehouseIcon size={16} className="text-muted-foreground" />
             <Select value={selectedWarehouseId} onValueChange={setSelectedWarehouseId}>
-              <SelectTrigger className="w-[220px]">
-                <SelectValue placeholder="اختر المخزن" />
-              </SelectTrigger>
+              <SelectTrigger className="w-[220px]"><SelectValue placeholder="اختر المخزن" /></SelectTrigger>
               <SelectContent>
-                {warehouses.map((w: any) => (
-                  <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
-                ))}
+                {warehouses.map((w: any) => (<SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>))}
               </SelectContent>
             </Select>
-            <PrintButton
-              landscape
-              data={exportData}
-              columns={exportColumns}
-              title={`تسعير المخزن المركزي — ${selectedWarehouse?.name ?? ""}`}
-              filters={exportFilters}
-            />
-            <ExportButtons
-              data={exportData}
-              columns={exportColumns}
+            <PrintButton landscape data={exportData} columns={exportColumns}
+              title={`تسعير المخزن المركزي — ${selectedWarehouse?.name ?? ""}`} filters={exportFilters}/>
+            <ExportButtons data={exportData} columns={exportColumns}
               filename={`supply-pricing-${selectedWarehouse?.name ?? "warehouse"}`}
-              title={`تسعير المخزن المركزي — ${selectedWarehouse?.name ?? ""}`}
-              filters={exportFilters}
-            />
+              title={`تسعير المخزن المركزي — ${selectedWarehouse?.name ?? ""}`} filters={exportFilters}/>
           </div>
-
         </div>
 
         {/* KPIs */}
@@ -524,10 +483,17 @@ export const SupplyPricingPage: React.FC = () => {
             </div>
           </div>
           <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-4 flex items-center gap-3">
-            <Receipt className="text-amber-500" />
+            <TrendingUp className="text-amber-500" />
             <div>
-              <p className="text-xs text-muted-foreground">إجمالي المصاريف الشهرية</p>
-              <p className="text-lg font-black">{fmt(totalOverhead)}</p>
+              <p className="text-xs text-muted-foreground">
+                معدل التحميل الحالي
+                <span className="ms-1 text-[10px]">
+                  ({currentRate.source === "current" ? "الشهر الحالي" :
+                    currentRate.source === "prior" ? `مُحفَّظ من ${monthLabel(currentRate.month)}` :
+                    "تقديري"})
+                </span>
+              </p>
+              <p className="text-xl font-black">{fmtPct(currentRate.rate)}</p>
             </div>
           </div>
           <div className="rounded-xl bg-blue-500/10 border border-blue-500/20 p-4 flex items-center gap-3">
@@ -578,9 +544,7 @@ export const SupplyPricingPage: React.FC = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">كل الفروع (سعر أساسي)</SelectItem>
-                  {branches.map((b: any) => (
-                    <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                  ))}
+                  {branches.map((b: any) => (<SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>))}
                 </SelectContent>
               </Select>
             </CardContent>
@@ -595,25 +559,17 @@ export const SupplyPricingPage: React.FC = () => {
                     <TableHead className="text-center">الكود</TableHead>
                     <TableHead className="text-center">اسم الخامة</TableHead>
                     <TableHead className="text-center">المجموعة</TableHead>
-                    <TableHead className="text-center">الرصيد</TableHead>
+                    <TableHead className="text-center">الرصيد الحالي</TableHead>
                     <TableHead className="text-center">WAC</TableHead>
                     <TableHead className="text-center">آخر شراء</TableHead>
-                    <TableHead className="text-center">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger>نصيب المصاريف / وحدة</TooltipTrigger>
-                          <TooltipContent>
-                            <p>محسوب من المصاريف غير المباشرة الشهرية حسب طريقة: <b>{allocationLabels[allocationMethod]}</b></p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </TableHead>
+                    <TableHead className="text-center">تعبئة</TableHead>
                     <TableHead className="text-center">متاح للتوريد</TableHead>
                     <TableHead className="text-center">نوع التوريد</TableHead>
-                    
-                    <TableHead className="text-center">تعبئة</TableHead>
                     <TableHead className="text-center">حساب تلقائي</TableHead>
-                    <TableHead className="text-center">السعر الأساسي</TableHead>
+                    <TableHead className="text-center">
+                      السعر بعد التحميل
+                      <div className="text-[10px] text-muted-foreground">+{fmtPct(currentRate.rate)}</div>
+                    </TableHead>
                     {selectedBranchId !== "all" && (
                       <TableHead className="text-center text-emerald-600">
                         السعر النهائي — {selectedBranch?.name}
@@ -626,16 +582,17 @@ export const SupplyPricingPage: React.FC = () => {
                   {filteredItems.map((it: any) => {
                     const p = pricingByItem.get(it.id);
                     const lastP = lastPurchases[it.id] ?? 0;
-                    const overheadPerUnit = overheadByItem[it.id] || 0;
                     const avail = p?.is_available_for_transfer ?? true;
-                    const basePreview = computeSupplyPrice({
+                    const bal = liveBalance(it);
+                    const r = computeSupplyPrice({
                       wac: Number(it.avg_cost) || 0,
                       lastPurchasePrice: lastP,
-                      currentStock: Number(it.current_stock) || 0,
+                      currentStock: bal,
                       pricing: p,
-                      overheadPerUnit,
-                    }).baseCost;
+                      overheadRate: currentRate.rate,
+                    });
                     const isExpanded = expandedId === it.id;
+                    const colSpan = selectedBranchId !== "all" ? 14 : 13;
                     return (
                       <React.Fragment key={`${it.id}-${p?.id ?? "new"}-${p?.last_calculated_at ?? ""}`}>
                         <TableRow className={cn("hover:bg-muted/30", !avail && "opacity-50")}>
@@ -647,21 +604,24 @@ export const SupplyPricingPage: React.FC = () => {
                           <TableCell className="text-center font-mono text-xs">{it.code ?? "—"}</TableCell>
                           <TableCell className="text-center font-medium">{it.name}</TableCell>
                           <TableCell className="text-center text-xs text-muted-foreground">{it.inventory_categories?.name ?? "—"}</TableCell>
-                          <TableCell className="text-center text-xs">{Number(it.current_stock).toFixed(2)} {it.stock_unit}</TableCell>
+                          <TableCell className="text-center text-xs font-mono">{bal.toFixed(2)} {it.stock_unit}</TableCell>
                           <TableCell className="text-center text-xs">{fmt(Number(it.avg_cost) || 0)}</TableCell>
                           <TableCell className="text-center text-xs">{fmt(lastP)}</TableCell>
-                          <TableCell className="text-center text-xs font-mono text-amber-600">{fmt(overheadPerUnit)}</TableCell>
                           <TableCell className="text-center">
-                            <Switch
-                              checked={avail}
-                              onCheckedChange={(v) => upsertPricing({ stock_item_id: it.id, is_available_for_transfer: v })}
-                            />
+                            <Input type="number" className="h-8 w-20 mx-auto text-xs text-center"
+                              defaultValue={p?.packaging_cost ?? 0}
+                              onBlur={(e) => {
+                                const v = Number(e.target.value) || 0;
+                                if (v !== Number(p?.packaging_cost ?? 0)) upsertPricing({ stock_item_id: it.id, packaging_cost: v });
+                              }}/>
                           </TableCell>
                           <TableCell className="text-center">
-                            <Select
-                              value={p?.supply_type ?? "cost_plus_profit"}
-                              onValueChange={(v: any) => upsertPricing({ stock_item_id: it.id, supply_type: v })}
-                            >
+                            <Switch checked={avail}
+                              onCheckedChange={(v) => upsertPricing({ stock_item_id: it.id, is_available_for_transfer: v })}/>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Select value={p?.supply_type ?? "cost_plus_profit"}
+                              onValueChange={(v: any) => upsertPricing({ stock_item_id: it.id, supply_type: v })}>
                               <SelectTrigger className="h-8 w-[120px] mx-auto text-xs"><SelectValue /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="cost">تكلفة فقط</SelectItem>
@@ -670,25 +630,18 @@ export const SupplyPricingPage: React.FC = () => {
                             </Select>
                           </TableCell>
                           <TableCell className="text-center">
-                            <Input type="number" className="h-8 w-20 mx-auto text-xs text-center"
-                              defaultValue={p?.packaging_cost ?? 0}
-                              onBlur={(e) => {
-                                const v = Number(e.target.value) || 0;
-                                if (v !== Number(p?.packaging_cost ?? 0)) upsertPricing({ stock_item_id: it.id, packaging_cost: v });
-                              }}
-                            />
+                            <Switch checked={p?.auto_calculate ?? true}
+                              onCheckedChange={(v) => upsertPricing({ stock_item_id: it.id, auto_calculate: v })}/>
                           </TableCell>
-                          <TableCell className="text-center">
-                            <Switch checked={p?.auto_calculate ?? true} onCheckedChange={(v) => upsertPricing({ stock_item_id: it.id, auto_calculate: v })} />
-                          </TableCell>
-                          <TableCell className="text-center text-xs font-bold text-primary">{fmt(basePreview)}</TableCell>
+                          <TableCell className="text-center text-xs font-bold text-primary">{fmt(r.withOverhead)}</TableCell>
                           {selectedBranchId !== "all" && (
                             <TableCell className="text-center text-sm font-black text-emerald-600">
                               {fmt(computeBranchFinal(it, selectedBranchId))}
                             </TableCell>
                           )}
                           <TableCell className="text-center">
-                            <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setPreviewItem({ ...it, lastP, overheadPerUnit })}>
+                            <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
+                              onClick={() => setPreviewItem({ ...it, lastP, bal })}>
                               <Eye size={12}/> الأسعار
                             </Button>
                           </TableCell>
@@ -696,8 +649,8 @@ export const SupplyPricingPage: React.FC = () => {
 
                         {isExpanded && (
                           <TableRow className="bg-muted/20">
-                            <TableCell colSpan={selectedBranchId !== "all" ? 15 : 14} className="p-4">
-                              <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                            <TableCell colSpan={colSpan} className="p-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <div>
                                   <label className="text-xs text-muted-foreground flex items-center gap-1">
                                     سعر يدوي
@@ -708,60 +661,17 @@ export const SupplyPricingPage: React.FC = () => {
                                     defaultValue={p?.manual_base_price ?? ""}
                                     onBlur={(e) => {
                                       const raw = e.target.value;
-                                      if (raw === "") {
-                                        // clear manual and re-enable auto
-                                        upsertPricing({ stock_item_id: it.id, manual_base_price: null as any, auto_calculate: true });
-                                      } else {
-                                        const v = Number(raw) || 0;
-                                        // entering a manual price disables auto-calc so it actually applies
-                                        upsertPricing({ stock_item_id: it.id, manual_base_price: v as any, auto_calculate: false });
-                                      }
-                                    }}
-                                  />
+                                      if (raw === "") upsertPricing({ stock_item_id: it.id, manual_base_price: null as any, auto_calculate: true });
+                                      else upsertPricing({ stock_item_id: it.id, manual_base_price: (Number(raw)||0) as any, auto_calculate: false });
+                                    }}/>
                                 </div>
-                                <div>
-                                  <label className="text-xs text-muted-foreground">
-                                    وزن الوحدة (كجم) <span className="text-[10px]">— للتوزيع حسب الوزن</span>
-                                  </label>
-                                  <Input type="number" step="0.001" className="mt-1 h-9"
-                                    defaultValue={p?.unit_weight ?? 0}
-                                    onBlur={(e) => upsertPricing({ stock_item_id: it.id, unit_weight: Number(e.target.value) || 0 })}
-                                  />
-                                </div>
-                                <div>
-                                  <label className="text-xs text-muted-foreground">
-                                    حجم الوحدة (لتر) <span className="text-[10px]">— للتوزيع حسب الحجم</span>
-                                  </label>
-                                  <Input type="number" step="0.001" className="mt-1 h-9"
-                                    defaultValue={p?.unit_volume ?? 0}
-                                    onBlur={(e) => upsertPricing({ stock_item_id: it.id, unit_volume: Number(e.target.value) || 0 })}
-                                  />
-                                </div>
-                                <div>
-                                  <label className="text-xs text-muted-foreground">
-                                    نصيب يدوي من المصاريف <span className="text-[10px]">— للتوزيع اليدوي</span>
-                                  </label>
-                                  <Input type="number" step="0.01" className="mt-1 h-9"
-                                    defaultValue={p?.manual_overhead_share ?? 0}
-                                    onBlur={(e) => upsertPricing({ stock_item_id: it.id, manual_overhead_share: Number(e.target.value) || 0 })}
-                                  />
-                                </div>
-                                <div>
-                                  <label className="text-xs text-muted-foreground">
-                                    نصيب تحميل/نقل يدوي <span className="text-[10px]">— للتوزيع اليدوي بالفروع</span>
-                                  </label>
-                                  <Input type="number" step="0.01" className="mt-1 h-9"
-                                    defaultValue={(p as any)?.manual_transport_share ?? 0}
-                                    onBlur={(e) => upsertPricing({ stock_item_id: it.id, manual_transport_share: Number(e.target.value) || 0 } as any)}
-                                  />
-                                </div>
-                                <div className="md:col-span-5 rounded-lg bg-card p-3 text-xs space-y-1 border">
-                                  <p className="font-bold mb-1">معادلة السعر الأساسي:</p>
-                                  <p>WAC: <span className="font-mono">{fmt(Number(it.avg_cost)||0)}</span>
-                                    {" + تعبئة: "}<span className="font-mono">{fmt(Number(p?.packaging_cost ?? 0))}</span>
-                                    {" + نصيب مصاريف غير مباشرة: "}<span className="font-mono text-amber-600">{fmt(overheadPerUnit)}</span>
-                                    {" = "}<span className="font-bold text-primary">{fmt(basePreview)}</span>
-
+                                <div className="rounded-lg bg-card p-3 text-xs space-y-1 border">
+                                  <p className="font-bold mb-1">معادلة السعر:</p>
+                                  <p>
+                                    ( WAC <span className="font-mono">{fmt(Number(it.avg_cost)||0)}</span>
+                                    {" + تعبئة "}<span className="font-mono">{fmt(Number(p?.packaging_cost ?? 0))}</span>
+                                    {" ) × ( 1 + "}<span className="font-mono text-amber-600">{fmtPct(currentRate.rate)}</span>
+                                    {" ) = "}<span className="font-bold text-primary">{fmt(r.withOverhead)}</span>
                                   </p>
                                 </div>
                               </div>
@@ -773,7 +683,7 @@ export const SupplyPricingPage: React.FC = () => {
                   })}
                   {filteredItems.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={selectedBranchId !== "all" ? 15 : 14} className="text-center py-8 text-muted-foreground">لا توجد خامات</TableCell>
+                      <TableCell colSpan={selectedBranchId !== "all" ? 14 : 13} className="text-center py-8 text-muted-foreground">لا توجد خامات</TableCell>
                     </TableRow>
                   )}
                 </TableBody>
@@ -784,55 +694,60 @@ export const SupplyPricingPage: React.FC = () => {
 
         {/* ----------- TAB: Overhead ----------- */}
         <TabsContent value="overhead" className="space-y-4">
+          {/* Info banner */}
+          <Card className="border-primary/30 bg-primary/5">
+            <CardContent className="p-4 text-xs space-y-2">
+              <div className="flex items-center gap-2 font-bold text-sm">
+                <Info size={14} className="text-primary"/> كيف يعمل معدل التحميل الشهري؟
+              </div>
+              <ol className="list-decimal pr-5 space-y-1 text-muted-foreground">
+                <li>سجّل بنود مصاريف المخزن (إيجار، مرتبات، فواتير...).</li>
+                <li>في نهاية كل شهر يحسب النظام: <b>معدل التحميل = إجمالي المصاريف ÷ إجمالي التحويلات × 100</b>.</li>
+                <li>المعدل المحسوب يُستخدم في كل فواتير التحويل للشهر التالي — بدون تأثير على WAC.</li>
+                <li>الفواتير المُرحَّلة لا تتغير حتى لو تغير المعدل لاحقاً (السعر مُثبَّت وقت الإصدار).</li>
+                <li>لو مفيش بيانات شهر سابق، النظام يستخدم <b>المعدل التقديري</b> اللي أنت مدخله.</li>
+              </ol>
+            </CardContent>
+          </Card>
+
+          {/* Estimated rate */}
           <Card>
-            <CardHeader>
+            <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
-                <Receipt size={18}/> المصاريف غير المباشرة الشهرية للمخزن
+                <Percent size={18}/> المعدل التقديري (Estimated Overhead Rate)
               </CardTitle>
               <p className="text-xs text-muted-foreground">
-                إيجار، مرتبات، فواتير، صيانة... يتم توزيعها على الأصناف حسب الطريقة المختارة، فينعكس نصيب كل صنف على سعر التوريد للفروع.
+                يُستخدم في أول شهر تشغيل قبل توفر بيانات فعلية للمصاريف والتحويلات.
               </p>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Info banner: how each allocation method works */}
-              <div className="rounded-xl border bg-muted/30 p-4 text-xs space-y-2">
-                <div className="flex items-center gap-2 font-bold text-sm">
-                  <Info size={14} className="text-primary"/> طريقة التوزيع — كيف تُحسب؟
-                </div>
-                <p className="text-muted-foreground">
-                  إجمالي المصاريف الشهرية المُفعَّلة يُقسَّم على كل صنف مرتبط بالمخزن بنسبة "أساس التوزيع"، ثم يُقسَّم نصيب الصنف على رصيده الحالي للحصول على نصيب كل وحدة، ويُضاف إلى السعر الأساسي.
-                </p>
-                <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
-                  <li className="rounded-lg bg-card p-2 border"><b>حسب القيمة (موصى به):</b> الأساس = الرصيد × WAC. الأصناف الأغلى تحمل نصيب أكبر — مناسب لمخزن متنوع الأسعار.</li>
-                  <li className="rounded-lg bg-card p-2 border"><b>حسب الوزن (كجم):</b> الأساس = الرصيد × وزن الوحدة. يتطلب إدخال "وزن الوحدة" لكل صنف — مناسب للأصناف الثقيلة.</li>
-                  <li className="rounded-lg bg-card p-2 border"><b>حسب الحجم (لتر):</b> الأساس = الرصيد × حجم الوحدة. مناسب للسوائل والأصناف الكبيرة الحجم.</li>
-                  <li className="rounded-lg bg-card p-2 border"><b>حسب الكمية:</b> الأساس = الرصيد فقط. كل وحدة تحمل نصيب متساوٍ — بسيط لكن غير عادل بين قطعة وكجم.</li>
-                  <li className="rounded-lg bg-card p-2 border md:col-span-2"><b>توزيع يدوي:</b> الأساس = "نصيب يدوي" المُدخل لكل صنف من تبويب تسعير الخامات (داخل صف الصنف الموسَّع). أنت تحدد النِسَب.</li>
-                </ul>
-                <p className="text-muted-foreground pt-1">
-                  ⚠️ لو الصنف يُقاس بالقطعة وآخر بالكجم/لتر، طريقة <b>القيمة</b> أو <b>اليدوي</b> أعدل — التوزيع بالوزن/الحجم/الكمية فقط لو وحدات القياس متجانسة.
-                </p>
+            <CardContent className="flex flex-wrap items-end gap-3">
+              <div>
+                <label className="text-xs text-muted-foreground">المعدل %</label>
+                <Input type="number" step="0.01" className="mt-1 w-40"
+                  defaultValue={selectedWarehouse?.estimated_overhead_rate ?? 0}
+                  onBlur={(e) => {
+                    const v = Number(e.target.value) || 0;
+                    if (v !== Number(selectedWarehouse?.estimated_overhead_rate ?? 0)) setEstimatedRate(v);
+                  }}/>
               </div>
+              <Badge variant="outline" className="text-sm h-9 px-3">
+                المعدل الفعّال الآن: <b className="mx-2 text-primary">{fmtPct(currentRate.rate)}</b>
+              </Badge>
+            </CardContent>
+          </Card>
 
-              <div className="flex flex-wrap items-center gap-3">
+          {/* Expenses table */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base justify-between">
+                <span className="flex items-center gap-2"><Receipt size={18}/> بنود المصاريف الشهرية</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm">طريقة التوزيع:</span>
-                  <Select value={allocationMethod} onValueChange={(v: any) => setWarehouseAllocation(v)}>
-                    <SelectTrigger className="w-[220px]"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {(Object.keys(allocationLabels) as AllocationMethod[]).map((k) => (
-                        <SelectItem key={k} value={k}>{allocationLabels[k]}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="mr-auto flex items-center gap-2">
                   <Badge variant="outline" className="text-sm">إجمالي شهري: <b className="mx-1">{fmt(totalOverhead)}</b></Badge>
                   <Button size="sm" onClick={() => setShowAddExpense(true)} className="gap-1"><Plus size={14}/> إضافة بند</Button>
                 </div>
-              </div>
-
-
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -874,6 +789,87 @@ export const SupplyPricingPage: React.FC = () => {
               </Table>
             </CardContent>
           </Card>
+
+          {/* Monthly rates history */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base justify-between">
+                <span className="flex items-center gap-2"><TrendingUp size={18}/> سجل معدلات التحميل الشهرية</span>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" variant="outline" className="gap-1"
+                    onClick={() => calculateAndSaveMonthRate(prevMonthStr(currentMonthStr()), "actual")}>
+                    <Calculator size={14}/> احتساب الشهر السابق
+                  </Button>
+                  <Button size="sm" className="gap-1"
+                    onClick={() => calculateAndSaveMonthRate(currentMonthStr(), "actual")}>
+                    <Calculator size={14}/> احتساب الشهر الحالي
+                  </Button>
+                </div>
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">
+                كل فاتورة تحويل تحفظ المعدل المستخدم وقت إصدارها، حتى لو تغير لاحقاً.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-center">الشهر</TableHead>
+                    <TableHead className="text-center">إجمالي المصاريف</TableHead>
+                    <TableHead className="text-center">إجمالي التحويلات</TableHead>
+                    <TableHead className="text-center">معدل التحميل</TableHead>
+                    <TableHead className="text-center">الحالة</TableHead>
+                    <TableHead className="text-center">إجراءات</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {monthlyRates.map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell className="text-center font-medium">{monthLabel(r.month)}</TableCell>
+                      <TableCell className="text-center font-mono text-xs">{fmt(Number(r.expenses_total))}</TableCell>
+                      <TableCell className="text-center font-mono text-xs">{fmt(Number(r.transfers_total))}</TableCell>
+                      <TableCell className="text-center font-black text-primary">{fmtPct(Number(r.rate))}</TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant={r.status === "approved" ? "default" : "outline"}
+                          className={cn("text-[10px]",
+                            r.status === "approved" && "bg-emerald-500/15 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/15",
+                            r.status === "actual" && "bg-blue-500/15 text-blue-600 border-blue-500/30",
+                            r.status === "estimated" && "bg-amber-500/15 text-amber-600 border-amber-500/30")}>
+                          {r.status === "approved" ? "معتمد" : r.status === "actual" ? "فعلي" : "تقديري"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <Button size="icon" variant="ghost" className="h-8 w-8"
+                            title="إعادة الحساب"
+                            onClick={() => calculateAndSaveMonthRate(r.month, r.status === "approved" ? "approved" : "actual")}>
+                            <Calculator size={14}/>
+                          </Button>
+                          {r.status !== "approved" && (
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-emerald-600"
+                              title="اعتماد" onClick={() => approveMonthRate(r.id)}>
+                              <CheckCircle2 size={14}/>
+                            </Button>
+                          )}
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive"
+                            title="حذف" onClick={() => deleteMonthRate(r.id)}>
+                            <Trash2 size={14}/>
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {monthlyRates.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        لا يوجد سجل. اضغط "احتساب الشهر الحالي" لتوليد أول معدل.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* ----------- TAB: Branch policies ----------- */}
@@ -888,8 +884,6 @@ export const SupplyPricingPage: React.FC = () => {
               </p>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
-
-
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -899,7 +893,6 @@ export const SupplyPricingPage: React.FC = () => {
                     <TableHead className="text-center">تكلفة النقل</TableHead>
                     <TableHead className="text-center">تكلفة التحميل</TableHead>
                     <TableHead className="text-center">حد أدنى للأمر</TableHead>
-
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -951,7 +944,6 @@ export const SupplyPricingPage: React.FC = () => {
                       <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">لا توجد فروع</TableCell>
                     </TableRow>
                   )}
-
                 </TableBody>
               </Table>
             </CardContent>
@@ -995,7 +987,8 @@ export const SupplyPricingPage: React.FC = () => {
                 <TableRow>
                   <TableHead className="text-center">الفرع</TableHead>
                   <TableHead className="text-center">السعر الأساسي</TableHead>
-                  <TableHead className="text-center">نصيب مصاريف</TableHead>
+                  <TableHead className="text-center">تحميل ({fmtPct(currentRate.rate)})</TableHead>
+                  <TableHead className="text-center">بعد التحميل</TableHead>
                   <TableHead className="text-center">الربح %</TableHead>
                   <TableHead className="text-center">قيمة الربح</TableHead>
                   <TableHead className="text-center">نقل + تحميل</TableHead>
@@ -1006,23 +999,21 @@ export const SupplyPricingPage: React.FC = () => {
                 {branches.map((br: any) => {
                   const p = pricingByItem.get(previewItem.id);
                   const pol = policies.find((x) => x.branch_id === br.id);
-                  const tl = transportPerUnitByBranch.get(br.id)?.[previewItem.id];
                   const r = computeSupplyPrice({
                     wac: Number(previewItem.avg_cost) || 0,
                     lastPurchasePrice: previewItem.lastP,
-                    currentStock: Number(previewItem.current_stock) || 0,
+                    currentStock: previewItem.bal,
                     pricing: p,
                     policy: pol,
-                    overheadPerUnit: previewItem.overheadPerUnit,
-                    transportPerUnitOverride: tl?.transport ?? 0,
-                    loadingPerUnitOverride: tl?.loading ?? 0,
+                    overheadRate: currentRate.rate,
                     quantity: 1,
                   });
                   return (
                     <TableRow key={br.id}>
                       <TableCell className="text-center font-medium">{br.name}</TableCell>
                       <TableCell className="text-center font-mono text-xs">{fmt(r.baseCost)}</TableCell>
-                      <TableCell className="text-center font-mono text-xs text-amber-600">{fmt(r.overheadPerUnit)}</TableCell>
+                      <TableCell className="text-center font-mono text-xs text-amber-600">{fmt(r.overheadAmount)}</TableCell>
+                      <TableCell className="text-center font-mono text-xs">{fmt(r.withOverhead)}</TableCell>
                       <TableCell className="text-center text-xs">{fmtPct(Number(pol?.profit_percentage ?? 0))}</TableCell>
                       <TableCell className="text-center font-mono text-xs text-emerald-600">{fmt(r.profitAmount)}</TableCell>
                       <TableCell className="text-center font-mono text-xs text-amber-600">{fmt(r.transportPerUnit + r.loadingPerUnit)}</TableCell>

@@ -84,10 +84,12 @@ export function computeSupplyPrice(opts: {
   finalUnitPrice: number;
 } {
   const qty = Math.max(opts.quantity ?? 1, 1);
-  const wacOrLast =
-    (opts.currentStock ?? 0) > 0
-      ? opts.wac ?? 0
-      : opts.lastPurchasePrice ?? opts.wac ?? 0;
+  // Always prefer WAC (kept live by purchases & production). Fall back to last
+  // purchase price only when WAC is unavailable — regardless of current stock,
+  // so the final selling price is still visible for out-of-stock items.
+  const wacVal = Number(opts.wac ?? 0);
+  const lastVal = Number(opts.lastPurchasePrice ?? 0);
+  const wacOrLast = wacVal > 0 ? wacVal : lastVal;
 
   const packaging = Number(opts.pricing?.packaging_cost ?? 0);
   const supplyType = opts.pricing?.supply_type ?? "cost_plus_profit";

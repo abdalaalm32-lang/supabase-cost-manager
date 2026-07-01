@@ -218,6 +218,17 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
               </SelectContent>
             </Select>
           </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">من:</span>
+            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-[150px] h-10" />
+            <span className="text-xs text-muted-foreground">إلى:</span>
+            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-[150px] h-10" />
+            {(dateFrom || dateTo) && (
+              <Button variant="ghost" size="sm" className="h-9 px-2 text-xs" onClick={() => { setDateFrom(""); setDateTo(""); }}>
+                مسح
+              </Button>
+            )}
+          </div>
           <div className="mr-auto flex items-center gap-2">
             <PrintButton
               data={exportData}
@@ -225,6 +236,8 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
               title="فواتير التوريدات للفروع"
               filters={[
                 { label: "الفرع", value: branchName },
+                { label: "من تاريخ", value: dateFrom || "—" },
+                { label: "إلى تاريخ", value: dateTo || "—" },
                 { label: "عدد الفواتير", value: String(kpis.count) },
                 { label: "إجمالي التوريدات", value: `${fmt(kpis.total)} ج.م` },
               ]}
@@ -237,6 +250,8 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
               title="فواتير التوريدات للفروع"
               filters={[
                 { label: "الفرع", value: branchName },
+                { label: "من تاريخ", value: dateFrom || "—" },
+                { label: "إلى تاريخ", value: dateTo || "—" },
                 { label: "عدد الفواتير", value: String(kpis.count) },
                 { label: "إجمالي التوريدات", value: `${fmt(kpis.total)} ج.م` },
               ]}

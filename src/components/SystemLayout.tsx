@@ -58,7 +58,13 @@ const mainNavItems: NavItem[] = [
       { id: "inventory-supply-pricing", path: "/inventory/supply-pricing", label: "تسعير المخزن المركزي", icon: Calculator },
     ],
   },
-  { id: "transfers", path: "/transfers", label: "أذونات الصرف والتحويل", icon: ArrowRightLeft },
+  {
+    id: "transfers", path: "/transfers", label: "أذونات الصرف والتحويل", icon: ArrowRightLeft,
+    children: [
+      { id: "transfers-list", path: "/transfers", label: "أذونات الصرف والتحويل", icon: ArrowRightLeft },
+      { id: "transfers-supply-invoices", path: "/transfers/supply-invoices", label: "فواتير التوريدات للفروع", icon: Receipt },
+    ],
+  },
   {
     id: "stocktake", path: "/stocktake", label: "جرد المخزون", icon: ClipboardCheck,
     children: [

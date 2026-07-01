@@ -108,6 +108,8 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
   const filtered = useMemo(() => {
     let arr = supplyInvoices;
     if (branchFilter !== "all") arr = arr.filter((t) => t.destination_id === branchFilter);
+    if (dateFrom) arr = arr.filter((t) => (t.date || "") >= dateFrom);
+    if (dateTo) arr = arr.filter((t) => (t.date || "") <= dateTo);
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       arr = arr.filter((t) =>
@@ -117,7 +119,7 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
       );
     }
     return arr;
-  }, [supplyInvoices, branchFilter, search]);
+  }, [supplyInvoices, branchFilter, search, dateFrom, dateTo]);
 
   const kpis = useMemo(() => {
     const count = filtered.length;

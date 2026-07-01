@@ -463,6 +463,7 @@ const AppRoutes = () => {
                   <Route path="/inventory/balances" element={<PermissionGuard permKey="inventory"><InventoryBalancesPage /></PermissionGuard>} />
                   <Route path="/inventory/supply-pricing" element={<PermissionGuard permKey="inventory"><SupplyPricingPage /></PermissionGuard>} />
                   <Route path="/transfers" element={<PermissionGuard permKey="transfers"><TransferListPage /></PermissionGuard>} />
+                  <Route path="/transfers/supply-invoices" element={<PermissionGuard permKey="transfers"><SupplyInvoicesToBranchesPage /></PermissionGuard>} />
                   <Route path="/transfers/add" element={<PermissionGuard permKey="transfers"><TransferDetailPage /></PermissionGuard>} />
                   <Route path="/transfers/:id" element={<PermissionGuard permKey="transfers"><TransferDetailPage /></PermissionGuard>} />
                   <Route path="/stocktake" element={<PermissionGuard permKey="stocktake"><Navigate to="/stocktake/periodic" replace /></PermissionGuard>} />

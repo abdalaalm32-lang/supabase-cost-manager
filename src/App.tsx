@@ -42,6 +42,7 @@ const ProductionListPage = lazy(() => import("@/pages/ProductionListPage").then(
 const ProductionDetailPage = lazy(() => import("@/pages/ProductionDetailPage").then((m) => ({ default: m.ProductionDetailPage })));
 const TransferListPage = lazy(() => import("@/pages/TransferListPage").then((m) => ({ default: m.TransferListPage })));
 const TransferDetailPage = lazy(() => import("@/pages/TransferDetailPage").then((m) => ({ default: m.TransferDetailPage })));
+const SupplyInvoicesToBranchesPage = lazy(() => import("@/pages/SupplyInvoicesToBranchesPage").then((m) => ({ default: m.SupplyInvoicesToBranchesPage })));
 const ProductionRecipesPage = lazy(() => import("@/pages/ProductionRecipesPage").then((m) => ({ default: m.ProductionRecipesPage })));
 const MenuOffersPage = lazy(() => import("@/pages/MenuOffersPage").then((m) => ({ default: m.MenuOffersPage })));
 const CostAnalysisPage = lazy(() => import("@/pages/CostAnalysisPage").then((m) => ({ default: m.CostAnalysisPage })));
@@ -462,6 +463,7 @@ const AppRoutes = () => {
                   <Route path="/inventory/balances" element={<PermissionGuard permKey="inventory"><InventoryBalancesPage /></PermissionGuard>} />
                   <Route path="/inventory/supply-pricing" element={<PermissionGuard permKey="inventory"><SupplyPricingPage /></PermissionGuard>} />
                   <Route path="/transfers" element={<PermissionGuard permKey="transfers"><TransferListPage /></PermissionGuard>} />
+                  <Route path="/transfers/supply-invoices" element={<PermissionGuard permKey="transfers"><SupplyInvoicesToBranchesPage /></PermissionGuard>} />
                   <Route path="/transfers/add" element={<PermissionGuard permKey="transfers"><TransferDetailPage /></PermissionGuard>} />
                   <Route path="/transfers/:id" element={<PermissionGuard permKey="transfers"><TransferDetailPage /></PermissionGuard>} />
                   <Route path="/stocktake" element={<PermissionGuard permKey="stocktake"><Navigate to="/stocktake/periodic" replace /></PermissionGuard>} />

@@ -717,7 +717,8 @@ export const SupplyPricingPage: React.FC = () => {
                 <Percent size={18}/> المعدل التقديري (Estimated Overhead Rate)
               </CardTitle>
               <p className="text-xs text-muted-foreground">
-                يُستخدم في أول شهر تشغيل قبل توفر بيانات فعلية للمصاريف والتحويلات.
+                يُستخدم تلقائياً كـ <b>Fallback</b> في أول شهر تشغيل أو في أي شهر لا يوجد له سجل معدل محسوب/معتمد.
+                طالما مفيش بيانات شهر سابق أو حالي محفوظة، النظام يعتمد الرقم اللي هتحطه هنا في كل فواتير التحويل.
               </p>
             </CardHeader>
             <CardContent className="flex flex-wrap items-end gap-3">
@@ -733,6 +734,13 @@ export const SupplyPricingPage: React.FC = () => {
               <Badge variant="outline" className="text-sm h-9 px-3">
                 المعدل الفعّال الآن: <b className="mx-2 text-primary">{fmtPct(currentRate.rate)}</b>
               </Badge>
+              <Badge variant="outline" className={cn("text-xs h-9 px-3",
+                currentRate.source === "estimated" && "bg-amber-500/10 text-amber-700 border-amber-500/30",
+                currentRate.source === "prior" && "bg-blue-500/10 text-blue-700 border-blue-500/30",
+                currentRate.source === "current" && "bg-emerald-500/10 text-emerald-700 border-emerald-500/30")}>
+                المصدر: {currentRate.source === "current" ? "الشهر الحالي" : currentRate.source === "prior" ? `الشهر السابق (${monthLabel(currentRate.month)})` : "المعدل التقديري (يدوي)"}
+              </Badge>
+
             </CardContent>
           </Card>
 
@@ -870,6 +878,10 @@ export const SupplyPricingPage: React.FC = () => {
               </Table>
             </CardContent>
           </Card>
+
+          {/* Simulation / What-if study for monthly rate */}
+          <RateSimulationCard />
+
         </TabsContent>
 
         {/* ----------- TAB: Branch policies ----------- */}
@@ -1030,4 +1042,85 @@ export const SupplyPricingPage: React.FC = () => {
   );
 };
 
+// -------------------- Rate Simulation (What-if) --------------------
+type SimRow = { id: string; label: string; expenses: number; transfers: number };
+const RateSimulationCard: React.FC = () => {
+  const [rows, setRows] = useState<SimRow[]>([
+    { id: crypto.randomUUID(), label: "سيناريو 1", expenses: 0, transfers: 0 },
+  ]);
+  const update = (id: string, patch: Partial<SimRow>) =>
+    setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  const add = () =>
+    setRows((rs) => [...rs, { id: crypto.randomUUID(), label: `سيناريو ${rs.length + 1}`, expenses: 0, transfers: 0 }]);
+  const remove = (id: string) => setRows((rs) => rs.filter((r) => r.id !== id));
+
+  const totals = useMemo(() => {
+    const e = rows.reduce((s, r) => s + (Number(r.expenses) || 0), 0);
+    const t = rows.reduce((s, r) => s + (Number(r.transfers) || 0), 0);
+    return { e, t, rate: t > 0 ? (e / t) * 100 : 0 };
+  }, [rows]);
+
+  return (
+    <Card className="border-dashed border-2">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base justify-between">
+          <span className="flex items-center gap-2"><Calculator size={18}/> دراسة / محاكاة معدلات التحميل (What-if)</span>
+          <Button size="sm" variant="outline" className="gap-1" onClick={add}><Plus size={14}/> إضافة سيناريو</Button>
+        </CardTitle>
+        <p className="text-xs text-muted-foreground">
+          جدول مساعد للتجربة فقط — أدخل أرقام مصاريف وتحويلات افتراضية وشوف المعدل الناتج قبل ما تطبقه فعلياً. لا يُحفظ في قاعدة البيانات ولا يؤثر على الفواتير.
+        </p>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="text-center">البيان / الشهر</TableHead>
+              <TableHead className="text-center">إجمالي المصاريف</TableHead>
+              <TableHead className="text-center">إجمالي التحويلات</TableHead>
+              <TableHead className="text-center">معدل التحميل %</TableHead>
+              <TableHead className="text-center w-16">حذف</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map((r) => {
+              const rate = r.transfers > 0 ? (r.expenses / r.transfers) * 100 : 0;
+              return (
+                <TableRow key={r.id}>
+                  <TableCell className="text-center">
+                    <Input value={r.label} className="h-9 text-center"
+                      onChange={(e) => update(r.id, { label: e.target.value })}/>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Input type="number" step="0.01" value={r.expenses || ""} className="h-9 text-center"
+                      onChange={(e) => update(r.id, { expenses: Number(e.target.value) || 0 })}/>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Input type="number" step="0.01" value={r.transfers || ""} className="h-9 text-center"
+                      onChange={(e) => update(r.id, { transfers: Number(e.target.value) || 0 })}/>
+                  </TableCell>
+                  <TableCell className="text-center font-black text-primary">{fmtPct(rate)}</TableCell>
+                  <TableCell className="text-center">
+                    <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => remove(r.id)}>
+                      <Trash2 size={14}/>
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+            <TableRow className="bg-muted/40 font-bold">
+              <TableCell className="text-center">الإجمالي</TableCell>
+              <TableCell className="text-center font-mono text-xs">{fmt(totals.e)}</TableCell>
+              <TableCell className="text-center font-mono text-xs">{fmt(totals.t)}</TableCell>
+              <TableCell className="text-center text-primary">{fmtPct(totals.rate)}</TableCell>
+              <TableCell />
+            </TableRow>
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+};
+
 export default SupplyPricingPage;
+

@@ -760,13 +760,70 @@ export const TransferDetailPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Cost Summary */}
-          <div className="glass-card p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <DollarSign size={16} className="text-primary" />
-              <span className="text-sm font-bold">إجمالي التكلفة</span>
+          {/* Transport & Loading Fees (per invoice) */}
+          {isSupplyContext && (
+            <div className="glass-card p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <DollarSign size={16} className="text-orange-500" />
+                <span className="text-sm font-bold">تكلفة النقل والتحميل (لكل أذن)</span>
+              </div>
+              <div className="text-[11px] text-muted-foreground -mt-1">
+                تُملأ تلقائياً من سياسة الفرع، ويمكنك تعديلها يدوياً لهذا الأذن فقط.
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">تكلفة النقل</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={transportationCost}
+                  onChange={e => { setFeesTouched(true); setTransportationCost(e.target.value === "" ? 0 : Number(e.target.value)); }}
+                  disabled={isLocked}
+                  className="h-9 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">تكلفة التحميل</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={loadingCost}
+                  onChange={e => { setFeesTouched(true); setLoadingCost(e.target.value === "" ? 0 : Number(e.target.value)); }}
+                  disabled={isLocked}
+                  className="h-9 text-sm"
+                />
+              </div>
+              <div className="flex items-center justify-between text-xs pt-2 border-t border-border/60">
+                <span className="text-muted-foreground">إجمالي الرسوم:</span>
+                <span className="font-bold text-orange-500">{(Number(transportationCost) + Number(loadingCost)).toFixed(2)} ج.م</span>
+              </div>
             </div>
-            <p className="text-3xl font-black text-primary">{totalCost.toFixed(2)}</p>
+          )}
+
+          {/* Cost Summary */}
+          <div className="glass-card p-4 space-y-2">
+            <div className="flex items-center gap-2 mb-1">
+              <DollarSign size={16} className="text-primary" />
+              <span className="text-sm font-bold">إجمالي الأذن</span>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">قيمة الأصناف:</span>
+              <span className="font-semibold tabular-nums">{totalCost.toFixed(2)}</span>
+            </div>
+            {isSupplyContext && (Number(transportationCost) + Number(loadingCost)) > 0 && (
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">نقل + تحميل:</span>
+                <span className="font-semibold tabular-nums text-orange-500">
+                  {(Number(transportationCost) + Number(loadingCost)).toFixed(2)}
+                </span>
+              </div>
+            )}
+            <div className="pt-2 border-t border-border/60">
+              <p className="text-3xl font-black text-primary tabular-nums">
+                {(totalCost + (isSupplyContext ? (Number(transportationCost) + Number(loadingCost)) : 0)).toFixed(2)}
+              </p>
+            </div>
           </div>
         </div>
 

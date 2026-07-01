@@ -547,17 +547,7 @@ export const TransferDetailPage: React.FC = () => {
         // Note: Transfers move stock between locations but don't change global current_stock
         // PER-BRANCH cost: option 1 → destination branch absorbs source branch cost
         if (finalStatus === "مكتمل" && destLocationType === "branch" && destinationId) {
-          let branchPolicy: any = null;
-          let pricingMap: Record<string, any> = {};
 
-          if (sourceLocationType === "warehouse") {
-            const [{ data: pol }, { data: prc }] = await Promise.all([
-              (supabase as any).from("branch_supply_policies").select("*").eq("branch_id", destinationId).maybeSingle(),
-              (supabase as any).from("stock_item_supply_pricing").select("*").eq("company_id", companyId!),
-            ]);
-            branchPolicy = pol;
-            (prc ?? []).forEach((r: any) => { pricingMap[r.stock_item_id] = r; });
-          }
 
           for (const item of items) {
             if (!item.stock_item_id || !item.quantity || item.quantity <= 0) continue;

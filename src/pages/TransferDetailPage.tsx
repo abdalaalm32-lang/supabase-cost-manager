@@ -764,7 +764,33 @@ export const TransferDetailPage: React.FC = () => {
               )}
             </div>
 
+            {isSupplyContext && (
+              <div className={cn(
+                "mb-3 p-3 rounded-lg border text-xs flex items-start gap-2",
+                destPolicy && destPolicy.is_active !== false
+                  ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
+                  : "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400"
+              )}>
+                <Info size={14} className="mt-0.5 shrink-0" />
+                <div className="space-y-0.5">
+                  {destPolicy && destPolicy.is_active !== false ? (
+                    <>
+                      <div className="font-bold">تسعير التوريد الداخلي مفعّل لهذا الفرع</div>
+                      <div>معدّل التحميل الشهري: <b>{overheadRate.toFixed(2)}%</b> — نسبة الربح: <b>{Number(destPolicy?.profit_percentage ?? 0)}%</b></div>
+                      <div className="opacity-80">الأصناف "غير متاحة للتوريد" ستُحاسب بالتكلفة، والأصناف بنوع "تكلفة فقط" لا يُضاف عليها ربح.</div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="font-bold">التوريد الداخلي غير مفعّل لهذا الفرع</div>
+                      <div>سيتم احتساب كل الأصناف بالتكلفة (WAC) بدون ربح. فعّله من صفحة تسعير المخزن المركزي.</div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="overflow-auto">
+
               <Table>
                 <TableHeader>
                   <TableRow>

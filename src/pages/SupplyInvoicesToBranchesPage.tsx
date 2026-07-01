@@ -29,6 +29,8 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
 
   const [search, setSearch] = useState("");
   const [branchFilter, setBranchFilter] = useState<string>("all");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
 
   const { data: branches = [] } = useQuery({
     queryKey: ["branches-lite", companyId],

@@ -18,13 +18,15 @@ import {
 } from "@/components/ui/table";
 import {
   Plus, Save, Trash2, Search, ArrowRight, ArrowLeftRight,
-  DollarSign, Calendar, Archive, Printer,
+  DollarSign, Calendar, Archive, Printer, AlertTriangle, CheckCircle2, Info, Ban,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useLocationStock } from "@/hooks/useLocationStock";
 import { applyBranchCostIn, getBranchCost } from "@/lib/branchCostUtils";
 import { computeSupplyPrice, resolveOverheadRate } from "@/hooks/useSupplyPricing";
+
+type PriceSource = "supply" | "cost" | "unavailable" | "no_policy" | "none";
 
 interface LocalTransferItem {
   id?: string;
@@ -35,6 +37,9 @@ interface LocalTransferItem {
   current_stock: number;
   avg_cost: number;
   quantity: number;
+  wac?: number;
+  price_source?: PriceSource;
+  price_note?: string | null;
 }
 
 export const TransferDetailPage: React.FC = () => {
@@ -202,6 +207,83 @@ export const TransferDetailPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date, sourceId, sourceDepartmentId, getSourceStock]);
 
+  // ================= Supply Pricing (Warehouse → Branch) =================
+  const [pricingMap, setPricingMap] = useState<Record<string, any>>({});
+  const [destPolicy, setDestPolicy] = useState<any>(null);
+  const [overheadRate, setOverheadRate] = useState<number>(0);
+  const isSupplyContext = sourceLocationType === "warehouse" && destLocationType === "branch";
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!companyId || !isSupplyContext || !sourceId || !destinationId) {
+        setPricingMap({});
+        setDestPolicy(null);
+        setOverheadRate(0);
+        return;
+      }
+      const [{ data: prc }, { data: pol }] = await Promise.all([
+        (supabase as any).from("stock_item_supply_pricing").select("*").eq("company_id", companyId),
+        (supabase as any).from("branch_supply_policies").select("*").eq("branch_id", destinationId).maybeSingle(),
+      ]);
+      if (cancelled) return;
+      const map: Record<string, any> = {};
+      (prc ?? []).forEach((r: any) => { map[r.stock_item_id] = r; });
+      setPricingMap(map);
+      setDestPolicy(pol);
+      const month = (date || new Date().toISOString().slice(0, 10)).slice(0, 7);
+      const rate = await resolveOverheadRate(sourceId, month);
+      if (!cancelled) setOverheadRate(Number(rate) || 0);
+    })();
+    return () => { cancelled = true; };
+  }, [companyId, sourceId, destinationId, isSupplyContext, date]);
+
+  const resolveItemPricing = (item: LocalTransferItem, wacBase?: number): { price: number; source: PriceSource; note: string | null } => {
+    const wac = wacBase ?? Number(item.wac ?? item.avg_cost) ?? 0;
+    if (!isSupplyContext) {
+      return { price: wac, source: "none", note: null };
+    }
+    const policyActive = destPolicy && destPolicy.is_active !== false;
+    if (!policyActive) {
+      return { price: wac, source: "no_policy", note: "التوريد الداخلي لهذا الفرع غير مفعّل — سيُحاسب بالتكلفة" };
+    }
+    const pricing = pricingMap[item.stock_item_id];
+    if (pricing?.is_available_for_transfer === false) {
+      return { price: wac, source: "unavailable", note: "غير متاح للتوريد — سيُحاسب بالتكلفة فقط" };
+    }
+    const supplyType = pricing?.supply_type ?? "cost_plus_profit";
+    const r = computeSupplyPrice({
+      wac,
+      currentStock: Number(item.current_stock) || 0,
+      pricing,
+      policy: destPolicy,
+      quantity: Math.max(Number(item.quantity) || 1, 1),
+      overheadRate,
+      transportPerUnitOverride: 0,
+      loadingPerUnitOverride: 0,
+    });
+    if (supplyType === "cost") {
+      return { price: r.finalUnitPrice, source: "cost", note: `تكلفة فقط (بدون ربح) + تحميل ${overheadRate.toFixed(2)}%` };
+    }
+    return {
+      price: r.finalUnitPrice,
+      source: "supply",
+      note: `سعر التوريد النهائي = تكلفة + تحميل ${overheadRate.toFixed(2)}% + ربح ${Number(destPolicy?.profit_percentage ?? 0)}%`,
+    };
+  };
+
+  // Recompute item prices when supply context changes
+  useEffect(() => {
+    if (!isNew && status !== "مؤرشف" && !isEditMode) return;
+    setItems(prev => prev.map(it => {
+      const wac = Number(it.wac ?? it.avg_cost) || 0;
+      const r = resolveItemPricing({ ...it, avg_cost: wac }, wac);
+      return { ...it, wac, avg_cost: r.price, price_source: r.source, price_note: r.note };
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pricingMap, destPolicy, overheadRate, isSupplyContext]);
+
+
   // Materials modal
   const existingStockIds = useMemo(() => new Set(items.map(i => i.stock_item_id)), [items]);
 
@@ -232,17 +314,20 @@ export const TransferDetailPage: React.FC = () => {
   const handleAddItems = () => {
     const newItems: LocalTransferItem[] = Array.from(selectedItemIds).map(siId => {
       const si = allStockItems.find((s: any) => s.id === siId)!;
-      // Use per-location stock from source location
       const locationStock = sourceId ? getSourceStock(siId) : Number(si.current_stock) || 0;
-      return {
+      const wac = Number(si.avg_cost) || 0;
+      const base: LocalTransferItem = {
         stock_item_id: siId,
         name: si.name,
         code: si.code || "—",
         unit: si.stock_unit || "كجم",
         current_stock: locationStock,
-        avg_cost: Number(si.avg_cost) || 0,
+        avg_cost: wac,
+        wac,
         quantity: 0,
       };
+      const r = resolveItemPricing(base, wac);
+      return { ...base, avg_cost: r.price, price_source: r.source, price_note: r.note };
     });
     setItems(prev => [...prev, ...newItems]);
     setShowAddItems(false);
@@ -462,42 +547,16 @@ export const TransferDetailPage: React.FC = () => {
         // Note: Transfers move stock between locations but don't change global current_stock
         // PER-BRANCH cost: option 1 → destination branch absorbs source branch cost
         if (finalStatus === "مكتمل" && destLocationType === "branch" && destinationId) {
-          let branchPolicy: any = null;
-          let pricingMap: Record<string, any> = {};
 
-          if (sourceLocationType === "warehouse") {
-            const [{ data: pol }, { data: prc }] = await Promise.all([
-              (supabase as any).from("branch_supply_policies").select("*").eq("branch_id", destinationId).maybeSingle(),
-              (supabase as any).from("stock_item_supply_pricing").select("*").eq("company_id", companyId!),
-            ]);
-            branchPolicy = pol;
-            (prc ?? []).forEach((r: any) => { pricingMap[r.stock_item_id] = r; });
-          }
 
           for (const item of items) {
             if (!item.stock_item_id || !item.quantity || item.quantity <= 0) continue;
             try {
+              // item.avg_cost already reflects the final supply price for warehouse→branch
+              // (computed live via resolveItemPricing); for branch→branch, use per-branch WAC.
               let sourceUnitCost = Number(item.avg_cost) || 0;
               if (sourceLocationType === "branch" && sourceId) {
                 sourceUnitCost = await getBranchCost(item.stock_item_id, sourceId);
-              } else if (sourceLocationType === "warehouse" && branchPolicy && branchPolicy.is_active !== false) {
-                const pricing = pricingMap[item.stock_item_id];
-                // Skip supply pricing if the item is flagged as unavailable for internal transfer
-                if (pricing?.is_available_for_transfer === false) {
-                  sourceUnitCost = Number(item.avg_cost) || 0;
-                } else {
-                  const r = computeSupplyPrice({
-                    wac: Number(item.avg_cost) || 0,
-                    currentStock: Number(item.current_stock) || 0,
-                    pricing,
-                    policy: branchPolicy,
-                    quantity: Number(item.quantity),
-                    overheadRate: overheadRateApplied,
-                    transportPerUnitOverride: 0,
-                    loadingPerUnitOverride: 0,
-                  });
-                  sourceUnitCost = r.finalUnitPrice;
-                }
               }
               await applyBranchCostIn({
                 companyId: companyId!,
@@ -705,7 +764,33 @@ export const TransferDetailPage: React.FC = () => {
               )}
             </div>
 
+            {isSupplyContext && (
+              <div className={cn(
+                "mb-3 p-3 rounded-lg border text-xs flex items-start gap-2",
+                destPolicy && destPolicy.is_active !== false
+                  ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
+                  : "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400"
+              )}>
+                <Info size={14} className="mt-0.5 shrink-0" />
+                <div className="space-y-0.5">
+                  {destPolicy && destPolicy.is_active !== false ? (
+                    <>
+                      <div className="font-bold">تسعير التوريد الداخلي مفعّل لهذا الفرع</div>
+                      <div>معدّل التحميل الشهري: <b>{overheadRate.toFixed(2)}%</b> — نسبة الربح: <b>{Number(destPolicy?.profit_percentage ?? 0)}%</b></div>
+                      <div className="opacity-80">الأصناف "غير متاحة للتوريد" ستُحاسب بالتكلفة، والأصناف بنوع "تكلفة فقط" لا يُضاف عليها ربح.</div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="font-bold">التوريد الداخلي غير مفعّل لهذا الفرع</div>
+                      <div>سيتم احتساب كل الأصناف بالتكلفة (WAC) بدون ربح. فعّله من صفحة تسعير المخزن المركزي.</div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="overflow-auto">
+
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -727,13 +812,44 @@ export const TransferDetailPage: React.FC = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    items.map((item, idx) => (
-                      <TableRow key={idx}>
+                    items.map((item, idx) => {
+                      const noStock = Number(item.current_stock) <= 0;
+                      const badge =
+                        item.price_source === "unavailable" ? { icon: Ban, cls: "bg-red-500/15 text-red-500 border-red-500/30", label: "غير متاح للتوريد" }
+                        : item.price_source === "no_policy" ? { icon: AlertTriangle, cls: "bg-amber-500/15 text-amber-500 border-amber-500/30", label: "توريد غير مفعّل" }
+                        : item.price_source === "cost" ? { icon: Info, cls: "bg-blue-500/15 text-blue-500 border-blue-500/30", label: "تكلفة فقط" }
+                        : item.price_source === "supply" ? { icon: CheckCircle2, cls: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30", label: "سعر توريد" }
+                        : null;
+                      return (
+                      <TableRow key={idx} className={item.price_source === "unavailable" ? "opacity-70" : ""}>
                         <TableCell className="font-mono text-xs">{item.code}</TableCell>
-                        <TableCell className="font-medium">{item.name}</TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex flex-col gap-1">
+                            <span>{item.name}</span>
+                            <div className="flex flex-wrap items-center gap-1">
+                              {badge && (
+                                <span className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] border", badge.cls)} title={item.price_note || ""}>
+                                  <badge.icon size={10} /> {badge.label}
+                                </span>
+                              )}
+                              {noStock && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] border bg-red-500/15 text-red-500 border-red-500/30" title="لا يوجد رصيد في المخزن المصدر">
+                                  <AlertTriangle size={10} /> لا يوجد رصيد
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
                         <TableCell>{item.unit}</TableCell>
-                        <TableCell>{item.current_stock}</TableCell>
-                        <TableCell>{item.avg_cost.toFixed(2)}</TableCell>
+                        <TableCell className={cn(noStock && "text-red-500 font-bold")}>{item.current_stock}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{item.avg_cost.toFixed(2)}</span>
+                            {isSupplyContext && item.wac != null && item.price_source === "supply" && (
+                              <span className="text-[10px] text-muted-foreground">تكلفة: {Number(item.wac).toFixed(2)}</span>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           {isLocked ? (
                             item.quantity
@@ -758,7 +874,9 @@ export const TransferDetailPage: React.FC = () => {
                           </TableCell>
                         )}
                       </TableRow>
-                    ))
+                      );
+                    })
+
                   )}
                 </TableBody>
               </Table>

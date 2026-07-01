@@ -18,13 +18,15 @@ import {
 } from "@/components/ui/table";
 import {
   Plus, Save, Trash2, Search, ArrowRight, ArrowLeftRight,
-  DollarSign, Calendar, Archive, Printer,
+  DollarSign, Calendar, Archive, Printer, AlertTriangle, CheckCircle2, Info, Ban,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useLocationStock } from "@/hooks/useLocationStock";
 import { applyBranchCostIn, getBranchCost } from "@/lib/branchCostUtils";
 import { computeSupplyPrice, resolveOverheadRate } from "@/hooks/useSupplyPricing";
+
+type PriceSource = "supply" | "cost" | "unavailable" | "no_policy" | "none";
 
 interface LocalTransferItem {
   id?: string;
@@ -35,6 +37,9 @@ interface LocalTransferItem {
   current_stock: number;
   avg_cost: number;
   quantity: number;
+  wac?: number;
+  price_source?: PriceSource;
+  price_note?: string | null;
 }
 
 export const TransferDetailPage: React.FC = () => {

@@ -90,8 +90,15 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
       .map((t) => {
         const pol = policyByBranch[t.destination_id];
         const active = pol?.is_active !== false;
-        const transport = active ? Number(pol?.transportation_cost ?? 0) : 0;
-        const loading = active ? Number(pol?.loading_cost ?? 0) : 0;
+        // Prefer per-invoice stored fees; fallback to branch policy values.
+        const storedTransport = Number(t.transportation_cost ?? 0);
+        const storedLoading = Number(t.loading_cost ?? 0);
+        const transport = storedTransport > 0
+          ? storedTransport
+          : (active ? Number(pol?.transportation_cost ?? 0) : 0);
+        const loading = storedLoading > 0
+          ? storedLoading
+          : (active ? Number(pol?.loading_cost ?? 0) : 0);
         const itemsCost = Number(t.total_cost ?? 0);
         const grand = itemsCost + transport + loading;
         return { ...t, transport, loading, itemsCost, grand };

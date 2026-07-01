@@ -606,6 +606,8 @@ export const TransferDetailPage: React.FC = () => {
           source_department_id: (sourceDepartmentId && sourceDepartmentId !== "none") ? sourceDepartmentId : null,
           destination_department_id: (destinationDepartmentId && destinationDepartmentId !== "none") ? destinationDepartmentId : null,
           total_cost: totalCost,
+          transportation_cost: isSupplyContext ? Number(transportationCost) || 0 : 0,
+          loading_cost: isSupplyContext ? Number(loadingCost) || 0 : 0,
           notes: notes || null,
         };
 

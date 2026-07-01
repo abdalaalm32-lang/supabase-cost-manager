@@ -536,6 +536,8 @@ export const TransferDetailPage: React.FC = () => {
           total_cost: totalCost,
           overhead_rate_applied: overheadRateApplied,
           overhead_amount: overheadAmount,
+          transportation_cost: isSupplyContext ? Number(transportationCost) || 0 : 0,
+          loading_cost: isSupplyContext ? Number(loadingCost) || 0 : 0,
           status: finalStatus,
           notes: notes || null,
           creator_name: auth.profile?.full_name || "",

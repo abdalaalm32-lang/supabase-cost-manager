@@ -16,7 +16,6 @@ export type Database = {
     Tables: {
       branch_supply_policies: {
         Row: {
-          allocation_method: string
           branch_id: string
           company_id: string
           created_at: string
@@ -29,7 +28,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          allocation_method?: string
           branch_id: string
           company_id: string
           created_at?: string
@@ -42,7 +40,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          allocation_method?: string
           branch_id?: string
           company_id?: string
           created_at?: string
@@ -2936,6 +2933,8 @@ export type Database = {
           id: string
           is_edited: boolean
           notes: string | null
+          overhead_amount: number
+          overhead_rate_applied: number
           record_number: string | null
           source_department_id: string | null
           source_id: string | null
@@ -2954,6 +2953,8 @@ export type Database = {
           id?: string
           is_edited?: boolean
           notes?: string | null
+          overhead_amount?: number
+          overhead_rate_applied?: number
           record_number?: string | null
           source_department_id?: string | null
           source_id?: string | null
@@ -2972,6 +2973,8 @@ export type Database = {
           id?: string
           is_edited?: boolean
           notes?: string | null
+          overhead_amount?: number
+          overhead_rate_applied?: number
           record_number?: string | null
           source_department_id?: string | null
           source_id?: string | null
@@ -3079,6 +3082,7 @@ export type Database = {
           id: string
           is_active: boolean
           monthly_amount: number
+          pool_id: string | null
           updated_at: string
           warehouse_id: string
         }
@@ -3089,6 +3093,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           monthly_amount?: number
+          pool_id?: string | null
           updated_at?: string
           warehouse_id: string
         }
@@ -3099,6 +3104,85 @@ export type Database = {
           id?: string
           is_active?: boolean
           monthly_amount?: number
+          pool_id?: string | null
+          updated_at?: string
+          warehouse_id?: string
+        }
+        Relationships: []
+      }
+      warehouse_overhead_monthly_rates: {
+        Row: {
+          company_id: string
+          created_at: string
+          expenses_total: number
+          id: string
+          month: string
+          notes: string | null
+          pool_id: string | null
+          rate: number
+          status: string
+          transfers_total: number
+          updated_at: string
+          warehouse_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          expenses_total?: number
+          id?: string
+          month: string
+          notes?: string | null
+          pool_id?: string | null
+          rate?: number
+          status?: string
+          transfers_total?: number
+          updated_at?: string
+          warehouse_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          expenses_total?: number
+          id?: string
+          month?: string
+          notes?: string | null
+          pool_id?: string | null
+          rate?: number
+          status?: string
+          transfers_total?: number
+          updated_at?: string
+          warehouse_id?: string
+        }
+        Relationships: []
+      }
+      warehouse_overhead_pools: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          pool_type: string
+          updated_at: string
+          warehouse_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          pool_type?: string
+          updated_at?: string
+          warehouse_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          pool_type?: string
           updated_at?: string
           warehouse_id?: string
         }
@@ -3112,6 +3196,7 @@ export type Database = {
           code: string | null
           company_id: string
           created_at: string
+          estimated_overhead_rate: number
           id: string
           manager_id: string | null
           name: string
@@ -3124,6 +3209,7 @@ export type Database = {
           code?: string | null
           company_id: string
           created_at?: string
+          estimated_overhead_rate?: number
           id?: string
           manager_id?: string | null
           name: string
@@ -3136,6 +3222,7 @@ export type Database = {
           code?: string | null
           company_id?: string
           created_at?: string
+          estimated_overhead_rate?: number
           id?: string
           manager_id?: string | null
           name?: string

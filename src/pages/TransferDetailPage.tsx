@@ -24,7 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useLocationStock } from "@/hooks/useLocationStock";
 import { applyBranchCostIn, getBranchCost } from "@/lib/branchCostUtils";
-import { computeSupplyPrice } from "@/hooks/useSupplyPricing";
+import { computeSupplyPrice, resolveOverheadRate } from "@/hooks/useSupplyPricing";
 
 interface LocalTransferItem {
   id?: string;
@@ -406,6 +406,14 @@ export const TransferDetailPage: React.FC = () => {
     const destLoc = allLocations.find(l => l.id === destinationId);
     const finalStatus = saveAsArchived ? "مؤرشف" : "مكتمل";
 
+    // Resolve overhead rate for source warehouse (if applicable) at transfer month
+    let overheadRateApplied = 0;
+    if (sourceLocationType === "warehouse" && sourceId) {
+      const month = date.slice(0, 7);
+      overheadRateApplied = await resolveOverheadRate(sourceId, month);
+    }
+    const overheadAmount = totalCost * (overheadRateApplied / 100);
+
     try {
       if (isNew) {
         const { data: numData } = await supabase.rpc("generate_transfer_number", { p_company_id: companyId });
@@ -421,6 +429,8 @@ export const TransferDetailPage: React.FC = () => {
           source_department_id: (sourceDepartmentId && sourceDepartmentId !== "none") ? sourceDepartmentId : null,
           destination_department_id: (destinationDepartmentId && destinationDepartmentId !== "none") ? destinationDepartmentId : null,
           total_cost: totalCost,
+          overhead_rate_applied: overheadRateApplied,
+          overhead_amount: overheadAmount,
           status: finalStatus,
           notes: notes || null,
           creator_name: auth.profile?.full_name || "",
@@ -482,6 +492,7 @@ export const TransferDetailPage: React.FC = () => {
                     pricing,
                     policy: branchPolicy,
                     quantity: Number(item.quantity),
+                    overheadRate: overheadRateApplied,
                     transportPerUnitOverride: 0,
                     loadingPerUnitOverride: 0,
                   });

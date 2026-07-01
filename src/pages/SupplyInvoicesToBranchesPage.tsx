@@ -29,6 +29,8 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
 
   const [search, setSearch] = useState("");
   const [branchFilter, setBranchFilter] = useState<string>("all");
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
 
   const { data: branches = [] } = useQuery({
     queryKey: ["branches-lite", companyId],
@@ -88,8 +90,15 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
       .map((t) => {
         const pol = policyByBranch[t.destination_id];
         const active = pol?.is_active !== false;
-        const transport = active ? Number(pol?.transportation_cost ?? 0) : 0;
-        const loading = active ? Number(pol?.loading_cost ?? 0) : 0;
+        // Prefer per-invoice stored fees; fallback to branch policy values.
+        const storedTransport = Number(t.transportation_cost ?? 0);
+        const storedLoading = Number(t.loading_cost ?? 0);
+        const transport = storedTransport > 0
+          ? storedTransport
+          : (active ? Number(pol?.transportation_cost ?? 0) : 0);
+        const loading = storedLoading > 0
+          ? storedLoading
+          : (active ? Number(pol?.loading_cost ?? 0) : 0);
         const itemsCost = Number(t.total_cost ?? 0);
         const grand = itemsCost + transport + loading;
         return { ...t, transport, loading, itemsCost, grand };
@@ -99,6 +108,8 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
   const filtered = useMemo(() => {
     let arr = supplyInvoices;
     if (branchFilter !== "all") arr = arr.filter((t) => t.destination_id === branchFilter);
+    if (dateFrom) arr = arr.filter((t) => (t.date || "") >= dateFrom);
+    if (dateTo) arr = arr.filter((t) => (t.date || "") <= dateTo);
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       arr = arr.filter((t) =>
@@ -108,7 +119,7 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
       );
     }
     return arr;
-  }, [supplyInvoices, branchFilter, search]);
+  }, [supplyInvoices, branchFilter, search, dateFrom, dateTo]);
 
   const kpis = useMemo(() => {
     const count = filtered.length;
@@ -207,6 +218,17 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
               </SelectContent>
             </Select>
           </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">من:</span>
+            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-[150px] h-10" />
+            <span className="text-xs text-muted-foreground">إلى:</span>
+            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-[150px] h-10" />
+            {(dateFrom || dateTo) && (
+              <Button variant="ghost" size="sm" className="h-9 px-2 text-xs" onClick={() => { setDateFrom(""); setDateTo(""); }}>
+                مسح
+              </Button>
+            )}
+          </div>
           <div className="mr-auto flex items-center gap-2">
             <PrintButton
               data={exportData}
@@ -214,6 +236,8 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
               title="فواتير التوريدات للفروع"
               filters={[
                 { label: "الفرع", value: branchName },
+                { label: "من تاريخ", value: dateFrom || "—" },
+                { label: "إلى تاريخ", value: dateTo || "—" },
                 { label: "عدد الفواتير", value: String(kpis.count) },
                 { label: "إجمالي التوريدات", value: `${fmt(kpis.total)} ج.م` },
               ]}
@@ -226,6 +250,8 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
               title="فواتير التوريدات للفروع"
               filters={[
                 { label: "الفرع", value: branchName },
+                { label: "من تاريخ", value: dateFrom || "—" },
+                { label: "إلى تاريخ", value: dateTo || "—" },
                 { label: "عدد الفواتير", value: String(kpis.count) },
                 { label: "إجمالي التوريدات", value: `${fmt(kpis.total)} ج.م` },
               ]}

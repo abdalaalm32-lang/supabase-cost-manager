@@ -2932,6 +2932,7 @@ export type Database = {
           destination_name: string | null
           id: string
           is_edited: boolean
+          loading_cost: number
           notes: string | null
           overhead_amount: number
           overhead_rate_applied: number
@@ -2941,6 +2942,7 @@ export type Database = {
           source_name: string | null
           status: string
           total_cost: number
+          transportation_cost: number
         }
         Insert: {
           company_id: string
@@ -2952,6 +2954,7 @@ export type Database = {
           destination_name?: string | null
           id?: string
           is_edited?: boolean
+          loading_cost?: number
           notes?: string | null
           overhead_amount?: number
           overhead_rate_applied?: number
@@ -2961,6 +2964,7 @@ export type Database = {
           source_name?: string | null
           status?: string
           total_cost?: number
+          transportation_cost?: number
         }
         Update: {
           company_id?: string
@@ -2972,6 +2976,7 @@ export type Database = {
           destination_name?: string | null
           id?: string
           is_edited?: boolean
+          loading_cost?: number
           notes?: string | null
           overhead_amount?: number
           overhead_rate_applied?: number
@@ -2981,6 +2986,7 @@ export type Database = {
           source_name?: string | null
           status?: string
           total_cost?: number
+          transportation_cost?: number
         }
         Relationships: [
           {

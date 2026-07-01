@@ -274,7 +274,7 @@ export const TransferDetailPage: React.FC = () => {
 
   // Recompute item prices when supply context changes
   useEffect(() => {
-    if (isLocked) return;
+    if (!isNew && status !== "مؤرشف" && !isEditMode) return;
     setItems(prev => prev.map(it => {
       const wac = Number(it.wac ?? it.avg_cost) || 0;
       const r = resolveItemPricing({ ...it, avg_cost: wac }, wac);

@@ -1,8 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export type AllocationMethod = "value" | "weight" | "volume" | "quantity" | "manual";
-
 export type BranchSupplyPolicy = {
   id: string;
   company_id: string;
@@ -12,7 +10,6 @@ export type BranchSupplyPolicy = {
   loading_cost: number;
   minimum_order_value: number;
   is_active: boolean;
-  allocation_method?: AllocationMethod;
 };
 
 export type SupplyPricingRow = {
@@ -20,109 +17,50 @@ export type SupplyPricingRow = {
   company_id: string;
   stock_item_id: string;
   supply_type: "cost" | "cost_plus_profit";
-  manufacturing_cost: number;
   packaging_cost: number;
   auto_calculate: boolean;
   manual_base_price: number | null;
   last_calculated_at: string | null;
   is_available_for_transfer?: boolean;
-  manual_overhead_share?: number;
-  manual_transport_share?: number;
-  unit_weight?: number;
-  unit_volume?: number;
 };
-
 
 export type WarehouseOverheadExpense = {
   id: string;
   company_id: string;
   warehouse_id: string;
+  pool_id?: string | null;
   expense_name: string;
   monthly_amount: number;
   is_active: boolean;
 };
 
-/**
- * Compute per-item basis for allocation given a method.
- */
-export function allocationBasis(
-  item: { current_stock?: number; avg_cost?: number; unit_weight?: number; unit_volume?: number; manual_share?: number },
-  method: AllocationMethod,
-): number {
-  const qty = Number(item.current_stock ?? 0);
-  switch (method) {
-    case "value":
-      return qty * Number(item.avg_cost ?? 0);
-    case "weight":
-      return qty * Number(item.unit_weight ?? 0);
-    case "volume":
-      return qty * Number(item.unit_volume ?? 0);
-    case "quantity":
-      return qty;
-    case "manual":
-      return Number(item.manual_share ?? 0);
-  }
-}
+export type WarehouseOverheadMonthlyRate = {
+  id: string;
+  company_id: string;
+  warehouse_id: string;
+  pool_id: string | null;
+  month: string; // 'YYYY-MM'
+  expenses_total: number;
+  transfers_total: number;
+  rate: number; // percentage
+  status: "estimated" | "actual" | "approved";
+  notes?: string | null;
+  created_at: string;
+};
+
+export type Warehouse = {
+  id: string;
+  name: string;
+  code?: string | null;
+  estimated_overhead_rate?: number | null;
+};
 
 /**
- * Allocate a total charge (e.g. overhead, transport+loading) across items by chosen method.
- * Returns map of itemId -> share amount.
- */
-export function allocateCharge<T extends { id: string }>(
-  items: (T & {
-    current_stock?: number;
-    avg_cost?: number;
-    unit_weight?: number;
-    unit_volume?: number;
-    manual_share?: number;
-    quantity?: number;
-  })[],
-  totalCharge: number,
-  method: AllocationMethod,
-  useTransferQty = false,
-): Record<string, number> {
-  const out: Record<string, number> = {};
-  if (!totalCharge || items.length === 0) {
-    items.forEach((i) => (out[i.id] = 0));
-    return out;
-  }
-  const bases = items.map((i) => {
-    if (useTransferQty && method !== "manual") {
-      // use transfer line quantity if provided, else fall back to current_stock
-      const qty = Number(i.quantity ?? i.current_stock ?? 0);
-      switch (method) {
-        case "value": return qty * Number(i.avg_cost ?? 0);
-        case "weight": return qty * Number(i.unit_weight ?? 0);
-        case "volume": return qty * Number(i.unit_volume ?? 0);
-        case "quantity": return qty;
-      }
-    }
-    return allocationBasis(
-      {
-        current_stock: i.current_stock,
-        avg_cost: i.avg_cost,
-        unit_weight: i.unit_weight,
-        unit_volume: i.unit_volume,
-        manual_share: i.manual_share,
-      },
-      method,
-    );
-  });
-  const sum = bases.reduce((a, b) => a + b, 0);
-  if (sum <= 0) {
-    // fallback: equal split
-    const eq = totalCharge / items.length;
-    items.forEach((i) => (out[i.id] = eq));
-    return out;
-  }
-  items.forEach((i, idx) => {
-    out[i.id] = (bases[idx] / sum) * totalCharge;
-  });
-  return out;
-}
-
-/**
- * Final per-unit price for one item — accepts precomputed overhead and transport per-unit.
+ * Final per-unit price for one item using monthly Overhead Rate model.
+ *   base = WAC (or last purchase) + packaging
+ *   withOverhead = base * (1 + overheadRate/100)
+ *   withProfit = withOverhead * (1 + profit%/100)  (only if supply_type === cost_plus_profit)
+ *   final = withProfit + transport/qty + loading/qty (per-invoice fees)
  */
 export function computeSupplyPrice(opts: {
   wac: number;
@@ -131,16 +69,18 @@ export function computeSupplyPrice(opts: {
   pricing?: Partial<SupplyPricingRow> | null;
   policy?: Partial<BranchSupplyPolicy> | null;
   quantity?: number;
-  overheadPerUnit?: number;
+  overheadRate?: number; // percentage
   transportPerUnitOverride?: number;
   loadingPerUnitOverride?: number;
 }): {
   baseCost: number;
+  withOverhead: number;
+  overheadAmount: number;
+  overheadRate: number;
   withProfit: number;
+  profitAmount: number;
   transportPerUnit: number;
   loadingPerUnit: number;
-  overheadPerUnit: number;
-  profitAmount: number;
   finalUnitPrice: number;
 } {
   const qty = Math.max(opts.quantity ?? 1, 1);
@@ -149,22 +89,24 @@ export function computeSupplyPrice(opts: {
       ? opts.wac ?? 0
       : opts.lastPurchasePrice ?? opts.wac ?? 0;
 
-  const manufacturing = Number(opts.pricing?.manufacturing_cost ?? 0);
   const packaging = Number(opts.pricing?.packaging_cost ?? 0);
   const supplyType = opts.pricing?.supply_type ?? "cost_plus_profit";
   const autoCalc = opts.pricing?.auto_calculate ?? true;
   const manual = Number(opts.pricing?.manual_base_price ?? 0);
 
-  const overheadPerUnit = Number(opts.overheadPerUnit ?? 0);
-  const computedBase = wacOrLast + manufacturing + packaging + overheadPerUnit;
+  const computedBase = wacOrLast + packaging;
   const baseCost = autoCalc || !manual ? computedBase : manual;
+
+  const overheadRate = Number(opts.overheadRate ?? 0);
+  const overheadAmount = baseCost * (overheadRate / 100);
+  const withOverhead = baseCost + overheadAmount;
 
   const profitPct =
     supplyType === "cost_plus_profit"
       ? Number(opts.policy?.profit_percentage ?? 0)
       : 0;
-  const profitAmount = baseCost * (profitPct / 100);
-  const withProfit = baseCost + profitAmount;
+  const profitAmount = withOverhead * (profitPct / 100);
+  const withProfit = withOverhead + profitAmount;
 
   const transportPerUnit =
     opts.transportPerUnitOverride ?? Number(opts.policy?.transportation_cost ?? 0) / qty;
@@ -175,11 +117,13 @@ export function computeSupplyPrice(opts: {
 
   return {
     baseCost,
+    withOverhead,
+    overheadAmount,
+    overheadRate,
     withProfit,
+    profitAmount,
     transportPerUnit,
     loadingPerUnit,
-    overheadPerUnit,
-    profitAmount,
     finalUnitPrice,
   };
 }
@@ -227,10 +171,92 @@ export function useWarehouseOverhead(companyId?: string, warehouseId?: string) {
   });
 }
 
+export function useWarehouseMonthlyRates(companyId?: string, warehouseId?: string) {
+  return useQuery({
+    queryKey: ["warehouse-monthly-rates", companyId, warehouseId],
+    enabled: !!companyId && !!warehouseId,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("warehouse_overhead_monthly_rates")
+        .select("*")
+        .eq("company_id", companyId)
+        .eq("warehouse_id", warehouseId)
+        .order("month", { ascending: false });
+      return (data ?? []) as WarehouseOverheadMonthlyRate[];
+    },
+  });
+}
+
+/** Return the applicable overhead rate% for a warehouse at a given month (YYYY-MM).
+ *  Priority: approved/actual saved row for that month → most recent approved row before it → warehouse estimated rate → 0. */
+export async function resolveOverheadRate(warehouseId: string, month: string): Promise<number> {
+  // saved rate for the month
+  const { data: monthRow } = await (supabase as any)
+    .from("warehouse_overhead_monthly_rates")
+    .select("rate,status")
+    .eq("warehouse_id", warehouseId)
+    .eq("month", month)
+    .maybeSingle();
+  if (monthRow) return Number(monthRow.rate) || 0;
+
+  // fallback: most recent prior month
+  const { data: prior } = await (supabase as any)
+    .from("warehouse_overhead_monthly_rates")
+    .select("rate")
+    .eq("warehouse_id", warehouseId)
+    .lt("month", month)
+    .order("month", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (prior) return Number(prior.rate) || 0;
+
+  // fallback: estimated rate on warehouse
+  const { data: wh } = await (supabase as any)
+    .from("warehouses")
+    .select("estimated_overhead_rate")
+    .eq("id", warehouseId)
+    .maybeSingle();
+  return Number(wh?.estimated_overhead_rate ?? 0);
+}
+
+/** Compute the monthly rate for a warehouse from actual expenses & transfers. */
+export async function computeMonthlyRate(
+  companyId: string,
+  warehouseId: string,
+  month: string, // YYYY-MM
+): Promise<{ expenses: number; transfers: number; rate: number }> {
+  const start = `${month}-01`;
+  // last day of month
+  const [y, m] = month.split("-").map(Number);
+  const nextMonth = new Date(y, m, 1); // month is 1-based already advanced
+  const end = nextMonth.toISOString().slice(0, 10);
+
+  const [{ data: exp }, { data: trs }] = await Promise.all([
+    (supabase as any)
+      .from("warehouse_overhead_expenses")
+      .select("monthly_amount,is_active")
+      .eq("company_id", companyId)
+      .eq("warehouse_id", warehouseId),
+    (supabase as any)
+      .from("transfers")
+      .select("total_cost,status,date,source_id")
+      .eq("company_id", companyId)
+      .eq("source_id", warehouseId)
+      .in("status", ["مكتمل", "مؤرشف"])
+      .gte("date", start)
+      .lt("date", end),
+  ]);
+
+  const expenses = (exp ?? []).filter((r: any) => r.is_active).reduce((s: number, r: any) => s + Number(r.monthly_amount || 0), 0);
+  const transfers = (trs ?? []).reduce((s: number, r: any) => s + Number(r.total_cost || 0), 0);
+  const rate = transfers > 0 ? (expenses / transfers) * 100 : 0;
+  return { expenses, transfers, rate };
+}
+
 export async function getLastPurchasePrice(stockItemId: string): Promise<number> {
   const { data } = await (supabase as any)
     .from("purchase_items")
-    .select("unit_price, purchase_orders!inner(date, status)")
+    .select("unit_price")
     .eq("stock_item_id", stockItemId)
     .order("created_at", { ascending: false })
     .limit(1)

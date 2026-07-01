@@ -314,17 +314,20 @@ export const TransferDetailPage: React.FC = () => {
   const handleAddItems = () => {
     const newItems: LocalTransferItem[] = Array.from(selectedItemIds).map(siId => {
       const si = allStockItems.find((s: any) => s.id === siId)!;
-      // Use per-location stock from source location
       const locationStock = sourceId ? getSourceStock(siId) : Number(si.current_stock) || 0;
-      return {
+      const wac = Number(si.avg_cost) || 0;
+      const base: LocalTransferItem = {
         stock_item_id: siId,
         name: si.name,
         code: si.code || "—",
         unit: si.stock_unit || "كجم",
         current_stock: locationStock,
-        avg_cost: Number(si.avg_cost) || 0,
+        avg_cost: wac,
+        wac,
         quantity: 0,
       };
+      const r = resolveItemPricing(base, wac);
+      return { ...base, avg_cost: r.price, price_source: r.source, price_note: r.note };
     });
     setItems(prev => [...prev, ...newItems]);
     setShowAddItems(false);

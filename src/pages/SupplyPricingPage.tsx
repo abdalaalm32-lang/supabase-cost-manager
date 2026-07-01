@@ -943,25 +943,15 @@ export const SupplyPricingPage: React.FC = () => {
                             defaultValue={pol?.minimum_order_value ?? 0}
                             onBlur={(e) => upsertPolicy(br.id, { minimum_order_value: Number(e.target.value) || 0 })}/>
                         </TableCell>
-                        <TableCell className="text-center">
-                          <Select value={(pol?.allocation_method ?? "value")} disabled={!isActive}
-                            onValueChange={(v: any) => upsertPolicy(br.id, { allocation_method: v })}>
-                            <SelectTrigger className="h-8 w-[180px] mx-auto text-xs"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              {(Object.keys(allocationLabels) as AllocationMethod[]).map((k) => (
-                                <SelectItem key={k} value={k}>{allocationLabels[k]}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
                       </TableRow>
                     );
                   })}
                   {branches.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">لا توجد فروع</TableCell>
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">لا توجد فروع</TableCell>
                     </TableRow>
                   )}
+
                 </TableBody>
               </Table>
             </CardContent>

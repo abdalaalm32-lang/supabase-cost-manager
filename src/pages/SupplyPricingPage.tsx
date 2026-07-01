@@ -870,6 +870,10 @@ export const SupplyPricingPage: React.FC = () => {
               </Table>
             </CardContent>
           </Card>
+
+          {/* Simulation / What-if study for monthly rate */}
+          <RateSimulationCard />
+
         </TabsContent>
 
         {/* ----------- TAB: Branch policies ----------- */}

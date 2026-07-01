@@ -874,7 +874,9 @@ export const TransferDetailPage: React.FC = () => {
                           </TableCell>
                         )}
                       </TableRow>
-                    ))
+                      );
+                    })
+
                   )}
                 </TableBody>
               </Table>

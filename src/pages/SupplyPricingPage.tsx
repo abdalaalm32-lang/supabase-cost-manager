@@ -717,7 +717,8 @@ export const SupplyPricingPage: React.FC = () => {
                 <Percent size={18}/> المعدل التقديري (Estimated Overhead Rate)
               </CardTitle>
               <p className="text-xs text-muted-foreground">
-                يُستخدم في أول شهر تشغيل قبل توفر بيانات فعلية للمصاريف والتحويلات.
+                يُستخدم تلقائياً كـ <b>Fallback</b> في أول شهر تشغيل أو في أي شهر لا يوجد له سجل معدل محسوب/معتمد.
+                طالما مفيش بيانات شهر سابق أو حالي محفوظة، النظام يعتمد الرقم اللي هتحطه هنا في كل فواتير التحويل.
               </p>
             </CardHeader>
             <CardContent className="flex flex-wrap items-end gap-3">
@@ -733,6 +734,13 @@ export const SupplyPricingPage: React.FC = () => {
               <Badge variant="outline" className="text-sm h-9 px-3">
                 المعدل الفعّال الآن: <b className="mx-2 text-primary">{fmtPct(currentRate.rate)}</b>
               </Badge>
+              <Badge variant="outline" className={cn("text-xs h-9 px-3",
+                currentRate.source === "estimated" && "bg-amber-500/10 text-amber-700 border-amber-500/30",
+                currentRate.source === "prior" && "bg-blue-500/10 text-blue-700 border-blue-500/30",
+                currentRate.source === "current" && "bg-emerald-500/10 text-emerald-700 border-emerald-500/30")}>
+                المصدر: {currentRate.source === "current" ? "الشهر الحالي" : currentRate.source === "prior" ? `الشهر السابق (${monthLabel(currentRate.month)})` : "المعدل التقديري (يدوي)"}
+              </Badge>
+
             </CardContent>
           </Card>
 

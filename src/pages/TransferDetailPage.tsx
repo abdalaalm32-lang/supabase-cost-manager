@@ -180,6 +180,9 @@ export const TransferDetailPage: React.FC = () => {
       setSourceDepartmentId((existingRecord as any).source_department_id || "");
       setDestinationDepartmentId((existingRecord as any).destination_department_id || "");
       setNotes(existingRecord.notes || "");
+      setTransportationCost(Number((existingRecord as any).transportation_cost) || 0);
+      setLoadingCost(Number((existingRecord as any).loading_cost) || 0);
+      setFeesTouched(true);
 
       const loadedItems: LocalTransferItem[] = (existingRecord.transfer_items || []).map((ti: any) => {
         const si = allStockItems.find((s: any) => s.id === ti.stock_item_id);

@@ -492,6 +492,7 @@ export const TransferDetailPage: React.FC = () => {
                     pricing,
                     policy: branchPolicy,
                     quantity: Number(item.quantity),
+                    overheadRate: overheadRateApplied,
                     transportPerUnitOverride: 0,
                     loadingPerUnitOverride: 0,
                   });

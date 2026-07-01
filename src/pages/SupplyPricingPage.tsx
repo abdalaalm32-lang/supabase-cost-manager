@@ -899,7 +899,7 @@ export const SupplyPricingPage: React.FC = () => {
                     <TableHead className="text-center">تكلفة النقل</TableHead>
                     <TableHead className="text-center">تكلفة التحميل</TableHead>
                     <TableHead className="text-center">حد أدنى للأمر</TableHead>
-                    <TableHead className="text-center">طريقة توزيع النقل/التحميل</TableHead>
+
                   </TableRow>
                 </TableHeader>
                 <TableBody>

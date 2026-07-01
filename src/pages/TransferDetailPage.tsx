@@ -812,13 +812,44 @@ export const TransferDetailPage: React.FC = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    items.map((item, idx) => (
-                      <TableRow key={idx}>
+                    items.map((item, idx) => {
+                      const noStock = Number(item.current_stock) <= 0;
+                      const badge =
+                        item.price_source === "unavailable" ? { icon: Ban, cls: "bg-red-500/15 text-red-500 border-red-500/30", label: "غير متاح للتوريد" }
+                        : item.price_source === "no_policy" ? { icon: AlertTriangle, cls: "bg-amber-500/15 text-amber-500 border-amber-500/30", label: "توريد غير مفعّل" }
+                        : item.price_source === "cost" ? { icon: Info, cls: "bg-blue-500/15 text-blue-500 border-blue-500/30", label: "تكلفة فقط" }
+                        : item.price_source === "supply" ? { icon: CheckCircle2, cls: "bg-emerald-500/15 text-emerald-500 border-emerald-500/30", label: "سعر توريد" }
+                        : null;
+                      return (
+                      <TableRow key={idx} className={item.price_source === "unavailable" ? "opacity-70" : ""}>
                         <TableCell className="font-mono text-xs">{item.code}</TableCell>
-                        <TableCell className="font-medium">{item.name}</TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex flex-col gap-1">
+                            <span>{item.name}</span>
+                            <div className="flex flex-wrap items-center gap-1">
+                              {badge && (
+                                <span className={cn("inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] border", badge.cls)} title={item.price_note || ""}>
+                                  <badge.icon size={10} /> {badge.label}
+                                </span>
+                              )}
+                              {noStock && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] border bg-red-500/15 text-red-500 border-red-500/30" title="لا يوجد رصيد في المخزن المصدر">
+                                  <AlertTriangle size={10} /> لا يوجد رصيد
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
                         <TableCell>{item.unit}</TableCell>
-                        <TableCell>{item.current_stock}</TableCell>
-                        <TableCell>{item.avg_cost.toFixed(2)}</TableCell>
+                        <TableCell className={cn(noStock && "text-red-500 font-bold")}>{item.current_stock}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{item.avg_cost.toFixed(2)}</span>
+                            {isSupplyContext && item.wac != null && item.price_source === "supply" && (
+                              <span className="text-[10px] text-muted-foreground">تكلفة: {Number(item.wac).toFixed(2)}</span>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           {isLocked ? (
                             item.quantity

@@ -244,6 +244,20 @@ export const TransferDetailPage: React.FC = () => {
     return () => { cancelled = true; };
   }, [companyId, sourceId, destinationId, isSupplyContext, date]);
 
+  // Prefill transport/loading fees from branch policy when it changes
+  // (only when the user hasn't manually edited them and record is editable).
+  useEffect(() => {
+    if (feesTouched) return;
+    if (!isSupplyContext) {
+      setTransportationCost(0);
+      setLoadingCost(0);
+      return;
+    }
+    const active = destPolicy && destPolicy.is_active !== false;
+    setTransportationCost(active ? Number(destPolicy?.transportation_cost ?? 0) : 0);
+    setLoadingCost(active ? Number(destPolicy?.loading_cost ?? 0) : 0);
+  }, [destPolicy, isSupplyContext, feesTouched]);
+
   const resolveItemPricing = (item: LocalTransferItem, wacBase?: number): { price: number; source: PriceSource; note: string | null } => {
     const wac = wacBase ?? Number(item.wac ?? item.avg_cost) ?? 0;
     if (!isSupplyContext) {

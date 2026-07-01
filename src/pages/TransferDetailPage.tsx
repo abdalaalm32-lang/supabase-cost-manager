@@ -62,6 +62,9 @@ export const TransferDetailPage: React.FC = () => {
   const [items, setItems] = useState<LocalTransferItem[]>([]);
   const [status, setStatus] = useState("مسودة");
   const [recordNumber, setRecordNumber] = useState("");
+  const [transportationCost, setTransportationCost] = useState<number>(0);
+  const [loadingCost, setLoadingCost] = useState<number>(0);
+  const [feesTouched, setFeesTouched] = useState(false);
 
   // Modal
   const [showAddItems, setShowAddItems] = useState(false);

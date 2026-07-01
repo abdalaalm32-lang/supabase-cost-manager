@@ -207,6 +207,83 @@ export const TransferDetailPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date, sourceId, sourceDepartmentId, getSourceStock]);
 
+  // ================= Supply Pricing (Warehouse → Branch) =================
+  const [pricingMap, setPricingMap] = useState<Record<string, any>>({});
+  const [destPolicy, setDestPolicy] = useState<any>(null);
+  const [overheadRate, setOverheadRate] = useState<number>(0);
+  const isSupplyContext = sourceLocationType === "warehouse" && destLocationType === "branch";
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!companyId || !isSupplyContext || !sourceId || !destinationId) {
+        setPricingMap({});
+        setDestPolicy(null);
+        setOverheadRate(0);
+        return;
+      }
+      const [{ data: prc }, { data: pol }] = await Promise.all([
+        (supabase as any).from("stock_item_supply_pricing").select("*").eq("company_id", companyId),
+        (supabase as any).from("branch_supply_policies").select("*").eq("branch_id", destinationId).maybeSingle(),
+      ]);
+      if (cancelled) return;
+      const map: Record<string, any> = {};
+      (prc ?? []).forEach((r: any) => { map[r.stock_item_id] = r; });
+      setPricingMap(map);
+      setDestPolicy(pol);
+      const month = (date || new Date().toISOString().slice(0, 10)).slice(0, 7);
+      const rate = await resolveOverheadRate(sourceId, month);
+      if (!cancelled) setOverheadRate(Number(rate) || 0);
+    })();
+    return () => { cancelled = true; };
+  }, [companyId, sourceId, destinationId, isSupplyContext, date]);
+
+  const resolveItemPricing = (item: LocalTransferItem, wacBase?: number): { price: number; source: PriceSource; note: string | null } => {
+    const wac = wacBase ?? Number(item.wac ?? item.avg_cost) ?? 0;
+    if (!isSupplyContext) {
+      return { price: wac, source: "none", note: null };
+    }
+    const policyActive = destPolicy && destPolicy.is_active !== false;
+    if (!policyActive) {
+      return { price: wac, source: "no_policy", note: "التوريد الداخلي لهذا الفرع غير مفعّل — سيُحاسب بالتكلفة" };
+    }
+    const pricing = pricingMap[item.stock_item_id];
+    if (pricing?.is_available_for_transfer === false) {
+      return { price: wac, source: "unavailable", note: "غير متاح للتوريد — سيُحاسب بالتكلفة فقط" };
+    }
+    const supplyType = pricing?.supply_type ?? "cost_plus_profit";
+    const r = computeSupplyPrice({
+      wac,
+      currentStock: Number(item.current_stock) || 0,
+      pricing,
+      policy: destPolicy,
+      quantity: Math.max(Number(item.quantity) || 1, 1),
+      overheadRate,
+      transportPerUnitOverride: 0,
+      loadingPerUnitOverride: 0,
+    });
+    if (supplyType === "cost") {
+      return { price: r.finalUnitPrice, source: "cost", note: `تكلفة فقط (بدون ربح) + تحميل ${overheadRate.toFixed(2)}%` };
+    }
+    return {
+      price: r.finalUnitPrice,
+      source: "supply",
+      note: `سعر التوريد النهائي = تكلفة + تحميل ${overheadRate.toFixed(2)}% + ربح ${Number(destPolicy?.profit_percentage ?? 0)}%`,
+    };
+  };
+
+  // Recompute item prices when supply context changes
+  useEffect(() => {
+    if (isLocked) return;
+    setItems(prev => prev.map(it => {
+      const wac = Number(it.wac ?? it.avg_cost) || 0;
+      const r = resolveItemPricing({ ...it, avg_cost: wac }, wac);
+      return { ...it, wac, avg_cost: r.price, price_source: r.source, price_note: r.note };
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pricingMap, destPolicy, overheadRate, isSupplyContext]);
+
+
   // Materials modal
   const existingStockIds = useMemo(() => new Set(items.map(i => i.stock_item_id)), [items]);
 

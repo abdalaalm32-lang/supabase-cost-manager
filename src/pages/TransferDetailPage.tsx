@@ -562,27 +562,11 @@ export const TransferDetailPage: React.FC = () => {
           for (const item of items) {
             if (!item.stock_item_id || !item.quantity || item.quantity <= 0) continue;
             try {
+              // item.avg_cost already reflects the final supply price for warehouse→branch
+              // (computed live via resolveItemPricing); for branch→branch, use per-branch WAC.
               let sourceUnitCost = Number(item.avg_cost) || 0;
               if (sourceLocationType === "branch" && sourceId) {
                 sourceUnitCost = await getBranchCost(item.stock_item_id, sourceId);
-              } else if (sourceLocationType === "warehouse" && branchPolicy && branchPolicy.is_active !== false) {
-                const pricing = pricingMap[item.stock_item_id];
-                // Skip supply pricing if the item is flagged as unavailable for internal transfer
-                if (pricing?.is_available_for_transfer === false) {
-                  sourceUnitCost = Number(item.avg_cost) || 0;
-                } else {
-                  const r = computeSupplyPrice({
-                    wac: Number(item.avg_cost) || 0,
-                    currentStock: Number(item.current_stock) || 0,
-                    pricing,
-                    policy: branchPolicy,
-                    quantity: Number(item.quantity),
-                    overheadRate: overheadRateApplied,
-                    transportPerUnitOverride: 0,
-                    loadingPerUnitOverride: 0,
-                  });
-                  sourceUnitCost = r.finalUnitPrice;
-                }
               }
               await applyBranchCostIn({
                 companyId: companyId!,

@@ -13,11 +13,16 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Receipt, Search, Eye, Truck, Building2, TrendingUp, DollarSign, Warehouse,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Receipt, Search, Eye, Truck, Building2, TrendingUp, DollarSign, Warehouse, Download, FileText, FileSpreadsheet, Loader2,
 } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
 import { PrintButton } from "@/components/PrintButton";
 import { Badge } from "@/components/ui/badge";
+import { exportToExcel, exportToPDF, type ExportColumn } from "@/lib/exportUtils";
+import { toast } from "sonner";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("en-EG", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);

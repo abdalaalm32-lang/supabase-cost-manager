@@ -13,11 +13,16 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Receipt, Search, Eye, Truck, Building2, TrendingUp, DollarSign, Warehouse,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Receipt, Search, Eye, Truck, Building2, TrendingUp, DollarSign, Warehouse, Download, FileText, FileSpreadsheet, Loader2,
 } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
 import { PrintButton } from "@/components/PrintButton";
 import { Badge } from "@/components/ui/badge";
+import { exportToExcel, exportToPDF, type ExportColumn } from "@/lib/exportUtils";
+import { toast } from "sonner";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("en-EG", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
@@ -25,7 +30,6 @@ const fmt = (n: number) =>
 export const SupplyInvoicesToBranchesPage: React.FC = () => {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;
-  const navigate = useNavigate();
 
   const [search, setSearch] = useState("");
   const [branchFilter, setBranchFilter] = useState<string>("all");
@@ -158,6 +162,106 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
     { key: "grand", label: "الإجمالي" },
     { key: "status", label: "الحالة" },
   ];
+
+  const RowActions: React.FC<{ t: any; rowIndex: number }> = ({ t, rowIndex }) => {
+    const navigate = useNavigate();
+    const [loadingPdf, setLoadingPdf] = useState(false);
+    const [loadingExcel, setLoadingExcel] = useState(false);
+
+    const rowData = useMemo(() => [
+      {
+        idx: rowIndex + 1,
+        record: t.record_number || "—",
+        date: t.date || "—",
+        from: t.source_name || "—",
+        to: t.destination_name || "—",
+        itemsCost: fmt(t.itemsCost),
+        transport: fmt(t.transport),
+        loading: fmt(t.loading),
+        grand: fmt(t.grand),
+        status: t.is_edited ? "معدَّل" : t.status || "—",
+      },
+    ], [t, rowIndex]);
+
+    const filters = useMemo(() => [
+      { label: "رقم الأذن", value: t.record_number || "—" },
+      { label: "التاريخ", value: t.date || "—" },
+      { label: "المخزن", value: t.source_name || "—" },
+      { label: "الفرع", value: t.destination_name || "—" },
+      { label: "الإجمالي", value: `${fmt(t.grand)} ج.م` },
+    ], [t]);
+
+    const safeName = (t.record_number || t.id || "غير_مسمى").replace(/\s+/g, "_");
+
+    const handlePdf = async () => {
+      setLoadingPdf(true);
+      try {
+        await exportToPDF({
+          title: "فاتورة توريد للفرع",
+          filename: `فاتورة_توريد_${safeName}`,
+          columns: exportColumns,
+          data: rowData,
+          filters,
+        });
+        toast.success("تم تصدير PDF بنجاح");
+      } catch (err) {
+        console.error(err);
+        toast.error("حدث خطأ أثناء التصدير");
+      } finally {
+        setLoadingPdf(false);
+      }
+    };
+
+    const handleExcel = async () => {
+      setLoadingExcel(true);
+      try {
+        await exportToExcel({
+          title: "فاتورة توريد للفرع",
+          filename: `فاتورة_توريد_${safeName}`,
+          columns: exportColumns,
+          data: rowData,
+          filters,
+        });
+        toast.success("تم تصدير Excel بنجاح");
+      } catch (err) {
+        console.error(err);
+        toast.error("حدث خطأ أثناء التصدير");
+      } finally {
+        setLoadingExcel(false);
+      }
+    };
+
+    return (
+      <div className="flex items-center justify-center gap-1">
+        <PrintButton
+          data={rowData}
+          columns={exportColumns}
+          title="فاتورة توريد للفرع"
+          filters={filters}
+        />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="icon" className="h-7 w-7">
+              <Download size={14} />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={handlePdf} disabled={loadingPdf} className="gap-2 cursor-pointer">
+              {loadingPdf ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
+              تصدير PDF
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleExcel} disabled={loadingExcel} className="gap-2 cursor-pointer">
+              {loadingExcel ? <Loader2 size={14} className="animate-spin" /> : <FileSpreadsheet size={14} className="text-green-600" />}
+              تصدير Excel
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`/transfers/${t.id}`)}>
+          <Eye size={14} />
+        </Button>
+      </div>
+    );
+  };
 
   const KpiCard: React.FC<{ icon: React.ReactNode; label: string; value: string; hint?: string; tone: string }> = ({ icon, label, value, hint, tone }) => (
     <Card className="glass-card">
@@ -313,9 +417,7 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
                         )}
                       </TableCell>
                       <TableCell className="text-center">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`/transfers/${t.id}`)}>
-                          <Eye size={14}/>
-                        </Button>
+                        <RowActions t={t} rowIndex={i} />
                       </TableCell>
                     </TableRow>
                   ))}

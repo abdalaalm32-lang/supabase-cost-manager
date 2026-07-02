@@ -769,22 +769,12 @@ export const PosScreenPage: React.FC = () => {
                         <span className="text-[11px] text-muted-foreground block truncate">{categoryName || "—"}</span>
                         <span className="font-black text-primary text-sm whitespace-nowrap">{item.price} <span className="text-[10px] font-bold">EGP</span></span>
                       </div>
-                      <div className="flex flex-col items-center gap-1">
+                      <div className="flex items-center justify-center">
                         {inCart ? (
                           <Badge className="h-6 min-w-6 px-2 text-[11px] bg-primary text-primary-foreground shadow-md">
                             {inCart.quantity}
                           </Badge>
-                        ) : (
-                          <div className="h-6 w-6" />
-                        )}
-                        <button
-                          type="button"
-                          className="h-8 w-8 rounded-full bg-primary text-primary-foreground shadow-md flex items-center justify-center hover:scale-110 transition-transform"
-                          onClick={(e) => { e.stopPropagation(); addToCart(item); }}
-                          aria-label="إضافة للسلة"
-                        >
-                          <Plus className="h-4 w-4" />
-                        </button>
+                        ) : null}
                       </div>
                     </div>
                   );

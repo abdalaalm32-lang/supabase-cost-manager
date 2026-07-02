@@ -25,6 +25,7 @@ import {
   ChefHat, CheckCircle2, Clock, MapPin, Phone, PlayCircle, Eye, EyeOff
 } from "lucide-react";
 import { printCustomerReceipt, printKitchenReceipt, printViaIframe } from "@/lib/posPrintUtils";
+import { getPosItemImage, POS_ITEM_IMAGE_FALLBACK } from "@/lib/posItemImage";
 import { PosHeldInvoices } from "@/components/pos/PosHeldInvoices";
 import { PosDailyStats } from "@/components/pos/PosDailyStats";
 import { PosShiftManager } from "@/components/pos/PosShiftManager";

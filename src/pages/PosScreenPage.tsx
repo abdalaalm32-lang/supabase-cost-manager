@@ -392,7 +392,7 @@ export const PosScreenPage: React.FC = () => {
   const { data: items } = useQuery({
     queryKey: ["pos-items-active", companyId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("pos_items").select("*, categories:category_id(name)").eq("company_id", companyId!).eq("active", true);
+      const { data, error } = await supabase.from("pos_items").select("*, categories:category_id(name)").eq("company_id", companyId!).eq("active", true).order("code", { ascending: true });
       if (error) throw error;
       return data;
     },

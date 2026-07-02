@@ -55,6 +55,9 @@ export const AddPurchaseInvoicePage: React.FC = () => {
   const [departmentFilter, setDepartmentFilter] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [cartSearch, setCartSearch] = useState("");
+  const [paymentType, setPaymentType] = useState<"نقدي" | "آجل">("نقدي");
+  const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
+  const [paidAmount, setPaidAmount] = useState<number>(0);
 
   const { data: suppliers = [] } = useQuery({
     queryKey: ["suppliers-active", companyId],

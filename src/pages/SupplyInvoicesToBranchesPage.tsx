@@ -164,6 +164,106 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
     { key: "status", label: "الحالة" },
   ];
 
+  const RowActions: React.FC<{ t: any; rowIndex: number }> = ({ t, rowIndex }) => {
+    const navigate = useNavigate();
+    const [loadingPdf, setLoadingPdf] = useState(false);
+    const [loadingExcel, setLoadingExcel] = useState(false);
+
+    const rowData = useMemo(() => [
+      {
+        idx: rowIndex + 1,
+        record: t.record_number || "—",
+        date: t.date || "—",
+        from: t.source_name || "—",
+        to: t.destination_name || "—",
+        itemsCost: fmt(t.itemsCost),
+        transport: fmt(t.transport),
+        loading: fmt(t.loading),
+        grand: fmt(t.grand),
+        status: t.is_edited ? "معدَّل" : t.status || "—",
+      },
+    ], [t, rowIndex]);
+
+    const filters = useMemo(() => [
+      { label: "رقم الأذن", value: t.record_number || "—" },
+      { label: "التاريخ", value: t.date || "—" },
+      { label: "المخزن", value: t.source_name || "—" },
+      { label: "الفرع", value: t.destination_name || "—" },
+      { label: "الإجمالي", value: `${fmt(t.grand)} ج.م` },
+    ], [t]);
+
+    const safeName = (t.record_number || t.id || "غير_مسمى").replace(/\s+/g, "_");
+
+    const handlePdf = async () => {
+      setLoadingPdf(true);
+      try {
+        await exportToPDF({
+          title: "فاتورة توريد للفرع",
+          filename: `فاتورة_توريد_${safeName}`,
+          columns: exportColumns,
+          data: rowData,
+          filters,
+        });
+        toast.success("تم تصدير PDF بنجاح");
+      } catch (err) {
+        console.error(err);
+        toast.error("حدث خطأ أثناء التصدير");
+      } finally {
+        setLoadingPdf(false);
+      }
+    };
+
+    const handleExcel = async () => {
+      setLoadingExcel(true);
+      try {
+        await exportToExcel({
+          title: "فاتورة توريد للفرع",
+          filename: `فاتورة_توريد_${safeName}`,
+          columns: exportColumns,
+          data: rowData,
+          filters,
+        });
+        toast.success("تم تصدير Excel بنجاح");
+      } catch (err) {
+        console.error(err);
+        toast.error("حدث خطأ أثناء التصدير");
+      } finally {
+        setLoadingExcel(false);
+      }
+    };
+
+    return (
+      <div className="flex items-center justify-center gap-1">
+        <PrintButton
+          data={rowData}
+          columns={exportColumns}
+          title="فاتورة توريد للفرع"
+          filters={filters}
+        />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="icon" className="h-7 w-7">
+              <Download size={14} />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={handlePdf} disabled={loadingPdf} className="gap-2 cursor-pointer">
+              {loadingPdf ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
+              تصدير PDF
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleExcel} disabled={loadingExcel} className="gap-2 cursor-pointer">
+              {loadingExcel ? <Loader2 size={14} className="animate-spin" /> : <FileSpreadsheet size={14} className="text-green-600" />}
+              تصدير Excel
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`/transfers/${t.id}`)}>
+          <Eye size={14} />
+        </Button>
+      </div>
+    );
+  };
+
   const KpiCard: React.FC<{ icon: React.ReactNode; label: string; value: string; hint?: string; tone: string }> = ({ icon, label, value, hint, tone }) => (
     <Card className="glass-card">
       <CardContent className="p-4 flex items-center gap-3">

@@ -445,6 +445,42 @@ export const EditPurchaseInvoicePage: React.FC = () => {
          </div>
       </div>
 
+      {/* Payment Section */}
+      <div className="glass-card p-6 space-y-4">
+        <h3 className="text-lg font-semibold">بيانات الدفع</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Label>نوع الدفع</Label>
+            <Select value={paymentType} onValueChange={(v) => { setPaymentType(v as any); if (v === "نقدي") { setDueDate(""); setPaidAmount(0); } }} disabled={isViewOnly}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="نقدي">نقدي</SelectItem>
+                <SelectItem value="آجل">آجل</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {paymentType === "آجل" && (
+            <>
+              <div className="space-y-2">
+                <Label>تاريخ الاستحقاق</Label>
+                <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="glass-input" disabled={isViewOnly} />
+              </div>
+              <div className="space-y-2">
+                <Label>مبلغ مدفوع مقدماً (اختياري)</Label>
+                <Input type="number" min={0} max={totalAmount} step="0.01" value={paidAmount} onChange={(e) => setPaidAmount(parseFloat(e.target.value) || 0)} className="glass-input" disabled={isViewOnly} />
+              </div>
+              <div className="md:col-span-3 flex items-center gap-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-sm">
+                <span className="font-semibold text-amber-600">المتبقي على المورد:</span>
+                <span className="font-mono text-lg font-bold text-amber-700 dark:text-amber-400">
+                  {Math.max(totalAmount - (Number(paidAmount) || 0), 0).toFixed(2)} ج.م
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+
       <div className="glass-card p-6 space-y-4">
        <div className="flex items-center justify-between">
            <h3 className="text-lg font-semibold">أصناف الفاتورة</h3>

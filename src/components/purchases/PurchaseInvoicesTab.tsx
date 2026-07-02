@@ -458,7 +458,8 @@ export const PurchaseInvoicesTab: React.FC = () => {
                      </div>
                   </TableCell>
                 </TableRow>
-              ))
+                );
+              })
             )}
           </TableBody>
         </Table>

@@ -25,6 +25,7 @@ import {
   ChefHat, CheckCircle2, Clock, MapPin, Phone, PlayCircle, Eye, EyeOff
 } from "lucide-react";
 import { printCustomerReceipt, printKitchenReceipt, printViaIframe } from "@/lib/posPrintUtils";
+import { getPosItemImage, POS_ITEM_IMAGE_FALLBACK } from "@/lib/posItemImage";
 import { PosHeldInvoices } from "@/components/pos/PosHeldInvoices";
 import { PosDailyStats } from "@/components/pos/PosDailyStats";
 import { PosShiftManager } from "@/components/pos/PosShiftManager";
@@ -769,30 +770,52 @@ export const PosScreenPage: React.FC = () => {
                   <p className="text-xs text-muted-foreground">اضغط على زر "فتح شيفت" في الشريط العلوي</p>
                 </div>
               )}
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5" dir="rtl">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 pb-2" dir="rtl">
                 {filteredItems.map((item) => {
                   const inCart = cart.find((c) => c.pos_item_id === item.id);
+                  const categoryName = (item.categories as any)?.name || "";
+                  const imageUrl = getPosItemImage(item.name, categoryName);
                   return (
                     <div
                       key={item.id}
                       className={cn(
-                        "glass-card p-3 rounded-xl flex flex-col gap-1.5 hover:border-primary/50 transition-all cursor-pointer group relative",
-                        inCart && "border-primary/40 bg-primary/5",
+                        "group relative overflow-hidden rounded-2xl border bg-card shadow-sm hover:shadow-xl hover:-translate-y-0.5 transition-all cursor-pointer",
+                        inCart ? "border-primary/60 ring-1 ring-primary/40" : "border-border/50 hover:border-primary/40",
                         !currentShiftForExpenses && "pointer-events-none opacity-50"
                       )}
                       onClick={() => addToCart(item)}
                     >
-                      {inCart && (
-                        <Badge className="absolute -top-1.5 -left-1.5 h-5 min-w-5 px-1.5 text-[10px] bg-primary text-primary-foreground">
-                          {inCart.quantity}
-                        </Badge>
-                      )}
-                      <h4 className="font-bold text-foreground text-xs leading-tight">{item.name}</h4>
-                      <span className="text-[10px] text-muted-foreground">{(item.categories as any)?.name || "—"}</span>
-                      <div className="flex items-center justify-between mt-auto">
-                        <span className="font-black text-primary text-sm">{item.price} EGP</span>
-                        <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary group-hover:text-primary-foreground transition-all">
-                          <Plus className="h-3.5 w-3.5" />
+                      {/* Image */}
+                      <div className="relative aspect-square w-full overflow-hidden bg-muted/40">
+                        <img
+                          src={imageUrl}
+                          alt={item.name}
+                          loading="lazy"
+                          referrerPolicy="no-referrer"
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).src = POS_ITEM_IMAGE_FALLBACK; (e.currentTarget as HTMLImageElement).classList.add("p-6","opacity-40"); }}
+                          className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                        {inCart && (
+                          <Badge className="absolute top-1.5 left-1.5 h-6 min-w-6 px-2 text-[11px] bg-primary text-primary-foreground shadow-md">
+                            {inCart.quantity}
+                          </Badge>
+                        )}
+                        {/* Floating add button */}
+                        <button
+                          type="button"
+                          className="absolute bottom-1.5 left-1.5 h-8 w-8 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 hover:scale-110 transition-all"
+                          onClick={(e) => { e.stopPropagation(); addToCart(item); }}
+                          aria-label="إضافة للسلة"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      </div>
+                      {/* Text */}
+                      <div className="p-2.5 flex flex-col gap-1">
+                        <h4 className="font-bold text-foreground text-xs leading-tight line-clamp-1" title={item.name}>{item.name}</h4>
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="text-[10px] text-muted-foreground truncate">{categoryName || "—"}</span>
+                          <span className="font-black text-primary text-sm whitespace-nowrap">{item.price} <span className="text-[9px] font-bold">EGP</span></span>
                         </div>
                       </div>
                     </div>
@@ -802,6 +825,7 @@ export const PosScreenPage: React.FC = () => {
                   <div className="col-span-full text-center text-muted-foreground py-20">لا توجد أصناف</div>
                 )}
               </div>
+
             </ScrollArea>
           </div>
 

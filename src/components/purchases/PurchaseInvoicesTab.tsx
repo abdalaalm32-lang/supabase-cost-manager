@@ -386,17 +386,24 @@ export const PurchaseInvoicesTab: React.FC = () => {
               <TableHead className="text-right">التاريخ</TableHead>
               <TableHead className="text-right">المنشئ</TableHead>
               <TableHead className="text-right">الحالة</TableHead>
+              <TableHead className="text-right">نوع الدفع</TableHead>
               <TableHead className="text-right">الإجمالي</TableHead>
+              <TableHead className="text-right">المتبقي</TableHead>
               <TableHead className="text-right">الإجراءات</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">جاري التحميل...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">جاري التحميل...</TableCell></TableRow>
             ) : filtered.length === 0 ? (
-              <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">لا توجد فواتير</TableCell></TableRow>
+              <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">لا توجد فواتير</TableCell></TableRow>
             ) : (
-              filtered.map((o: any) => (
+              filtered.map((o: any) => {
+                const total = Number(o.total_amount) || 0;
+                const paid = Number(o.paid_amount) || 0;
+                const remaining = Math.max(total - paid, 0);
+                const isCredit = o.payment_type === "آجل";
+                return (
                 <TableRow key={o.id}>
                   <TableCell className="font-mono text-xs">{o.invoice_number || "—"}</TableCell>
                   <TableCell className="font-medium">{o.supplier_name}</TableCell>
@@ -412,7 +419,17 @@ export const PurchaseInvoicesTab: React.FC = () => {
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/15 text-red-400">● مؤرشف</span>
                     )}
                   </TableCell>
-                  <TableCell className="font-semibold">{Number(o.total_amount).toFixed(2)}</TableCell>
+                  <TableCell>
+                    {isCredit ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/15 text-amber-500">آجل</span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-500/15 text-slate-400">نقدي</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="font-semibold">{total.toFixed(2)}</TableCell>
+                  <TableCell className={cn("font-semibold font-mono", remaining > 0 ? "text-amber-500" : "text-emerald-500")}>
+                    {remaining.toFixed(2)}
+                  </TableCell>
                   <TableCell>
                      <div className="flex items-center gap-1">
                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`/purchases/view-invoice/${o.id}?view=true`)}>
@@ -441,7 +458,8 @@ export const PurchaseInvoicesTab: React.FC = () => {
                      </div>
                   </TableCell>
                 </TableRow>
-              ))
+                );
+              })
             )}
           </TableBody>
         </Table>

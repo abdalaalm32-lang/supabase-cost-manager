@@ -31,6 +31,7 @@ const PurchaseInvoicesPage = lazy(() => import("@/pages/PurchaseInvoicesPage").t
 const PurchaseSuppliersPage = lazy(() => import("@/pages/PurchaseSuppliersPage").then((m) => ({ default: m.PurchaseSuppliersPage })));
 const AddPurchaseInvoicePage = lazy(() => import("@/pages/AddPurchaseInvoicePage").then((m) => ({ default: m.AddPurchaseInvoicePage })));
 const EditPurchaseInvoicePage = lazy(() => import("@/pages/EditPurchaseInvoicePage").then((m) => ({ default: m.EditPurchaseInvoicePage })));
+const SupplierDebtsPage = lazy(() => import("@/pages/SupplierDebtsPage").then((m) => ({ default: m.SupplierDebtsPage })));
 const CostAdjustmentPage = lazy(() => import("@/pages/CostAdjustmentPage").then((m) => ({ default: m.CostAdjustmentPage })));
 const AddCostAdjustmentPage = lazy(() => import("@/pages/AddCostAdjustmentPage").then((m) => ({ default: m.AddCostAdjustmentPage })));
 const StocktakeListPage = lazy(() => import("@/pages/StocktakeListPage").then((m) => ({ default: m.StocktakeListPage })));
@@ -489,6 +490,7 @@ const AppRoutes = () => {
                   <Route path="/purchases/add-invoice" element={<PermissionGuard permKey="purchases"><AddPurchaseInvoicePage /></PermissionGuard>} />
                   <Route path="/purchases/edit-invoice/:id" element={<PermissionGuard permKey="purchases"><EditPurchaseInvoicePage /></PermissionGuard>} />
                   <Route path="/purchases/view-invoice/:id" element={<PermissionGuard permKey="purchases"><EditPurchaseInvoicePage /></PermissionGuard>} />
+                  <Route path="/purchases/debts" element={<PermissionGuard permKey="purchases"><SupplierDebtsPage /></PermissionGuard>} />
                   <Route path="/costing" element={<PermissionGuard permKey="costing"><CostAnalysisPage /></PermissionGuard>} />
                   <Route path="/menu-costing" element={<PermissionGuard permKey="menu-costing"><Navigate to="/menu-costing/indirect-expenses" replace /></PermissionGuard>} />
                   <Route path="/menu-costing/indirect-expenses" element={<PermissionGuard permKey="menu-costing"><IndirectExpensesPage /></PermissionGuard>} />

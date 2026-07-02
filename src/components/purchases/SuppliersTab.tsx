@@ -30,6 +30,8 @@ export const SuppliersTab: React.FC = () => {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [taxId, setTaxId] = useState("");
+  const [openingBalance, setOpeningBalance] = useState<number>(0);
+  const [openingBalanceDate, setOpeningBalanceDate] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -49,6 +51,7 @@ export const SuppliersTab: React.FC = () => {
 
   const resetForm = () => {
     setName(""); setPhone(""); setTaxId("");
+    setOpeningBalance(0); setOpeningBalanceDate("");
     setEditId(null); setSubmitted(false);
   };
 
@@ -57,7 +60,11 @@ export const SuppliersTab: React.FC = () => {
       if (editId) {
         const { error } = await supabase
           .from("suppliers")
-          .update({ name, phone: phone || null, tax_id: taxId || null })
+          .update({
+            name, phone: phone || null, tax_id: taxId || null,
+            opening_balance: Number(openingBalance) || 0,
+            opening_balance_date: openingBalanceDate || null,
+          } as any)
           .eq("id", editId);
         if (error) throw error;
       } else {
@@ -68,7 +75,9 @@ export const SuppliersTab: React.FC = () => {
         const { error } = await supabase.from("suppliers").insert({
           company_id: companyId!, name, phone: phone || null,
           tax_id: taxId || null, code: codeData,
-        });
+          opening_balance: Number(openingBalance) || 0,
+          opening_balance_date: openingBalanceDate || null,
+        } as any);
         if (error) throw error;
       }
     },
@@ -100,6 +109,8 @@ export const SuppliersTab: React.FC = () => {
   const openEdit = (s: any) => {
     setEditId(s.id); setName(s.name);
     setPhone(s.phone || ""); setTaxId(s.tax_id || "");
+    setOpeningBalance(Number(s.opening_balance) || 0);
+    setOpeningBalanceDate(s.opening_balance_date || "");
     setSubmitted(false); setOpen(true);
   };
 
@@ -194,6 +205,16 @@ export const SuppliersTab: React.FC = () => {
             <div className="space-y-2">
               <Label>الرقم الضريبي</Label>
               <Input value={taxId} onChange={(e) => setTaxId(e.target.value)} placeholder="الرقم الضريبي" className="glass-input" />
+            </div>
+            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border/50">
+              <div className="space-y-2">
+                <Label>رصيد افتتاحي (مديونية)</Label>
+                <Input type="number" min={0} step="0.01" value={openingBalance} onChange={(e) => setOpeningBalance(parseFloat(e.target.value) || 0)} placeholder="0.00" className="glass-input" />
+              </div>
+              <div className="space-y-2">
+                <Label>تاريخ الرصيد الافتتاحي</Label>
+                <Input type="date" value={openingBalanceDate} onChange={(e) => setOpeningBalanceDate(e.target.value)} className="glass-input" />
+              </div>
             </div>
             <Button className="w-full" disabled={saveMutation.isPending} onClick={handleSave}>
               {saveMutation.isPending ? "جاري الحفظ..." : editId ? "تحديث" : "إضافة"}

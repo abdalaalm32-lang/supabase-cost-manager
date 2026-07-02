@@ -55,6 +55,9 @@ export const AddPurchaseInvoicePage: React.FC = () => {
   const [departmentFilter, setDepartmentFilter] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [cartSearch, setCartSearch] = useState("");
+  const [paymentType, setPaymentType] = useState<"نقدي" | "آجل">("نقدي");
+  const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
+  const [paidAmount, setPaidAmount] = useState<number>(0);
 
   const { data: suppliers = [] } = useQuery({
     queryKey: ["suppliers-active", companyId],
@@ -225,6 +228,9 @@ export const AddPurchaseInvoicePage: React.FC = () => {
           status,
           invoice_number: invoiceNum,
           creator_name: auth.profile?.full_name || "",
+          payment_type: paymentType,
+          due_date: paymentType === "آجل" && dueDate ? format(dueDate, "yyyy-MM-dd") : null,
+          paid_amount: paymentType === "آجل" ? Math.min(Number(paidAmount) || 0, totalAmount) : totalAmount,
         } as any)
         .select("id")
         .single();
@@ -313,6 +319,7 @@ export const AddPurchaseInvoicePage: React.FC = () => {
     setSubmitted(true);
     if (!supplierId || !destinationType || !destinationId) return;
     if (items.length === 0) { toast.error("يرجى إضافة أصناف للفاتورة"); return; }
+    if (paymentType === "آجل" && !dueDate) { toast.error("يرجى تحديد تاريخ الاستحقاق للفاتورة الآجلة"); return; }
     saveMutation.mutate(status);
   };
 
@@ -407,6 +414,51 @@ export const AddPurchaseInvoicePage: React.FC = () => {
         <div className="space-y-2">
           <Label>ملاحظات (اختياري)</Label>
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="ملاحظات إضافية..." className="glass-input" />
+        </div>
+      </div>
+
+      {/* Payment Section */}
+      <div className="glass-card p-6 space-y-4">
+        <h3 className="text-lg font-semibold">بيانات الدفع</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Label>نوع الدفع</Label>
+            <Select value={paymentType} onValueChange={(v) => { setPaymentType(v as any); if (v === "نقدي") { setDueDate(undefined); setPaidAmount(0); } }}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="نقدي">نقدي</SelectItem>
+                <SelectItem value="آجل">آجل</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {paymentType === "آجل" && (
+            <>
+              <div className="space-y-2">
+                <Label>تاريخ الاستحقاق</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className={cn("w-full justify-start text-right font-normal", !dueDate && "text-muted-foreground")}>
+                      <CalendarIcon className="ml-2 h-4 w-4" />
+                      {dueDate ? format(dueDate, "yyyy-MM-dd") : "اختر التاريخ"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={dueDate} onSelect={setDueDate} initialFocus className={cn("p-3 pointer-events-auto")} />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="space-y-2">
+                <Label>مبلغ مدفوع مقدماً (اختياري)</Label>
+                <Input type="number" min={0} max={totalAmount} step="0.01" value={paidAmount} onChange={(e) => setPaidAmount(parseFloat(e.target.value) || 0)} className="glass-input" />
+              </div>
+              <div className="md:col-span-3 flex items-center gap-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-sm">
+                <span className="font-semibold text-amber-600">المتبقي على المورد:</span>
+                <span className="font-mono text-lg font-bold text-amber-700 dark:text-amber-400">
+                  {Math.max(totalAmount - (Number(paidAmount) || 0), 0).toFixed(2)} ج.م
+                </span>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

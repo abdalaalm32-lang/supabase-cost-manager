@@ -88,6 +88,7 @@ const mainNavItems: NavItem[] = [
     children: [
       { id: "purchases-invoices", path: "/purchases/invoices", label: "فواتير المشتريات", icon: Receipt },
       { id: "purchases-suppliers", path: "/purchases/suppliers", label: "الموردين", icon: Store },
+      { id: "purchases-debts", path: "/purchases/debts", label: "مديونية الموردين", icon: FileText },
     ],
   },
   { id: "costing", path: "/costing", label: "تحليل التكاليف", icon: Calculator },

@@ -30,7 +30,6 @@ const fmt = (n: number) =>
 export const SupplyInvoicesToBranchesPage: React.FC = () => {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;
-  const navigate = useNavigate();
 
   const [search, setSearch] = useState("");
   const [branchFilter, setBranchFilter] = useState<string>("all");

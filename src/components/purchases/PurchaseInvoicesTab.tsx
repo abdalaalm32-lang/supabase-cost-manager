@@ -143,6 +143,15 @@ export const PurchaseInvoicesTab: React.FC = () => {
       result = result.filter((o: any) => o.branch_id === locationFilter || o.warehouse_id === locationFilter);
     }
 
+    if (dateRange?.from && dateRange?.to) {
+      const from = startOfDay(dateRange.from);
+      const to = endOfDay(dateRange.to);
+      result = result.filter((o: any) => {
+        const d = new Date(o.date);
+        return d >= from && d <= to;
+      });
+    }
+
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       result = result.filter((o: any) =>
@@ -153,7 +162,8 @@ export const PurchaseInvoicesTab: React.FC = () => {
       );
     }
     return result;
-  }, [orders, filter, searchQuery, locationFilter, locationMap]);
+  }, [orders, filter, searchQuery, locationFilter, dateRange, locationMap]);
+
 
   const handlePrintInvoice = async (order: any) => {
     const { data: items } = await supabase

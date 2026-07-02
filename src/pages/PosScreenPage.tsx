@@ -25,7 +25,7 @@ import {
   ChefHat, CheckCircle2, Clock, MapPin, Phone, PlayCircle, Eye, EyeOff
 } from "lucide-react";
 import { printCustomerReceipt, printKitchenReceipt, printViaIframe } from "@/lib/posPrintUtils";
-import { getPosItemImage, POS_ITEM_IMAGE_FALLBACK } from "@/lib/posItemImage";
+import { getPosItemVisual } from "@/lib/posItemImage";
 import { PosHeldInvoices } from "@/components/pos/PosHeldInvoices";
 import { PosDailyStats } from "@/components/pos/PosDailyStats";
 import { PosShiftManager } from "@/components/pos/PosShiftManager";
@@ -774,7 +774,7 @@ export const PosScreenPage: React.FC = () => {
                 {filteredItems.map((item) => {
                   const inCart = cart.find((c) => c.pos_item_id === item.id);
                   const categoryName = (item.categories as any)?.name || "";
-                  const imageUrl = getPosItemImage(item.name, categoryName);
+                  const { emoji, gradient } = getPosItemVisual(item.name, categoryName);
                   return (
                     <div
                       key={item.id}
@@ -785,16 +785,11 @@ export const PosScreenPage: React.FC = () => {
                       )}
                       onClick={() => addToCart(item)}
                     >
-                      {/* Image */}
-                      <div className="relative aspect-square w-full overflow-hidden bg-muted/40">
-                        <img
-                          src={imageUrl}
-                          alt={item.name}
-                          loading="lazy"
-                          referrerPolicy="no-referrer"
-                          onError={(e) => { (e.currentTarget as HTMLImageElement).src = POS_ITEM_IMAGE_FALLBACK; (e.currentTarget as HTMLImageElement).classList.add("p-6","opacity-40"); }}
-                          className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
+                      {/* Emoji placeholder */}
+                      <div className={cn("relative aspect-square w-full overflow-hidden bg-gradient-to-br flex items-center justify-center", gradient)}>
+                        <span className="text-6xl select-none group-hover:scale-110 transition-transform duration-300 drop-shadow-sm" aria-hidden="true">
+                          {emoji}
+                        </span>
                         {inCart && (
                           <Badge className="absolute top-1.5 left-1.5 h-6 min-w-6 px-2 text-[11px] bg-primary text-primary-foreground shadow-md">
                             {inCart.quantity}

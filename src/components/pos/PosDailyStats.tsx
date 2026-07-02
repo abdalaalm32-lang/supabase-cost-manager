@@ -180,57 +180,84 @@ export const PosDailyStats: React.FC<PosDailyStatsProps> = ({ companyId, branchI
   };
 
   const items = [
-    { icon: DollarSign, label: viewMode === "all-day" ? "إجمالي اليوم" : "إجمالي الشيفت", value: `${(stats?.totalSales || 0).toFixed(0)} EGP`, color: "text-primary" },
-    { icon: RotateCcw, label: "المرتجعات", value: `${(stats?.returnsTotal || 0).toFixed(0)} EGP`, color: "text-destructive" },
-    { icon: TrendingUp, label: "صافي المبيعات", value: `${(stats?.netSales || 0).toFixed(0)} EGP`, color: "text-emerald-500" },
-    { icon: Receipt, label: "الفواتير", value: `${stats?.invoiceCount || 0}`, color: "text-accent" },
-    { icon: Package, label: "الأصناف", value: `${(stats?.itemsCount || 0).toFixed(0)}`, color: "text-purple-400" },
-    { icon: TrendingUp, label: "متوسط الفاتورة", value: `${(stats?.avgInvoice || 0).toFixed(0)} EGP`, color: "text-secondary" },
-    { icon: Wallet, label: "كاش", value: `${(stats?.cashSales || 0).toFixed(0)} EGP`, color: "text-emerald-400" },
-    { icon: CreditCard, label: "فيزا", value: `${(stats?.visaSales || 0).toFixed(0)} EGP`, color: "text-blue-400" },
-    { icon: Smartphone, label: "انستا باي", value: `${(stats?.instapaySales || 0).toFixed(0)} EGP`, color: "text-violet-400" },
+    { icon: DollarSign, label: viewMode === "all-day" ? "إجمالي اليوم" : "إجمالي الشيفت", value: `${(stats?.totalSales || 0).toFixed(0)}`, suffix: "EGP", tone: "primary" },
+    { icon: RotateCcw, label: "المرتجعات", value: `${(stats?.returnsTotal || 0).toFixed(0)}`, suffix: "EGP", tone: "destructive" },
+    { icon: TrendingUp, label: "صافي المبيعات", value: `${(stats?.netSales || 0).toFixed(0)}`, suffix: "EGP", tone: "emerald" },
+    { icon: Receipt, label: "الفواتير", value: `${stats?.invoiceCount || 0}`, suffix: "", tone: "accent" },
+    { icon: Package, label: "الأصناف", value: `${(stats?.itemsCount || 0).toFixed(0)}`, suffix: "", tone: "violet" },
+    { icon: TrendingUp, label: "متوسط الفاتورة", value: `${(stats?.avgInvoice || 0).toFixed(0)}`, suffix: "EGP", tone: "secondary" },
+    { icon: Wallet, label: "كاش", value: `${(stats?.cashSales || 0).toFixed(0)}`, suffix: "EGP", tone: "emerald" },
+    { icon: CreditCard, label: "فيزا", value: `${(stats?.visaSales || 0).toFixed(0)}`, suffix: "EGP", tone: "blue" },
+    { icon: Smartphone, label: "انستا باي", value: `${(stats?.instapaySales || 0).toFixed(0)}`, suffix: "EGP", tone: "violet" },
   ];
 
+  const toneStyles: Record<string, { bg: string; text: string; ring: string }> = {
+    primary:     { bg: "bg-primary/10",       text: "text-primary",             ring: "ring-primary/20" },
+    destructive: { bg: "bg-destructive/10",   text: "text-destructive",         ring: "ring-destructive/20" },
+    emerald:     { bg: "bg-emerald-500/10",   text: "text-emerald-500",         ring: "ring-emerald-500/20" },
+    accent:      { bg: "bg-accent/20",        text: "text-accent-foreground",   ring: "ring-accent/30" },
+    violet:      { bg: "bg-violet-500/10",    text: "text-violet-400",          ring: "ring-violet-500/20" },
+    secondary:   { bg: "bg-secondary/40",     text: "text-secondary-foreground",ring: "ring-border/30" },
+    blue:        { bg: "bg-blue-500/10",      text: "text-blue-400",            ring: "ring-blue-500/20" },
+  };
+
   return (
-    <div className="flex items-center gap-3 flex-wrap">
+    <div className="flex items-center gap-2 flex-wrap w-full">
       <Select value={viewMode} onValueChange={setViewMode}>
-        <SelectTrigger className="h-6 text-[10px] w-auto min-w-[120px] border-border/30">
+        <SelectTrigger className="h-8 text-[11px] w-auto min-w-[140px] border-border/40 rounded-full bg-card/60">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="current-shift" className="text-[10px]">
-            <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> الشيفت الحالي</span>
+          <SelectItem value="current-shift" className="text-xs">
+            <span className="flex items-center gap-1.5"><Clock className="h-3 w-3" /> الشيفت الحالي</span>
           </SelectItem>
-          <SelectItem value="all-day" className="text-[10px]">
-            <span className="flex items-center gap-1"><Layers className="h-3 w-3" /> إجمالي اليوم</span>
+          <SelectItem value="all-day" className="text-xs">
+            <span className="flex items-center gap-1.5"><Layers className="h-3 w-3" /> إجمالي اليوم</span>
           </SelectItem>
           {closedShifts.map((s: any) => (
-            <SelectItem key={s.id} value={s.id} className="text-[10px]">
+            <SelectItem key={s.id} value={s.id} className="text-xs">
               {s.shift_name || `شيفت ${format(new Date(s.opened_at), "HH:mm")}`} - {format(new Date(s.closed_at), "HH:mm")}
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
 
-      {items.map((item, i) => (
-        <div key={i} className="flex items-center gap-1.5">
-          <item.icon className={`h-3.5 w-3.5 ${item.color}`} />
-          <span className="text-[11px] text-muted-foreground">{item.label}:</span>
-          <span className="text-xs font-bold text-foreground">{item.value}</span>
-        </div>
-      ))}
+      {items.map((item, i) => {
+        const t = toneStyles[item.tone] || toneStyles.primary;
+        return (
+          <div
+            key={i}
+            className={cn(
+              "flex items-center gap-2 pl-3 pr-2 py-1 rounded-full bg-card/70 border border-border/40 ring-1 shadow-sm hover:shadow-md transition-shadow",
+              t.ring
+            )}
+          >
+            <span className={cn("flex items-center justify-center h-6 w-6 rounded-full", t.bg)}>
+              <item.icon className={cn("h-3.5 w-3.5", t.text)} />
+            </span>
+            <div className="flex flex-col leading-none">
+              <span className="text-[9px] text-muted-foreground">{item.label}</span>
+              <span className="text-xs font-bold text-foreground">
+                {item.value}
+                {item.suffix && <span className="text-[9px] font-medium text-muted-foreground mr-0.5"> {item.suffix}</span>}
+              </span>
+            </div>
+          </div>
+        );
+      })}
 
-      <div className="flex items-center gap-1 ml-auto">
+      <div className="flex items-center gap-1 mr-auto">
         <span className="text-[10px] text-muted-foreground" title={lastUpdate.toLocaleString()}>
           آخر تحديث: {format(lastUpdate, "HH:mm:ss")}
         </span>
-        <Button variant="ghost" size="icon" className="h-5 w-5" onClick={handleRefresh} title="تحديث الآن">
+        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleRefresh} title="تحديث الآن">
           <RefreshCw className="h-3 w-3" />
         </Button>
       </div>
     </div>
   );
 };
+
 
 function calcStats(sales: any[], returns: any[], itemsCount: number) {
   const totalSales = sales.reduce((s, r) => s + Number(r.total_amount || 0), 0);

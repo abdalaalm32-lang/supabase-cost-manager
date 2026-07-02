@@ -459,6 +459,7 @@ const AppRoutes = () => {
                   <Route path="/sales/driver-settlement" element={<PermissionGuard permKey="sales_management"><DriverSettlementPage /></PermissionGuard>} />
                   <Route path="/sales/delivery-companies" element={<PermissionGuard permKey="sales_management"><DeliveryCompaniesPage /></PermissionGuard>} />
                   <Route path="/sales/shifts" element={<PermissionGuard permKey="sales_management"><PosShiftsPage /></PermissionGuard>} />
+                  <Route path="/sales/shift-reports" element={<PermissionGuard permKey="sales_management"><PosShiftReportsPage /></PermissionGuard>} />
                   <Route path="/inventory" element={<PermissionGuard permKey="inventory"><Navigate to="/inventory/materials" replace /></PermissionGuard>} />
                   <Route path="/inventory/materials" element={<PermissionGuard permKey="inventory"><InventoryMaterialsPage /></PermissionGuard>} />
                   <Route path="/inventory/balances" element={<PermissionGuard permKey="inventory"><InventoryBalancesPage /></PermissionGuard>} />

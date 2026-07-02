@@ -30,6 +30,8 @@ export const SuppliersTab: React.FC = () => {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [taxId, setTaxId] = useState("");
+  const [openingBalance, setOpeningBalance] = useState<number>(0);
+  const [openingBalanceDate, setOpeningBalanceDate] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [submitted, setSubmitted] = useState(false);

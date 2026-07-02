@@ -2062,10 +2062,13 @@ export type Database = {
           creator_name: string | null
           date: string
           department_id: string | null
+          due_date: string | null
           id: string
           invoice_number: string | null
           is_edited: boolean | null
           notes: string | null
+          paid_amount: number
+          payment_type: string
           status: string
           supplier_id: string | null
           supplier_name: string
@@ -2079,10 +2082,13 @@ export type Database = {
           creator_name?: string | null
           date?: string
           department_id?: string | null
+          due_date?: string | null
           id?: string
           invoice_number?: string | null
           is_edited?: boolean | null
           notes?: string | null
+          paid_amount?: number
+          payment_type?: string
           status?: string
           supplier_id?: string | null
           supplier_name: string
@@ -2096,10 +2102,13 @@ export type Database = {
           creator_name?: string | null
           date?: string
           department_id?: string | null
+          due_date?: string | null
           id?: string
           invoice_number?: string | null
           is_edited?: boolean | null
           notes?: string | null
+          paid_amount?: number
+          payment_type?: string
           status?: string
           supplier_id?: string | null
           supplier_name?: string
@@ -2716,6 +2725,70 @@ export type Database = {
           },
         ]
       }
+      supplier_payments: {
+        Row: {
+          amount: number
+          company_id: string
+          created_at: string
+          creator_name: string | null
+          id: string
+          notes: string | null
+          payment_date: string
+          payment_method: string
+          purchase_order_id: string | null
+          supplier_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          company_id: string
+          created_at?: string
+          creator_name?: string | null
+          id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_method?: string
+          purchase_order_id?: string | null
+          supplier_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          company_id?: string
+          created_at?: string
+          creator_name?: string | null
+          id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_method?: string
+          purchase_order_id?: string | null
+          supplier_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_payments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_payments_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_payments_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppliers: {
         Row: {
           active: boolean
@@ -2727,6 +2800,8 @@ export type Database = {
           id: string
           name: string
           notes: string | null
+          opening_balance: number
+          opening_balance_date: string | null
           payment_terms: string | null
           phone: string | null
           tax_id: string | null
@@ -2741,6 +2816,8 @@ export type Database = {
           id?: string
           name: string
           notes?: string | null
+          opening_balance?: number
+          opening_balance_date?: string | null
           payment_terms?: string | null
           phone?: string | null
           tax_id?: string | null
@@ -2755,6 +2832,8 @@ export type Database = {
           id?: string
           name?: string
           notes?: string | null
+          opening_balance?: number
+          opening_balance_date?: string | null
           payment_terms?: string | null
           phone?: string | null
           tax_id?: string | null

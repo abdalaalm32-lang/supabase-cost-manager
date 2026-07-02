@@ -228,6 +228,9 @@ export const AddPurchaseInvoicePage: React.FC = () => {
           status,
           invoice_number: invoiceNum,
           creator_name: auth.profile?.full_name || "",
+          payment_type: paymentType,
+          due_date: paymentType === "آجل" && dueDate ? format(dueDate, "yyyy-MM-dd") : null,
+          paid_amount: paymentType === "آجل" ? Math.min(Number(paidAmount) || 0, totalAmount) : totalAmount,
         } as any)
         .select("id")
         .single();

@@ -648,22 +648,8 @@ export const PosScreenPage: React.FC = () => {
       <div className="flex flex-col h-[calc(100vh-4rem)]" dir="rtl">
         {/* Top bar */}
         <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-card/50 print:hidden flex-wrap gap-2">
-          {hasPermission("view_pos_stats") ? (
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 shrink-0"
-                onClick={() => setStatsVisible(v => !v)}
-                title={statsVisible ? "إخفاء إحصائيات الشيفت" : "إظهار إحصائيات الشيفت"}
-              >
-                {statsVisible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-              </Button>
-              {statsVisible && <PosDailyStats companyId={companyId || ""} branchId={branchId} />}
-            </div>
-          ) : (
-            <div />
-          )}
+          <div />
+
           <div className="flex items-center gap-2">
             {(pendingDeliveryOrders?.length ?? 0) > 0 && (
               <button

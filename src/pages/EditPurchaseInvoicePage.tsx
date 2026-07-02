@@ -55,6 +55,9 @@ export const EditPurchaseInvoicePage: React.FC = () => {
   const [loaded, setLoaded] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState("");
   const [cartSearch, setCartSearch] = useState("");
+  const [paymentType, setPaymentType] = useState<"نقدي" | "آجل">("نقدي");
+  const [dueDate, setDueDate] = useState<string>("");
+  const [paidAmount, setPaidAmount] = useState<number>(0);
 
   const { data: order } = useQuery({
     queryKey: ["purchase-order", id],

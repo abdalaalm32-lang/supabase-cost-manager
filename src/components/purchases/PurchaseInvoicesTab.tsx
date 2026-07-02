@@ -14,10 +14,18 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, Pencil, Eye, Trash2, ToggleLeft, ToggleRight, History, Printer } from "lucide-react";
+import {
+  Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { CalendarIcon, Plus, Search, Pencil, Eye, Trash2, ToggleLeft, ToggleRight, History, Printer, X } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { DateRange } from "react-day-picker";
+import { format, startOfDay, endOfDay } from "date-fns";
+import { cn } from "@/lib/utils";
+
 
 type FilterStatus = "الكل" | "مكتمل" | "مؤرشف" | "معدل";
 
@@ -30,8 +38,10 @@ export const PurchaseInvoicesTab: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<FilterStatus>("الكل");
   const [locationFilter, setLocationFilter] = useState<string>("all");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteOrder, setDeleteOrder] = useState<any>(null);
+
 
   const handleDelete = async () => {
     if (!deleteOrder) return;
@@ -133,6 +143,15 @@ export const PurchaseInvoicesTab: React.FC = () => {
       result = result.filter((o: any) => o.branch_id === locationFilter || o.warehouse_id === locationFilter);
     }
 
+    if (dateRange?.from && dateRange?.to) {
+      const from = startOfDay(dateRange.from);
+      const to = endOfDay(dateRange.to);
+      result = result.filter((o: any) => {
+        const d = new Date(o.date);
+        return d >= from && d <= to;
+      });
+    }
+
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       result = result.filter((o: any) =>
@@ -143,7 +162,8 @@ export const PurchaseInvoicesTab: React.FC = () => {
       );
     }
     return result;
-  }, [orders, filter, searchQuery, locationFilter, locationMap]);
+  }, [orders, filter, searchQuery, locationFilter, dateRange, locationMap]);
+
 
   const handlePrintInvoice = async (order: any) => {
     const { data: items } = await supabase
@@ -268,11 +288,62 @@ export const PurchaseInvoicesTab: React.FC = () => {
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="بحث برقم الفاتورة أو المورد أو المبلغ أو الموقع..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="glass-input pr-9" />
         </div>
+        <div className="flex items-center gap-1">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                id="date-range"
+                variant="outline"
+                size="sm"
+                className={cn(
+                  "justify-start text-left font-normal gap-2 min-w-[200px]",
+                  !dateRange && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="h-4 w-4" />
+                {dateRange?.from ? (
+                  dateRange.to ? (
+                    <span dir="ltr">
+                      {format(dateRange.from, "yyyy-MM-dd")} - {format(dateRange.to, "yyyy-MM-dd")}
+                    </span>
+                  ) : (
+                    format(dateRange.from, "yyyy-MM-dd")
+                  )
+                ) : (
+                  "اختر الفترة"
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={dateRange?.from}
+                selected={dateRange}
+                onSelect={setDateRange}
+                numberOfMonths={1}
+              />
+            </PopoverContent>
+          </Popover>
+          {dateRange?.from && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0"
+              onClick={() => setDateRange(undefined)}
+              aria-label="مسح الفترة"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+
         <div className="flex gap-2">
           {(["الكل", "مكتمل", "مؤرشف", "معدل"] as FilterStatus[]).map((s) => (
             <Button key={s} variant={filter === s ? "default" : "outline"} size="sm" onClick={() => setFilter(s)}>{s}</Button>
           ))}
         </div>
+
         <Select value={locationFilter} onValueChange={setLocationFilter}>
           <SelectTrigger className="glass-input w-[200px]">
             <SelectValue placeholder="كل المواقع" />

@@ -418,9 +418,7 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
                         )}
                       </TableCell>
                       <TableCell className="text-center">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`/transfers/${t.id}`)}>
-                          <Eye size={14}/>
-                        </Button>
+                        <RowActions t={t} rowIndex={i} />
                       </TableCell>
                     </TableRow>
                   ))}

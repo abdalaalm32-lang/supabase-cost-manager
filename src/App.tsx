@@ -67,6 +67,7 @@ const CallCenterPage = lazy(() => import("@/pages/CallCenterPage").then((m) => (
 const DriverSettlementPage = lazy(() => import("@/pages/DriverSettlementPage").then((m) => ({ default: m.DriverSettlementPage })));
 const DeliveryCompaniesPage = lazy(() => import("@/pages/DeliveryCompaniesPage").then((m) => ({ default: m.DeliveryCompaniesPage })));
 const PosShiftsPage = lazy(() => import("@/pages/PosShiftsPage").then((m) => ({ default: m.PosShiftsPage })));
+const PosShiftReportsPage = lazy(() => import("@/pages/PosShiftReportsPage").then((m) => ({ default: m.PosShiftReportsPage })));
 
 const queryClient = new QueryClient();
 

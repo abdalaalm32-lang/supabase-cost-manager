@@ -259,6 +259,9 @@ export const EditPurchaseInvoicePage: React.FC = () => {
         branch_id: destinationType === "branch" ? destinationId : null,
         warehouse_id: destinationType === "warehouse" ? destinationId : null,
         date, notes: notes || null, total_amount: totalAmount, status, is_edited: true,
+        payment_type: paymentType,
+        due_date: paymentType === "آجل" && dueDate ? dueDate : null,
+        paid_amount: paymentType === "آجل" ? Math.min(Number(paidAmount) || 0, totalAmount) : totalAmount,
       } as any).eq("id", id!);
       if (orderErr) throw orderErr;
 

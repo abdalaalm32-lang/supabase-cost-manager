@@ -81,27 +81,6 @@ export const SuppliersTab: React.FC = () => {
         if (error) throw error;
       }
     },
-
-  const saveMutation = useMutation({
-    mutationFn: async () => {
-      if (editId) {
-        const { error } = await supabase
-          .from("suppliers")
-          .update({ name, phone: phone || null, tax_id: taxId || null })
-          .eq("id", editId);
-        if (error) throw error;
-      } else {
-        const { data: codeData, error: codeError } = await supabase.rpc(
-          "generate_supplier_code", { p_company_id: companyId! }
-        );
-        if (codeError) throw codeError;
-        const { error } = await supabase.from("suppliers").insert({
-          company_id: companyId!, name, phone: phone || null,
-          tax_id: taxId || null, code: codeData,
-        });
-        if (error) throw error;
-      }
-    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["suppliers"] });
       toast.success(editId ? "تم التعديل" : "تم إضافة المورد");

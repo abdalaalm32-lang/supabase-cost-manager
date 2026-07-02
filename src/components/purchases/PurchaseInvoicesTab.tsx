@@ -288,11 +288,48 @@ export const PurchaseInvoicesTab: React.FC = () => {
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="بحث برقم الفاتورة أو المورد أو المبلغ أو الموقع..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="glass-input pr-9" />
         </div>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              id="date-range"
+              variant="outline"
+              size="sm"
+              className={cn(
+                "justify-start text-left font-normal gap-2 min-w-[200px]",
+                !dateRange && "text-muted-foreground"
+              )}
+            >
+              <CalendarIcon className="h-4 w-4" />
+              {dateRange?.from ? (
+                dateRange.to ? (
+                  <span dir="ltr">
+                    {format(dateRange.from, "yyyy-MM-dd")} - {format(dateRange.to, "yyyy-MM-dd")}
+                  </span>
+                ) : (
+                  format(dateRange.from, "yyyy-MM-dd")
+                )
+              ) : (
+                "اختر الفترة"
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="end">
+            <Calendar
+              initialFocus
+              mode="range"
+              defaultMonth={dateRange?.from}
+              selected={dateRange}
+              onSelect={setDateRange}
+              numberOfMonths={1}
+            />
+          </PopoverContent>
+        </Popover>
         <div className="flex gap-2">
           {(["الكل", "مكتمل", "مؤرشف", "معدل"] as FilterStatus[]).map((s) => (
             <Button key={s} variant={filter === s ? "default" : "outline"} size="sm" onClick={() => setFilter(s)}>{s}</Button>
           ))}
         </div>
+
         <Select value={locationFilter} onValueChange={setLocationFilter}>
           <SelectTrigger className="glass-input w-[200px]">
             <SelectValue placeholder="كل المواقع" />

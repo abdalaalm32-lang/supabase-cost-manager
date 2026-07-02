@@ -386,7 +386,9 @@ export const PurchaseInvoicesTab: React.FC = () => {
               <TableHead className="text-right">التاريخ</TableHead>
               <TableHead className="text-right">المنشئ</TableHead>
               <TableHead className="text-right">الحالة</TableHead>
+              <TableHead className="text-right">نوع الدفع</TableHead>
               <TableHead className="text-right">الإجمالي</TableHead>
+              <TableHead className="text-right">المتبقي</TableHead>
               <TableHead className="text-right">الإجراءات</TableHead>
             </TableRow>
           </TableHeader>

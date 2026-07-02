@@ -18,7 +18,7 @@ import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, Plus, Search, Pencil, Eye, Trash2, ToggleLeft, ToggleRight, History, Printer } from "lucide-react";
+import { CalendarIcon, Plus, Search, Pencil, Eye, Trash2, ToggleLeft, ToggleRight, History, Printer, X } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";

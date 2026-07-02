@@ -31,6 +31,7 @@ const PurchaseInvoicesPage = lazy(() => import("@/pages/PurchaseInvoicesPage").t
 const PurchaseSuppliersPage = lazy(() => import("@/pages/PurchaseSuppliersPage").then((m) => ({ default: m.PurchaseSuppliersPage })));
 const AddPurchaseInvoicePage = lazy(() => import("@/pages/AddPurchaseInvoicePage").then((m) => ({ default: m.AddPurchaseInvoicePage })));
 const EditPurchaseInvoicePage = lazy(() => import("@/pages/EditPurchaseInvoicePage").then((m) => ({ default: m.EditPurchaseInvoicePage })));
+const SupplierDebtsPage = lazy(() => import("@/pages/SupplierDebtsPage").then((m) => ({ default: m.SupplierDebtsPage })));
 const CostAdjustmentPage = lazy(() => import("@/pages/CostAdjustmentPage").then((m) => ({ default: m.CostAdjustmentPage })));
 const AddCostAdjustmentPage = lazy(() => import("@/pages/AddCostAdjustmentPage").then((m) => ({ default: m.AddCostAdjustmentPage })));
 const StocktakeListPage = lazy(() => import("@/pages/StocktakeListPage").then((m) => ({ default: m.StocktakeListPage })));

@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Receipt, DollarSign, TrendingUp, Clock, Layers, RotateCcw, Wallet, CreditCard, Package, RefreshCw, Smartphone } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
 interface PosDailyStatsProps {

@@ -51,8 +51,36 @@ export const SuppliersTab: React.FC = () => {
 
   const resetForm = () => {
     setName(""); setPhone(""); setTaxId("");
+    setOpeningBalance(0); setOpeningBalanceDate("");
     setEditId(null); setSubmitted(false);
   };
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      if (editId) {
+        const { error } = await supabase
+          .from("suppliers")
+          .update({
+            name, phone: phone || null, tax_id: taxId || null,
+            opening_balance: Number(openingBalance) || 0,
+            opening_balance_date: openingBalanceDate || null,
+          } as any)
+          .eq("id", editId);
+        if (error) throw error;
+      } else {
+        const { data: codeData, error: codeError } = await supabase.rpc(
+          "generate_supplier_code", { p_company_id: companyId! }
+        );
+        if (codeError) throw codeError;
+        const { error } = await supabase.from("suppliers").insert({
+          company_id: companyId!, name, phone: phone || null,
+          tax_id: taxId || null, code: codeData,
+          opening_balance: Number(openingBalance) || 0,
+          opening_balance_date: openingBalanceDate || null,
+        } as any);
+        if (error) throw error;
+      }
+    },
 
   const saveMutation = useMutation({
     mutationFn: async () => {

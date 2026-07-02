@@ -141,6 +141,9 @@ export const EditPurchaseInvoicePage: React.FC = () => {
       setDepartmentId((order as any).department_id || "");
       setDate(order.date);
       setNotes(order.notes || "");
+      setPaymentType(((order as any).payment_type as any) || "نقدي");
+      setDueDate((order as any).due_date || "");
+      setPaidAmount(Number((order as any).paid_amount) || 0);
       if (order.branch_id) { setDestinationType("branch"); setDestinationId(order.branch_id); }
       else if (order.warehouse_id) { setDestinationType("warehouse"); setDestinationId(order.warehouse_id); }
       setItems(existingItems.map((i: any) => {

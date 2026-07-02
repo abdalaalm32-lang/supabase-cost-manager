@@ -109,6 +109,8 @@ export const SuppliersTab: React.FC = () => {
   const openEdit = (s: any) => {
     setEditId(s.id); setName(s.name);
     setPhone(s.phone || ""); setTaxId(s.tax_id || "");
+    setOpeningBalance(Number(s.opening_balance) || 0);
+    setOpeningBalanceDate(s.opening_balance_date || "");
     setSubmitted(false); setOpen(true);
   };
 

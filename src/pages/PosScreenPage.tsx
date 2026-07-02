@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { printCustomerReceipt, printKitchenReceipt, printViaIframe } from "@/lib/posPrintUtils";
 import { PosHeldInvoices } from "@/components/pos/PosHeldInvoices";
-import { PosDailyStats } from "@/components/pos/PosDailyStats";
+
 import { PosShiftManager } from "@/components/pos/PosShiftManager";
 import { PosShiftExpenses } from "@/components/pos/PosShiftExpenses";
 import { PosReturnsManager } from "@/components/pos/PosReturnsManager";

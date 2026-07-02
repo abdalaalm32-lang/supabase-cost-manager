@@ -319,6 +319,7 @@ export const AddPurchaseInvoicePage: React.FC = () => {
     setSubmitted(true);
     if (!supplierId || !destinationType || !destinationId) return;
     if (items.length === 0) { toast.error("يرجى إضافة أصناف للفاتورة"); return; }
+    if (paymentType === "آجل" && !dueDate) { toast.error("يرجى تحديد تاريخ الاستحقاق للفاتورة الآجلة"); return; }
     saveMutation.mutate(status);
   };
 

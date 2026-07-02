@@ -206,6 +206,16 @@ export const SuppliersTab: React.FC = () => {
               <Label>الرقم الضريبي</Label>
               <Input value={taxId} onChange={(e) => setTaxId(e.target.value)} placeholder="الرقم الضريبي" className="glass-input" />
             </div>
+            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border/50">
+              <div className="space-y-2">
+                <Label>رصيد افتتاحي (مديونية)</Label>
+                <Input type="number" min={0} step="0.01" value={openingBalance} onChange={(e) => setOpeningBalance(parseFloat(e.target.value) || 0)} placeholder="0.00" className="glass-input" />
+              </div>
+              <div className="space-y-2">
+                <Label>تاريخ الرصيد الافتتاحي</Label>
+                <Input type="date" value={openingBalanceDate} onChange={(e) => setOpeningBalanceDate(e.target.value)} className="glass-input" />
+              </div>
+            </div>
             <Button className="w-full" disabled={saveMutation.isPending} onClick={handleSave}>
               {saveMutation.isPending ? "جاري الحفظ..." : editId ? "تحديث" : "إضافة"}
             </Button>

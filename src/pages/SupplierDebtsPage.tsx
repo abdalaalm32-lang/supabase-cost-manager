@@ -17,10 +17,11 @@ import {
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Search, Wallet, Plus, CalendarIcon, X, Eye, Trash2, Printer } from "lucide-react";
+import { Search, Wallet, CalendarIcon, X, Eye, Trash2, Printer, Pencil, Landmark } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
 import { toast } from "sonner";
-import { format, startOfMonth, endOfMonth } from "date-fns";
+import { DateRange } from "react-day-picker";
+import { format, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
 
 export const SupplierDebtsPage: React.FC = () => {
@@ -28,19 +29,32 @@ export const SupplierDebtsPage: React.FC = () => {
   const qc = useQueryClient();
   const companyId = auth.profile?.company_id;
 
-  const [monthAnchor, setMonthAnchor] = useState<Date>(new Date());
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date()),
+  });
   const [search, setSearch] = useState("");
+  const [supplierFilter, setSupplierFilter] = useState<string>("all");
   const [detailsSupplier, setDetailsSupplier] = useState<any>(null);
+
+  // Payment dialog (add or edit)
   const [payOpen, setPayOpen] = useState(false);
   const [paySupplier, setPaySupplier] = useState<any>(null);
+  const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
   const [payAmount, setPayAmount] = useState<number>(0);
   const [payDate, setPayDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
   const [payMethod, setPayMethod] = useState<string>("نقدي");
   const [payNotes, setPayNotes] = useState("");
   const [payInvoiceId, setPayInvoiceId] = useState<string>("");
 
-  const monthStart = format(startOfMonth(monthAnchor), "yyyy-MM-dd");
-  const monthEnd = format(endOfMonth(monthAnchor), "yyyy-MM-dd");
+  // Opening balance dialog
+  const [obOpen, setObOpen] = useState(false);
+  const [obSupplier, setObSupplier] = useState<any>(null);
+  const [obAmount, setObAmount] = useState<number>(0);
+  const [obDate, setObDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
+
+  const periodStart = dateRange?.from ? format(startOfDay(dateRange.from), "yyyy-MM-dd") : "1900-01-01";
+  const periodEnd = dateRange?.to ? format(endOfDay(dateRange.to), "yyyy-MM-dd") : "2999-12-31";
 
   const { data: suppliers = [] } = useQuery({
     queryKey: ["suppliers-all-debts", companyId],
@@ -78,7 +92,6 @@ export const SupplierDebtsPage: React.FC = () => {
     enabled: !!companyId,
   });
 
-  // Compute per-supplier aggregates
   const supplierRows = useMemo(() => {
     return (suppliers as any[]).map((s: any) => {
       const openingBal = Number(s.opening_balance) || 0;
@@ -89,35 +102,20 @@ export const SupplierDebtsPage: React.FC = () => {
       );
       const supplierPayments = (payments as any[]).filter((p: any) => p.supplier_id === s.id);
 
-      // Total lifetime debt = opening + credit invoice totals - payments - prepayments (paid_amount on آجل)
-      const totalCreditInvoices = supplierCreditOrders.reduce(
-        (sum, o) => sum + (Number(o.total_amount) || 0), 0
-      );
-      const totalPrepaid = supplierCreditOrders.reduce(
-        (sum, o) => sum + (Number(o.paid_amount) || 0), 0
-      );
-      const totalPayments = supplierPayments.reduce(
-        (sum, p) => sum + (Number(p.amount) || 0), 0
-      );
+      const totalCreditInvoices = supplierCreditOrders.reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
+      const totalPrepaid = supplierCreditOrders.reduce((sum, o) => sum + (Number(o.paid_amount) || 0), 0);
+      const totalPayments = supplierPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
       const currentBalance = openingBal + totalCreditInvoices - totalPrepaid - totalPayments;
 
-      // Month movements
-      const monthInvoices = supplierCreditOrders.filter(
-        (o) => o.date >= monthStart && o.date <= monthEnd
-      );
-      const monthPayments = supplierPayments.filter(
-        (p) => p.payment_date >= monthStart && p.payment_date <= monthEnd
-      );
-      const monthInvoicesSum = monthInvoices.reduce(
+      const periodInvoices = supplierCreditOrders.filter((o) => o.date >= periodStart && o.date <= periodEnd);
+      const periodPayments = supplierPayments.filter((p) => p.payment_date >= periodStart && p.payment_date <= periodEnd);
+      const periodInvoicesSum = periodInvoices.reduce(
         (sum, o) => sum + (Number(o.total_amount) || 0) - (Number(o.paid_amount) || 0), 0
       );
-      const monthPaymentsSum = monthPayments.reduce(
-        (sum, p) => sum + (Number(p.amount) || 0), 0
-      );
+      const periodPaymentsSum = periodPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
 
-      // Opening-of-month balance = current - (this month debits - this month credits)
-      const openingOfMonth = currentBalance - (monthInvoicesSum - monthPaymentsSum);
+      const openingOfPeriod = currentBalance - (periodInvoicesSum - periodPaymentsSum);
 
       return {
         ...s,
@@ -127,18 +125,21 @@ export const SupplierDebtsPage: React.FC = () => {
         totalPrepaid,
         totalPayments,
         currentBalance,
-        monthInvoicesSum,
-        monthPaymentsSum,
-        openingOfMonth,
+        periodInvoicesSum,
+        periodPaymentsSum,
+        openingOfPeriod,
         creditOrders: supplierCreditOrders,
         payments: supplierPayments,
       };
     });
-  }, [suppliers, orders, payments, monthStart, monthEnd]);
+  }, [suppliers, orders, payments, periodStart, periodEnd]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     let rows = supplierRows;
+    if (supplierFilter !== "all") {
+      rows = rows.filter((s: any) => s.id === supplierFilter);
+    }
     if (q) {
       rows = rows.filter((s: any) =>
         (s.name || "").toLowerCase().includes(q) ||
@@ -146,41 +147,51 @@ export const SupplierDebtsPage: React.FC = () => {
         (s.phone || "").includes(q)
       );
     }
-    // Show suppliers with any activity or non-zero balance
     rows = rows.filter((s: any) =>
       s.currentBalance !== 0 || s.openingBal !== 0 || s.creditOrders.length > 0 || s.payments.length > 0
     );
     return rows;
-  }, [supplierRows, search]);
+  }, [supplierRows, search, supplierFilter]);
 
   const totals = useMemo(() => {
     const totalCurrent = filtered.reduce((s, r) => s + r.currentBalance, 0);
-    const totalOpeningMonth = filtered.reduce((s, r) => s + r.openingOfMonth, 0);
-    const totalMonthInv = filtered.reduce((s, r) => s + r.monthInvoicesSum, 0);
-    const totalMonthPay = filtered.reduce((s, r) => s + r.monthPaymentsSum, 0);
-    return { totalCurrent, totalOpeningMonth, totalMonthInv, totalMonthPay };
+    const totalOpeningPeriod = filtered.reduce((s, r) => s + r.openingOfPeriod, 0);
+    const totalPeriodInv = filtered.reduce((s, r) => s + r.periodInvoicesSum, 0);
+    const totalPeriodPay = filtered.reduce((s, r) => s + r.periodPaymentsSum, 0);
+    return { totalCurrent, totalOpeningPeriod, totalPeriodInv, totalPeriodPay };
   }, [filtered]);
 
-  const addPaymentMutation = useMutation({
+  const savePaymentMutation = useMutation({
     mutationFn: async () => {
       if (!paySupplier || !payAmount || payAmount <= 0) throw new Error("مبلغ غير صحيح");
-      const { error } = await (supabase as any).from("supplier_payments").insert({
-        company_id: companyId!,
-        supplier_id: paySupplier.id,
-        purchase_order_id: payInvoiceId || null,
-        amount: payAmount,
-        payment_date: payDate,
-        payment_method: payMethod,
-        notes: payNotes || null,
-        creator_name: auth.profile?.full_name || "",
-      });
-      if (error) throw error;
+      if (editingPaymentId) {
+        const { error } = await (supabase as any).from("supplier_payments").update({
+          amount: payAmount,
+          payment_date: payDate,
+          payment_method: payMethod,
+          notes: payNotes || null,
+          purchase_order_id: payInvoiceId || null,
+        }).eq("id", editingPaymentId);
+        if (error) throw error;
+      } else {
+        const { error } = await (supabase as any).from("supplier_payments").insert({
+          company_id: companyId!,
+          supplier_id: paySupplier.id,
+          purchase_order_id: payInvoiceId || null,
+          amount: payAmount,
+          payment_date: payDate,
+          payment_method: payMethod,
+          notes: payNotes || null,
+          creator_name: auth.profile?.full_name || "",
+        });
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["supplier-payments"] });
-      toast.success("تم تسجيل الدفعة");
+      toast.success(editingPaymentId ? "تم تعديل الدفعة" : "تم تسجيل الدفعة");
       setPayOpen(false);
-      setPayAmount(0); setPayNotes(""); setPayInvoiceId(""); setPaySupplier(null);
+      setPayAmount(0); setPayNotes(""); setPayInvoiceId(""); setPaySupplier(null); setEditingPaymentId(null);
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -197,7 +208,25 @@ export const SupplierDebtsPage: React.FC = () => {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const saveOpeningMutation = useMutation({
+    mutationFn: async () => {
+      if (!obSupplier) return;
+      const { error } = await supabase.from("suppliers").update({
+        opening_balance: obAmount,
+        opening_balance_date: obDate,
+      } as any).eq("id", obSupplier.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["suppliers-all-debts"] });
+      toast.success("تم حفظ الرصيد الافتتاحي");
+      setObOpen(false); setObSupplier(null);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const openPayment = (supplier: any) => {
+    setEditingPaymentId(null);
     setPaySupplier(supplier);
     setPayAmount(Number(supplier.currentBalance) > 0 ? Number(supplier.currentBalance) : 0);
     setPayDate(format(new Date(), "yyyy-MM-dd"));
@@ -207,9 +236,30 @@ export const SupplierDebtsPage: React.FC = () => {
     setPayOpen(true);
   };
 
+  const openEditPayment = (supplier: any, p: any) => {
+    setEditingPaymentId(p.id);
+    setPaySupplier(supplier);
+    setPayAmount(Number(p.amount) || 0);
+    setPayDate(p.payment_date);
+    setPayMethod(p.payment_method || "نقدي");
+    setPayNotes(p.notes || "");
+    setPayInvoiceId(p.purchase_order_id || "");
+    setPayOpen(true);
+  };
+
+  const openOpeningBalance = (supplier: any) => {
+    setObSupplier(supplier);
+    setObAmount(Number(supplier.openingBal) || 0);
+    setObDate(supplier.openingDate && supplier.openingDate !== "1900-01-01" ? supplier.openingDate : format(new Date(), "yyyy-MM-dd"));
+    setObOpen(true);
+  };
+
+  const periodLabel = dateRange?.from && dateRange?.to
+    ? `${format(dateRange.from, "yyyy-MM-dd")} - ${format(dateRange.to, "yyyy-MM-dd")}`
+    : "كل الفترات";
+
   const handlePrint = () => {
     const dateStr = new Date().toLocaleDateString("ar-EG");
-    const monthLabel = format(monthAnchor, "yyyy-MM");
     const logoSrc = `${window.location.origin}/logo.png`;
     let rowsHTML = "";
     filtered.forEach((r: any, idx: number) => {
@@ -217,13 +267,13 @@ export const SupplierDebtsPage: React.FC = () => {
         <td>${idx + 1}</td>
         <td style="text-align:right;">${r.code || "—"}</td>
         <td style="text-align:right;">${r.name}</td>
-        <td>${r.openingOfMonth.toFixed(2)}</td>
-        <td>${r.monthInvoicesSum.toFixed(2)}</td>
-        <td>${r.monthPaymentsSum.toFixed(2)}</td>
+        <td>${r.openingOfPeriod.toFixed(2)}</td>
+        <td>${r.periodInvoicesSum.toFixed(2)}</td>
+        <td>${r.periodPaymentsSum.toFixed(2)}</td>
         <td><b>${r.currentBalance.toFixed(2)}</b></td>
       </tr>`;
     });
-    const html = `<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>مديونية الموردين ${monthLabel}</title>
+    const html = `<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>مديونية الموردين ${periodLabel}</title>
     <style>
       @font-face{font-family:'CairoLocal';src:url('${window.location.origin}/fonts/Cairo-Regular.ttf') format('truetype');}
       *{margin:0;padding:0;box-sizing:border-box;}
@@ -241,19 +291,19 @@ export const SupplierDebtsPage: React.FC = () => {
     <body>
       <div class="header">
         <img src="${logoSrc}" alt="Logo" />
-        <div><h1>تقرير مديونية الموردين</h1><p>الشهر: ${monthLabel} • تاريخ الطباعة: ${dateStr}</p></div>
+        <div><h1>تقرير مديونية الموردين</h1><p>الفترة: ${periodLabel} • تاريخ الطباعة: ${dateStr}</p></div>
       </div>
       <table>
         <thead><tr>
           <th>م</th><th>الكود</th><th>المورد</th>
-          <th>رصيد أول المدة</th><th>مديونيات الشهر</th><th>مدفوعات الشهر</th><th>الرصيد الحالي</th>
+          <th>رصيد أول المدة</th><th>مديونيات الفترة</th><th>مدفوعات الفترة</th><th>الرصيد الحالي</th>
         </tr></thead>
         <tbody>${rowsHTML}</tbody>
         <tfoot><tr>
           <td colspan="3">الإجماليات</td>
-          <td>${totals.totalOpeningMonth.toFixed(2)}</td>
-          <td>${totals.totalMonthInv.toFixed(2)}</td>
-          <td>${totals.totalMonthPay.toFixed(2)}</td>
+          <td>${totals.totalOpeningPeriod.toFixed(2)}</td>
+          <td>${totals.totalPeriodInv.toFixed(2)}</td>
+          <td>${totals.totalPeriodPay.toFixed(2)}</td>
           <td>${totals.totalCurrent.toFixed(2)}</td>
         </tr></tfoot>
       </table>
@@ -269,16 +319,28 @@ export const SupplierDebtsPage: React.FC = () => {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-black text-gradient">مديونية الموردين</h1>
         <div className="flex items-center gap-2 flex-wrap">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <CalendarIcon size={14} /> شهر: {format(monthAnchor, "yyyy-MM")}
+          <div className="flex items-center gap-1">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className={cn("justify-start text-left font-normal gap-2 min-w-[220px]", !dateRange && "text-muted-foreground")}>
+                  <CalendarIcon className="h-4 w-4" />
+                  {dateRange?.from ? (
+                    dateRange.to ? (
+                      <span dir="ltr">{format(dateRange.from, "yyyy-MM-dd")} - {format(dateRange.to, "yyyy-MM-dd")}</span>
+                    ) : format(dateRange.from, "yyyy-MM-dd")
+                  ) : "اختر الفترة"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar initialFocus mode="range" defaultMonth={dateRange?.from} selected={dateRange} onSelect={setDateRange} numberOfMonths={1} className={cn("p-3 pointer-events-auto")} />
+              </PopoverContent>
+            </Popover>
+            {dateRange?.from && (
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setDateRange(undefined)} aria-label="مسح الفترة">
+                <X className="h-4 w-4" />
               </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-              <Calendar mode="single" selected={monthAnchor} onSelect={(d) => d && setMonthAnchor(d)} className={cn("p-3 pointer-events-auto")} />
-            </PopoverContent>
-          </Popover>
+            )}
+          </div>
           <Button variant="outline" size="sm" className="gap-1.5" onClick={handlePrint}>
             <Printer size={14} /> طباعة
           </Button>
@@ -286,21 +348,21 @@ export const SupplierDebtsPage: React.FC = () => {
             data={filtered.map((r: any) => ({
               code: r.code || "—",
               name: r.name,
-              opening: r.openingOfMonth.toFixed(2),
-              monthInv: r.monthInvoicesSum.toFixed(2),
-              monthPay: r.monthPaymentsSum.toFixed(2),
+              opening: r.openingOfPeriod.toFixed(2),
+              periodInv: r.periodInvoicesSum.toFixed(2),
+              periodPay: r.periodPaymentsSum.toFixed(2),
               balance: r.currentBalance.toFixed(2),
             }))}
             columns={[
               { key: "code", label: "الكود" },
               { key: "name", label: "المورد" },
               { key: "opening", label: "رصيد أول المدة" },
-              { key: "monthInv", label: "مديونيات الشهر" },
-              { key: "monthPay", label: "مدفوعات الشهر" },
+              { key: "periodInv", label: "مديونيات الفترة" },
+              { key: "periodPay", label: "مدفوعات الفترة" },
               { key: "balance", label: "الرصيد الحالي" },
             ]}
-            filename={`مديونية_الموردين_${format(monthAnchor, "yyyy-MM")}`}
-            title={`تقرير مديونية الموردين — ${format(monthAnchor, "yyyy-MM")}`}
+            filename={`مديونية_الموردين_${periodLabel}`}
+            title={`تقرير مديونية الموردين — ${periodLabel}`}
           />
         </div>
       </div>
@@ -313,22 +375,35 @@ export const SupplierDebtsPage: React.FC = () => {
           <div className="text-xs text-muted-foreground mt-1">ج.م</div>
         </div>
         <div className="glass-card p-4">
-          <div className="text-xs text-muted-foreground mb-1">رصيد أول الشهر</div>
-          <div className="text-xl font-bold text-slate-400 font-mono">{totals.totalOpeningMonth.toFixed(2)}</div>
+          <div className="text-xs text-muted-foreground mb-1">رصيد أول الفترة</div>
+          <div className="text-xl font-bold text-slate-400 font-mono">{totals.totalOpeningPeriod.toFixed(2)}</div>
         </div>
         <div className="glass-card p-4">
-          <div className="text-xs text-muted-foreground mb-1">مديونيات الشهر</div>
-          <div className="text-xl font-bold text-rose-500 font-mono">{totals.totalMonthInv.toFixed(2)}</div>
+          <div className="text-xs text-muted-foreground mb-1">مديونيات الفترة</div>
+          <div className="text-xl font-bold text-rose-500 font-mono">{totals.totalPeriodInv.toFixed(2)}</div>
         </div>
         <div className="glass-card p-4">
-          <div className="text-xs text-muted-foreground mb-1">مدفوعات الشهر</div>
-          <div className="text-xl font-bold text-emerald-500 font-mono">{totals.totalMonthPay.toFixed(2)}</div>
+          <div className="text-xs text-muted-foreground mb-1">مدفوعات الفترة</div>
+          <div className="text-xl font-bold text-emerald-500 font-mono">{totals.totalPeriodPay.toFixed(2)}</div>
         </div>
       </div>
 
-      <div className="relative max-w-md">
-        <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="بحث بالاسم أو الكود أو الهاتف..." value={search} onChange={(e) => setSearch(e.target.value)} className="glass-input pr-9" />
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="بحث بالاسم أو الكود أو الهاتف..." value={search} onChange={(e) => setSearch(e.target.value)} className="glass-input pr-9" />
+        </div>
+        <Select value={supplierFilter} onValueChange={setSupplierFilter}>
+          <SelectTrigger className="glass-input w-[220px]">
+            <SelectValue placeholder="كل الموردين" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">كل الموردين</SelectItem>
+            {(suppliers as any[]).map((s: any) => (
+              <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="glass-card overflow-hidden">
@@ -338,9 +413,9 @@ export const SupplierDebtsPage: React.FC = () => {
               <TableHead className="text-right">الكود</TableHead>
               <TableHead className="text-right">المورد</TableHead>
               <TableHead className="text-right">الهاتف</TableHead>
-              <TableHead className="text-right">رصيد أول الشهر</TableHead>
-              <TableHead className="text-right">مديونيات الشهر</TableHead>
-              <TableHead className="text-right">مدفوعات الشهر</TableHead>
+              <TableHead className="text-right">رصيد أول الفترة</TableHead>
+              <TableHead className="text-right">مديونيات الفترة</TableHead>
+              <TableHead className="text-right">مدفوعات الفترة</TableHead>
               <TableHead className="text-right">الرصيد الحالي</TableHead>
               <TableHead className="text-right">الإجراءات</TableHead>
             </TableRow>
@@ -354,9 +429,9 @@ export const SupplierDebtsPage: React.FC = () => {
                   <TableCell className="font-mono text-xs">{r.code || "—"}</TableCell>
                   <TableCell className="font-medium">{r.name}</TableCell>
                   <TableCell className="text-sm">{r.phone || "—"}</TableCell>
-                  <TableCell className="font-mono text-sm">{r.openingOfMonth.toFixed(2)}</TableCell>
-                  <TableCell className="font-mono text-sm text-rose-500">{r.monthInvoicesSum.toFixed(2)}</TableCell>
-                  <TableCell className="font-mono text-sm text-emerald-500">{r.monthPaymentsSum.toFixed(2)}</TableCell>
+                  <TableCell className="font-mono text-sm">{r.openingOfPeriod.toFixed(2)}</TableCell>
+                  <TableCell className="font-mono text-sm text-rose-500">{r.periodInvoicesSum.toFixed(2)}</TableCell>
+                  <TableCell className="font-mono text-sm text-emerald-500">{r.periodPaymentsSum.toFixed(2)}</TableCell>
                   <TableCell className={cn("font-mono font-bold", r.currentBalance > 0 ? "text-amber-500" : "text-emerald-500")}>
                     {r.currentBalance.toFixed(2)}
                   </TableCell>
@@ -365,13 +440,10 @@ export const SupplierDebtsPage: React.FC = () => {
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDetailsSupplier(r)} title="تفاصيل">
                         <Eye size={14} />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-emerald-500"
-                        onClick={() => openPayment(r)}
-                        title="تسجيل دفعة"
-                      >
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-500" onClick={() => openOpeningBalance(r)} title="رصيد افتتاحي">
+                        <Landmark size={14} />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-emerald-500" onClick={() => openPayment(r)} title="تسجيل دفعة">
                         <Wallet size={14} />
                       </Button>
                     </div>
@@ -383,11 +455,11 @@ export const SupplierDebtsPage: React.FC = () => {
         </Table>
       </div>
 
-      {/* Payment Dialog */}
-      <Dialog open={payOpen} onOpenChange={setPayOpen}>
+      {/* Payment Dialog (add / edit) */}
+      <Dialog open={payOpen} onOpenChange={(v) => { setPayOpen(v); if (!v) setEditingPaymentId(null); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>تسجيل دفعة — {paySupplier?.name}</DialogTitle>
+            <DialogTitle>{editingPaymentId ? "تعديل دفعة" : "تسجيل دفعة"} — {paySupplier?.name}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 flex justify-between text-sm">
@@ -443,8 +515,37 @@ export const SupplierDebtsPage: React.FC = () => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPayOpen(false)}>إلغاء</Button>
-            <Button onClick={() => addPaymentMutation.mutate()} disabled={addPaymentMutation.isPending || !payAmount}>
-              {addPaymentMutation.isPending ? "جاري الحفظ..." : "حفظ الدفعة"}
+            <Button onClick={() => savePaymentMutation.mutate()} disabled={savePaymentMutation.isPending || !payAmount}>
+              {savePaymentMutation.isPending ? "جاري الحفظ..." : editingPaymentId ? "حفظ التعديل" : "حفظ الدفعة"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Opening Balance Dialog */}
+      <Dialog open={obOpen} onOpenChange={setObOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>الرصيد الافتتاحي — {obSupplier?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <p className="text-xs text-muted-foreground">
+              استخدم هذا الرصيد لتسجيل المديونيات السابقة (قبل استخدام النظام) لهذا المورد.
+              سيُضاف إلى الرصيد الحالي مباشرةً.
+            </p>
+            <div className="space-y-2">
+              <Label>قيمة الرصيد الافتتاحي</Label>
+              <Input type="number" step="0.01" value={obAmount} onChange={(e) => setObAmount(parseFloat(e.target.value) || 0)} className="glass-input" />
+            </div>
+            <div className="space-y-2">
+              <Label>تاريخ الرصيد الافتتاحي</Label>
+              <Input type="date" value={obDate} onChange={(e) => setObDate(e.target.value)} className="glass-input" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setObOpen(false)}>إلغاء</Button>
+            <Button onClick={() => saveOpeningMutation.mutate()} disabled={saveOpeningMutation.isPending}>
+              {saveOpeningMutation.isPending ? "جاري الحفظ..." : "حفظ"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -526,7 +627,7 @@ export const SupplierDebtsPage: React.FC = () => {
                       <TableHead className="text-right">فاتورة مرتبطة</TableHead>
                       <TableHead className="text-right">ملاحظات</TableHead>
                       <TableHead className="text-right">المستخدم</TableHead>
-                      <TableHead className="text-right"></TableHead>
+                      <TableHead className="text-right">إجراءات</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -543,11 +644,16 @@ export const SupplierDebtsPage: React.FC = () => {
                           <TableCell className="text-sm text-muted-foreground">{p.notes || "—"}</TableCell>
                           <TableCell className="text-sm">{p.creator_name || "—"}</TableCell>
                           <TableCell>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => {
-                              if (confirm("حذف هذه الدفعة؟")) deletePaymentMutation.mutate(p.id);
-                            }}>
-                              <Trash2 size={14} />
-                            </Button>
+                            <div className="flex items-center gap-1">
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-500" onClick={() => openEditPayment(detailsSupplier, p)} title="تعديل">
+                                <Pencil size={14} />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => {
+                                if (confirm("حذف هذه الدفعة؟")) deletePaymentMutation.mutate(p.id);
+                              }} title="حذف">
+                                <Trash2 size={14} />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       );

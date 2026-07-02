@@ -22,11 +22,11 @@ import {
   FileText, Printer, AlertCircle, Archive, LayoutGrid, Percent, Tag,
   Search, Maximize, Minimize, Pause, User, Keyboard,
   UtensilsCrossed, ShoppingBag, Truck, Banknote, CreditCard, Bell,
-  ChefHat, CheckCircle2, Clock, MapPin, Phone, PlayCircle, Eye, EyeOff
+  ChefHat, CheckCircle2, Clock, MapPin, Phone, PlayCircle
 } from "lucide-react";
 import { printCustomerReceipt, printKitchenReceipt, printViaIframe } from "@/lib/posPrintUtils";
 import { PosHeldInvoices } from "@/components/pos/PosHeldInvoices";
-import { PosDailyStats } from "@/components/pos/PosDailyStats";
+
 import { PosShiftManager } from "@/components/pos/PosShiftManager";
 import { PosShiftExpenses } from "@/components/pos/PosShiftExpenses";
 import { PosReturnsManager } from "@/components/pos/PosReturnsManager";
@@ -70,13 +70,8 @@ export const PosScreenPage: React.FC = () => {
   const navigate = useNavigate();
   const receiptRef = useRef<HTMLDivElement>(null);
 
-  const [statsVisible, setStatsVisible] = useState<boolean>(() => {
-    if (typeof window === "undefined") return true;
-    return localStorage.getItem("pos_stats_visible") !== "false";
-  });
-  useEffect(() => {
-    localStorage.setItem("pos_stats_visible", String(statsVisible));
-  }, [statsVisible]);
+
+
 
 
 
@@ -648,22 +643,8 @@ export const PosScreenPage: React.FC = () => {
       <div className="flex flex-col h-[calc(100vh-4rem)]" dir="rtl">
         {/* Top bar */}
         <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-card/50 print:hidden flex-wrap gap-2">
-          {hasPermission("view_pos_stats") ? (
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 shrink-0"
-                onClick={() => setStatsVisible(v => !v)}
-                title={statsVisible ? "إخفاء إحصائيات الشيفت" : "إظهار إحصائيات الشيفت"}
-              >
-                {statsVisible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-              </Button>
-              {statsVisible && <PosDailyStats companyId={companyId || ""} branchId={branchId} />}
-            </div>
-          ) : (
-            <div />
-          )}
+          <div />
+
           <div className="flex items-center gap-2">
             {(pendingDeliveryOrders?.length ?? 0) > 0 && (
               <button

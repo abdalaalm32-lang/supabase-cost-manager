@@ -516,7 +516,7 @@ export const EditPurchaseInvoicePage: React.FC = () => {
                     <TableCell className="font-mono text-xs">{item.code || "—"}</TableCell>
                     <TableCell className="font-medium">{item.name}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{item.unit || "—"}</TableCell>
-                    <TableCell>{isViewOnly ? item.quantity : <Input type="number" min={1} value={item.quantity} onChange={(e) => updateItemField(idx, "quantity", parseFloat(e.target.value) || 0)} className="glass-input w-20" />}</TableCell>
+                    <TableCell>{isViewOnly ? item.quantity : <Input type="number" min={0} step="0.01" value={item.quantity || ""} placeholder="0" onChange={(e) => updateItemField(idx, "quantity", parseFloat(e.target.value) || 0)} className="glass-input w-28" />}</TableCell>
                     <TableCell className="font-mono text-sm text-muted-foreground">{item.unit_cost.toFixed(2)}</TableCell>
                     <TableCell>{isViewOnly ? item.total.toFixed(2) : <Input type="number" min={0} step="0.01" value={item.total} onChange={(e) => updateItemField(idx, "total", parseFloat(e.target.value) || 0)} className="glass-input w-28" />}</TableCell>
                     {!isViewOnly && <TableCell><Button variant="ghost" size="icon" className="text-destructive" onClick={() => removeItem(idx)}><Trash2 size={15} /></Button></TableCell>}

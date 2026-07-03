@@ -175,7 +175,7 @@ export const AddPurchaseInvoicePage: React.FC = () => {
           stock_item_id: si.id,
           name: si.name,
           code: si.code || "",
-          quantity: 1,
+          quantity: 0,
           unit_cost: 0,
           total: 0,
           unit: si.stock_unit || "",

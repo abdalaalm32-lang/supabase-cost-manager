@@ -40,6 +40,8 @@ export const ProductionListPage: React.FC = () => {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [branchFilter, setBranchFilter] = useState<string>("all");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [showChanges, setShowChanges] = useState(false);
   const [selectedChanges, setSelectedChanges] = useState<any[]>([]);
   const [showConfirm, setShowConfirm] = useState(false);

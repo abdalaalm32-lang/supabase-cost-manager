@@ -769,7 +769,7 @@ export const ProductionDetailPage: React.FC = () => {
                                 min={0}
                                 value={ing.required_qty}
                                 onChange={e => updateQty(idx, e.target.value)}
-                                className={cn("h-8 w-20 text-sm", isOverStock && "border-destructive ring-1 ring-destructive")}
+                                className={cn("h-8 w-28 text-sm", isOverStock && "border-destructive ring-1 ring-destructive")}
                               />
                             )}
                             {isOverStock && (

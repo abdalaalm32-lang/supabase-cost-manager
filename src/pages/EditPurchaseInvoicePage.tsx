@@ -203,7 +203,7 @@ export const EditPurchaseInvoicePage: React.FC = () => {
       if (items.some((i) => i.stock_item_id === sid)) return;
       const si = stockItems.find((s: any) => s.id === sid);
       if (si) {
-        newItems.push({ stock_item_id: si.id, name: si.name, code: si.code || "", quantity: 1, unit_cost: 0, total: 0, unit: si.stock_unit || "" });
+        newItems.push({ stock_item_id: si.id, name: si.name, code: si.code || "", quantity: 0, unit_cost: 0, total: 0, unit: si.stock_unit || "" });
       }
     });
     setItems((prev) => [...prev, ...newItems]);
@@ -427,17 +427,19 @@ export const EditPurchaseInvoicePage: React.FC = () => {
              </div>
            )}
 
-           <div className="space-y-2">
-             <Label>القسم المستلم</Label>
-             <Select value={departmentId} onValueChange={setDepartmentId} disabled={isViewOnly}>
-               <SelectTrigger><SelectValue placeholder="اختر القسم" /></SelectTrigger>
-               <SelectContent>
-                 {departments.map((d: any) => (
-                   <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                 ))}
-               </SelectContent>
-             </Select>
-           </div>
+           {destinationType !== "warehouse" && (
+             <div className="space-y-2">
+               <Label>القسم المستلم</Label>
+               <Select value={departmentId} onValueChange={setDepartmentId} disabled={isViewOnly}>
+                 <SelectTrigger><SelectValue placeholder="اختر القسم" /></SelectTrigger>
+                 <SelectContent>
+                   {departments.map((d: any) => (
+                     <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                   ))}
+                 </SelectContent>
+               </Select>
+             </div>
+           )}
          </div>
          <div className="space-y-2">
            <Label>ملاحظات (اختياري)</Label>
@@ -516,7 +518,7 @@ export const EditPurchaseInvoicePage: React.FC = () => {
                     <TableCell className="font-mono text-xs">{item.code || "—"}</TableCell>
                     <TableCell className="font-medium">{item.name}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{item.unit || "—"}</TableCell>
-                    <TableCell>{isViewOnly ? item.quantity : <Input type="number" min={1} value={item.quantity} onChange={(e) => updateItemField(idx, "quantity", parseFloat(e.target.value) || 0)} className="glass-input w-20" />}</TableCell>
+                    <TableCell>{isViewOnly ? item.quantity : <Input type="number" min={0} step="0.01" value={item.quantity || ""} placeholder="0" onChange={(e) => updateItemField(idx, "quantity", parseFloat(e.target.value) || 0)} className="glass-input w-28" />}</TableCell>
                     <TableCell className="font-mono text-sm text-muted-foreground">{item.unit_cost.toFixed(2)}</TableCell>
                     <TableCell>{isViewOnly ? item.total.toFixed(2) : <Input type="number" min={0} step="0.01" value={item.total} onChange={(e) => updateItemField(idx, "total", parseFloat(e.target.value) || 0)} className="glass-input w-28" />}</TableCell>
                     {!isViewOnly && <TableCell><Button variant="ghost" size="icon" className="text-destructive" onClick={() => removeItem(idx)}><Trash2 size={15} /></Button></TableCell>}

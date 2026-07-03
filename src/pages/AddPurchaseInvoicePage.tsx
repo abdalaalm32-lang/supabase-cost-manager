@@ -175,7 +175,7 @@ export const AddPurchaseInvoicePage: React.FC = () => {
           stock_item_id: si.id,
           name: si.name,
           code: si.code || "",
-          quantity: 1,
+          quantity: 0,
           unit_cost: 0,
           total: 0,
           unit: si.stock_unit || "",
@@ -504,7 +504,7 @@ export const AddPurchaseInvoicePage: React.FC = () => {
                   <TableCell className="font-medium">{item.name}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{item.unit || "—"}</TableCell>
                   <TableCell>
-                    <Input type="number" min={1} value={item.quantity} onChange={(e) => updateItemField(idx, "quantity", parseFloat(e.target.value) || 0)} className="glass-input w-20" />
+                    <Input type="number" min={0} step="0.01" value={item.quantity || ""} placeholder="0" onChange={(e) => updateItemField(idx, "quantity", parseFloat(e.target.value) || 0)} className="glass-input w-28" />
                   </TableCell>
                   <TableCell className="font-mono text-sm text-muted-foreground">{item.unit_cost.toFixed(2)}</TableCell>
                   <TableCell>

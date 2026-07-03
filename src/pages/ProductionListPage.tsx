@@ -328,6 +328,55 @@ export const ProductionListPage: React.FC = () => {
             className="pr-9"
           />
         </div>
+        <Select value={branchFilter} onValueChange={setBranchFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="كل الفروع" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">كل الفروع</SelectItem>
+            {branchOptions.map(b => (
+              <SelectItem key={b} value={b}>{b}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <div className="flex items-center gap-1">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn("justify-start text-left font-normal gap-2 min-w-[200px]", !dateRange && "text-muted-foreground")}
+              >
+                <CalendarIcon className="h-4 w-4" />
+                {dateRange?.from ? (
+                  dateRange.to ? (
+                    <span dir="ltr">{format(dateRange.from, "yyyy-MM-dd")} - {format(dateRange.to, "yyyy-MM-dd")}</span>
+                  ) : (
+                    format(dateRange.from, "yyyy-MM-dd")
+                  )
+                ) : (
+                  "اختر الفترة"
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={dateRange?.from}
+                selected={dateRange}
+                onSelect={setDateRange}
+                numberOfMonths={1}
+                className="pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+          {dateRange?.from && (
+            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setDateRange(undefined)} aria-label="مسح الفترة">
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
         <div className="flex gap-1">
           {(["all", "مكتمل", "مؤرشف", "edited"] as StatusFilter[]).map(f => (
             <Button

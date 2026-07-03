@@ -16,9 +16,16 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
+  Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import {
   Plus, Search, Eye, Pencil, ToggleLeft, ToggleRight, History, Printer,
-  Layers, Filter, Trash2,
+  Layers, Filter, Trash2, CalendarIcon, X,
 } from "lucide-react";
+import type { DateRange } from "react-day-picker";
+import { format, startOfDay, endOfDay } from "date-fns";
+import { cn } from "@/lib/utils";
 import { ExportButtons } from "@/components/ExportButtons";
 import { useToast } from "@/hooks/use-toast";
 

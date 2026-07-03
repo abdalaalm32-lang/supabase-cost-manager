@@ -203,7 +203,7 @@ export const EditPurchaseInvoicePage: React.FC = () => {
       if (items.some((i) => i.stock_item_id === sid)) return;
       const si = stockItems.find((s: any) => s.id === sid);
       if (si) {
-        newItems.push({ stock_item_id: si.id, name: si.name, code: si.code || "", quantity: 1, unit_cost: 0, total: 0, unit: si.stock_unit || "" });
+        newItems.push({ stock_item_id: si.id, name: si.name, code: si.code || "", quantity: 0, unit_cost: 0, total: 0, unit: si.stock_unit || "" });
       }
     });
     setItems((prev) => [...prev, ...newItems]);

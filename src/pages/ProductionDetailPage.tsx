@@ -665,6 +665,7 @@ export const ProductionDetailPage: React.FC = () => {
               <Input
                 type="text"
                 inputMode="decimal"
+                placeholder="0"
                 value={producedQty}
                 onChange={e => {
                   const val = e.target.value;

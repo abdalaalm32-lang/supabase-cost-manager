@@ -53,7 +53,7 @@ export const ProductionDetailPage: React.FC = () => {
   const [selectedDept, setSelectedDept] = useState("all");
   const [selectedCat, setSelectedCat] = useState("all");
   const [selectedProductId, setSelectedProductId] = useState("");
-  const [producedQty, setProducedQty] = useState<string>("0");
+  const [producedQty, setProducedQty] = useState<string>("");
   const [selectedUnit, setSelectedUnit] = useState("كجم");
   const [ingredients, setIngredients] = useState<LocalIngredient[]>([]);
   const [status, setStatus] = useState("مسودة");
@@ -665,6 +665,7 @@ export const ProductionDetailPage: React.FC = () => {
               <Input
                 type="text"
                 inputMode="decimal"
+                placeholder="0"
                 value={producedQty}
                 onChange={e => {
                   const val = e.target.value;

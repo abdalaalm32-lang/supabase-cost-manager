@@ -16,9 +16,16 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
+  Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import {
   Plus, Search, Eye, Pencil, ToggleLeft, ToggleRight, History, Printer,
-  Layers, Filter, Trash2,
+  Layers, Filter, Trash2, CalendarIcon, X,
 } from "lucide-react";
+import type { DateRange } from "react-day-picker";
+import { format, startOfDay, endOfDay } from "date-fns";
+import { cn } from "@/lib/utils";
 import { ExportButtons } from "@/components/ExportButtons";
 import { useToast } from "@/hooks/use-toast";
 
@@ -33,6 +40,8 @@ export const ProductionListPage: React.FC = () => {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [branchFilter, setBranchFilter] = useState<string>("all");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [showChanges, setShowChanges] = useState(false);
   const [selectedChanges, setSelectedChanges] = useState<any[]>([]);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -66,12 +75,30 @@ export const ProductionListPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  const branchOptions = useMemo(() => {
+    const set = new Set<string>();
+    records.forEach((r: any) => { if (r.branch_name) set.add(r.branch_name); });
+    return Array.from(set).sort();
+  }, [records]);
+
   const filtered = useMemo(() => {
     let items = records;
     if (statusFilter === "edited") {
       items = items.filter((r: any) => r.is_edited);
     } else if (statusFilter !== "all") {
       items = items.filter((r: any) => r.status === statusFilter);
+    }
+    if (branchFilter !== "all") {
+      items = items.filter((r: any) => (r.branch_name || "") === branchFilter);
+    }
+    if (dateRange?.from && dateRange?.to) {
+      const from = startOfDay(dateRange.from);
+      const to = endOfDay(dateRange.to);
+      items = items.filter((r: any) => {
+        if (!r.date) return false;
+        const d = new Date(r.date);
+        return d >= from && d <= to;
+      });
     }
     if (search.trim()) {
       const q = search.trim().toLowerCase();
@@ -82,7 +109,7 @@ export const ProductionListPage: React.FC = () => {
       );
     }
     return items;
-  }, [records, statusFilter, search]);
+  }, [records, statusFilter, branchFilter, dateRange, search]);
 
   const handleStatusChange = async () => {
     if (!confirmAction) return;
@@ -300,6 +327,55 @@ export const ProductionListPage: React.FC = () => {
             onChange={e => setSearch(e.target.value)}
             className="pr-9"
           />
+        </div>
+        <Select value={branchFilter} onValueChange={setBranchFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="كل الفروع" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">كل الفروع</SelectItem>
+            {branchOptions.map(b => (
+              <SelectItem key={b} value={b}>{b}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <div className="flex items-center gap-1">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn("justify-start text-left font-normal gap-2 min-w-[200px]", !dateRange && "text-muted-foreground")}
+              >
+                <CalendarIcon className="h-4 w-4" />
+                {dateRange?.from ? (
+                  dateRange.to ? (
+                    <span dir="ltr">{format(dateRange.from, "yyyy-MM-dd")} - {format(dateRange.to, "yyyy-MM-dd")}</span>
+                  ) : (
+                    format(dateRange.from, "yyyy-MM-dd")
+                  )
+                ) : (
+                  "اختر الفترة"
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={dateRange?.from}
+                selected={dateRange}
+                onSelect={setDateRange}
+                numberOfMonths={1}
+                className="pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+          {dateRange?.from && (
+            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setDateRange(undefined)} aria-label="مسح الفترة">
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </div>
         <div className="flex gap-1">
           {(["all", "مكتمل", "مؤرشف", "edited"] as StatusFilter[]).map(f => (

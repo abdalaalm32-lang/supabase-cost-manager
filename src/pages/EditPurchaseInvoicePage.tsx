@@ -427,17 +427,19 @@ export const EditPurchaseInvoicePage: React.FC = () => {
              </div>
            )}
 
-           <div className="space-y-2">
-             <Label>القسم المستلم</Label>
-             <Select value={departmentId} onValueChange={setDepartmentId} disabled={isViewOnly}>
-               <SelectTrigger><SelectValue placeholder="اختر القسم" /></SelectTrigger>
-               <SelectContent>
-                 {departments.map((d: any) => (
-                   <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                 ))}
-               </SelectContent>
-             </Select>
-           </div>
+           {destinationType !== "warehouse" && (
+             <div className="space-y-2">
+               <Label>القسم المستلم</Label>
+               <Select value={departmentId} onValueChange={setDepartmentId} disabled={isViewOnly}>
+                 <SelectTrigger><SelectValue placeholder="اختر القسم" /></SelectTrigger>
+                 <SelectContent>
+                   {departments.map((d: any) => (
+                     <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                   ))}
+                 </SelectContent>
+               </Select>
+             </div>
+           )}
          </div>
          <div className="space-y-2">
            <Label>ملاحظات (اختياري)</Label>

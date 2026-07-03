@@ -75,12 +75,30 @@ export const ProductionListPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  const branchOptions = useMemo(() => {
+    const set = new Set<string>();
+    records.forEach((r: any) => { if (r.branch_name) set.add(r.branch_name); });
+    return Array.from(set).sort();
+  }, [records]);
+
   const filtered = useMemo(() => {
     let items = records;
     if (statusFilter === "edited") {
       items = items.filter((r: any) => r.is_edited);
     } else if (statusFilter !== "all") {
       items = items.filter((r: any) => r.status === statusFilter);
+    }
+    if (branchFilter !== "all") {
+      items = items.filter((r: any) => (r.branch_name || "") === branchFilter);
+    }
+    if (dateRange?.from && dateRange?.to) {
+      const from = startOfDay(dateRange.from);
+      const to = endOfDay(dateRange.to);
+      items = items.filter((r: any) => {
+        if (!r.date) return false;
+        const d = new Date(r.date);
+        return d >= from && d <= to;
+      });
     }
     if (search.trim()) {
       const q = search.trim().toLowerCase();
@@ -91,7 +109,7 @@ export const ProductionListPage: React.FC = () => {
       );
     }
     return items;
-  }, [records, statusFilter, search]);
+  }, [records, statusFilter, branchFilter, dateRange, search]);
 
   const handleStatusChange = async () => {
     if (!confirmAction) return;

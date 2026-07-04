@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Plus, Search, Pencil, Trash2, Eye, ToggleLeft, ToggleRight, FileText, FileSpreadsheet, MoreHorizontal, Loader2 } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Eye, ToggleLeft, ToggleRight, FileText, FileSpreadsheet, MoreHorizontal, Loader2, Printer } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
 import { exportToExcel, exportToPDF, type ExportColumn } from "@/lib/exportUtils";
 import {

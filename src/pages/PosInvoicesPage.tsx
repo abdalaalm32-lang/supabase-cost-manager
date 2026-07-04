@@ -26,6 +26,21 @@ import { ExportButtons } from "@/components/ExportButtons";
 
 type FilterStatus = "الكل" | "مكتمل" | "مؤرشف";
 
+const getSaleDateKey = (sale: any) => {
+  const raw = sale?.date ?? sale?.created_at;
+  if (!raw) return "";
+  if (typeof raw === "string") {
+    const dateMatch = raw.match(/^\d{4}-\d{2}-\d{2}/);
+    if (dateMatch) return dateMatch[0];
+  }
+  return format(new Date(raw), "yyyy-MM-dd");
+};
+
+const formatSaleDate = (sale: any) => {
+  const key = getSaleDateKey(sale);
+  return key ? key.replace(/-/g, "/") : "—";
+};
+
 interface SaleItem {
   id: string;
   pos_item_id: string | null;
@@ -116,15 +131,19 @@ export const PosInvoicesPage: React.FC = () => {
     let result = sales;
     if (filter !== "الكل") result = result.filter((s) => s.status === filter);
     if (branchFilter !== "all") result = result.filter((s: any) => s.branch_id === branchFilter);
-    if (dateFrom) {
-      const from = new Date(dateFrom); from.setHours(0, 0, 0, 0);
-      result = result.filter((s: any) => new Date(s.created_at) >= from);
+
+    const fromKey = dateFrom ? format(dateFrom, "yyyy-MM-dd") : undefined;
+    const toKey = dateTo ? format(dateTo, "yyyy-MM-dd") : undefined;
+    if (fromKey || toKey) {
+      result = result.filter((s: any) => {
+        const saleDate = getSaleDateKey(s);
+        if (!saleDate) return false;
+        if (fromKey && saleDate < fromKey) return false;
+        if (toKey && saleDate > toKey) return false;
+        return true;
+      });
     }
-    if (dateTo) {
-      const to = new Date(dateTo); to.setHours(23, 59, 59, 999);
-      result = result.filter((s: any) => new Date(s.created_at) <= to);
-    }
-    return result;
+
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase();
       result = result.filter((s: any) => {
@@ -205,7 +224,7 @@ export const PosInvoicesPage: React.FC = () => {
 
   const handlePrintInvoice = () => {
     if (!selectedSale || editItems.length === 0) return;
-    const dateStr = selectedSale ? format(new Date(selectedSale.date), "yyyy/MM/dd") : "";
+    const dateStr = selectedSale ? formatSaleDate(selectedSale) : "";
     const branchName = (selectedSale?.branches as any)?.name || "غير محدد";
     const logoSrc = `${window.location.origin}/logo.png`;
 
@@ -392,7 +411,7 @@ export const PosInvoicesPage: React.FC = () => {
           </div>
           <div className="ml-auto">
             <ExportButtons
-              data={(filtered || []).map((sale: any) => ({ invoice: sale.invoice_number || "—", date: format(new Date(sale.date), "yyyy/MM/dd"), branch: (sale.branches as any)?.name || "—", total: Number(sale.total_amount).toFixed(2), status: sale.status }))}
+              data={(filtered || []).map((sale: any) => ({ invoice: sale.invoice_number || "—", date: formatSaleDate(sale), branch: (sale.branches as any)?.name || "—", total: Number(sale.total_amount).toFixed(2), status: sale.status }))}
               columns={[{ key: "invoice", label: "رقم الفاتورة" }, { key: "date", label: "التاريخ" }, { key: "branch", label: "الفرع" }, { key: "total", label: "الإجمالي" }, { key: "status", label: "الحالة" }]}
               filename="فواتير_نقطة_البيع"
               title="سجل الفواتير"
@@ -424,7 +443,7 @@ export const PosInvoicesPage: React.FC = () => {
             {filtered?.map((sale) => (
               <TableRow key={sale.id}>
                 <TableCell className="font-mono font-bold text-right">{sale.invoice_number || "—"}</TableCell>
-                <TableCell className="text-right">{format(new Date(sale.date), "yyyy/MM/dd")}</TableCell>
+                <TableCell className="text-right">{formatSaleDate(sale)}</TableCell>
                 <TableCell className="text-right">{(sale.branches as any)?.name || "—"}</TableCell>
                 <TableCell className="font-bold text-right">{Number(sale.total_amount).toFixed(2)} EGP</TableCell>
                 <TableCell className="text-right">

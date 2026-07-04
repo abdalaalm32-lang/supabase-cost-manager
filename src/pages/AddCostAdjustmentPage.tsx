@@ -326,7 +326,8 @@ export const AddCostAdjustmentPage: React.FC = () => {
           branch_name: locationName || null,
           date, notes: notes || null, status,
           record_number: recNum,
-        }).select("id").single();
+          created_by: auth.user?.id ?? null,
+        } as any).select("id").single();
         if (recErr) throw recErr;
 
         if (items.length > 0) {

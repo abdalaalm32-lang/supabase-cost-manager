@@ -311,6 +311,9 @@ export const CostAdjustmentPage: React.FC = () => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem className="gap-2" onClick={() => handleRecordPrint(r)}>
+                          <Printer size={14} className="text-primary" /> طباعة
+                        </DropdownMenuItem>
                         <DropdownMenuItem className="gap-2" onClick={() => handleRecordExport(r, "pdf")}>
                           <FileText size={14} className="text-red-500" /> تصدير PDF
                         </DropdownMenuItem>

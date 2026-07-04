@@ -247,6 +247,21 @@ export const CostAdjustmentPage: React.FC = () => {
                     <Button variant="ghost" size="icon" className="h-7 w-7" title={r.status === "مؤرشف" ? "إلغاء الأرشفة" : "أرشفة"} onClick={() => toggleArchiveMutation.mutate({ id: r.id, status: r.status })}>
                       {r.status === "مؤرشف" ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
                     </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" title="طباعة / تصدير" disabled={exporting?.id === r.id}>
+                          {exporting?.id === r.id ? <Loader2 size={14} className="animate-spin" /> : <MoreHorizontal size={14} />}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem className="gap-2" onClick={() => handleRecordExport(r, "pdf")}>
+                          <FileText size={14} className="text-red-500" /> تصدير PDF
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="gap-2" onClick={() => handleRecordExport(r, "excel")}>
+                          <FileSpreadsheet size={14} className="text-green-600" /> تصدير Excel
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" title="حذف">

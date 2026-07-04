@@ -393,6 +393,7 @@ export type Database = {
           branch_name: string | null
           company_id: string
           created_at: string
+          created_by: string | null
           date: string
           id: string
           is_edited: boolean
@@ -405,6 +406,7 @@ export type Database = {
           branch_name?: string | null
           company_id: string
           created_at?: string
+          created_by?: string | null
           date?: string
           id?: string
           is_edited?: boolean
@@ -417,6 +419,7 @@ export type Database = {
           branch_name?: string | null
           company_id?: string
           created_at?: string
+          created_by?: string | null
           date?: string
           id?: string
           is_edited?: boolean

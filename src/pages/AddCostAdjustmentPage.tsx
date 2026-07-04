@@ -49,6 +49,7 @@ export const AddCostAdjustmentPage: React.FC = () => {
   const [items, setItems] = useState<AdjustmentItem[]>([]);
   const [itemPickerOpen, setItemPickerOpen] = useState(false);
   const [itemSearch, setItemSearch] = useState("");
+  const [tableSearch, setTableSearch] = useState("");
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [submitted, setSubmitted] = useState(false);
   const [pickerFilterDept, setPickerFilterDept] = useState("all");
@@ -134,6 +135,22 @@ export const AddCostAdjustmentPage: React.FC = () => {
     },
     enabled: !!companyId,
   });
+
+  // Fetch creator profile for edit/view mode
+  const creatorId = (existingRecord as any)?.created_by;
+  const { data: creatorProfile } = useQuery({
+    queryKey: ["profile-creator", creatorId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("full_name, user_code").eq("user_id", creatorId).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!creatorId,
+  });
+
+  const creatorName = isEdit
+    ? (creatorProfile?.full_name || "—")
+    : (auth.profile?.full_name || "—");
 
   useEffect(() => {
     if (!isEdit) {
@@ -309,7 +326,8 @@ export const AddCostAdjustmentPage: React.FC = () => {
           branch_name: locationName || null,
           date, notes: notes || null, status,
           record_number: recNum,
-        }).select("id").single();
+          created_by: auth.user?.id ?? null,
+        } as any).select("id").single();
         if (recErr) throw recErr;
 
         if (items.length > 0) {
@@ -423,17 +441,61 @@ export const AddCostAdjustmentPage: React.FC = () => {
   }
 
   // Step 2: Items management
+  const locationLabel = destinationType === "branch"
+    ? (branches.find((b: any) => b.id === destinationId)?.name || (existingRecord as any)?.branch_name || "—")
+    : destinationType === "warehouse"
+    ? (warehouses.find((w: any) => w.id === destinationId)?.name || (existingRecord as any)?.branch_name || "—")
+    : ((existingRecord as any)?.branch_name || "—");
+
+  const filteredTableItems = tableSearch.trim()
+    ? items.filter((it) => {
+        const q = tableSearch.trim().toLowerCase();
+        return (it.name || "").toLowerCase().includes(q) || (it.code || "").toLowerCase().includes(q);
+      })
+    : items;
+
+  const kpis = [
+    { label: destinationType === "warehouse" ? "المخزن" : "الفرع / الموقع", value: locationLabel, tone: "from-primary/15 to-primary/5 border-primary/30 text-primary" },
+    { label: "التاريخ", value: new Date(date).toLocaleDateString("ar-EG"), tone: "from-emerald-500/15 to-emerald-500/5 border-emerald-500/30 text-emerald-500" },
+    { label: "عدد الأصناف المعدلة", value: String(items.length), tone: "from-amber-500/15 to-amber-500/5 border-amber-500/30 text-amber-500" },
+    { label: "المنشئ", value: creatorName, tone: "from-blue-500/15 to-blue-500/5 border-blue-500/30 text-blue-400" },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={() => isEdit ? navigate("/cost-adjustment") : setStep(1)}><ArrowRight size={20} /></Button>
         <h1 className="text-2xl font-black text-gradient">{isViewOnly ? "عرض سجل التكلفة" : isEdit ? "تعديل سجل التكلفة" : "سجل تعديل التكلفة"}</h1>
+        {(existingRecord as any)?.record_number && (
+          <span className="font-mono text-xs px-2 py-1 rounded-md bg-muted text-muted-foreground">{(existingRecord as any).record_number}</span>
+        )}
+      </div>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {kpis.map((k) => (
+          <div key={k.label} className={`glass-card p-4 border bg-gradient-to-br ${k.tone}`}>
+            <div className="text-xs text-muted-foreground mb-1">{k.label}</div>
+            <div className="text-lg font-bold truncate" title={k.value}>{k.value}</div>
+          </div>
+        ))}
       </div>
 
       <div className="glass-card p-6 space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <h3 className="text-lg font-semibold">أصناف السجل</h3>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center flex-wrap">
+            {items.length > 0 && (
+              <div className="relative">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="بحث بالصنف أو الكود..."
+                  value={tableSearch}
+                  onChange={(e) => setTableSearch(e.target.value)}
+                  className="glass-input pr-9 w-64"
+                />
+              </div>
+            )}
             {!isViewOnly && items.length > 0 && (
               <Button variant="outline" size="sm" className="gap-1 text-destructive" onClick={clearAllItems}>
                 <Trash2 size={14} /> حذف الكل
@@ -460,7 +522,11 @@ export const AddCostAdjustmentPage: React.FC = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((item, idx) => (
+              {filteredTableItems.length === 0 ? (
+                <TableRow><TableCell colSpan={6} className="text-center py-6 text-muted-foreground text-sm">لا توجد نتائج مطابقة للبحث</TableCell></TableRow>
+              ) : filteredTableItems.map((item) => {
+                const idx = items.indexOf(item);
+                return (
                 <TableRow key={idx}>
                   <TableCell className="font-mono text-xs">{item.code || "—"}</TableCell>
                   <TableCell className="font-medium">{item.name}</TableCell>
@@ -484,13 +550,15 @@ export const AddCostAdjustmentPage: React.FC = () => {
                      )}
                    </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         ) : (
           <div className="text-center py-8 text-muted-foreground text-sm">لم يتم إضافة أصناف بعد</div>
         )}
       </div>
+
 
       {!isViewOnly && (
         <div className="flex gap-3 justify-end">

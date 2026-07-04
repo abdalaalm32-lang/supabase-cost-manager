@@ -772,6 +772,9 @@ export const MenuAnalysisPage: React.FC = () => {
                       companyId={companyId!}
                       packingItems={catPackingItems}
                       avgPrice={avgOrderPrice}
+                      avgItemPackingCost={cat.items.length > 0
+                        ? cat.items.reduce((s, i) => s + ((costOverrides.get(i.id)?.packing_cost) || 0), 0) / cat.items.length
+                        : 0}
                       onRefresh={fetchPackingItems}
                     />
                   </div>

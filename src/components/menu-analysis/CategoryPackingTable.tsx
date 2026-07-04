@@ -18,16 +18,18 @@ interface Props {
   companyId: string;
   packingItems: PackingItem[];
   avgPrice: number;
+  avgItemPackingCost?: number;
   onRefresh: () => void;
 }
 
-export const CategoryPackingTable: React.FC<Props> = ({ categoryName, periodId, companyId, packingItems, avgPrice, onRefresh }) => {
+export const CategoryPackingTable: React.FC<Props> = ({ categoryName, periodId, companyId, packingItems, avgPrice, avgItemPackingCost = 0, onRefresh }) => {
   const [newName, setNewName] = useState("");
   const [newCost, setNewCost] = useState("");
   const [adding, setAdding] = useState(false);
 
   const totalCost = packingItems.reduce((s, i) => s + i.cost, 0);
-  const packingPer = avgPrice > 0 ? (totalCost / avgPrice) * 100 : 0;
+  const effectivePackingCost = totalCost + avgItemPackingCost;
+  const packingPer = avgPrice > 0 ? (effectivePackingCost / avgPrice) * 100 : 0;
 
   const handleAdd = async () => {
     if (!newName.trim() || !newCost) return;

@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Plus, Search, Pencil, Trash2, Eye, ToggleLeft, ToggleRight, FileText, FileSpreadsheet, MoreHorizontal, Loader2 } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Eye, ToggleLeft, ToggleRight, FileText, FileSpreadsheet, MoreHorizontal, Loader2, Printer } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
 import { exportToExcel, exportToPDF, type ExportColumn } from "@/lib/exportUtils";
 import {
@@ -175,6 +175,63 @@ export const CostAdjustmentPage: React.FC = () => {
     }
   };
 
+  const handleRecordPrint = (r: any) => {
+    const { columns, data, filters, recordNumber } = getRecordExportData(r);
+    const title = `تعديل تكلفة - ${recordNumber}`;
+    const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
+    const logoSrc = `${window.location.origin}/logo.png`;
+
+    const theadHTML = `<tr>${columns.map((col) => `<th style="border:1px solid #000;padding:6px 8px;font-size:10px;text-align:center;white-space:nowrap;">${col.label}</th>`).join("")}</tr>`;
+    const tbodyHTML = data.map((row) =>
+      `<tr>${columns.map((col) => `<td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${row[col.key] ?? "—"}</td>`).join("")}</tr>`
+    ).join("");
+    const filtersText = (filters ?? [])
+      .filter((f) => f.value !== undefined && f.value !== null && String(f.value).trim() !== "")
+      .map((f) => `${f.label}: ${f.value}`)
+      .join("   •   ");
+
+    const printHTML = `
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>${title}</title>
+  <style>
+    @font-face { font-family: 'CairoLocal'; src: url('${window.location.origin}/fonts/Cairo-Regular.ttf') format('truetype'); font-display: swap; }
+    @font-face { font-family: 'AmiriLocal'; src: url('${window.location.origin}/fonts/Amiri-Regular.ttf') format('truetype'); font-display: swap; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'CairoLocal', 'AmiriLocal', sans-serif; direction: rtl; padding: 20px; color: #000; background: #fff; }
+    @media print { @page { size: A4; margin: 8mm; } body { padding: 0; } table { font-size: 9px !important; } th, td { padding: 3px 4px !important; word-break: break-word; } }
+    .header { text-align: center; margin-bottom: 15px; border-bottom: 1px solid #000; padding-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+    .logo { width: 80px; height: 80px; object-fit: contain; flex-shrink: 0; }
+    .header h1 { font-size: 18px; font-weight: bold; margin-bottom: 2px; }
+    .header p { font-size: 11px; color: #000; }
+    table { width: 100%; border-collapse: collapse; }
+    .footer { text-align: center; margin-top: 15px; font-size: 9px; color: #000; border-top: 1px solid #000; padding-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="${logoSrc}" alt="Logo" class="logo" />
+    <div>
+      <h1>${title}</h1>
+      <p>Cost Management System • ${dateStr}</p>
+    </div>
+  </div>
+  ${filtersText ? `<div style="text-align:center;margin-bottom:10px;font-size:11px;font-weight:bold;border:1px solid #000;padding:6px 8px;">${filtersText}</div>` : ""}
+  <table><thead>${theadHTML}</thead><tbody>${tbodyHTML}</tbody></table>
+  <div class="footer">Powered by Mohamed Abdel Aal</div>
+  <script>(async function () { try { if (document.fonts && document.fonts.ready) { await document.fonts.ready; } } catch (e) {} window.print(); window.onafterprint = function() { window.close(); }; })();</script>
+</body>
+</html>`;
+
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(printHTML);
+      printWindow.document.close();
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -254,6 +311,9 @@ export const CostAdjustmentPage: React.FC = () => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem className="gap-2" onClick={() => handleRecordPrint(r)}>
+                          <Printer size={14} className="text-primary" /> طباعة
+                        </DropdownMenuItem>
                         <DropdownMenuItem className="gap-2" onClick={() => handleRecordExport(r, "pdf")}>
                           <FileText size={14} className="text-red-500" /> تصدير PDF
                         </DropdownMenuItem>

@@ -57,6 +57,8 @@ export const PurchaseReportsPage: React.FC = () => {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;
   const tableRef = useRef<HTMLDivElement>(null);
+  const fullReportRef = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState<null | "print" | "pdf" | "excel">(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");

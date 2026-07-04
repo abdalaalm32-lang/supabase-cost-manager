@@ -40,6 +40,7 @@ export const CostAdjustmentPage: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<FilterStatus>("الكل");
+  const [exporting, setExporting] = useState<{ id: string; type: "pdf" | "excel" } | null>(null);
 
   const { data: records = [], isLoading } = useQuery({
     queryKey: ["cost-adjustments", companyId],

@@ -8,8 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Plus, Search, Pencil, Trash2, Eye, ToggleLeft, ToggleRight } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Eye, ToggleLeft, ToggleRight, FileText, FileSpreadsheet, MoreHorizontal, Loader2 } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
+import { exportToExcel, exportToPDF, type ExportColumn } from "@/lib/exportUtils";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -18,6 +22,15 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
 type FilterStatus = "الكل" | "مكتمل" | "مؤرشف" | "معدل";
+
+type AdjustmentItem = {
+  id?: string;
+  stock_item_id?: string;
+  name: string;
+  unit?: string;
+  old_cost: number;
+  new_cost: number;
+};
 
 export const CostAdjustmentPage: React.FC = () => {
   const { auth } = useAuth();

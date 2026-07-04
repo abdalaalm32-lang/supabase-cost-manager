@@ -8,8 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Plus, Search, Pencil, Trash2, Eye, ToggleLeft, ToggleRight } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Eye, ToggleLeft, ToggleRight, FileText, FileSpreadsheet, MoreHorizontal, Loader2 } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
+import { exportToExcel, exportToPDF, type ExportColumn } from "@/lib/exportUtils";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -19,6 +23,15 @@ import { useNavigate } from "react-router-dom";
 
 type FilterStatus = "الكل" | "مكتمل" | "مؤرشف" | "معدل";
 
+type AdjustmentItem = {
+  id?: string;
+  stock_item_id?: string;
+  name: string;
+  unit?: string;
+  old_cost: number;
+  new_cost: number;
+};
+
 export const CostAdjustmentPage: React.FC = () => {
   const { auth } = useAuth();
   const qc = useQueryClient();
@@ -27,13 +40,14 @@ export const CostAdjustmentPage: React.FC = () => {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<FilterStatus>("الكل");
+  const [exporting, setExporting] = useState<{ id: string; type: "pdf" | "excel" } | null>(null);
 
   const { data: records = [], isLoading } = useQuery({
     queryKey: ["cost-adjustments", companyId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("cost_adjustments")
-        .select("*, cost_adjustment_items(id)")
+        .select("*, cost_adjustment_items(id, stock_item_id, name, unit, old_cost, new_cost)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;
@@ -102,6 +116,63 @@ export const CostAdjustmentPage: React.FC = () => {
       return b?.name || "—";
     }
     return "—";
+  };
+
+  const getRecordExportData = (r: any) => {
+    const items: AdjustmentItem[] = r.cost_adjustment_items || [];
+    const location = getLocation(r);
+    const recordDate = new Date(r.date).toLocaleDateString("ar-EG");
+    const recordStatus = (r as any).is_edited && r.status === "مكتمل" ? "معدل" : r.status;
+    const recordNumber = r.record_number || "—";
+
+    const columns: ExportColumn[] = [
+      { key: "name", label: "اسم الصنف" },
+      { key: "unit", label: "الوحدة" },
+      { key: "old_cost", label: "التكلفة السابقة" },
+      { key: "new_cost", label: "التكلفة الجديدة" },
+      { key: "difference", label: "الفرق" },
+    ];
+
+    const data = items.map((item: AdjustmentItem) => ({
+      name: item.name || "—",
+      unit: item.unit || "—",
+      old_cost: Number(item.old_cost).toFixed(2),
+      new_cost: Number(item.new_cost).toFixed(2),
+      difference: (Number(item.new_cost) - Number(item.old_cost)).toFixed(2),
+    }));
+
+    const filters = [
+      { label: "رقم السجل", value: recordNumber },
+      { label: "التاريخ", value: recordDate },
+      { label: "الموقع", value: location },
+      { label: "الحالة", value: recordStatus },
+      { label: "عدد الأصناف", value: String(items.length) },
+    ];
+
+    return { columns, data, filters, recordNumber, recordDate, location, recordStatus };
+  };
+
+  const handleRecordExport = async (r: any, type: "pdf" | "excel") => {
+    setExporting({ id: r.id, type });
+    try {
+      const { columns, data, filters, recordNumber } = getRecordExportData(r);
+      const safeRecordNumber = (recordNumber || "سجل").replace(/[^\w\u0600-\u06FF-]/g, "_");
+      const title = `تعديل تكلفة - ${recordNumber}`;
+      const filename = `تعديل_تكلفة_${safeRecordNumber}`;
+
+      if (type === "pdf") {
+        await exportToPDF({ title, filename, columns, data, filters });
+        toast.success("تم تصدير PDF بنجاح");
+      } else {
+        await exportToExcel({ title, filename, columns, data, filters });
+        toast.success("تم تصدير Excel بنجاح");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("حدث خطأ أثناء التصدير");
+    } finally {
+      setExporting(null);
+    }
   };
 
   return (
@@ -176,6 +247,21 @@ export const CostAdjustmentPage: React.FC = () => {
                     <Button variant="ghost" size="icon" className="h-7 w-7" title={r.status === "مؤرشف" ? "إلغاء الأرشفة" : "أرشفة"} onClick={() => toggleArchiveMutation.mutate({ id: r.id, status: r.status })}>
                       {r.status === "مؤرشف" ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
                     </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" title="طباعة / تصدير" disabled={exporting?.id === r.id}>
+                          {exporting?.id === r.id ? <Loader2 size={14} className="animate-spin" /> : <MoreHorizontal size={14} />}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem className="gap-2" onClick={() => handleRecordExport(r, "pdf")}>
+                          <FileText size={14} className="text-red-500" /> تصدير PDF
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="gap-2" onClick={() => handleRecordExport(r, "excel")}>
+                          <FileSpreadsheet size={14} className="text-green-600" /> تصدير Excel
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" title="حذف">

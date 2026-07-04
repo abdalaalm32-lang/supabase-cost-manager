@@ -920,6 +920,54 @@ export const MenuEngineeringPage: React.FC = () => {
                   </Button>
                 );
               })}
+
+              {/* Hide/Show categories */}
+              {groupedEngineeringData.length > 0 && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-7 text-xs gap-1 mr-auto">
+                      {hiddenCategories.size > 0 ? <EyeOff size={12} /> : <Eye size={12} />}
+                      إخفاء / إظهار المجموعات
+                      {hiddenCategories.size > 0 && (
+                        <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
+                          {hiddenCategories.size} مخفية
+                        </Badge>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-72 p-0" align="end">
+                    <div className="p-3 border-b flex items-center justify-between">
+                      <span className="text-xs font-semibold">اختر المجموعات لإخفائها من العرض والطباعة</span>
+                      {hiddenCategories.size > 0 && (
+                        <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => setHiddenCategories(new Set())}>
+                          إظهار الكل
+                        </Button>
+                      )}
+                    </div>
+                    <div className="max-h-72 overflow-y-auto p-2 space-y-1">
+                      {groupedEngineeringData.map((grp) => {
+                        const k = catKey(grp);
+                        const hidden = hiddenCategories.has(k);
+                        return (
+                          <label
+                            key={k}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/50 cursor-pointer"
+                          >
+                            <Checkbox checked={!hidden} onCheckedChange={() => toggleCategory(k)} />
+                            <span className={cn("text-xs flex-1 truncate", hidden && "line-through text-muted-foreground")}>
+                              {grp.categoryCode ? `[${grp.categoryCode}] ` : ""}{grp.categoryName}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">{grp.rows.length}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <div className="p-2 border-t text-[10px] text-muted-foreground text-center">
+                      الإخفاء لا يؤثر على الإجماليات في الأعلى — فقط على الجدول والطباعة والتصدير
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
             </div>
           )}
 

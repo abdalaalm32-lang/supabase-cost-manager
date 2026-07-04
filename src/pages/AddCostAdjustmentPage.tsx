@@ -49,6 +49,7 @@ export const AddCostAdjustmentPage: React.FC = () => {
   const [items, setItems] = useState<AdjustmentItem[]>([]);
   const [itemPickerOpen, setItemPickerOpen] = useState(false);
   const [itemSearch, setItemSearch] = useState("");
+  const [tableSearch, setTableSearch] = useState("");
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
   const [submitted, setSubmitted] = useState(false);
   const [pickerFilterDept, setPickerFilterDept] = useState("all");

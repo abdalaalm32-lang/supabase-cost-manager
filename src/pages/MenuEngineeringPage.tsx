@@ -580,7 +580,7 @@ export const MenuEngineeringPage: React.FC = () => {
         </div>
         <div className="flex items-center gap-2 print:hidden">
           <ExportButtons
-            data={engineeringData.map((r, idx) => ({
+            data={visibleEngineeringData.map((r, idx) => ({
               "#": idx + 1,
               الصنف: r.name,
               "كمية المبيعات": r.qty,
@@ -661,7 +661,7 @@ export const MenuEngineeringPage: React.FC = () => {
             };
             let tbodyHTML = "";
             let runningIdx = 0;
-            groupedEngineeringData.forEach((grp) => {
+            visibleGroupedData.forEach((grp) => {
               const filteredRows = strategicFilter === "all" ? grp.rows : grp.rows.filter((r) => r.strategic === strategicFilter);
               if (filteredRows.length === 0) return;
               const groupSubtotal = {
@@ -956,7 +956,7 @@ export const MenuEngineeringPage: React.FC = () => {
                 ) : (
                   (() => {
                     let runningIdx = 0;
-                    const filteredGroups = groupedEngineeringData
+                    const filteredGroups = visibleGroupedData
                       .map((grp) => ({
                         ...grp,
                         rows: strategicFilter === "all" ? grp.rows : grp.rows.filter((r) => r.strategic === strategicFilter),

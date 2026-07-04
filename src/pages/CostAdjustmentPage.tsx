@@ -153,12 +153,13 @@ export const CostAdjustmentPage: React.FC = () => {
   };
 
   const handleRecordExport = async (r: any, type: "pdf" | "excel") => {
-    const { columns, data, filters, recordNumber } = getRecordExportData(r);
-    const safeRecordNumber = (recordNumber || "سجل").replace(/[^\w\u0600-\u06FF-]/g, "_");
-    const title = `تعديل تكلفة - ${recordNumber}`;
-    const filename = `تعديل_تكلفة_${safeRecordNumber}`;
-
+    setExporting({ id: r.id, type });
     try {
+      const { columns, data, filters, recordNumber } = getRecordExportData(r);
+      const safeRecordNumber = (recordNumber || "سجل").replace(/[^\w\u0600-\u06FF-]/g, "_");
+      const title = `تعديل تكلفة - ${recordNumber}`;
+      const filename = `تعديل_تكلفة_${safeRecordNumber}`;
+
       if (type === "pdf") {
         await exportToPDF({ title, filename, columns, data, filters });
         toast.success("تم تصدير PDF بنجاح");
@@ -169,6 +170,8 @@ export const CostAdjustmentPage: React.FC = () => {
     } catch (err) {
       console.error(err);
       toast.error("حدث خطأ أثناء التصدير");
+    } finally {
+      setExporting(null);
     }
   };
 

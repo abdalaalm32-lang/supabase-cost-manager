@@ -511,8 +511,17 @@ export const MenuEngineeringPage: React.FC = () => {
     return Array.from(groups.values());
   }, [engineeringData]);
 
+  // Filter out user-hidden categories for display/export/print (totals stay based on full data)
+  const visibleEngineeringData = useMemo(
+    () => engineeringData.filter((r) => !hiddenCategories.has(`${r.categoryCode}__${r.categoryName}`)),
+    [engineeringData, hiddenCategories]
+  );
+  const visibleGroupedData = useMemo(
+    () => groupedEngineeringData.filter((g) => !hiddenCategories.has(catKey(g))),
+    [groupedEngineeringData, hiddenCategories]
+  );
 
-  // Totals
+  // Totals (based on the FULL engineering data — hidden categories do not change totals)
   const totals = useMemo(() => {
     return {
       qty: engineeringData.reduce((s, r) => s + r.qty, 0),

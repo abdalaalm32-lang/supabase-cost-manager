@@ -314,13 +314,29 @@ export const MenuEngineeringPage: React.FC = () => {
   const salesAggByName = useMemo(() => {
     const map: Record<string, { qty: number; revenue: number; sourceItem?: any }> = {};
     sales.forEach((sale: any) => {
-      (sale.pos_sale_items || []).forEach((si: any) => {
-        const name = normName(si?.pos_items?.name);
-        if (!name) return;
+      const items = sale.pos_sale_items || [];
+      // Pre-compute the invoice subtotal so an invoice-level discount can be
+      // distributed pro-rata across each line item's revenue.
+      let saleSubtotal = 0;
+      const lineTotals: number[] = [];
+      items.forEach((si: any) => {
         const qty = Number(si.quantity ?? 0);
         const unitPrice = Number(si.unit_price ?? 0);
         const storedLineTotal = Number(si.total ?? NaN);
-        const lineTotal = Number.isFinite(storedLineTotal) ? storedLineTotal : qty * unitPrice;
+        const lt = Number.isFinite(storedLineTotal) ? storedLineTotal : qty * unitPrice;
+        lineTotals.push(lt);
+        saleSubtotal += lt;
+      });
+      const discount = Number(sale.discount_amount ?? 0);
+      const discountFactor = discount > 0 && saleSubtotal > 0
+        ? Math.max(0, (saleSubtotal - discount) / saleSubtotal)
+        : 1;
+
+      items.forEach((si: any, idx: number) => {
+        const name = normName(si?.pos_items?.name);
+        if (!name) return;
+        const qty = Number(si.quantity ?? 0);
+        const lineTotal = lineTotals[idx] * discountFactor;
         if (!map[name]) map[name] = { qty: 0, revenue: 0, sourceItem: si.pos_items };
         map[name].qty += qty;
         map[name].revenue += lineTotal;

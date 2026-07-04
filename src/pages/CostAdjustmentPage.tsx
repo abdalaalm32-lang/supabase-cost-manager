@@ -117,6 +117,60 @@ export const CostAdjustmentPage: React.FC = () => {
     return "—";
   };
 
+  const getRecordExportData = (r: any) => {
+    const items: AdjustmentItem[] = r.cost_adjustment_items || [];
+    const location = getLocation(r);
+    const recordDate = new Date(r.date).toLocaleDateString("ar-EG");
+    const recordStatus = (r as any).is_edited && r.status === "مكتمل" ? "معدل" : r.status;
+    const recordNumber = r.record_number || "—";
+
+    const columns: ExportColumn[] = [
+      { key: "name", label: "اسم الصنف" },
+      { key: "unit", label: "الوحدة" },
+      { key: "old_cost", label: "التكلفة السابقة" },
+      { key: "new_cost", label: "التكلفة الجديدة" },
+      { key: "difference", label: "الفرق" },
+    ];
+
+    const data = items.map((item: AdjustmentItem) => ({
+      name: item.name || "—",
+      unit: item.unit || "—",
+      old_cost: Number(item.old_cost).toFixed(2),
+      new_cost: Number(item.new_cost).toFixed(2),
+      difference: (Number(item.new_cost) - Number(item.old_cost)).toFixed(2),
+    }));
+
+    const filters = [
+      { label: "رقم السجل", value: recordNumber },
+      { label: "التاريخ", value: recordDate },
+      { label: "الموقع", value: location },
+      { label: "الحالة", value: recordStatus },
+      { label: "عدد الأصناف", value: String(items.length) },
+    ];
+
+    return { columns, data, filters, recordNumber, recordDate, location, recordStatus };
+  };
+
+  const handleRecordExport = async (r: any, type: "pdf" | "excel") => {
+    const { columns, data, filters, recordNumber } = getRecordExportData(r);
+    const safeRecordNumber = (recordNumber || "سجل").replace(/[^\w\u0600-\u06FF-]/g, "_");
+    const title = `تعديل تكلفة - ${recordNumber}`;
+    const filename = `تعديل_تكلفة_${safeRecordNumber}`;
+
+    try {
+      if (type === "pdf") {
+        await exportToPDF({ title, filename, columns, data, filters });
+        toast.success("تم تصدير PDF بنجاح");
+      } else {
+        await exportToExcel({ title, filename, columns, data, filters });
+        toast.success("تم تصدير Excel بنجاح");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("حدث خطأ أثناء التصدير");
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">

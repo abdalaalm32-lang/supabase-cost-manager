@@ -144,11 +144,16 @@ export const PurchaseInvoicesTab: React.FC = () => {
     }
 
     if (dateRange?.from && dateRange?.to) {
-      const from = startOfDay(dateRange.from);
-      const to = endOfDay(dateRange.to);
+      // Compare as YYYY-MM-DD strings to avoid timezone drift (purchase date is a
+      // `date` column returned as "YYYY-MM-DD" by Supabase).
+      const fromStr = format(dateRange.from, "yyyy-MM-dd");
+      const toStr = format(dateRange.to, "yyyy-MM-dd");
       result = result.filter((o: any) => {
-        const d = new Date(o.date);
-        return d >= from && d <= to;
+        if (!o.date) return false;
+        const ds = typeof o.date === "string"
+          ? o.date.slice(0, 10)
+          : format(new Date(o.date), "yyyy-MM-dd");
+        return ds >= fromStr && ds <= toStr;
       });
     }
 

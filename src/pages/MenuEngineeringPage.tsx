@@ -24,8 +24,9 @@ import {
 import {
   ChefHat, Wine, Star, HelpCircle, Tractor, Dog,
   TrendingUp, DollarSign, BarChart3, PieChart as PieChartIcon, CalendarIcon,
-  Printer, Loader2,
+  Printer, Loader2, Eye, EyeOff,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // Thresholds
 const THRESHOLDS = {
@@ -129,6 +130,13 @@ export const MenuEngineeringPage: React.FC = () => {
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [strategicFilter, setStrategicFilter] = useState<Strategic | "all">("all");
   const [detailItem, setDetailItem] = useState<EngRow | null>(null);
+  const [hiddenCategories, setHiddenCategories] = useState<Set<string>>(new Set());
+  const catKey = (grp: { categoryCode: string; categoryName: string }) => `${grp.categoryCode}__${grp.categoryName}`;
+  const toggleCategory = (k: string) => setHiddenCategories((prev) => {
+    const next = new Set(prev);
+    if (next.has(k)) next.delete(k); else next.add(k);
+    return next;
+  });
 
   // Queries
   const { data: branches = [] } = useQuery({
@@ -314,13 +322,29 @@ export const MenuEngineeringPage: React.FC = () => {
   const salesAggByName = useMemo(() => {
     const map: Record<string, { qty: number; revenue: number; sourceItem?: any }> = {};
     sales.forEach((sale: any) => {
-      (sale.pos_sale_items || []).forEach((si: any) => {
-        const name = normName(si?.pos_items?.name);
-        if (!name) return;
+      const items = sale.pos_sale_items || [];
+      // Pre-compute the invoice subtotal so an invoice-level discount can be
+      // distributed pro-rata across each line item's revenue.
+      let saleSubtotal = 0;
+      const lineTotals: number[] = [];
+      items.forEach((si: any) => {
         const qty = Number(si.quantity ?? 0);
         const unitPrice = Number(si.unit_price ?? 0);
         const storedLineTotal = Number(si.total ?? NaN);
-        const lineTotal = Number.isFinite(storedLineTotal) ? storedLineTotal : qty * unitPrice;
+        const lt = Number.isFinite(storedLineTotal) ? storedLineTotal : qty * unitPrice;
+        lineTotals.push(lt);
+        saleSubtotal += lt;
+      });
+      const discount = Number(sale.discount_amount ?? 0);
+      const discountFactor = discount > 0 && saleSubtotal > 0
+        ? Math.max(0, (saleSubtotal - discount) / saleSubtotal)
+        : 1;
+
+      items.forEach((si: any, idx: number) => {
+        const name = normName(si?.pos_items?.name);
+        if (!name) return;
+        const qty = Number(si.quantity ?? 0);
+        const lineTotal = lineTotals[idx] * discountFactor;
         if (!map[name]) map[name] = { qty: 0, revenue: 0, sourceItem: si.pos_items };
         map[name].qty += qty;
         map[name].revenue += lineTotal;
@@ -487,8 +511,17 @@ export const MenuEngineeringPage: React.FC = () => {
     return Array.from(groups.values());
   }, [engineeringData]);
 
+  // Filter out user-hidden categories for display/export/print (totals stay based on full data)
+  const visibleEngineeringData = useMemo(
+    () => engineeringData.filter((r) => !hiddenCategories.has(`${r.categoryCode}__${r.categoryName}`)),
+    [engineeringData, hiddenCategories]
+  );
+  const visibleGroupedData = useMemo(
+    () => groupedEngineeringData.filter((g) => !hiddenCategories.has(catKey(g))),
+    [groupedEngineeringData, hiddenCategories]
+  );
 
-  // Totals
+  // Totals (based on the FULL engineering data — hidden categories do not change totals)
   const totals = useMemo(() => {
     return {
       qty: engineeringData.reduce((s, r) => s + r.qty, 0),
@@ -547,7 +580,7 @@ export const MenuEngineeringPage: React.FC = () => {
         </div>
         <div className="flex items-center gap-2 print:hidden">
           <ExportButtons
-            data={engineeringData.map((r, idx) => ({
+            data={visibleEngineeringData.map((r, idx) => ({
               "#": idx + 1,
               الصنف: r.name,
               "كمية المبيعات": r.qty,
@@ -628,7 +661,7 @@ export const MenuEngineeringPage: React.FC = () => {
             };
             let tbodyHTML = "";
             let runningIdx = 0;
-            groupedEngineeringData.forEach((grp) => {
+            visibleGroupedData.forEach((grp) => {
               const filteredRows = strategicFilter === "all" ? grp.rows : grp.rows.filter((r) => r.strategic === strategicFilter);
               if (filteredRows.length === 0) return;
               const groupSubtotal = {
@@ -887,6 +920,54 @@ export const MenuEngineeringPage: React.FC = () => {
                   </Button>
                 );
               })}
+
+              {/* Hide/Show categories */}
+              {groupedEngineeringData.length > 0 && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-7 text-xs gap-1 mr-auto">
+                      {hiddenCategories.size > 0 ? <EyeOff size={12} /> : <Eye size={12} />}
+                      إخفاء / إظهار المجموعات
+                      {hiddenCategories.size > 0 && (
+                        <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
+                          {hiddenCategories.size} مخفية
+                        </Badge>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-72 p-0" align="end">
+                    <div className="p-3 border-b flex items-center justify-between">
+                      <span className="text-xs font-semibold">اختر المجموعات لإخفائها من العرض والطباعة</span>
+                      {hiddenCategories.size > 0 && (
+                        <Button variant="ghost" size="sm" className="h-6 text-[10px]" onClick={() => setHiddenCategories(new Set())}>
+                          إظهار الكل
+                        </Button>
+                      )}
+                    </div>
+                    <div className="max-h-72 overflow-y-auto p-2 space-y-1">
+                      {groupedEngineeringData.map((grp) => {
+                        const k = catKey(grp);
+                        const hidden = hiddenCategories.has(k);
+                        return (
+                          <label
+                            key={k}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted/50 cursor-pointer"
+                          >
+                            <Checkbox checked={!hidden} onCheckedChange={() => toggleCategory(k)} />
+                            <span className={cn("text-xs flex-1 truncate", hidden && "line-through text-muted-foreground")}>
+                              {grp.categoryCode ? `[${grp.categoryCode}] ` : ""}{grp.categoryName}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">{grp.rows.length}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <div className="p-2 border-t text-[10px] text-muted-foreground text-center">
+                      الإخفاء لا يؤثر على الإجماليات في الأعلى — فقط على الجدول والطباعة والتصدير
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              )}
             </div>
           )}
 
@@ -923,7 +1004,7 @@ export const MenuEngineeringPage: React.FC = () => {
                 ) : (
                   (() => {
                     let runningIdx = 0;
-                    const filteredGroups = groupedEngineeringData
+                    const filteredGroups = visibleGroupedData
                       .map((grp) => ({
                         ...grp,
                         rows: strategicFilter === "all" ? grp.rows : grp.rows.filter((r) => r.strategic === strategicFilter),

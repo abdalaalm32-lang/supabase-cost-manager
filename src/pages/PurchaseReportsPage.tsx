@@ -1,6 +1,12 @@
 import React, { useState, useMemo, useRef } from "react";
 import { ExportButtons } from "@/components/ExportButtons";
 import { PrintButton } from "@/components/PrintButton";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
+import { toast } from "sonner";
+import { Loader2, Image as ImageIcon } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -51,6 +57,8 @@ export const PurchaseReportsPage: React.FC = () => {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;
   const tableRef = useRef<HTMLDivElement>(null);
+  const fullReportRef = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState<null | "print" | "pdf" | "excel">(null);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -408,6 +416,183 @@ export const PurchaseReportsPage: React.FC = () => {
 
   const fmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+
+
+  // Capture the full report area (KPIs + charts + table) as a canvas image.
+  const captureReport = async (): Promise<HTMLCanvasElement | null> => {
+    const el = fullReportRef.current;
+    if (!el) return null;
+    // Temporarily neutralise `print:hidden` and give a solid background so charts render cleanly.
+    return await html2canvas(el, {
+      backgroundColor: "#ffffff",
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      windowWidth: el.scrollWidth,
+    });
+  };
+
+  const filtersLine = () => {
+    const parts: string[] = [];
+    parts.push(`${locationType === "branch" ? "الفرع" : "المخزن"}: ${locationFilter === "all" ? "الكل" : ((locationType === "branch" ? branches : warehouses)?.find((l: any) => l.id === locationFilter)?.name ?? "—")}`);
+    parts.push(`المورد: ${supplierFilter === "all" ? "الكل" : (suppliers?.find((s: any) => s.id === supplierFilter)?.name ?? "—")}`);
+    if (dateFrom) parts.push(`من: ${format(dateFrom, "yyyy/MM/dd")}`);
+    if (dateTo) parts.push(`إلى: ${format(dateTo, "yyyy/MM/dd")}`);
+    return parts.join("   •   ");
+  };
+
+  const handleFullPrint = async () => {
+    setExporting("print");
+    try {
+      const canvas = await captureReport();
+      if (!canvas) return;
+      const dataUrl = canvas.toDataURL("image/png");
+      const w = window.open("", "_blank");
+      if (!w) return;
+      const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
+      w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقارير المشتريات</title>
+<style>
+  @page { size: A4 landscape; margin: 8mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Cairo', 'Amiri', sans-serif; padding: 10px; background: #fff; color: #000; }
+  .hdr { text-align: center; margin-bottom: 8px; border-bottom: 1px solid #000; padding-bottom: 6px; }
+  .hdr h1 { font-size: 16px; }
+  .hdr p { font-size: 10px; margin-top: 2px; }
+  .filters { text-align: center; font-size: 10px; font-weight: bold; border: 1px solid #000; padding: 4px 6px; margin-bottom: 8px; }
+  img { display: block; width: 100%; height: auto; }
+  .footer { text-align: center; font-size: 8px; margin-top: 8px; border-top: 1px solid #000; padding-top: 4px; }
+</style></head><body>
+  <div class="hdr"><h1>تقارير المشتريات</h1><p>Cost Management System • ${dateStr}</p></div>
+  <div class="filters">${filtersLine()}</div>
+  <img src="${dataUrl}" alt="report" />
+  <div class="footer">Powered by Mohamed Abdel Aal</div>
+  <script>window.onload=function(){setTimeout(function(){window.print();window.onafterprint=function(){window.close();};},250);};</script>
+</body></html>`);
+      w.document.close();
+    } catch (e: any) {
+      toast.error("تعذر إنشاء نسخة الطباعة: " + (e?.message || ""));
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const handleFullPDF = async () => {
+    setExporting("pdf");
+    try {
+      const canvas = await captureReport();
+      if (!canvas) return;
+      const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const margin = 8;
+      const imgW = pageW - margin * 2;
+      const imgH = (canvas.height * imgW) / canvas.width;
+
+      // Header
+      pdf.setFontSize(13);
+      pdf.text("Purchase Reports / تقارير المشتريات", pageW / 2, 10, { align: "center" });
+      pdf.setFontSize(8);
+      pdf.text(new Date().toLocaleDateString("en-GB"), pageW / 2, 15, { align: "center" });
+
+      let position = 20;
+      const dataUrl = canvas.toDataURL("image/png");
+
+      if (imgH <= pageH - position - margin) {
+        pdf.addImage(dataUrl, "PNG", margin, position, imgW, imgH);
+      } else {
+        // Paginate: draw slices of the canvas per page
+        const pageInnerH = pageH - position - margin;
+        const sliceHpx = (pageInnerH * canvas.width) / imgW;
+        let renderedPx = 0;
+        while (renderedPx < canvas.height) {
+          const currentSlicePx = Math.min(sliceHpx, canvas.height - renderedPx);
+          const slice = document.createElement("canvas");
+          slice.width = canvas.width;
+          slice.height = currentSlicePx;
+          const ctx = slice.getContext("2d")!;
+          ctx.drawImage(canvas, 0, renderedPx, canvas.width, currentSlicePx, 0, 0, canvas.width, currentSlicePx);
+          const sliceDataUrl = slice.toDataURL("image/png");
+          const sliceImgH = (currentSlicePx * imgW) / canvas.width;
+          if (renderedPx > 0) {
+            pdf.addPage();
+            position = margin;
+          }
+          pdf.addImage(sliceDataUrl, "PNG", margin, position, imgW, sliceImgH);
+          renderedPx += currentSlicePx;
+        }
+      }
+      pdf.save(`تقارير_المشتريات_${format(new Date(), "yyyy-MM-dd")}.pdf`);
+    } catch (e: any) {
+      toast.error("تعذر إنشاء PDF: " + (e?.message || ""));
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const handleFullExcel = async () => {
+    setExporting("excel");
+    try {
+      const canvas = await captureReport();
+      const wb = new ExcelJS.Workbook();
+      wb.creator = "Cost Management System";
+      const ws = wb.addWorksheet("تقرير المشتريات");
+      (ws as any).views = [{ rightToLeft: true }];
+
+      // Title + filters
+      ws.mergeCells("A1:H1");
+      const titleCell = ws.getCell("A1");
+      titleCell.value = "تقارير المشتريات";
+      titleCell.font = { bold: true, size: 16, name: "Cairo", color: { argb: "FF134E4A" } };
+      titleCell.alignment = { horizontal: "center", vertical: "middle" };
+      ws.getRow(1).height = 30;
+
+      ws.mergeCells("A2:H2");
+      ws.getCell("A2").value = filtersLine();
+      ws.getCell("A2").font = { bold: true, size: 10, name: "Cairo" };
+      ws.getCell("A2").alignment = { horizontal: "center", vertical: "middle" };
+
+      // KPI rows
+      const kpis = [
+        ["عدد الفواتير", stats.invoiceCount],
+        ["إجمالي قيمة المشتريات", stats.totalInvoiceValue.toFixed(2)],
+        ["خامات تم شراؤها", stats.totalItems],
+        ["متوسط قيمة الفاتورة", stats.avgInvoiceValue.toFixed(2)],
+      ];
+      const kpiHeader = ws.addRow(["", ...kpis.map((k) => k[0])]);
+      kpiHeader.eachCell((c, i) => { if (i > 1) { c.font = { bold: true, color: { argb: "FFFFFFFF" }, name: "Cairo" }; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F766E" } }; c.alignment = { horizontal: "center" }; } });
+      const kpiRow = ws.addRow(["", ...kpis.map((k) => k[1])]);
+      kpiRow.eachCell((c, i) => { if (i > 1) { c.font = { bold: true, size: 12, name: "Cairo" }; c.alignment = { horizontal: "center" }; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE6FFFA" } }; } });
+      ws.addRow([]);
+
+      // Embed the report snapshot image
+      if (canvas) {
+        const dataUrl = canvas.toDataURL("image/png");
+        const imgId = wb.addImage({ base64: dataUrl, extension: "png" });
+        const imgH = Math.min(600, (canvas.height * 700) / canvas.width);
+        ws.addImage(imgId, { tl: { col: 0, row: ws.rowCount }, ext: { width: 900, height: imgH } });
+        // Add empty rows so subsequent data doesn't overlap the image
+        const rowsNeeded = Math.ceil(imgH / 18);
+        for (let i = 0; i < rowsNeeded + 2; i++) ws.addRow([]);
+      }
+
+      // Data table
+      const headerRow = ws.addRow(["الكود", "اسم الخامة", "المجموعة", "عدد الشراء", "المورد الأكثر", "إجمالي الكمية", "الوحدة", "التكلفة المعيارية", "متوسط التكلفة", "فرق السعر", "إجمالي القيمة"]);
+      headerRow.eachCell((c) => { c.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10, name: "Cairo" }; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F766E" } }; c.alignment = { horizontal: "center" }; });
+      filteredData.forEach((i: any) => {
+        const r = ws.addRow([i.code || "—", i.name, i.categoryName, i.purchaseCount, `${i.topSupplier} (${i.topSupplierCount})`, fmt(i.totalQty), i.unit, fmt(i.standardCost), fmt(i.avgCost), fmt(i.priceDiff), fmt(i.totalValue)]);
+        r.eachCell((c) => { c.alignment = { horizontal: "center" }; c.font = { size: 9, name: "Cairo" }; });
+      });
+
+      const buffer = await wb.xlsx.writeBuffer();
+      saveAs(new Blob([buffer]), `تقارير_المشتريات_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+    } catch (e: any) {
+      toast.error("تعذر إنشاء Excel: " + (e?.message || ""));
+    } finally {
+      setExporting(null);
+    }
+  };
+
+
   return (
     <div className="space-y-6 print:space-y-4" dir="rtl">
       {/* Header */}
@@ -517,8 +702,27 @@ export const PurchaseReportsPage: React.FC = () => {
         </CardContent>
       </Card>
 
+      {/* Full report action bar */}
+      <div className="flex items-center justify-end gap-2 print:hidden">
+        <Button variant="outline" size="sm" className="gap-2" onClick={handleFullPrint} disabled={!!exporting}>
+          {exporting === "print" ? <Loader2 size={14} className="animate-spin" /> : <ImageIcon size={14} />}
+          طباعة كامل التقرير
+        </Button>
+        <Button variant="outline" size="sm" className="gap-2" onClick={handleFullPDF} disabled={!!exporting}>
+          {exporting === "pdf" ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
+          PDF كامل
+        </Button>
+        <Button variant="outline" size="sm" className="gap-2" onClick={handleFullExcel} disabled={!!exporting}>
+          {exporting === "excel" ? <Loader2 size={14} className="animate-spin" /> : <FileSpreadsheet size={14} className="text-green-600" />}
+          Excel كامل
+        </Button>
+      </div>
+
+      {/* Full report content (captured for the export buttons above) */}
+      <div ref={fullReportRef} className="space-y-6 bg-background p-2 rounded-lg">
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+
         <Card>
           <CardContent className="pt-4 pb-4">
             <div className="flex items-center gap-3">
@@ -841,6 +1045,8 @@ export const PurchaseReportsPage: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
+
   );
 };

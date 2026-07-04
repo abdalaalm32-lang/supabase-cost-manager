@@ -1,0 +1,1 @@
+ALTER TABLE public.cost_adjustments ADD COLUMN IF NOT EXISTS created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL;

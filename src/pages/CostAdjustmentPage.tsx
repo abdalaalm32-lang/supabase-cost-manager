@@ -46,7 +46,7 @@ export const CostAdjustmentPage: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("cost_adjustments")
-        .select("*, cost_adjustment_items(id)")
+        .select("*, cost_adjustment_items(id, stock_item_id, name, unit, old_cost, new_cost)")
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data;

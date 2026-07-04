@@ -24,8 +24,9 @@ import {
 import {
   ChefHat, Wine, Star, HelpCircle, Tractor, Dog,
   TrendingUp, DollarSign, BarChart3, PieChart as PieChartIcon, CalendarIcon,
-  Printer, Loader2,
+  Printer, Loader2, Eye, EyeOff,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // Thresholds
 const THRESHOLDS = {

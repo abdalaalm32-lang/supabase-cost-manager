@@ -702,8 +702,27 @@ export const PurchaseReportsPage: React.FC = () => {
         </CardContent>
       </Card>
 
+      {/* Full report action bar */}
+      <div className="flex items-center justify-end gap-2 print:hidden">
+        <Button variant="outline" size="sm" className="gap-2" onClick={handleFullPrint} disabled={!!exporting}>
+          {exporting === "print" ? <Loader2 size={14} className="animate-spin" /> : <ImageIcon size={14} />}
+          طباعة كامل التقرير
+        </Button>
+        <Button variant="outline" size="sm" className="gap-2" onClick={handleFullPDF} disabled={!!exporting}>
+          {exporting === "pdf" ? <Loader2 size={14} className="animate-spin" /> : <FileText size={14} />}
+          PDF كامل
+        </Button>
+        <Button variant="outline" size="sm" className="gap-2" onClick={handleFullExcel} disabled={!!exporting}>
+          {exporting === "excel" ? <Loader2 size={14} className="animate-spin" /> : <FileSpreadsheet size={14} className="text-green-600" />}
+          Excel كامل
+        </Button>
+      </div>
+
+      {/* Full report content (captured for the export buttons above) */}
+      <div ref={fullReportRef} className="space-y-6 bg-background p-2 rounded-lg">
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+
         <Card>
           <CardContent className="pt-4 pb-4">
             <div className="flex items-center gap-3">

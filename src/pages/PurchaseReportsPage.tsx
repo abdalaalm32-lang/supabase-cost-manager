@@ -414,6 +414,10 @@ export const PurchaseReportsPage: React.FC = () => {
     window.print();
   };
 
+  const fmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+
+
   // Capture the full report area (KPIs + charts + table) as a canvas image.
   const captureReport = async (): Promise<HTMLCanvasElement | null> => {
     const el = fullReportRef.current;

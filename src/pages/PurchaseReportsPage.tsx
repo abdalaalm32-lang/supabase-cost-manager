@@ -1045,6 +1045,8 @@ export const PurchaseReportsPage: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
+
   );
 };

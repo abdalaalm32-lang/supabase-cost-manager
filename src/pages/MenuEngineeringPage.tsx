@@ -130,6 +130,13 @@ export const MenuEngineeringPage: React.FC = () => {
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [strategicFilter, setStrategicFilter] = useState<Strategic | "all">("all");
   const [detailItem, setDetailItem] = useState<EngRow | null>(null);
+  const [hiddenCategories, setHiddenCategories] = useState<Set<string>>(new Set());
+  const catKey = (grp: { categoryCode: string; categoryName: string }) => `${grp.categoryCode}__${grp.categoryName}`;
+  const toggleCategory = (k: string) => setHiddenCategories((prev) => {
+    const next = new Set(prev);
+    if (next.has(k)) next.delete(k); else next.add(k);
+    return next;
+  });
 
   // Queries
   const { data: branches = [] } = useQuery({

@@ -136,6 +136,22 @@ export const AddCostAdjustmentPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  // Fetch creator profile for edit/view mode
+  const creatorId = (existingRecord as any)?.created_by;
+  const { data: creatorProfile } = useQuery({
+    queryKey: ["profile-creator", creatorId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("full_name, user_code").eq("user_id", creatorId).maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!creatorId,
+  });
+
+  const creatorName = isEdit
+    ? (creatorProfile?.full_name || "—")
+    : (auth.profile?.full_name || "—");
+
   useEffect(() => {
     if (!isEdit) {
       setHydratedEditId("new");

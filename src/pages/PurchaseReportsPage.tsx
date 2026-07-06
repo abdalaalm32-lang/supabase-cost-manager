@@ -785,7 +785,7 @@ export const PurchaseReportsPage: React.FC = () => {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 print:hidden">
         {/* Monthly trend */}
-        <Card>
+        <Card ref={monthlyChartRef as any}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-bold">اتجاه المشتريات الشهري</CardTitle>
           </CardHeader>

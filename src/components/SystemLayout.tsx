@@ -342,9 +342,13 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
         <div className="p-3 border-t border-sidebar-border">
           {!isSidebarCollapsed && (
             <div className="flex items-center gap-2 mb-2 px-2">
-              <div className="w-9 h-9 rounded-full gradient-primary flex items-center justify-center text-primary-foreground text-xs font-bold shadow-md">
-                {userName?.charAt(0) || "U"}
-              </div>
+              {auth.profile?.avatar_url ? (
+                <img src={auth.profile.avatar_url} alt={userName} className="w-9 h-9 rounded-full object-cover shadow-md" />
+              ) : (
+                <div className="w-9 h-9 rounded-full gradient-primary flex items-center justify-center text-primary-foreground text-xs font-bold shadow-md">
+                  {userName?.charAt(0) || "U"}
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-foreground truncate">{userName}</p>
                 <p className="text-[10px] text-muted-foreground truncate">{resolvedCompanyName}</p>

@@ -803,7 +803,7 @@ export const PurchaseReportsPage: React.FC = () => {
         </Card>
 
         {/* Category distribution */}
-        <Card>
+        <Card ref={categoryChartRef as any}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-bold">توزيع المشتريات حسب المجموعة</CardTitle>
           </CardHeader>
@@ -852,7 +852,7 @@ export const PurchaseReportsPage: React.FC = () => {
         </Card>
 
         {/* Top items by purchase count */}
-        <Card>
+        <Card ref={topItemsChartRef as any}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-bold">أكثر الخامات شراءً</CardTitle>
           </CardHeader>
@@ -889,7 +889,7 @@ export const PurchaseReportsPage: React.FC = () => {
         </Card>
 
         {/* Price difference chart */}
-        <Card>
+        <Card ref={priceDiffChartRef as any}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-bold">فرق السعر (المعيارية - المتوسط)</CardTitle>
           </CardHeader>

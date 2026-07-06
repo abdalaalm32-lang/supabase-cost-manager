@@ -82,6 +82,8 @@ export const SettingsUsersPage: React.FC = () => {
   const [formSubscriptionMinutes, setFormSubscriptionMinutes] = useState<number | "">("");
   const [formSubscriptionStart, setFormSubscriptionStart] = useState<Date | undefined>();
   const [formSubscriptionEnd, setFormSubscriptionEnd] = useState<Date | undefined>();
+  const [formAvatarUrl, setFormAvatarUrl] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   // Queries
   const { data: profiles, isLoading } = useQuery({
@@ -167,6 +169,7 @@ export const SettingsUsersPage: React.FC = () => {
     setFormSubscriptionMinutes("");
     setFormSubscriptionStart(undefined);
     setFormSubscriptionEnd(undefined);
+    setFormAvatarUrl(null);
     setActiveTab("account");
     setDetailUser(null);
   };
@@ -221,6 +224,7 @@ export const SettingsUsersPage: React.FC = () => {
     setFormSubscriptionMinutes(user.subscription_minutes || "");
     setFormSubscriptionStart(user.subscription_start ? new Date(user.subscription_start) : undefined);
     setFormSubscriptionEnd(user.subscription_end ? new Date(user.subscription_end) : undefined);
+    setFormAvatarUrl(user.avatar_url || null);
     setActiveTab("account");
     setIsDialogOpen(true);
   };

@@ -573,6 +573,109 @@ export const SettingsUsersPage: React.FC = () => {
           <ScrollArea className="flex-1 min-h-0 h-[50vh] px-1 overflow-y-auto">
             {activeTab === "account" && (
               <div className="space-y-4 py-2">
+                {/* Avatar upload */}
+                <div className="flex items-center gap-4 p-3 rounded-xl border border-border/50 bg-muted/30">
+                  <div className="relative">
+                    {formAvatarUrl ? (
+                      <img src={formAvatarUrl} alt="avatar" className="w-20 h-20 rounded-full object-cover border-2 border-primary/30 shadow-md" />
+                    ) : (
+                      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/60 to-primary flex items-center justify-center text-primary-foreground text-2xl font-bold shadow-md">
+                        {(formName || "U").charAt(0)}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    <Label className="text-sm">صورة المستخدم</Label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        id="avatar-upload"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          if (file.size > 5 * 1024 * 1024) {
+                            toast.error("حجم الصورة أكبر من 5MB");
+                            return;
+                          }
+                          setAvatarUploading(true);
+                          try {
+                            // Compress to 256x256 JPEG data URL
+                            const dataUrl = await new Promise<string>((resolve, reject) => {
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                const img = new Image();
+                                img.onload = () => {
+                                  const size = 256;
+                                  const canvas = document.createElement("canvas");
+                                  canvas.width = size;
+                                  canvas.height = size;
+                                  const ctx = canvas.getContext("2d")!;
+                                  // cover-fit
+                                  const scale = Math.max(size / img.width, size / img.height);
+                                  const w = img.width * scale;
+                                  const h = img.height * scale;
+                                  ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+                                  resolve(canvas.toDataURL("image/jpeg", 0.8));
+                                };
+                                img.onerror = reject;
+                                img.src = reader.result as string;
+                              };
+                              reader.onerror = reject;
+                              reader.readAsDataURL(file);
+                            });
+                            setFormAvatarUrl(dataUrl);
+                            // If editing existing user, save immediately
+                            if (detailUser) {
+                              const { error } = await supabase
+                                .from("profiles")
+                                .update({ avatar_url: dataUrl } as any)
+                                .eq("id", detailUser.id);
+                              if (error) throw error;
+                              queryClient.invalidateQueries({ queryKey: ["settings-users"] });
+                              toast.success("تم تحديث الصورة");
+                            }
+                          } catch (err: any) {
+                            toast.error("فشل رفع الصورة: " + (err?.message || ""));
+                          } finally {
+                            setAvatarUploading(false);
+                            e.target.value = "";
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={avatarUploading}
+                        onClick={() => document.getElementById("avatar-upload")?.click()}
+                      >
+                        {avatarUploading ? "جاري الرفع..." : formAvatarUrl ? "تغيير الصورة" : "رفع صورة"}
+                      </Button>
+                      {formAvatarUrl && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive"
+                          onClick={async () => {
+                            setFormAvatarUrl(null);
+                            if (detailUser) {
+                              await supabase.from("profiles").update({ avatar_url: null } as any).eq("id", detailUser.id);
+                              queryClient.invalidateQueries({ queryKey: ["settings-users"] });
+                              toast.success("تم حذف الصورة");
+                            }
+                          }}
+                        >
+                          حذف
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">JPG/PNG • أقصى حجم 5MB (يتم ضغط الصورة تلقائياً)</p>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <Label>الاسم الكامل *</Label>
                   <Input className="glass-input" value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="اسم المستخدم" />

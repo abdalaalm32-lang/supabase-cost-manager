@@ -12,6 +12,7 @@ interface Profile {
   role: string;
   permissions: string[];
   status: string;
+  avatar_url?: string | null;
 }
 
 interface AuthState {

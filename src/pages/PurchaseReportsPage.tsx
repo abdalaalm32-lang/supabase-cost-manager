@@ -422,18 +422,26 @@ export const PurchaseReportsPage: React.FC = () => {
 
 
 
-  // Capture the full report area (KPIs + charts + table) as a canvas image.
-  const captureReport = async (): Promise<HTMLCanvasElement | null> => {
-    const el = fullReportRef.current;
+  // Capture a single chart Card as a PNG data URL with a white background so the print/PDF looks clean.
+  const captureNode = async (el: HTMLElement | null): Promise<string | null> => {
     if (!el) return null;
-    // Temporarily neutralise `print:hidden` and give a solid background so charts render cleanly.
-    return await html2canvas(el, {
+    const canvas = await html2canvas(el, {
       backgroundColor: "#ffffff",
       scale: 2,
       useCORS: true,
       logging: false,
-      windowWidth: el.scrollWidth,
     });
+    return canvas.toDataURL("image/png");
+  };
+
+  const captureAllCharts = async () => {
+    const [monthly, category, topItems, priceDiff] = await Promise.all([
+      captureNode(monthlyChartRef.current),
+      captureNode(categoryChartRef.current),
+      captureNode(topItemsChartRef.current),
+      captureNode(priceDiffChartRef.current),
+    ]);
+    return { monthly, category, topItems, priceDiff };
   };
 
   const filtersLine = () => {
@@ -445,33 +453,101 @@ export const PurchaseReportsPage: React.FC = () => {
     return parts.join("   •   ");
   };
 
-  const handleFullPrint = async () => {
-    setExporting("print");
-    try {
-      const canvas = await captureReport();
-      if (!canvas) return;
-      const dataUrl = canvas.toDataURL("image/png");
-      const w = window.open("", "_blank");
-      if (!w) return;
-      const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
-      w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقارير المشتريات</title>
+  // Build a clean printable HTML document (natural report look, no system chrome).
+  const buildCleanReportHTML = (charts: { monthly: string | null; category: string | null; topItems: string | null; priceDiff: string | null }) => {
+    const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
+    const logoSrc = `${window.location.origin}/logo.png`;
+
+    const kpiCard = (label: string, value: string) => `
+      <div style="border:1px solid #000;padding:8px 10px;text-align:center;">
+        <div style="font-size:10px;color:#333;margin-bottom:4px;">${label}</div>
+        <div style="font-size:14px;font-weight:bold;">${value}</div>
+      </div>`;
+
+    const chartBox = (title: string, img: string | null) => `
+      <div style="border:1px solid #000;padding:6px;">
+        <div style="font-size:11px;font-weight:bold;text-align:center;margin-bottom:4px;border-bottom:1px solid #666;padding-bottom:3px;">${title}</div>
+        ${img ? `<img src="${img}" style="width:100%;height:auto;display:block;" />` : `<div style="text-align:center;font-size:10px;color:#666;padding:30px 0;">لا توجد بيانات</div>`}
+      </div>`;
+
+    let tableRows = "";
+    filteredData.forEach((i, idx) => {
+      tableRows += `<tr>
+        <td>${idx + 1}</td>
+        <td>${i.code || "—"}</td>
+        <td style="text-align:right;">${i.name}</td>
+        <td style="text-align:right;">${i.categoryName}</td>
+        <td>${i.purchaseCount}</td>
+        <td style="text-align:right;">${i.topSupplier} (${i.topSupplierCount})</td>
+        <td>${fmt(i.totalQty)}</td>
+        <td>${i.unit}</td>
+        <td>${fmt(i.standardCost)}</td>
+        <td>${fmt(i.avgCost)}</td>
+        <td style="color:${i.priceDiff < 0 ? "#c00" : i.priceDiff > 0 ? "#0a7" : "#000"};font-weight:bold;">${i.priceDiff > 0 ? "+" : ""}${fmt(i.priceDiff)}</td>
+        <td style="font-weight:bold;">${fmt(i.totalValue)}</td>
+      </tr>`;
+    });
+
+    return `<!DOCTYPE html>
+<html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقارير المشتريات</title>
 <style>
   @page { size: A4 landscape; margin: 8mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Cairo', 'Amiri', sans-serif; padding: 10px; background: #fff; color: #000; }
-  .hdr { text-align: center; margin-bottom: 8px; border-bottom: 1px solid #000; padding-bottom: 6px; }
-  .hdr h1 { font-size: 16px; }
-  .hdr p { font-size: 10px; margin-top: 2px; }
-  .filters { text-align: center; font-size: 10px; font-weight: bold; border: 1px solid #000; padding: 4px 6px; margin-bottom: 8px; }
-  img { display: block; width: 100%; height: auto; }
-  .footer { text-align: center; font-size: 8px; margin-top: 8px; border-top: 1px solid #000; padding-top: 4px; }
+  body { font-family: 'Cairo','Amiri',sans-serif; padding: 12px; background: #fff; color: #000; direction: rtl; }
+  .header { display: flex; align-items: center; justify-content: center; gap: 10px; border-bottom: 1px solid #000; padding-bottom: 8px; margin-bottom: 8px; }
+  .header img { width: 60px; height: 60px; object-fit: contain; }
+  .header h1 { font-size: 16px; }
+  .header p { font-size: 10px; }
+  .filters { text-align: center; font-size: 10px; font-weight: bold; border: 1px solid #000; padding: 5px 8px; margin-bottom: 10px; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px; }
+  .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; page-break-inside: avoid; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th, td { border: 1px solid #000; padding: 4px 5px; font-size: 10px; text-align: center; }
+  thead th { background: #f0f0f0; font-weight: bold; font-size: 10px; }
+  tbody tr { page-break-inside: avoid; }
+  .footer { text-align: center; font-size: 9px; margin-top: 10px; border-top: 1px solid #000; padding-top: 5px; }
+  @media print { body { padding: 0; } }
 </style></head><body>
-  <div class="hdr"><h1>تقارير المشتريات</h1><p>Cost Management System • ${dateStr}</p></div>
+  <div class="header">
+    <img src="${logoSrc}" alt="Logo" />
+    <div>
+      <h1>تقارير المشتريات</h1>
+      <p>Cost Management System • ${dateStr}</p>
+    </div>
+  </div>
   <div class="filters">${filtersLine()}</div>
-  <img src="${dataUrl}" alt="report" />
+  <div class="kpi-grid">
+    ${kpiCard("عدد الفواتير", String(stats.invoiceCount))}
+    ${kpiCard("إجمالي قيمة المشتريات", fmt(stats.totalInvoiceValue))}
+    ${kpiCard("خامات تم شراؤها", String(stats.totalItems))}
+    ${kpiCard("متوسط قيمة الفاتورة", fmt(stats.avgInvoiceValue))}
+  </div>
+  <div class="charts-grid">
+    ${chartBox("اتجاه المشتريات الشهري", charts.monthly)}
+    ${chartBox("توزيع المشتريات حسب المجموعة", charts.category)}
+    ${chartBox("أكثر الخامات شراءً", charts.topItems)}
+    ${chartBox("فرق السعر (المعيارية - المتوسط)", charts.priceDiff)}
+  </div>
+  <table>
+    <thead><tr>
+      <th>#</th><th>الكود</th><th>اسم الخامة</th><th>المجموعة</th><th>عدد الشراء</th>
+      <th>المورد الأكثر</th><th>إجمالي الكمية</th><th>الوحدة</th><th>التكلفة المعيارية</th>
+      <th>متوسط التكلفة</th><th>فرق السعر</th><th>إجمالي القيمة</th>
+    </tr></thead>
+    <tbody>${tableRows || `<tr><td colspan="12" style="padding:20px;">لا توجد بيانات</td></tr>`}</tbody>
+  </table>
   <div class="footer">Powered by Mohamed Abdel Aal</div>
-  <script>window.onload=function(){setTimeout(function(){window.print();window.onafterprint=function(){window.close();};},250);};</script>
-</body></html>`);
+</body></html>`;
+  };
+
+  const handleFullPrint = async () => {
+    setExporting("print");
+    try {
+      const charts = await captureAllCharts();
+      const html = buildCleanReportHTML(charts);
+      const w = window.open("", "_blank");
+      if (!w) return;
+      w.document.write(html + `<script>window.onload=function(){setTimeout(function(){window.print();window.onafterprint=function(){window.close();};},400);};</script>`);
       w.document.close();
     } catch (e: any) {
       toast.error("تعذر إنشاء نسخة الطباعة: " + (e?.message || ""));
@@ -482,53 +558,56 @@ export const PurchaseReportsPage: React.FC = () => {
 
   const handleFullPDF = async () => {
     setExporting("pdf");
+    let tmp: HTMLDivElement | null = null;
     try {
-      const canvas = await captureReport();
-      if (!canvas) return;
+      const charts = await captureAllCharts();
+      const html = buildCleanReportHTML(charts);
+      // Render clean HTML off-screen then capture with html2canvas
+      tmp = document.createElement("div");
+      tmp.style.cssText = "position:fixed;left:-99999px;top:0;width:1180px;background:#fff;z-index:-1;";
+      tmp.innerHTML = html.replace(/<!DOCTYPE[^>]*>|<\/?html[^>]*>|<\/?head>|<\/?body[^>]*>|<title>[^<]*<\/title>|<meta[^>]*>/gi, "");
+      document.body.appendChild(tmp);
+      // Wait for images to load
+      const imgs = tmp.querySelectorAll("img");
+      await Promise.all(Array.from(imgs).map((img) => img.complete ? Promise.resolve() : new Promise((res) => { img.onload = img.onerror = () => res(null); })));
+      await new Promise((r) => setTimeout(r, 100));
+
+      const canvas = await html2canvas(tmp, { backgroundColor: "#ffffff", scale: 2, useCORS: true, logging: false });
       const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
-      const margin = 8;
+      const margin = 6;
       const imgW = pageW - margin * 2;
       const imgH = (canvas.height * imgW) / canvas.width;
 
-      // Header
-      pdf.setFontSize(13);
-      pdf.text("Purchase Reports / تقارير المشتريات", pageW / 2, 10, { align: "center" });
-      pdf.setFontSize(8);
-      pdf.text(new Date().toLocaleDateString("en-GB"), pageW / 2, 15, { align: "center" });
-
-      let position = 20;
-      const dataUrl = canvas.toDataURL("image/png");
-
-      if (imgH <= pageH - position - margin) {
-        pdf.addImage(dataUrl, "PNG", margin, position, imgW, imgH);
+      if (imgH <= pageH - margin * 2) {
+        pdf.addImage(canvas.toDataURL("image/png"), "PNG", margin, margin, imgW, imgH);
       } else {
-        // Paginate: draw slices of the canvas per page
-        const pageInnerH = pageH - position - margin;
+        const pageInnerH = pageH - margin * 2;
         const sliceHpx = (pageInnerH * canvas.width) / imgW;
         let renderedPx = 0;
+        let first = true;
         while (renderedPx < canvas.height) {
           const currentSlicePx = Math.min(sliceHpx, canvas.height - renderedPx);
           const slice = document.createElement("canvas");
           slice.width = canvas.width;
           slice.height = currentSlicePx;
           const ctx = slice.getContext("2d")!;
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, slice.width, slice.height);
           ctx.drawImage(canvas, 0, renderedPx, canvas.width, currentSlicePx, 0, 0, canvas.width, currentSlicePx);
-          const sliceDataUrl = slice.toDataURL("image/png");
           const sliceImgH = (currentSlicePx * imgW) / canvas.width;
-          if (renderedPx > 0) {
-            pdf.addPage();
-            position = margin;
-          }
-          pdf.addImage(sliceDataUrl, "PNG", margin, position, imgW, sliceImgH);
+          if (!first) pdf.addPage();
+          pdf.addImage(slice.toDataURL("image/png"), "PNG", margin, margin, imgW, sliceImgH);
           renderedPx += currentSlicePx;
+          first = false;
         }
       }
       pdf.save(`تقارير_المشتريات_${format(new Date(), "yyyy-MM-dd")}.pdf`);
     } catch (e: any) {
       toast.error("تعذر إنشاء PDF: " + (e?.message || ""));
     } finally {
+      if (tmp && tmp.parentNode) tmp.parentNode.removeChild(tmp);
       setExporting(null);
     }
   };
@@ -536,56 +615,74 @@ export const PurchaseReportsPage: React.FC = () => {
   const handleFullExcel = async () => {
     setExporting("excel");
     try {
-      const canvas = await captureReport();
+      const charts = await captureAllCharts();
       const wb = new ExcelJS.Workbook();
       wb.creator = "Cost Management System";
       const ws = wb.addWorksheet("تقرير المشتريات");
       (ws as any).views = [{ rightToLeft: true }];
 
-      // Title + filters
-      ws.mergeCells("A1:H1");
+      // Title
+      ws.mergeCells("A1:L1");
       const titleCell = ws.getCell("A1");
       titleCell.value = "تقارير المشتريات";
       titleCell.font = { bold: true, size: 16, name: "Cairo", color: { argb: "FF134E4A" } };
       titleCell.alignment = { horizontal: "center", vertical: "middle" };
-      ws.getRow(1).height = 30;
+      ws.getRow(1).height = 28;
 
-      ws.mergeCells("A2:H2");
+      // Filters
+      ws.mergeCells("A2:L2");
       ws.getCell("A2").value = filtersLine();
       ws.getCell("A2").font = { bold: true, size: 10, name: "Cairo" };
       ws.getCell("A2").alignment = { horizontal: "center", vertical: "middle" };
-
-      // KPI rows
-      const kpis = [
-        ["عدد الفواتير", stats.invoiceCount],
-        ["إجمالي قيمة المشتريات", stats.totalInvoiceValue.toFixed(2)],
-        ["خامات تم شراؤها", stats.totalItems],
-        ["متوسط قيمة الفاتورة", stats.avgInvoiceValue.toFixed(2)],
-      ];
-      const kpiHeader = ws.addRow(["", ...kpis.map((k) => k[0])]);
-      kpiHeader.eachCell((c, i) => { if (i > 1) { c.font = { bold: true, color: { argb: "FFFFFFFF" }, name: "Cairo" }; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F766E" } }; c.alignment = { horizontal: "center" }; } });
-      const kpiRow = ws.addRow(["", ...kpis.map((k) => k[1])]);
-      kpiRow.eachCell((c, i) => { if (i > 1) { c.font = { bold: true, size: 12, name: "Cairo" }; c.alignment = { horizontal: "center" }; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE6FFFA" } }; } });
       ws.addRow([]);
 
-      // Embed the report snapshot image
-      if (canvas) {
-        const dataUrl = canvas.toDataURL("image/png");
-        const imgId = wb.addImage({ base64: dataUrl, extension: "png" });
-        const imgH = Math.min(600, (canvas.height * 700) / canvas.width);
-        ws.addImage(imgId, { tl: { col: 0, row: ws.rowCount }, ext: { width: 900, height: imgH } });
-        // Add empty rows so subsequent data doesn't overlap the image
-        const rowsNeeded = Math.ceil(imgH / 18);
-        for (let i = 0; i < rowsNeeded + 2; i++) ws.addRow([]);
-      }
+      // KPI row - labels then values
+      const kpiLabels = ["", "عدد الفواتير", "إجمالي قيمة المشتريات", "خامات تم شراؤها", "متوسط قيمة الفاتورة"];
+      const kpiValues = ["", stats.invoiceCount, Number(stats.totalInvoiceValue.toFixed(2)), stats.totalItems, Number(stats.avgInvoiceValue.toFixed(2))];
+      const kpiHeader = ws.addRow(kpiLabels);
+      kpiHeader.eachCell((c, i) => { if (i > 1) { c.font = { bold: true, color: { argb: "FFFFFFFF" }, name: "Cairo" }; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F766E" } }; c.alignment = { horizontal: "center" }; c.border = { top: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" }, bottom: { style: "thin" } }; } });
+      const kpiRow = ws.addRow(kpiValues);
+      kpiRow.eachCell((c, i) => { if (i > 1) { c.font = { bold: true, size: 12, name: "Cairo" }; c.alignment = { horizontal: "center" }; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE6FFFA" } }; c.border = { top: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" }, bottom: { style: "thin" } }; } });
+      ws.addRow([]);
+
+      // Embed chart images in a 2x2 grid
+      const chartsList: Array<{ title: string; img: string | null }> = [
+        { title: "اتجاه المشتريات الشهري", img: charts.monthly },
+        { title: "توزيع المشتريات حسب المجموعة", img: charts.category },
+        { title: "أكثر الخامات شراءً", img: charts.topItems },
+        { title: "فرق السعر (المعيارية - المتوسط)", img: charts.priceDiff },
+      ];
+      const startRow = ws.rowCount + 1;
+      chartsList.forEach((c, idx) => {
+        if (!c.img) return;
+        const row = idx < 2 ? startRow : startRow + 22;
+        const col = idx % 2 === 0 ? 0 : 6;
+        // Title cell above the image
+        const titleRowIdx = row;
+        const titleCellRef = ws.getRow(titleRowIdx).getCell(col + 1);
+        titleCellRef.value = c.title;
+        titleCellRef.font = { bold: true, size: 11, name: "Cairo", color: { argb: "FFFFFFFF" } };
+        titleCellRef.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F766E" } };
+        titleCellRef.alignment = { horizontal: "center" };
+        ws.mergeCells(titleRowIdx, col + 1, titleRowIdx, col + 6);
+        const imgId = wb.addImage({ base64: c.img, extension: "png" });
+        ws.addImage(imgId, { tl: { col, row: titleRowIdx }, ext: { width: 460, height: 320 } });
+      });
+      // Advance rowCount past the chart area
+      const chartsBottom = startRow + 44;
+      while (ws.rowCount < chartsBottom) ws.addRow([]);
+      ws.addRow([]);
 
       // Data table
       const headerRow = ws.addRow(["الكود", "اسم الخامة", "المجموعة", "عدد الشراء", "المورد الأكثر", "إجمالي الكمية", "الوحدة", "التكلفة المعيارية", "متوسط التكلفة", "فرق السعر", "إجمالي القيمة"]);
-      headerRow.eachCell((c) => { c.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10, name: "Cairo" }; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F766E" } }; c.alignment = { horizontal: "center" }; });
+      headerRow.eachCell((c) => { c.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10, name: "Cairo" }; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F766E" } }; c.alignment = { horizontal: "center" }; c.border = { top: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" }, bottom: { style: "thin" } }; });
       filteredData.forEach((i: any) => {
         const r = ws.addRow([i.code || "—", i.name, i.categoryName, i.purchaseCount, `${i.topSupplier} (${i.topSupplierCount})`, fmt(i.totalQty), i.unit, fmt(i.standardCost), fmt(i.avgCost), fmt(i.priceDiff), fmt(i.totalValue)]);
-        r.eachCell((c) => { c.alignment = { horizontal: "center" }; c.font = { size: 9, name: "Cairo" }; });
+        r.eachCell((c) => { c.alignment = { horizontal: "center" }; c.font = { size: 9, name: "Cairo" }; c.border = { top: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" }, bottom: { style: "thin" } }; });
       });
+
+      // Set widths
+      [12, 25, 18, 12, 22, 14, 10, 14, 14, 12, 14].forEach((w, idx) => { ws.getColumn(idx + 1).width = w; });
 
       const buffer = await wb.xlsx.writeBuffer();
       saveAs(new Blob([buffer]), `تقارير_المشتريات_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
@@ -595,6 +692,7 @@ export const PurchaseReportsPage: React.FC = () => {
       setExporting(null);
     }
   };
+
 
 
   return (

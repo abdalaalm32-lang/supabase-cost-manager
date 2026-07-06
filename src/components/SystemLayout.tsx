@@ -342,9 +342,13 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
         <div className="p-3 border-t border-sidebar-border">
           {!isSidebarCollapsed && (
             <div className="flex items-center gap-2 mb-2 px-2">
-              <div className="w-9 h-9 rounded-full gradient-primary flex items-center justify-center text-primary-foreground text-xs font-bold shadow-md">
-                {userName?.charAt(0) || "U"}
-              </div>
+              {auth.profile?.avatar_url ? (
+                <img src={auth.profile.avatar_url} alt={userName} className="w-9 h-9 rounded-full object-cover shadow-md" />
+              ) : (
+                <div className="w-9 h-9 rounded-full gradient-primary flex items-center justify-center text-primary-foreground text-xs font-bold shadow-md">
+                  {userName?.charAt(0) || "U"}
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-foreground truncate">{userName}</p>
                 <p className="text-[10px] text-muted-foreground truncate">{resolvedCompanyName}</p>
@@ -374,6 +378,17 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({
         {/* Top Navbar */}
         <header className="h-14 border-b border-border bg-card/30 backdrop-blur-md flex items-center justify-between px-6 flex-shrink-0 relative z-10">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            {auth.profile?.avatar_url ? (
+              <img
+                src={auth.profile.avatar_url}
+                alt={userName}
+                className="w-8 h-8 rounded-full object-cover border border-border shadow-sm"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center text-primary-foreground text-xs font-bold shadow-sm">
+                {userName?.charAt(0) || "U"}
+              </div>
+            )}
             <span className="font-semibold text-foreground">{userName}</span>
             <span className="text-xs">•</span>
             <span className="text-xs font-medium text-primary">{resolvedCompanyName}</span>

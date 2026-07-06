@@ -329,11 +329,12 @@ export const SettingsUsersPage: React.FC = () => {
           job_role_id: formJobRoleId || null,
           status: formStatus ? "نشط" : "موقف",
           permissions: formPermissions,
+          avatar_url: formAvatarUrl,
           subscription_type: formSubscriptionType,
           subscription_minutes: formSubscriptionType === "minutes" ? (formSubscriptionMinutes as number) : null,
           subscription_start: formSubscriptionType === "date_range" && formSubscriptionStart ? formSubscriptionStart.toISOString() : null,
           subscription_end: formSubscriptionType === "date_range" && formSubscriptionEnd ? formSubscriptionEnd.toISOString() : null,
-        })
+        } as any)
         .eq("id", detailUser.id);
       if (error) throw error;
     },

@@ -58,6 +58,10 @@ export const PurchaseReportsPage: React.FC = () => {
   const companyId = auth.profile?.company_id;
   const tableRef = useRef<HTMLDivElement>(null);
   const fullReportRef = useRef<HTMLDivElement>(null);
+  const monthlyChartRef = useRef<HTMLDivElement>(null);
+  const categoryChartRef = useRef<HTMLDivElement>(null);
+  const topItemsChartRef = useRef<HTMLDivElement>(null);
+  const priceDiffChartRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState<null | "print" | "pdf" | "excel">(null);
 
   const [searchQuery, setSearchQuery] = useState("");

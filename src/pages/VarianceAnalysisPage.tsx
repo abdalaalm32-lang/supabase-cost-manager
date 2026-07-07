@@ -865,19 +865,52 @@ export const VarianceAnalysisPage: React.FC = () => {
               </Table>
             )}
             {manageTab === "consumables" && (
-              <Table>
-                <TableHeader><TableRow><TableHead className="text-right">الخامة</TableHead><TableHead className="text-center">مستهلكات؟</TableHead></TableRow></TableHeader>
-                <TableBody>
-                  {(stockItems || []).map((si: any) => (
-                    <TableRow key={si.id}>
-                      <TableCell>{si.name}</TableCell>
-                      <TableCell className="text-center">
-                        <Checkbox checked={!!si.is_consumable} onCheckedChange={(v) => toggleConsumable(si.id, !!v)} />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs mb-1 block">القسم</Label>
+                    <Select value={consumableDeptFilter} onValueChange={setConsumableDeptFilter}>
+                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">كل الأقسام</SelectItem>
+                        {(departments || []).map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs mb-1 block">بحث باسم الخامة</Label>
+                    <Input value={consumableSearch} onChange={(e) => setConsumableSearch(e.target.value)} placeholder="ابحث..." className="h-9" />
+                  </div>
+                </div>
+                <Table>
+                  <TableHeader><TableRow><TableHead className="text-right">الخامة</TableHead><TableHead className="text-center">مستهلكات؟</TableHead></TableRow></TableHeader>
+                  <TableBody>
+                    {(stockItems || [])
+                      .filter((si: any) => {
+                        if (consumableSearch.trim()) {
+                          const q = consumableSearch.trim().toLowerCase();
+                          if (!(si.name || "").toLowerCase().includes(q) && !(si.code || "").toLowerCase().includes(q)) return false;
+                        }
+                        if (consumableDeptFilter !== "all") {
+                          const cats = itemCats.get(si.id);
+                          const inDept = cats && Array.from(cats).some((cid) =>
+                            (categories || []).find((c: any) => c.id === cid && c.department_id === consumableDeptFilter)
+                          );
+                          if (!inDept && si.department_id !== consumableDeptFilter) return false;
+                        }
+                        return true;
+                      })
+                      .map((si: any) => (
+                        <TableRow key={si.id}>
+                          <TableCell>{si.name}</TableCell>
+                          <TableCell className="text-center">
+                            <Checkbox checked={!!si.is_consumable} onCheckedChange={(v) => toggleConsumable(si.id, !!v)} />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </div>
           <DialogFooter><Button variant="outline" onClick={() => setManageOpen(false)}>إغلاق</Button></DialogFooter>

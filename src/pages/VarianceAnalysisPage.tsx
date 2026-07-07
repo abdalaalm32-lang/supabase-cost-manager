@@ -943,6 +943,48 @@ export const VarianceAnalysisPage: React.FC = () => {
         );
       })}
 
+      {/* Excel-style summary boxes */}
+      {hasPeriod && summaryStats.total > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <SummaryBox
+            title="النتيجة (Result)"
+            headers={["Ratio", "No.Repetition", "Result"]}
+            rows={summaryStats.resultRows.map((r) => ({
+              ratio: fmtPct(r.ratio, 2),
+              count: r.count,
+              label: r.label,
+              color: r.label === "Short" ? "bg-red-50 dark:bg-red-950/30" : r.label === "Over" ? "bg-amber-50 dark:bg-amber-950/30" : "bg-emerald-50 dark:bg-emerald-950/30",
+            }))}
+          />
+          <SummaryBox
+            title="التحليل (Analysis)"
+            headers={["Ratio", "No.Repetition", "Result"]}
+            rows={summaryStats.analysisRows.map((r) => ({
+              ratio: fmtPct(r.ratio, 2),
+              count: r.count,
+              label: r.label,
+              color: analysisColor(r.label as Analysis) || "",
+            }))}
+          />
+          <SummaryBox
+            title="مقارنة بالفترة السابقة (Previous)"
+            headers={["Ratio", "No.Repetition", "Result"]}
+            rows={summaryStats.prevRows.map((r) => ({
+              ratio: fmtPct(r.ratio, 2),
+              count: r.count,
+              label: r.label,
+              color: r.label === "Better" || r.label === "Change to Increase"
+                ? "bg-emerald-50 dark:bg-emerald-950/30"
+                : r.label === "High" || r.label === "Change to Loss"
+                ? "bg-red-50 dark:bg-red-950/30"
+                : "bg-muted",
+            }))}
+          />
+        </div>
+      )}
+      </div>{/* /print-area */}
+
+
       {/* Manage dialog */}
       <Dialog open={manageOpen} onOpenChange={setManageOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col" dir="rtl">

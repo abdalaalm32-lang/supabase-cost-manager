@@ -123,13 +123,10 @@ export const VarianceAnalysisPage: React.FC = () => {
   const activeLocationId = branchFilter !== "all" ? branchFilter : null;
   const { getCost } = useBranchCosts(activeLocationId);
 
-  // Previous period range: shift back by (dateTo - dateFrom + 1 day)
+  // Previous period: same day-of-month range shifted back by 1 month
   const prevRange = useMemo(() => {
     if (!dateFrom || !dateTo) return null;
-    const ms = dateTo.getTime() - dateFrom.getTime();
-    const prevTo = new Date(dateFrom.getTime() - 24 * 60 * 60 * 1000);
-    const prevFrom = new Date(prevTo.getTime() - ms);
-    return { from: prevFrom, to: prevTo };
+    return { from: subMonths(dateFrom, 1), to: subMonths(dateTo, 1) };
   }, [dateFrom, dateTo]);
 
   /* ================= Reference data ================= */

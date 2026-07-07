@@ -125,19 +125,16 @@ export const ProductionDetailPage: React.FC = () => {
     enabled: !!companyId,
   });
 
-  // Production "available balance":
-  //  - If period (from/to) provided → baseline = latest stocktake strictly before "from"
-  //    + purchases within [from, to]. Useful for full-month production with a mid-period stocktake.
-  //  - Else → latest stocktake on/before production date + all purchases after that stocktake.
-  const { getProductionAvailable } = useLocationStock(
+  // Production available balance = real stock at the location as of the production date.
+  // Uses the same full ledger as the Inventory Balances page (baseline stocktake +
+  // purchases + production produced − production consumed − waste − POS sales − transfers)
+  // so what appears here always matches "أرصدة المخزون".
+  const { getLocationStock } = useLocationStock(
     locationId || null,
     locationType,
     selectedDept !== "all" ? selectedDept : null,
     date || null,
-    periodFrom || null,
-    periodTo || null,
   );
-  const getLocationStock = getProductionAvailable;
 
 
   // Load existing record

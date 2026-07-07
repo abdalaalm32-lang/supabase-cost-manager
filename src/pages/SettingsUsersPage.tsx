@@ -556,7 +556,7 @@ export const SettingsUsersPage: React.FC = () => {
 
       {/* Add/Edit User Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) { setIsDialogOpen(false); resetForm(); } else setIsDialogOpen(true); }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col" dir="rtl">
+        <DialogContent className="max-w-2xl h-[90vh] overflow-hidden flex flex-col" dir="rtl">
           <DialogHeader>
             <DialogTitle>{detailUser ? "تعديل المستخدم" : "إضافة مستخدم جديد"}</DialogTitle>
           </DialogHeader>
@@ -570,7 +570,7 @@ export const SettingsUsersPage: React.FC = () => {
             </Button>
           </div>
 
-          <ScrollArea className="flex-1 min-h-0 h-[50vh] px-1 overflow-y-auto">
+          <ScrollArea className="flex-1 min-h-0 px-1 overflow-y-auto">
             {activeTab === "account" && (
               <div className="space-y-4 py-2">
 
@@ -680,6 +680,105 @@ export const SettingsUsersPage: React.FC = () => {
 
                 <div className="space-y-3 p-3 rounded-xl border border-border/50 bg-muted/30">
                   <Label className="font-bold">مدة الاشتراك</Label>
+                  {/* Avatar upload - قسم صورة المستخدم */}
+                  <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+                    <div className="flex items-center gap-3">
+                      {formAvatarUrl ? (
+                        <img src={formAvatarUrl} alt="avatar" className="w-12 h-12 rounded-full object-cover border-2 border-primary/30 shadow-md" />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/60 to-primary flex items-center justify-center text-primary-foreground text-lg font-bold shadow-md">
+                          {(formName || "U").charAt(0)}
+                        </div>
+                      )}
+                      <div>
+                        <Label className="font-bold">قسم رفع صورة المستخدم</Label>
+                        <p className="text-[10px] text-muted-foreground">JPG/PNG • أقصى حجم 5MB</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        id="avatar-upload"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          if (file.size > 5 * 1024 * 1024) {
+                            toast.error("حجم الصورة أكبر من 5MB");
+                            return;
+                          }
+                          setAvatarUploading(true);
+                          try {
+                            const dataUrl = await new Promise<string>((resolve, reject) => {
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                const img = new Image();
+                                img.onload = () => {
+                                  const size = 256;
+                                  const canvas = document.createElement("canvas");
+                                  canvas.width = size;
+                                  canvas.height = size;
+                                  const ctx = canvas.getContext("2d")!;
+                                  const scale = Math.max(size / img.width, size / img.height);
+                                  const w = img.width * scale;
+                                  const h = img.height * scale;
+                                  ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+                                  resolve(canvas.toDataURL("image/jpeg", 0.8));
+                                };
+                                img.onerror = reject;
+                                img.src = reader.result as string;
+                              };
+                              reader.onerror = reject;
+                              reader.readAsDataURL(file);
+                            });
+                            setFormAvatarUrl(dataUrl);
+                            if (detailUser) {
+                              const { error } = await supabase
+                                .from("profiles")
+                                .update({ avatar_url: dataUrl } as any)
+                                .eq("id", detailUser.id);
+                              if (error) throw error;
+                              queryClient.invalidateQueries({ queryKey: ["settings-users"] });
+                              toast.success("تم تحديث الصورة");
+                            }
+                          } catch (err: any) {
+                            toast.error("فشل رفع الصورة: " + (err?.message || ""));
+                          } finally {
+                            setAvatarUploading(false);
+                            e.target.value = "";
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={avatarUploading}
+                        onClick={() => document.getElementById("avatar-upload")?.click()}
+                      >
+                        {avatarUploading ? "جاري الرفع..." : formAvatarUrl ? "تغيير" : "رفع"}
+                      </Button>
+                      {formAvatarUrl && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive"
+                          onClick={async () => {
+                            setFormAvatarUrl(null);
+                            if (detailUser) {
+                              await supabase.from("profiles").update({ avatar_url: null } as any).eq("id", detailUser.id);
+                              queryClient.invalidateQueries({ queryKey: ["settings-users"] });
+                              toast.success("تم حذف الصورة");
+                            }
+                          }}
+                        >
+                          حذف
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                   <Select value={formSubscriptionType} onValueChange={setFormSubscriptionType}>
                     <SelectTrigger className="glass-input"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -729,108 +828,6 @@ export const SettingsUsersPage: React.FC = () => {
                       </div>
                     </div>
                   )}
-                </div>
-
-                {/* Avatar upload - قسم صورة المستخدم */}
-                <div className="space-y-3 p-3 rounded-xl border border-border/50 bg-muted/30">
-                  <Label className="font-bold">صورة المستخدم</Label>
-                  <div className="flex items-center gap-4">
-                    <div className="relative">
-                      {formAvatarUrl ? (
-                        <img src={formAvatarUrl} alt="avatar" className="w-20 h-20 rounded-full object-cover border-2 border-primary/30 shadow-md" />
-                      ) : (
-                        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/60 to-primary flex items-center justify-center text-primary-foreground text-2xl font-bold shadow-md">
-                          {(formName || "U").charAt(0)}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          id="avatar-upload"
-                          className="hidden"
-                          onChange={async (e) => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
-                            if (file.size > 5 * 1024 * 1024) {
-                              toast.error("حجم الصورة أكبر من 5MB");
-                              return;
-                            }
-                            setAvatarUploading(true);
-                            try {
-                              const dataUrl = await new Promise<string>((resolve, reject) => {
-                                const reader = new FileReader();
-                                reader.onload = () => {
-                                  const img = new Image();
-                                  img.onload = () => {
-                                    const size = 256;
-                                    const canvas = document.createElement("canvas");
-                                    canvas.width = size;
-                                    canvas.height = size;
-                                    const ctx = canvas.getContext("2d")!;
-                                    const scale = Math.max(size / img.width, size / img.height);
-                                    const w = img.width * scale;
-                                    const h = img.height * scale;
-                                    ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
-                                    resolve(canvas.toDataURL("image/jpeg", 0.8));
-                                  };
-                                  img.onerror = reject;
-                                  img.src = reader.result as string;
-                                };
-                                reader.onerror = reject;
-                                reader.readAsDataURL(file);
-                              });
-                              setFormAvatarUrl(dataUrl);
-                              if (detailUser) {
-                                const { error } = await supabase
-                                  .from("profiles")
-                                  .update({ avatar_url: dataUrl } as any)
-                                  .eq("id", detailUser.id);
-                                if (error) throw error;
-                                queryClient.invalidateQueries({ queryKey: ["settings-users"] });
-                                toast.success("تم تحديث الصورة");
-                              }
-                            } catch (err: any) {
-                              toast.error("فشل رفع الصورة: " + (err?.message || ""));
-                            } finally {
-                              setAvatarUploading(false);
-                              e.target.value = "";
-                            }
-                          }}
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          disabled={avatarUploading}
-                          onClick={() => document.getElementById("avatar-upload")?.click()}
-                        >
-                          {avatarUploading ? "جاري الرفع..." : formAvatarUrl ? "تغيير الصورة" : "رفع صورة"}
-                        </Button>
-                        {formAvatarUrl && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive"
-                            onClick={async () => {
-                              setFormAvatarUrl(null);
-                              if (detailUser) {
-                                await supabase.from("profiles").update({ avatar_url: null } as any).eq("id", detailUser.id);
-                                queryClient.invalidateQueries({ queryKey: ["settings-users"] });
-                                toast.success("تم حذف الصورة");
-                              }
-                            }}
-                          >
-                            حذف
-                          </Button>
-                        )}
-                      </div>
-                      <p className="text-[10px] text-muted-foreground">JPG/PNG • أقصى حجم 5MB (يتم ضغط الصورة تلقائياً)</p>
-                    </div>
-                  </div>
                 </div>
 
               </div>

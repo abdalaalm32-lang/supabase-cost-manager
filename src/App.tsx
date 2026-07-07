@@ -493,6 +493,7 @@ const AppRoutes = () => {
                   <Route path="/purchases/view-invoice/:id" element={<PermissionGuard permKey="purchases"><EditPurchaseInvoicePage /></PermissionGuard>} />
                   <Route path="/purchases/debts" element={<PermissionGuard permKey="purchases"><SupplierDebtsPage /></PermissionGuard>} />
                   <Route path="/costing" element={<PermissionGuard permKey="costing"><CostAnalysisPage /></PermissionGuard>} />
+                  <Route path="/variance-analysis" element={<PermissionGuard permKey="variance-analysis"><VarianceAnalysisPage /></PermissionGuard>} />
                   <Route path="/menu-costing" element={<PermissionGuard permKey="menu-costing"><Navigate to="/menu-costing/indirect-expenses" replace /></PermissionGuard>} />
                   <Route path="/menu-costing/indirect-expenses" element={<PermissionGuard permKey="menu-costing"><IndirectExpensesPage /></PermissionGuard>} />
                   <Route path="/menu-costing/analysis" element={<PermissionGuard permKey="menu-costing"><MenuAnalysisPage /></PermissionGuard>} />

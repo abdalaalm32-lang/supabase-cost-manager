@@ -542,12 +542,12 @@ export const VarianceAnalysisPage: React.FC = () => {
   // Current period
   const current = useMemo(() => computeForRange(dateFrom, dateTo),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [stockItems, stocktakeData, purchaseData, productionIngData, productionRecords, wasteData, transferData, posSaleItems, recipeIngredients, dateFrom, dateTo, branchFilter, departmentFilter, itemCats, categories, getCost]);
+    [stockItems, stocktakeData, purchaseData, productionIngData, productionRecords, wasteData, transferData, posSaleItems, recipeIngredients, dateFrom, dateTo, branchFilter, departmentFilter, itemCats, categories, getCost, thresholds]);
 
   // Previous period (for prev-rate)
   const previous = useMemo(() => computeForRange(prevRange?.from, prevRange?.to),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [stockItems, stocktakeData, purchaseData, productionIngData, productionRecords, wasteData, transferData, posSaleItems, recipeIngredients, prevRange, branchFilter, departmentFilter, itemCats, categories, getCost]);
+    [stockItems, stocktakeData, purchaseData, productionIngData, productionRecords, wasteData, transferData, posSaleItems, recipeIngredients, prevRange, branchFilter, departmentFilter, itemCats, categories, getCost, thresholds]);
 
   // Net sales for period (branch scope)
   const netSales = useMemo(() => {

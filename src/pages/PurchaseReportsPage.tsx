@@ -522,12 +522,6 @@ export const PurchaseReportsPage: React.FC = () => {
     ${kpiCard("خامات تم شراؤها", String(stats.totalItems))}
     ${kpiCard("متوسط قيمة الفاتورة", fmt(stats.avgInvoiceValue))}
   </div>
-  <div class="charts-grid">
-    ${chartBox("اتجاه المشتريات الشهري", charts.monthly)}
-    ${chartBox("توزيع المشتريات حسب المجموعة", charts.category)}
-    ${chartBox("أكثر الخامات شراءً", charts.topItems)}
-    ${chartBox("فرق السعر (المعيارية - المتوسط)", charts.priceDiff)}
-  </div>
   <table>
     <thead><tr>
       <th>#</th><th>الكود</th><th>اسم الخامة</th><th>المجموعة</th><th>عدد الشراء</th>

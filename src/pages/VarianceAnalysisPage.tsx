@@ -929,11 +929,11 @@ export const VarianceAnalysisPage: React.FC = () => {
               </div>
               <div className="space-y-1">
                 <div className="text-muted-foreground">نسبة الانحراف / المبيعات</div>
-                <div className={cn("font-bold", ratioVarSales < 0 ? "text-red-600" : ratioVarSales > 0 ? "text-emerald-600" : "")}>{fmtPct(ratioVarSales, 4)}</div>
+                <div className={cn("font-bold", ratioVarSales < 0 ? "text-red-600" : ratioVarSales > 0 ? "text-emerald-600" : "")}>{fmtPct(ratioVarSales)}</div>
               </div>
               <div className="space-y-1">
                 <div className="text-muted-foreground">نسبة الانحراف / الاستهلاك</div>
-                <div className={cn("font-bold", ratioVarConsume < 0 ? "text-red-600" : ratioVarConsume > 0 ? "text-emerald-600" : "")}>{fmtPct(ratioVarConsume, 4)}</div>
+                <div className={cn("font-bold", ratioVarConsume < 0 ? "text-red-600" : ratioVarConsume > 0 ? "text-emerald-600" : "")}>{fmtPct(ratioVarConsume)}</div>
               </div>
             </div>
           </div>

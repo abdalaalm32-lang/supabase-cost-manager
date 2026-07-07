@@ -1027,7 +1027,8 @@ export const VarianceAnalysisPage: React.FC = () => {
         <div className="bg-card border rounded-lg p-4">
           <div className="flex items-center gap-2 text-sm font-semibold border-b pb-2 mb-2">نسب الانحراف</div>
           <div className="space-y-1 text-xs">
-            <div className="flex justify-between items-center px-2 py-1 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200"><span>طبيعي (Normal)</span><span className="font-bold">0% : 2%</span></div>
+            <div className="flex justify-between items-center px-2 py-1 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200"><span>جيد (Good)</span><span className="font-bold">0%</span></div>
+            <div className="flex justify-between items-center px-2 py-1 rounded bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-200"><span>طبيعي (Normal)</span><span className="font-bold">1% : 2%</span></div>
             <div className="flex justify-between items-center px-2 py-1 rounded bg-lime-100 text-lime-800 dark:bg-lime-900/40 dark:text-lime-200"><span>مقبول (Accept)</span><span className="font-bold">2% : 5%</span></div>
             <div className="flex justify-between items-center px-2 py-1 rounded bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200"><span>انحراف (Deviation)</span><span className="font-bold">5% : 10%</span></div>
             <div className="flex justify-between items-center px-2 py-1 rounded bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200"><span>خطأ تشغيلي</span><span className="font-bold">10% : 20%</span></div>

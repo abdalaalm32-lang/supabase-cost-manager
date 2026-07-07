@@ -627,14 +627,16 @@ export const VarianceAnalysisPage: React.FC = () => {
       { label: "Equal", count: cnt((i) => i.result === "Equal"), ratio: pct(cnt((i) => i.result === "Equal")) },
     ];
 
-    // Analysis distribution
+    // Analysis distribution (exclude Equal items from Normal to avoid double-counting)
     const analyses: Analysis[] = ["Normal", "Accept", "Deviation", "Operation error", "High deflection", "Issue"];
     const analysisRows = analyses.map((a) => {
-      const c = cnt((i) => i.analysis === a);
+      const c = a === "Normal"
+        ? cnt((i) => i.analysis === a && i.result !== "Equal")
+        : cnt((i) => i.analysis === a);
       return { label: a, count: c, ratio: pct(c) };
     });
-    // include Equal-only (rate=0) as "Equal" first row to mirror the excel image
-    const equalCount = cnt((i) => i.rate === 0 && i.result === "Equal");
+    // Equal row (rate=0 / result=Equal) shown first so total sums to items count
+    const equalCount = cnt((i) => i.result === "Equal");
     const analysisFull = [{ label: "Equal", count: equalCount, ratio: pct(equalCount) }, ...analysisRows];
 
     // Previous comparison distribution

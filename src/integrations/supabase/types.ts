@@ -3135,6 +3135,48 @@ export type Database = {
           },
         ]
       }
+      variance_item_notes: {
+        Row: {
+          action_status: string
+          branch_id: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          note: string | null
+          period_from: string | null
+          period_to: string | null
+          stock_item_id: string
+          updated_at: string
+        }
+        Insert: {
+          action_status?: string
+          branch_id?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          period_from?: string | null
+          period_to?: string | null
+          stock_item_id: string
+          updated_at?: string
+        }
+        Update: {
+          action_status?: string
+          branch_id?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          period_from?: string | null
+          period_to?: string | null
+          stock_item_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       warehouse_branches: {
         Row: {
           branch_id: string

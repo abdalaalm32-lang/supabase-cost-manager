@@ -1132,4 +1132,42 @@ const PermissibleRow: React.FC<{ category: any; saving: boolean; onSave: (pct: n
   );
 };
 
+/* ---------- Summary box (Excel-style) ---------- */
+const SummaryBox: React.FC<{
+  title: string;
+  headers: [string, string, string];
+  rows: { ratio: string; count: number; label: string; color?: string }[];
+}> = ({ title, headers, rows }) => {
+  const total = rows.reduce((s, r) => s + r.count, 0);
+  return (
+    <div className="border rounded-lg overflow-hidden bg-card">
+      <div className="bg-primary/10 px-3 py-2 text-sm font-bold">{title}</div>
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-muted/50 text-xs">
+            <TableHead className="text-center">{headers[0]}</TableHead>
+            <TableHead className="text-center">{headers[1]}</TableHead>
+            <TableHead className="text-center">{headers[2]}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((r, i) => (
+            <TableRow key={i} className="text-xs">
+              <TableCell className="text-center font-medium">{r.ratio}</TableCell>
+              <TableCell className="text-center">{r.count}</TableCell>
+              <TableCell className={cn("text-center font-semibold", r.color)}>{r.label}</TableCell>
+            </TableRow>
+          ))}
+          <TableRow className="bg-muted font-bold text-xs">
+            <TableCell></TableCell>
+            <TableCell className="text-center">{total}</TableCell>
+            <TableCell></TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </div>
+  );
+};
+
 export default VarianceAnalysisPage;
+

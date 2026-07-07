@@ -1034,43 +1034,78 @@ export const VarianceAnalysisPage: React.FC = () => {
                     <Input value={consumableSearch} onChange={(e) => setConsumableSearch(e.target.value)} placeholder="ابحث..." className="h-9" />
                   </div>
                 </div>
-                <div className="flex items-center justify-between text-sm bg-muted/50 rounded px-3 py-2">
-                  <span className="text-muted-foreground">عدد الخامات المحددة كمستهلكات</span>
-                  <span className="font-bold">{(stockItems || []).filter((si: any) => si.is_consumable).length}</span>
-                </div>
-                <Table>
-                  <TableHeader><TableRow><TableHead className="text-right">الخامة</TableHead><TableHead className="text-center">مستهلكات؟</TableHead></TableRow></TableHeader>
-                  <TableBody>
-                    {(stockItems || [])
-                      .filter((si: any) => {
-                        if (consumableSearch.trim()) {
-                          const q = consumableSearch.trim().toLowerCase();
-                          if (!(si.name || "").toLowerCase().includes(q) && !(si.code || "").toLowerCase().includes(q)) return false;
-                        }
-                        if (consumableCatFilter !== "all") {
-                          const cats = itemCats.get(si.id);
-                          const inCat = (cats && cats.has(consumableCatFilter)) || si.category_id === consumableCatFilter;
-                          if (!inCat) return false;
-                        }
-                        if (consumableDeptFilter !== "all") {
-                          const cats = itemCats.get(si.id);
-                          const inDept = cats && Array.from(cats).some((cid) =>
-                            (categories || []).find((c: any) => c.id === cid && c.department_id === consumableDeptFilter)
-                          );
-                          if (!inDept && si.department_id !== consumableDeptFilter) return false;
-                        }
-                        return true;
-                      })
-                      .map((si: any) => (
-                        <TableRow key={si.id}>
-                          <TableCell>{si.name}</TableCell>
-                          <TableCell className="text-center">
-                            <Checkbox checked={!!si.is_consumable} onCheckedChange={(v) => toggleConsumable(si.id, !!v)} />
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
+                {(() => {
+                  const filteredItems = (stockItems || []).filter((si: any) => {
+                    if (consumableSearch.trim()) {
+                      const q = consumableSearch.trim().toLowerCase();
+                      if (!(si.name || "").toLowerCase().includes(q) && !(si.code || "").toLowerCase().includes(q)) return false;
+                    }
+                    if (consumableCatFilter !== "all") {
+                      const cats = itemCats.get(si.id);
+                      const inCat = (cats && cats.has(consumableCatFilter)) || si.category_id === consumableCatFilter;
+                      if (!inCat) return false;
+                    }
+                    if (consumableDeptFilter !== "all") {
+                      const cats = itemCats.get(si.id);
+                      const inDept = cats && Array.from(cats).some((cid) =>
+                        (categories || []).find((c: any) => c.id === cid && c.department_id === consumableDeptFilter)
+                      );
+                      if (!inDept && si.department_id !== consumableDeptFilter) return false;
+                    }
+                    return true;
+                  });
+                  const allSelected = filteredItems.length > 0 && filteredItems.every((si: any) => si.is_consumable);
+                  const someSelected = filteredItems.some((si: any) => si.is_consumable);
+                  return (
+                    <>
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-sm bg-muted/50 rounded px-3 py-2">
+                        <div className="flex items-center gap-4">
+                          <span className="text-muted-foreground">إجمالي المستهلكات: <span className="font-bold text-foreground">{(stockItems || []).filter((si: any) => si.is_consumable).length}</span></span>
+                          <span className="text-muted-foreground">المعروض: <span className="font-bold text-foreground">{filteredItems.length}</span></span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" variant="outline" disabled={bulkBusy || filteredItems.length === 0}
+                            onClick={() => bulkToggleConsumable(filteredItems.map((s: any) => s.id), !allSelected)}>
+                            {bulkBusy ? "..." : allSelected ? "إلغاء تحديد الكل" : "تحديد الكل"}
+                          </Button>
+                          {someSelected && !allSelected && (
+                            <Button size="sm" variant="ghost" disabled={bulkBusy}
+                              onClick={() => bulkToggleConsumable(filteredItems.filter((s: any) => s.is_consumable).map((s: any) => s.id), false)}>
+                              إلغاء المحددة
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="text-center w-12">
+                              <Checkbox checked={allSelected} onCheckedChange={(v) => bulkToggleConsumable(filteredItems.map((s: any) => s.id), !!v)} />
+                            </TableHead>
+                            <TableHead className="text-right">الخامة</TableHead>
+                            <TableHead className="text-right">الكود</TableHead>
+                            <TableHead className="text-center">مستهلكات؟</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredItems.map((si: any) => (
+                            <TableRow key={si.id}>
+                              <TableCell className="text-center">
+                                <Checkbox checked={!!si.is_consumable} onCheckedChange={(v) => toggleConsumable(si.id, !!v)} />
+                              </TableCell>
+                              <TableCell>{si.name}</TableCell>
+                              <TableCell className="text-muted-foreground text-xs">{si.code || "-"}</TableCell>
+                              <TableCell className="text-center">
+                                {si.is_consumable ? <span className="text-emerald-600 font-semibold">✓</span> : <span className="text-muted-foreground">-</span>}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </>
+                  );
+                })()}
+
               </div>
             )}
           </div>

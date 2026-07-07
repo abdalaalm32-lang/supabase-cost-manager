@@ -37,14 +37,23 @@ type Analysis = "Good" | "Normal" | "Accept" | "Deviation" | "Operation error" |
 type ResultSign = "Short" | "Over" | "Equal";
 type PrevResult = "Better" | "High" | "Fixed" | "Change to Loss" | "Change to Increase";
 
-const analyzeRate = (rate: number): Analysis => {
+export type Thresholds = {
+  normal: number;      // upper bound for Normal (e.g. 0.02)
+  accept: number;      // upper bound for Accept
+  deviation: number;   // upper bound for Deviation
+  operation: number;   // upper bound for Operation error
+  highDefl: number;    // upper bound for High deflection
+};
+const DEFAULT_THRESHOLDS: Thresholds = { normal: 0.02, accept: 0.05, deviation: 0.10, operation: 0.20, highDefl: 0.50 };
+
+const analyzeRate = (rate: number, t: Thresholds = DEFAULT_THRESHOLDS): Analysis => {
   const a = Math.abs(rate);
   if (a === 0) return "Good";
-  if (a <= 0.02) return "Normal";
-  if (a <= 0.05) return "Accept";
-  if (a <= 0.10) return "Deviation";
-  if (a <= 0.20) return "Operation error";
-  if (a <= 0.50) return "High deflection";
+  if (a <= t.normal) return "Normal";
+  if (a <= t.accept) return "Accept";
+  if (a <= t.deviation) return "Deviation";
+  if (a <= t.operation) return "Operation error";
+  if (a <= t.highDefl) return "High deflection";
   return "Issue";
 };
 

@@ -1262,6 +1262,147 @@ export const VarianceAnalysisPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Cost Variance KPI + Previous period comparison */}
+      {hasPeriod && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="border rounded-lg p-4 bg-card">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground"><DollarSign className="w-4 h-4" /> صافي التأثير المالي</div>
+            <div className={cn("text-xl font-bold mt-1", costKpis.netVal < 0 ? "text-red-600" : costKpis.netVal > 0 ? "text-emerald-600" : "")}>{fmt(costKpis.netVal)} ج.م</div>
+            <div className="text-[10px] text-muted-foreground mt-1">الفترة السابقة: {fmt(costKpis.prevNet)}</div>
+          </div>
+          <div className="border rounded-lg p-4 bg-red-50 dark:bg-red-950/20">
+            <div className="flex items-center gap-2 text-xs text-red-700 dark:text-red-300"><TrendingDown className="w-4 h-4" /> قيمة العجز</div>
+            <div className="text-xl font-bold mt-1 text-red-700 dark:text-red-300">{fmt(costKpis.shortVal)} ج.م</div>
+          </div>
+          <div className="border rounded-lg p-4 bg-emerald-50 dark:bg-emerald-950/20">
+            <div className="flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-300"><TrendingUp className="w-4 h-4" /> قيمة الزيادة</div>
+            <div className="text-xl font-bold mt-1 text-emerald-700 dark:text-emerald-300">{fmt(costKpis.overVal)} ج.م</div>
+          </div>
+          <div className="border rounded-lg p-4 bg-card">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">متوسط نسبة الانحراف</div>
+            <div className="text-xl font-bold mt-1">{fmtPct(costKpis.avgRate)}</div>
+            <div className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
+              الفترة السابقة: {fmtPct(costKpis.prevAvgRate)}
+              {costKpis.avgRate < costKpis.prevAvgRate ? <ArrowDown className="w-3 h-3 text-emerald-600" /> :
+                costKpis.avgRate > costKpis.prevAvgRate ? <ArrowUp className="w-3 h-3 text-red-600" /> :
+                <Minus className="w-3 h-3" />}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Preset filters + Subtotals toggle */}
+      {hasPeriod && (
+        <div className="flex items-center gap-2 flex-wrap border rounded-lg p-2 bg-card no-print">
+          <span className="text-xs text-muted-foreground ml-2">فلاتر سريعة:</span>
+          {[
+            { id: "all", label: "الكل" },
+            { id: "consumables", label: "المستهلكات فقط" },
+            { id: "high", label: "أعلى انحراف (Deviation+)" },
+            { id: "with-notes", label: "بها ملاحظات" },
+            { id: "short", label: "العجز فقط" },
+            { id: "over", label: "الزيادة فقط" },
+          ].map(p => (
+            <Button key={p.id} size="sm" variant={activePreset === p.id ? "default" : "outline"} onClick={() => setActivePreset(p.id)}>{p.label}</Button>
+          ))}
+          {(departments || []).slice(0, 4).map((d: any) => (
+            <Button key={d.id} size="sm" variant={departmentFilter === d.id ? "default" : "outline"} onClick={() => setDepartmentFilter(departmentFilter === d.id ? "all" : d.id)}>قسم: {d.name}</Button>
+          ))}
+          <div className="mr-auto flex items-center gap-2">
+            <Checkbox id="subs" checked={showSubtotals} onCheckedChange={(v) => setShowSubtotals(!!v)} />
+            <Label htmlFor="subs" className="text-xs cursor-pointer">عرض إجماليات المجموعات</Label>
+          </div>
+        </div>
+      )}
+
+      {/* Chart + Top-N side by side */}
+      {hasPeriod && summaryStats.total > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="border rounded-lg p-3 bg-card">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-sm font-bold flex items-center gap-2"><BarChart3 className="w-4 h-4" /> توزيع الانحرافات</div>
+              <div className="flex gap-1">
+                <Button size="sm" variant={chartType === "bar" ? "default" : "outline"} onClick={() => setChartType("bar")}><BarChart3 className="w-4 h-4" /></Button>
+                <Button size="sm" variant={chartType === "pie" ? "default" : "outline"} onClick={() => setChartType("pie")}><PieChartIcon className="w-4 h-4" /></Button>
+              </div>
+            </div>
+            <div style={{ width: "100%", height: 260 }}>
+              <ResponsiveContainer>
+                {chartType === "bar" ? (
+                  <BarChart data={summaryStats.analysisRows}>
+                    <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="#0f766e">
+                      {summaryStats.analysisRows.map((r, i) => (
+                        <Cell key={i} fill={
+                          r.label === "Good" ? "#10b981" :
+                          r.label === "Normal" ? "#14b8a6" :
+                          r.label === "Accept" ? "#84cc16" :
+                          r.label === "Deviation" ? "#eab308" :
+                          r.label === "Operation error" ? "#f97316" :
+                          r.label === "High deflection" ? "#ef4444" : "#7f1d1d"} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                ) : (
+                  <PieChart>
+                    <Tooltip />
+                    <Legend wrapperStyle={{ fontSize: 10 }} />
+                    <Pie data={summaryStats.analysisRows.filter(r => r.count > 0)} dataKey="count" nameKey="label" outerRadius={90} label>
+                      {summaryStats.analysisRows.filter(r => r.count > 0).map((r, i) => (
+                        <Cell key={i} fill={
+                          r.label === "Good" ? "#10b981" :
+                          r.label === "Normal" ? "#14b8a6" :
+                          r.label === "Accept" ? "#84cc16" :
+                          r.label === "Deviation" ? "#eab308" :
+                          r.label === "Operation error" ? "#f97316" :
+                          r.label === "High deflection" ? "#ef4444" : "#7f1d1d"} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                )}
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="border rounded-lg p-3 bg-card">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-sm font-bold">أعلى الانحرافات</div>
+              <div className="flex gap-1">
+                <Button size="sm" variant={topSortMode === "rate" ? "default" : "outline"} onClick={() => setTopSortMode("rate")}>حسب النسبة</Button>
+                <Button size="sm" variant={topSortMode === "costVar" ? "default" : "outline"} onClick={() => setTopSortMode("costVar")}>حسب القيمة</Button>
+              </div>
+            </div>
+            <div className="max-h-[260px] overflow-y-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="text-xs">
+                    <TableHead className="text-right">الخامة</TableHead>
+                    <TableHead className="text-center">النسبة</TableHead>
+                    <TableHead className="text-center">قيمة الفرق</TableHead>
+                    <TableHead className="text-center">التحليل</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {topDeviations.length === 0 && (
+                    <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground text-xs py-3">لا توجد انحرافات</TableCell></TableRow>
+                  )}
+                  {topDeviations.map((i) => (
+                    <TableRow key={i.id} className="text-xs">
+                      <TableCell className="font-medium">{i.name}</TableCell>
+                      <TableCell className="text-center">{fmtPct(i.rate)}</TableCell>
+                      <TableCell className={cn("text-center font-semibold", i.costVar < 0 ? "text-red-600" : "text-emerald-600")}>{fmt(i.costVar)}</TableCell>
+                      <TableCell className="text-center"><span className={cn("px-2 py-0.5 rounded font-semibold", analysisColor(i.analysis))}>{i.analysis}</span></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </div>
+      )}
+
       {!hasPeriod && (
         <div className="p-8 text-center text-muted-foreground border rounded-lg">اختر فترة زمنية (من / إلى) لعرض التقرير</div>
       )}
@@ -1270,6 +1411,8 @@ export const VarianceAnalysisPage: React.FC = () => {
       {hasPeriod && enriched.length === 0 && (
         <div className="p-8 text-center text-muted-foreground border rounded-lg">لا توجد بيانات مطابقة للفلاتر</div>
       )}
+
+
 
       {hasPeriod && enriched.map((group) => {
         const shortSum = group.items.filter(i => i.costVar < 0).reduce((s, i) => s + i.costVar, 0);

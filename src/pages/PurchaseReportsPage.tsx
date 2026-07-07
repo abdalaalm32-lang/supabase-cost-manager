@@ -483,7 +483,7 @@ export const PurchaseReportsPage: React.FC = () => {
         <td>${i.unit}</td>
         <td>${fmt(i.standardCost)}</td>
         <td>${fmt(i.avgCost)}</td>
-        <td style="color:${i.priceDiff < 0 ? "#c00" : i.priceDiff > 0 ? "#0a7" : "#000"};font-weight:bold;">${i.priceDiff > 0 ? "+" : ""}${fmt(i.priceDiff)}</td>
+        <td style="color:#000;font-weight:bold;">${i.priceDiff > 0 ? "+" : ""}${fmt(i.priceDiff)}</td>
         <td style="font-weight:bold;">${fmt(i.totalValue)}</td>
       </tr>`;
     });
@@ -625,7 +625,7 @@ export const PurchaseReportsPage: React.FC = () => {
       ws.mergeCells("A1:L1");
       const titleCell = ws.getCell("A1");
       titleCell.value = "تقارير المشتريات";
-      titleCell.font = { bold: true, size: 16, name: "Cairo", color: { argb: "FF134E4A" } };
+      titleCell.font = { bold: true, size: 16, name: "Cairo", color: { argb: "FF000000" } };
       titleCell.alignment = { horizontal: "center", vertical: "middle" };
       ws.getRow(1).height = 28;
 
@@ -640,9 +640,9 @@ export const PurchaseReportsPage: React.FC = () => {
       const kpiLabels = ["", "عدد الفواتير", "إجمالي قيمة المشتريات", "خامات تم شراؤها", "متوسط قيمة الفاتورة"];
       const kpiValues = ["", stats.invoiceCount, Number(stats.totalInvoiceValue.toFixed(2)), stats.totalItems, Number(stats.avgInvoiceValue.toFixed(2))];
       const kpiHeader = ws.addRow(kpiLabels);
-      kpiHeader.eachCell((c, i) => { if (i > 1) { c.font = { bold: true, color: { argb: "FFFFFFFF" }, name: "Cairo" }; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F766E" } }; c.alignment = { horizontal: "center" }; c.border = { top: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" }, bottom: { style: "thin" } }; } });
+      kpiHeader.eachCell((c, i) => { if (i > 1) { c.font = { bold: true, color: { argb: "FF000000" }, name: "Cairo" }; c.alignment = { horizontal: "center" }; c.border = { top: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" }, bottom: { style: "thin" } }; } });
       const kpiRow = ws.addRow(kpiValues);
-      kpiRow.eachCell((c, i) => { if (i > 1) { c.font = { bold: true, size: 12, name: "Cairo" }; c.alignment = { horizontal: "center" }; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE6FFFA" } }; c.border = { top: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" }, bottom: { style: "thin" } }; } });
+      kpiRow.eachCell((c, i) => { if (i > 1) { c.font = { bold: true, size: 12, name: "Cairo", color: { argb: "FF000000" } }; c.alignment = { horizontal: "center" }; c.border = { top: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" }, bottom: { style: "thin" } }; } });
       ws.addRow([]);
 
       // Embed chart images in a 2x2 grid
@@ -661,8 +661,7 @@ export const PurchaseReportsPage: React.FC = () => {
         const titleRowIdx = row;
         const titleCellRef = ws.getRow(titleRowIdx).getCell(col + 1);
         titleCellRef.value = c.title;
-        titleCellRef.font = { bold: true, size: 11, name: "Cairo", color: { argb: "FFFFFFFF" } };
-        titleCellRef.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F766E" } };
+        titleCellRef.font = { bold: true, size: 11, name: "Cairo", color: { argb: "FF000000" } };
         titleCellRef.alignment = { horizontal: "center" };
         ws.mergeCells(titleRowIdx, col + 1, titleRowIdx, col + 6);
         const imgId = wb.addImage({ base64: c.img, extension: "png" });
@@ -675,7 +674,7 @@ export const PurchaseReportsPage: React.FC = () => {
 
       // Data table
       const headerRow = ws.addRow(["الكود", "اسم الخامة", "المجموعة", "عدد الشراء", "المورد الأكثر", "إجمالي الكمية", "الوحدة", "التكلفة المعيارية", "متوسط التكلفة", "فرق السعر", "إجمالي القيمة"]);
-      headerRow.eachCell((c) => { c.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10, name: "Cairo" }; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F766E" } }; c.alignment = { horizontal: "center" }; c.border = { top: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" }, bottom: { style: "thin" } }; });
+      headerRow.eachCell((c) => { c.font = { bold: true, color: { argb: "FF000000" }, size: 10, name: "Cairo" }; c.alignment = { horizontal: "center" }; c.border = { top: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" }, bottom: { style: "thin" } }; });
       filteredData.forEach((i: any) => {
         const r = ws.addRow([i.code || "—", i.name, i.categoryName, i.purchaseCount, `${i.topSupplier} (${i.topSupplierCount})`, fmt(i.totalQty), i.unit, fmt(i.standardCost), fmt(i.avgCost), fmt(i.priceDiff), fmt(i.totalValue)]);
         r.eachCell((c) => { c.alignment = { horizontal: "center" }; c.font = { size: 9, name: "Cairo" }; c.border = { top: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" }, bottom: { style: "thin" } }; });

@@ -92,6 +92,7 @@ const mainNavItems: NavItem[] = [
     ],
   },
   { id: "costing", path: "/costing", label: "تحليل التكاليف", icon: Calculator },
+  { id: "variance-analysis", path: "/variance-analysis", label: "تحليل الانحرافات Variance Analysis", icon: BarChart3 },
   {
     id: "menu-costing", path: "/menu-costing", label: "تكلفة المنيو", icon: PieChart,
     children: [

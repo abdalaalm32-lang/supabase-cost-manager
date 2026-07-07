@@ -663,6 +663,7 @@ export type Database = {
           id: string
           identifier_code: string | null
           name: string
+          permissible_percentage: number
           storage_type: string | null
         }
         Insert: {
@@ -674,6 +675,7 @@ export type Database = {
           id?: string
           identifier_code?: string | null
           name: string
+          permissible_percentage?: number
           storage_type?: string | null
         }
         Update: {
@@ -685,6 +687,7 @@ export type Database = {
           id?: string
           identifier_code?: string | null
           name?: string
+          permissible_percentage?: number
           storage_type?: string | null
         }
         Relationships: [
@@ -2469,6 +2472,7 @@ export type Database = {
           current_stock: number
           department_id: string | null
           id: string
+          is_consumable: boolean
           max_level: number
           menu_engineering_class: string | null
           min_level: number
@@ -2490,6 +2494,7 @@ export type Database = {
           current_stock?: number
           department_id?: string | null
           id?: string
+          is_consumable?: boolean
           max_level?: number
           menu_engineering_class?: string | null
           min_level?: number
@@ -2511,6 +2516,7 @@ export type Database = {
           current_stock?: number
           department_id?: string | null
           id?: string
+          is_consumable?: boolean
           max_level?: number
           menu_engineering_class?: string | null
           min_level?: number

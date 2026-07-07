@@ -692,15 +692,25 @@ export const VarianceAnalysisPage: React.FC = () => {
 
   return (
     <div className="p-4 md:p-6 space-y-5" dir="rtl">
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="flex items-center justify-between flex-wrap gap-3 no-print">
         <div>
           <h1 className="text-2xl font-bold">تحليل الانحرافات - Variance Analysis</h1>
           <p className="text-sm text-muted-foreground">تقرير انحراف خامات المطبخ - مقارنة الاستهلاك النظري بالفعلي</p>
         </div>
-        <Button variant="outline" onClick={() => setManageOpen(true)}>
-          <Settings2 className="w-4 h-4 ml-2" /> الإعدادات (نسب السماح والمستهلكات)
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" onClick={handlePrint} disabled={!hasPeriod}>
+            <Printer className="w-4 h-4 ml-2" /> طباعة
+          </Button>
+          <Button variant="outline" onClick={handleExportPdf} disabled={!hasPeriod || pdfBusy}>
+            {pdfBusy ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <FileDown className="w-4 h-4 ml-2" />} تصدير PDF
+          </Button>
+          <Button variant="outline" onClick={() => setManageOpen(true)}>
+            <Settings2 className="w-4 h-4 ml-2" /> الإعدادات
+          </Button>
+        </div>
       </div>
+
+      <div ref={reportRef} className="space-y-5 print-area">
 
       {/* Filters */}
       <div className="bg-card border rounded-lg p-4 grid grid-cols-1 md:grid-cols-4 gap-3">

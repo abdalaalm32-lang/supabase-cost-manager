@@ -640,9 +640,9 @@ export const PurchaseReportsPage: React.FC = () => {
       const kpiLabels = ["", "عدد الفواتير", "إجمالي قيمة المشتريات", "خامات تم شراؤها", "متوسط قيمة الفاتورة"];
       const kpiValues = ["", stats.invoiceCount, Number(stats.totalInvoiceValue.toFixed(2)), stats.totalItems, Number(stats.avgInvoiceValue.toFixed(2))];
       const kpiHeader = ws.addRow(kpiLabels);
-      kpiHeader.eachCell((c, i) => { if (i > 1) { c.font = { bold: true, color: { argb: "FFFFFFFF" }, name: "Cairo" }; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F766E" } }; c.alignment = { horizontal: "center" }; c.border = { top: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" }, bottom: { style: "thin" } }; } });
+      kpiHeader.eachCell((c, i) => { if (i > 1) { c.font = { bold: true, color: { argb: "FF000000" }, name: "Cairo" }; c.alignment = { horizontal: "center" }; c.border = { top: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" }, bottom: { style: "thin" } }; } });
       const kpiRow = ws.addRow(kpiValues);
-      kpiRow.eachCell((c, i) => { if (i > 1) { c.font = { bold: true, size: 12, name: "Cairo" }; c.alignment = { horizontal: "center" }; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE6FFFA" } }; c.border = { top: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" }, bottom: { style: "thin" } }; } });
+      kpiRow.eachCell((c, i) => { if (i > 1) { c.font = { bold: true, size: 12, name: "Cairo", color: { argb: "FF000000" } }; c.alignment = { horizontal: "center" }; c.border = { top: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" }, bottom: { style: "thin" } }; } });
       ws.addRow([]);
 
       // Embed chart images in a 2x2 grid

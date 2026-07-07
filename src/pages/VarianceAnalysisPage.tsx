@@ -131,10 +131,27 @@ export const VarianceAnalysisPage: React.FC = () => {
   const [dateTo, setDateTo] = useState<Date | undefined>();
   const [consumablesLimitPct, setConsumablesLimitPct] = useState<number>(3); // default 3%
   const [manageOpen, setManageOpen] = useState(false);
-  const [manageTab, setManageTab] = useState<"permissible" | "consumables">("permissible");
+  const [manageTab, setManageTab] = useState<"permissible" | "consumables" | "thresholds">("permissible");
   const [consumableDeptFilter, setConsumableDeptFilter] = useState<string>("all");
   const [consumableCatFilter, setConsumableCatFilter] = useState<string>("all");
   const [consumableSearch, setConsumableSearch] = useState<string>("");
+
+  // New UI state
+  const [chartType, setChartType] = useState<"bar" | "pie">("bar");
+  const [topSortMode, setTopSortMode] = useState<"rate" | "costVar">("rate");
+  const [showSubtotals, setShowSubtotals] = useState<boolean>(true);
+  const [activePreset, setActivePreset] = useState<string>("all");
+  const [thresholds, setThresholds] = useState<Thresholds>(() => {
+    try {
+      const raw = localStorage.getItem("variance-thresholds");
+      return raw ? { ...DEFAULT_THRESHOLDS, ...JSON.parse(raw) } : DEFAULT_THRESHOLDS;
+    } catch { return DEFAULT_THRESHOLDS; }
+  });
+  useEffect(() => {
+    localStorage.setItem("variance-thresholds", JSON.stringify(thresholds));
+  }, [thresholds]);
+  const [noteEditor, setNoteEditor] = useState<{ itemId: string; itemName: string } | null>(null);
+  const [noteDraft, setNoteDraft] = useState<{ note: string; action_status: string }>({ note: "", action_status: "pending" });
 
   const activeLocationId = branchFilter !== "all" ? branchFilter : null;
   const { getCost } = useBranchCosts(activeLocationId);

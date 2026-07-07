@@ -639,32 +639,6 @@ export const PurchaseReportsPage: React.FC = () => {
       kpiRow.eachCell((c, i) => { if (i > 1) { c.font = { bold: true, size: 12, name: "Cairo", color: { argb: "FF000000" } }; c.alignment = { horizontal: "center" }; c.border = { top: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" }, bottom: { style: "thin" } }; } });
       ws.addRow([]);
 
-      // Embed chart images in a 2x2 grid
-      const chartsList: Array<{ title: string; img: string | null }> = [
-        { title: "اتجاه المشتريات الشهري", img: charts.monthly },
-        { title: "توزيع المشتريات حسب المجموعة", img: charts.category },
-        { title: "أكثر الخامات شراءً", img: charts.topItems },
-        { title: "فرق السعر (المعيارية - المتوسط)", img: charts.priceDiff },
-      ];
-      const startRow = ws.rowCount + 1;
-      chartsList.forEach((c, idx) => {
-        if (!c.img) return;
-        const row = idx < 2 ? startRow : startRow + 22;
-        const col = idx % 2 === 0 ? 0 : 6;
-        // Title cell above the image
-        const titleRowIdx = row;
-        const titleCellRef = ws.getRow(titleRowIdx).getCell(col + 1);
-        titleCellRef.value = c.title;
-        titleCellRef.font = { bold: true, size: 11, name: "Cairo", color: { argb: "FF000000" } };
-        titleCellRef.alignment = { horizontal: "center" };
-        ws.mergeCells(titleRowIdx, col + 1, titleRowIdx, col + 6);
-        const imgId = wb.addImage({ base64: c.img, extension: "png" });
-        ws.addImage(imgId, { tl: { col, row: titleRowIdx }, ext: { width: 460, height: 320 } });
-      });
-      // Advance rowCount past the chart area
-      const chartsBottom = startRow + 44;
-      while (ws.rowCount < chartsBottom) ws.addRow([]);
-      ws.addRow([]);
 
       // Data table
       const headerRow = ws.addRow(["الكود", "اسم الخامة", "المجموعة", "عدد الشراء", "المورد الأكثر", "إجمالي الكمية", "الوحدة", "التكلفة المعيارية", "متوسط التكلفة", "فرق السعر", "إجمالي القيمة"]);

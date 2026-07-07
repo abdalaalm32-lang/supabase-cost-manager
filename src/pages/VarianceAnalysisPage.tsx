@@ -117,6 +117,8 @@ export const VarianceAnalysisPage: React.FC = () => {
   const [consumablesLimitPct, setConsumablesLimitPct] = useState<number>(3); // default 3%
   const [manageOpen, setManageOpen] = useState(false);
   const [manageTab, setManageTab] = useState<"permissible" | "consumables">("permissible");
+  const [consumableDeptFilter, setConsumableDeptFilter] = useState<string>("all");
+  const [consumableSearch, setConsumableSearch] = useState<string>("");
 
   const activeLocationId = branchFilter !== "all" ? branchFilter : null;
   const { getCost } = useBranchCosts(activeLocationId);

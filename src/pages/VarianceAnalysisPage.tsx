@@ -30,13 +30,13 @@ import jsPDF from "jspdf";
     - Consumables ratio monitor vs configurable limit
    ========================================================= */
 
-type Analysis = "Normal" | "Accept" | "Deviation" | "Operation error" | "High deflection" | "Issue";
+type Analysis = "Good" | "Normal" | "Accept" | "Deviation" | "Operation error" | "High deflection" | "Issue";
 type ResultSign = "Short" | "Over" | "Equal";
 type PrevResult = "Better" | "High" | "Fixed" | "Change to Loss" | "Change to Increase";
 
 const analyzeRate = (rate: number): Analysis => {
   const a = Math.abs(rate);
-  if (a === 0) return "Normal";
+  if (a === 0) return "Good";
   if (a <= 0.02) return "Normal";
   if (a <= 0.05) return "Accept";
   if (a <= 0.10) return "Deviation";
@@ -47,7 +47,8 @@ const analyzeRate = (rate: number): Analysis => {
 
 const analysisColor = (a: Analysis) => {
   switch (a) {
-    case "Normal": return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200";
+    case "Good": return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200";
+    case "Normal": return "bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-200";
     case "Accept": return "bg-lime-100 text-lime-800 dark:bg-lime-900/40 dark:text-lime-200";
     case "Deviation": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200";
     case "Operation error": return "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200";

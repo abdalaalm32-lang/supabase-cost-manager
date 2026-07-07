@@ -625,7 +625,7 @@ export const PurchaseReportsPage: React.FC = () => {
       ws.mergeCells("A1:L1");
       const titleCell = ws.getCell("A1");
       titleCell.value = "تقارير المشتريات";
-      titleCell.font = { bold: true, size: 16, name: "Cairo", color: { argb: "FF134E4A" } };
+      titleCell.font = { bold: true, size: 16, name: "Cairo", color: { argb: "FF000000" } };
       titleCell.alignment = { horizontal: "center", vertical: "middle" };
       ws.getRow(1).height = 28;
 

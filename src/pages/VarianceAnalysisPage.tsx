@@ -118,6 +118,7 @@ export const VarianceAnalysisPage: React.FC = () => {
   const [manageOpen, setManageOpen] = useState(false);
   const [manageTab, setManageTab] = useState<"permissible" | "consumables">("permissible");
   const [consumableDeptFilter, setConsumableDeptFilter] = useState<string>("all");
+  const [consumableCatFilter, setConsumableCatFilter] = useState<string>("all");
   const [consumableSearch, setConsumableSearch] = useState<string>("");
 
   const activeLocationId = branchFilter !== "all" ? branchFilter : null;

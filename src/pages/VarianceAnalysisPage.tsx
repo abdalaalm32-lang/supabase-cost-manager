@@ -533,7 +533,7 @@ export const VarianceAnalysisPage: React.FC = () => {
         c.costVar = round(c.diffQty * c.avgCost);
         c.rate = c.actualConsumedQty > 0 ? c.diffQty / c.actualConsumedQty : 0;
       }
-      c.analysis = analyzeRate(c.rate);
+      c.analysis = analyzeRate(c.rate, thresholds);
       c.result = c.diffQty < 0 ? "Short" : c.diffQty > 0 ? "Over" : "Equal";
     }
     return map;

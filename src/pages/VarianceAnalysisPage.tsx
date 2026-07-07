@@ -999,11 +999,51 @@ export const VarianceAnalysisPage: React.FC = () => {
       const pdf = new jsPDF("l", "mm", "a4");
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
+
+      // ── Cover page ──
+      const printDateStr = new Date().toLocaleString("ar-EG");
+      pdf.setFillColor(240, 240, 240);
+      pdf.rect(0, 0, pageW, pageH, "F");
+      pdf.setTextColor(0, 0, 0);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(22);
+      pdf.text("Variance Analysis Report", pageW / 2, 60, { align: "center" });
+      pdf.setFontSize(14);
+      pdf.text("Kitchen Materials Deviation", pageW / 2, 72, { align: "center" });
+      pdf.setDrawColor(0);
+      pdf.line(30, 82, pageW - 30, 82);
+      pdf.setFontSize(11);
+      pdf.setFont("helvetica", "normal");
+      const meta: [string, string][] = [
+        ["Branch", branchFilter === "all" ? "All Branches" : ((branches || []).find((b: any) => b.id === branchFilter)?.name || "-")],
+        ["Department", departmentFilter === "all" ? "All Departments" : ((departments || []).find((d: any) => d.id === departmentFilter)?.name || "-")],
+        ["Period From", dateFrom ? format(dateFrom, "yyyy-MM-dd") : "-"],
+        ["Period To", dateTo ? format(dateTo, "yyyy-MM-dd") : "-"],
+        ["Previous Period", prevRange ? `${format(prevRange.from, "yyyy-MM-dd")} → ${format(prevRange.to, "yyyy-MM-dd")}` : "-"],
+        ["Net Sales", `${fmt(netSales)} EGP`],
+        ["Net Cost Variance", `${fmt(costKpis.netVal)} EGP`],
+        ["Total Items", String(current.size)],
+        ["Printed At", printDateStr],
+        ["Printed By", auth.profile?.full_name || "-"],
+      ];
+      let ly = 100;
+      meta.forEach(([k, v]) => {
+        pdf.setFont("helvetica", "bold");
+        pdf.text(`${k}:`, 40, ly);
+        pdf.setFont("helvetica", "normal");
+        pdf.text(String(v), 90, ly);
+        ly += 8;
+      });
+      pdf.setFontSize(8);
+      pdf.text("Powered by Mohamed Abdel Aal", pageW / 2, pageH - 8, { align: "center" });
+
+      // ── Content pages ──
       const imgW = pageW;
       const imgH = (canvas.height * imgW) / canvas.width;
       const imgData = canvas.toDataURL("image/jpeg", 0.92);
       let heightLeft = imgH;
       let position = 0;
+      pdf.addPage();
       pdf.addImage(imgData, "JPEG", 0, position, imgW, imgH);
       heightLeft -= pageH;
       while (heightLeft > 0) {
@@ -1012,6 +1052,15 @@ export const VarianceAnalysisPage: React.FC = () => {
         pdf.addImage(imgData, "JPEG", 0, position, imgW, imgH);
         heightLeft -= pageH;
       }
+      // ── Footer with page numbers on all pages ──
+      const total = (pdf as any).internal.getNumberOfPages();
+      for (let i = 1; i <= total; i++) {
+        pdf.setPage(i);
+        pdf.setFontSize(8);
+        pdf.setTextColor(80, 80, 80);
+        pdf.text(`Page ${i} / ${total}`, pageW - 15, pageH - 5, { align: "right" });
+        pdf.text(printDateStr, 15, pageH - 5);
+      }
       pdf.save(`تحليل-الانحرافات-${dateFrom ? format(dateFrom, "yyyy-MM-dd") : ""}_${dateTo ? format(dateTo, "yyyy-MM-dd") : ""}.pdf`);
       toast.success("تم تصدير PDF");
     } catch (e) {
@@ -1019,6 +1068,75 @@ export const VarianceAnalysisPage: React.FC = () => {
       toast.error("فشل التصدير");
     } finally {
       setPdfBusy(false);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    if (!hasPeriod) return;
+    try {
+      const columns = [
+        { key: "catName", label: "المجموعة" },
+        { key: "name", label: "الخامة" },
+        { key: "unit", label: "الوحدة" },
+        { key: "openQty", label: "أول المدة" },
+        { key: "inQty", label: "وارد" },
+        { key: "outQty", label: "استهلاك نظري" },
+        { key: "bookQty", label: "آخر المدة نظري" },
+        { key: "countQty", label: "الرصيد الفعلي" },
+        { key: "diffQty", label: "الفرق" },
+        { key: "costVar", label: "قيمة الانحراف" },
+        { key: "actualConsumedQty", label: "استهلاك فعلي" },
+        { key: "actualConsumedVal", label: "قيمة الاستهلاك" },
+        { key: "rate", label: "نسبة الانحراف" },
+        { key: "result", label: "النتيجة" },
+        { key: "analysis", label: "التحليل" },
+        { key: "prevRate", label: "نسبة سابقة" },
+        { key: "prevResult", label: "مقارنة" },
+        { key: "note", label: "ملاحظة" },
+        { key: "action_status", label: "حالة الإجراء" },
+      ];
+      const rows: any[] = [];
+      for (const g of enriched) {
+        for (const i of g.items) {
+          const n = notesByItem.get(i.id);
+          rows.push({
+            catName: g.catName,
+            name: i.name,
+            unit: i.unit,
+            openQty: Number(i.openQty.toFixed(3)),
+            inQty: Number(i.inQty.toFixed(3)),
+            outQty: Number(i.outQty.toFixed(3)),
+            bookQty: Number(i.bookQty.toFixed(3)),
+            countQty: Number(i.countQty.toFixed(3)),
+            diffQty: Number(i.diffQty.toFixed(3)),
+            costVar: Number(i.costVar.toFixed(2)),
+            actualConsumedQty: Number(i.actualConsumedQty.toFixed(3)),
+            actualConsumedVal: Number(i.actualConsumedVal.toFixed(2)),
+            rate: (i.rate * 100).toFixed(2) + "%",
+            result: i.result === "Short" ? "عجز" : i.result === "Over" ? "زيادة" : "متطابق",
+            analysis: i.analysis,
+            prevRate: i.prevRate != null ? (i.prevRate * 100).toFixed(2) + "%" : "-",
+            prevResult: i.prevResult || "-",
+            note: n?.note || "",
+            action_status: n?.action_status || "",
+          });
+        }
+      }
+      await exportToExcel({
+        title: "تحليل الانحرافات",
+        filename: `variance-analysis-${dateFrom ? format(dateFrom, "yyyy-MM-dd") : ""}_${dateTo ? format(dateTo, "yyyy-MM-dd") : ""}`,
+        columns,
+        data: rows,
+        filters: [
+          { label: "الفرع", value: branchFilter === "all" ? "الكل" : ((branches || []).find((b: any) => b.id === branchFilter)?.name || "-") },
+          { label: "القسم", value: departmentFilter === "all" ? "الكل" : ((departments || []).find((d: any) => d.id === departmentFilter)?.name || "-") },
+          { label: "الفترة", value: `${dateFrom ? format(dateFrom, "yyyy-MM-dd") : ""} → ${dateTo ? format(dateTo, "yyyy-MM-dd") : ""}` },
+        ],
+      });
+      toast.success("تم تصدير Excel");
+    } catch (e) {
+      console.error(e);
+      toast.error("فشل التصدير");
     }
   };
 

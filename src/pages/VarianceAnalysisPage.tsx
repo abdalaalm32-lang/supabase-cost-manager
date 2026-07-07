@@ -1768,6 +1768,35 @@ export const VarianceAnalysisPage: React.FC = () => {
           <DialogFooter><Button variant="outline" onClick={() => setManageOpen(false)}>إغلاق</Button></DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Note editor dialog */}
+      <Dialog open={!!noteEditor} onOpenChange={(o) => !o && setNoteEditor(null)}>
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader><DialogTitle>ملاحظة على: {noteEditor?.itemName}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs mb-1 block">حالة الإجراء</Label>
+              <Select value={noteDraft.action_status} onValueChange={(v) => setNoteDraft({ ...noteDraft, action_status: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">قيد المراجعة</SelectItem>
+                  <SelectItem value="reviewed">تمت المراجعة</SelectItem>
+                  <SelectItem value="needs_recount">يحتاج جرد</SelectItem>
+                  <SelectItem value="settled">تمت التسوية</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs mb-1 block">الملاحظة</Label>
+              <Textarea rows={4} value={noteDraft.note} onChange={(e) => setNoteDraft({ ...noteDraft, note: e.target.value })} placeholder="اكتب ملاحظتك..." />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNoteEditor(null)}>إلغاء</Button>
+            <Button onClick={saveNote}>حفظ</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

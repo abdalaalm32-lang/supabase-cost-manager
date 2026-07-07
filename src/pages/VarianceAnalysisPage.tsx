@@ -649,7 +649,7 @@ export const VarianceAnalysisPage: React.FC = () => {
       return { label: l, count: c, ratio: pct(c) };
     });
 
-    return { total: items.length, resultRows, analysisRows: analysisFull, prevRows };
+    return { total: items.length, resultRows, analysisRows, prevRows };
   }, [current]);
 
   /* ============ Print + PDF (structured report, not UI capture) ============ */

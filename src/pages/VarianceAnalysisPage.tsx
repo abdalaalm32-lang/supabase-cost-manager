@@ -559,11 +559,8 @@ export const VarianceAnalysisPage: React.FC = () => {
       }
     }
     for (const g of groupMap.values()) {
-      // Sort by cost variance descending magnitude
-      g.items.sort((a, b) => Math.abs(b.costVar) - Math.abs(a.costVar));
       out.push(g);
     }
-    out.sort((a, b) => a.catName.localeCompare(b.catName, "ar"));
     return out;
   }, [current, previous, categories, itemCats, departmentFilter]);
 

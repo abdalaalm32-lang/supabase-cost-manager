@@ -486,11 +486,23 @@ export const VarianceAnalysisPage: React.FC = () => {
       c.bookQty = round(c.openQty + c.inQty - c.outQty);
       c.diffQty = round(c.countQty - c.bookQty);
       if (Math.abs(c.diffQty) < 0.005) c.diffQty = 0;
-      c.costVar = round(c.diffQty * c.avgCost);
+      // Actual consumption absorbs the variance (shortage/surplus)
       c.actualConsumedQty = round(c.outQty - c.diffQty);
       c.actualConsumedVal = round(c.actualConsumedQty * c.avgCost);
       c.receiveVal = round(c.inQty * c.avgCost);
-      c.rate = c.actualConsumedQty > 0 ? c.diffQty / c.actualConsumedQty : 0;
+
+      if (c.isConsumable) {
+        // For consumables: theoretical consumption absorbs the variance,
+        // so theoretical end == actual balance and diff == 0.
+        c.outQty = c.actualConsumedQty;
+        c.bookQty = c.countQty;
+        c.diffQty = 0;
+        c.costVar = 0;
+        c.rate = 0;
+      } else {
+        c.costVar = round(c.diffQty * c.avgCost);
+        c.rate = c.actualConsumedQty > 0 ? c.diffQty / c.actualConsumedQty : 0;
+      }
       c.analysis = analyzeRate(c.rate);
       c.result = c.diffQty < 0 ? "Short" : c.diffQty > 0 ? "Over" : "Equal";
     }

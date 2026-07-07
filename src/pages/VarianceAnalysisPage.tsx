@@ -681,6 +681,80 @@ export const VarianceAnalysisPage: React.FC = () => {
     return { total: items.length, resultRows, analysisRows, prevRows };
   }, [current]);
 
+  /* ============ Cost variance KPIs & prev period comparison ============ */
+  const costKpis = useMemo(() => {
+    const items = Array.from(current.values()).filter(i => !i.isConsumable);
+    const shortVal = items.filter(i => i.costVar < 0).reduce((s, i) => s + i.costVar, 0);
+    const overVal = items.filter(i => i.costVar > 0).reduce((s, i) => s + i.costVar, 0);
+    const netVal = shortVal + overVal;
+    const absSum = items.reduce((s, i) => s + Math.abs(i.rate), 0);
+    const avgRate = items.length ? absSum / items.length : 0;
+
+    const prevItems = Array.from(previous.values()).filter(i => !i.isConsumable);
+    const prevAbsSum = prevItems.reduce((s, i) => s + Math.abs(i.rate), 0);
+    const prevAvgRate = prevItems.length ? prevAbsSum / prevItems.length : 0;
+    const prevNet = prevItems.reduce((s, i) => s + i.costVar, 0);
+    return { shortVal, overVal, netVal, avgRate, prevAvgRate, prevNet };
+  }, [current, previous]);
+
+  /* ============ Top N (all deviations sorted) ============ */
+  const topDeviations = useMemo(() => {
+    const items = Array.from(current.values()).filter(i => !i.isConsumable && i.rate !== 0);
+    if (topSortMode === "rate") {
+      items.sort((a, b) => Math.abs(b.rate) - Math.abs(a.rate));
+    } else {
+      items.sort((a, b) => Math.abs(b.costVar) - Math.abs(a.costVar));
+    }
+    return items;
+  }, [current, topSortMode]);
+
+  /* ============ Notes ============ */
+  const { data: notesData } = useQuery({
+    queryKey: ["var-notes", companyId, dateFrom, dateTo, branchFilter],
+    queryFn: async () => {
+      let q = supabase.from("variance_item_notes").select("*").eq("company_id", companyId!);
+      if (dateFrom) q = q.eq("period_from", format(dateFrom, "yyyy-MM-dd"));
+      if (dateTo) q = q.eq("period_to", format(dateTo, "yyyy-MM-dd"));
+      if (branchFilter !== "all") q = q.eq("branch_id", branchFilter);
+      else q = q.is("branch_id", null);
+      const { data } = await q;
+      return data || [];
+    },
+    enabled: !!companyId && !!dateFrom && !!dateTo,
+  });
+  const notesByItem = useMemo(() => {
+    const m = new Map<string, any>();
+    (notesData || []).forEach((n: any) => m.set(n.stock_item_id, n));
+    return m;
+  }, [notesData]);
+
+  const openNoteEditor = (itemId: string, itemName: string) => {
+    const existing = notesByItem.get(itemId);
+    setNoteDraft({ note: existing?.note || "", action_status: existing?.action_status || "pending" });
+    setNoteEditor({ itemId, itemName });
+  };
+  const saveNote = async () => {
+    if (!noteEditor || !companyId) return;
+    const existing = notesByItem.get(noteEditor.itemId);
+    const payload = {
+      company_id: companyId,
+      stock_item_id: noteEditor.itemId,
+      branch_id: branchFilter !== "all" ? branchFilter : null,
+      period_from: dateFrom ? format(dateFrom, "yyyy-MM-dd") : null,
+      period_to: dateTo ? format(dateTo, "yyyy-MM-dd") : null,
+      note: noteDraft.note,
+      action_status: noteDraft.action_status,
+      created_by: auth.user?.id ?? null,
+    };
+    const { error } = existing
+      ? await supabase.from("variance_item_notes").update(payload).eq("id", existing.id)
+      : await supabase.from("variance_item_notes").insert(payload);
+    if (error) { toast.error("فشل حفظ الملاحظة"); return; }
+    toast.success("تم الحفظ");
+    setNoteEditor(null);
+    qc.invalidateQueries({ queryKey: ["var-notes", companyId] });
+  };
+
   /* ============ Print + PDF (structured report, not UI capture) ============ */
   const reportRef = useRef<HTMLDivElement>(null);
   const [pdfBusy, setPdfBusy] = useState(false);

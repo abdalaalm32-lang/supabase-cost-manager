@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, subMonths } from "date-fns";
 import { CalendarIcon, Store, Building2, Warehouse, Settings2, Package, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { useBranchCosts } from "@/hooks/useBranchCosts";
@@ -118,18 +118,16 @@ export const VarianceAnalysisPage: React.FC = () => {
   const [manageOpen, setManageOpen] = useState(false);
   const [manageTab, setManageTab] = useState<"permissible" | "consumables">("permissible");
   const [consumableDeptFilter, setConsumableDeptFilter] = useState<string>("all");
+  const [consumableCatFilter, setConsumableCatFilter] = useState<string>("all");
   const [consumableSearch, setConsumableSearch] = useState<string>("");
 
   const activeLocationId = branchFilter !== "all" ? branchFilter : null;
   const { getCost } = useBranchCosts(activeLocationId);
 
-  // Previous period range: shift back by (dateTo - dateFrom + 1 day)
+  // Previous period: same day-of-month range shifted back by 1 month
   const prevRange = useMemo(() => {
     if (!dateFrom || !dateTo) return null;
-    const ms = dateTo.getTime() - dateFrom.getTime();
-    const prevTo = new Date(dateFrom.getTime() - 24 * 60 * 60 * 1000);
-    const prevFrom = new Date(prevTo.getTime() - ms);
-    return { from: prevFrom, to: prevTo };
+    return { from: subMonths(dateFrom, 1), to: subMonths(dateTo, 1) };
   }, [dateFrom, dateTo]);
 
   /* ================= Reference data ================= */
@@ -869,7 +867,7 @@ export const VarianceAnalysisPage: React.FC = () => {
             )}
             {manageTab === "consumables" && (
               <div className="space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                   <div>
                     <Label className="text-xs mb-1 block">القسم</Label>
                     <Select value={consumableDeptFilter} onValueChange={setConsumableDeptFilter}>
@@ -881,9 +879,25 @@ export const VarianceAnalysisPage: React.FC = () => {
                     </Select>
                   </div>
                   <div>
+                    <Label className="text-xs mb-1 block">المجموعة</Label>
+                    <Select value={consumableCatFilter} onValueChange={setConsumableCatFilter}>
+                      <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">كل المجموعات</SelectItem>
+                        {(categories || [])
+                          .filter((c: any) => consumableDeptFilter === "all" || c.department_id === consumableDeptFilter)
+                          .map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
                     <Label className="text-xs mb-1 block">بحث باسم الخامة</Label>
                     <Input value={consumableSearch} onChange={(e) => setConsumableSearch(e.target.value)} placeholder="ابحث..." className="h-9" />
                   </div>
+                </div>
+                <div className="flex items-center justify-between text-sm bg-muted/50 rounded px-3 py-2">
+                  <span className="text-muted-foreground">عدد الخامات المحددة كمستهلكات</span>
+                  <span className="font-bold">{(stockItems || []).filter((si: any) => si.is_consumable).length}</span>
                 </div>
                 <Table>
                   <TableHeader><TableRow><TableHead className="text-right">الخامة</TableHead><TableHead className="text-center">مستهلكات؟</TableHead></TableRow></TableHeader>
@@ -893,6 +907,11 @@ export const VarianceAnalysisPage: React.FC = () => {
                         if (consumableSearch.trim()) {
                           const q = consumableSearch.trim().toLowerCase();
                           if (!(si.name || "").toLowerCase().includes(q) && !(si.code || "").toLowerCase().includes(q)) return false;
+                        }
+                        if (consumableCatFilter !== "all") {
+                          const cats = itemCats.get(si.id);
+                          const inCat = (cats && cats.has(consumableCatFilter)) || si.category_id === consumableCatFilter;
+                          if (!inCat) return false;
                         }
                         if (consumableDeptFilter !== "all") {
                           const cats = itemCats.get(si.id);

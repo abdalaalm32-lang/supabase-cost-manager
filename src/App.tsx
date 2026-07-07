@@ -47,6 +47,7 @@ const SupplyInvoicesToBranchesPage = lazy(() => import("@/pages/SupplyInvoicesTo
 const ProductionRecipesPage = lazy(() => import("@/pages/ProductionRecipesPage").then((m) => ({ default: m.ProductionRecipesPage })));
 const MenuOffersPage = lazy(() => import("@/pages/MenuOffersPage").then((m) => ({ default: m.MenuOffersPage })));
 const CostAnalysisPage = lazy(() => import("@/pages/CostAnalysisPage").then((m) => ({ default: m.CostAnalysisPage })));
+const VarianceAnalysisPage = lazy(() => import("@/pages/VarianceAnalysisPage").then((m) => ({ default: m.VarianceAnalysisPage })));
 const InventoryMovementPage = lazy(() => import("@/pages/InventoryMovementPage").then((m) => ({ default: m.InventoryMovementPage })));
 const PurchaseReportsPage = lazy(() => import("@/pages/PurchaseReportsPage").then((m) => ({ default: m.PurchaseReportsPage })));
 const InventoryLevelsPage = lazy(() => import("@/pages/InventoryLevelsPage").then((m) => ({ default: m.InventoryLevelsPage })));

@@ -1157,6 +1157,9 @@ export const VarianceAnalysisPage: React.FC = () => {
           <Button variant="outline" onClick={handleExportPdf} disabled={!hasPeriod || pdfBusy}>
             {pdfBusy ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <FileDown className="w-4 h-4 ml-2" />} تصدير PDF
           </Button>
+          <Button variant="outline" onClick={handleExportExcel} disabled={!hasPeriod}>
+            <FileDown className="w-4 h-4 ml-2 text-green-600" /> تصدير Excel
+          </Button>
           <Button variant="outline" onClick={() => setManageOpen(true)}>
             <Settings2 className="w-4 h-4 ml-2" /> الإعدادات
           </Button>

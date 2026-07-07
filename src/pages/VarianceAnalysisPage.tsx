@@ -1,9 +1,10 @@
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,13 +13,15 @@ import { Calendar } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { format, subMonths } from "date-fns";
-import { CalendarIcon, Store, Building2, Warehouse, Settings2, Package, AlertTriangle, CheckCircle2, Printer, FileDown, Loader2 } from "lucide-react";
+import { CalendarIcon, Store, Building2, Warehouse, Settings2, Package, AlertTriangle, CheckCircle2, Printer, FileDown, Loader2, MessageSquare, TrendingUp, TrendingDown, BarChart3, PieChart as PieChartIcon, DollarSign, ArrowUp, ArrowDown, Minus } from "lucide-react";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { useBranchCosts } from "@/hooks/useBranchCosts";
 import { fetchAllRows } from "@/lib/fetchAllRows";
 import { toast } from "sonner";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { exportToExcel } from "@/lib/exportUtils";
 
 /* =========================================================
    VARIANCE ANALYSIS PAGE (تقرير انحراف خامات المطبخ)
@@ -34,14 +37,23 @@ type Analysis = "Good" | "Normal" | "Accept" | "Deviation" | "Operation error" |
 type ResultSign = "Short" | "Over" | "Equal";
 type PrevResult = "Better" | "High" | "Fixed" | "Change to Loss" | "Change to Increase";
 
-const analyzeRate = (rate: number): Analysis => {
+export type Thresholds = {
+  normal: number;      // upper bound for Normal (e.g. 0.02)
+  accept: number;      // upper bound for Accept
+  deviation: number;   // upper bound for Deviation
+  operation: number;   // upper bound for Operation error
+  highDefl: number;    // upper bound for High deflection
+};
+const DEFAULT_THRESHOLDS: Thresholds = { normal: 0.02, accept: 0.05, deviation: 0.10, operation: 0.20, highDefl: 0.50 };
+
+const analyzeRate = (rate: number, t: Thresholds = DEFAULT_THRESHOLDS): Analysis => {
   const a = Math.abs(rate);
   if (a === 0) return "Good";
-  if (a <= 0.02) return "Normal";
-  if (a <= 0.05) return "Accept";
-  if (a <= 0.10) return "Deviation";
-  if (a <= 0.20) return "Operation error";
-  if (a <= 0.50) return "High deflection";
+  if (a <= t.normal) return "Normal";
+  if (a <= t.accept) return "Accept";
+  if (a <= t.deviation) return "Deviation";
+  if (a <= t.operation) return "Operation error";
+  if (a <= t.highDefl) return "High deflection";
   return "Issue";
 };
 
@@ -119,10 +131,27 @@ export const VarianceAnalysisPage: React.FC = () => {
   const [dateTo, setDateTo] = useState<Date | undefined>();
   const [consumablesLimitPct, setConsumablesLimitPct] = useState<number>(3); // default 3%
   const [manageOpen, setManageOpen] = useState(false);
-  const [manageTab, setManageTab] = useState<"permissible" | "consumables">("permissible");
+  const [manageTab, setManageTab] = useState<"permissible" | "consumables" | "thresholds">("permissible");
   const [consumableDeptFilter, setConsumableDeptFilter] = useState<string>("all");
   const [consumableCatFilter, setConsumableCatFilter] = useState<string>("all");
   const [consumableSearch, setConsumableSearch] = useState<string>("");
+
+  // New UI state
+  const [chartType, setChartType] = useState<"bar" | "pie">("bar");
+  const [topSortMode, setTopSortMode] = useState<"rate" | "costVar">("rate");
+  const [showSubtotals, setShowSubtotals] = useState<boolean>(true);
+  const [activePreset, setActivePreset] = useState<string>("all");
+  const [thresholds, setThresholds] = useState<Thresholds>(() => {
+    try {
+      const raw = localStorage.getItem("variance-thresholds");
+      return raw ? { ...DEFAULT_THRESHOLDS, ...JSON.parse(raw) } : DEFAULT_THRESHOLDS;
+    } catch { return DEFAULT_THRESHOLDS; }
+  });
+  useEffect(() => {
+    localStorage.setItem("variance-thresholds", JSON.stringify(thresholds));
+  }, [thresholds]);
+  const [noteEditor, setNoteEditor] = useState<{ itemId: string; itemName: string } | null>(null);
+  const [noteDraft, setNoteDraft] = useState<{ note: string; action_status: string }>({ note: "", action_status: "pending" });
 
   const activeLocationId = branchFilter !== "all" ? branchFilter : null;
   const { getCost } = useBranchCosts(activeLocationId);
@@ -504,7 +533,7 @@ export const VarianceAnalysisPage: React.FC = () => {
         c.costVar = round(c.diffQty * c.avgCost);
         c.rate = c.actualConsumedQty > 0 ? c.diffQty / c.actualConsumedQty : 0;
       }
-      c.analysis = analyzeRate(c.rate);
+      c.analysis = analyzeRate(c.rate, thresholds);
       c.result = c.diffQty < 0 ? "Short" : c.diffQty > 0 ? "Over" : "Equal";
     }
     return map;
@@ -513,12 +542,12 @@ export const VarianceAnalysisPage: React.FC = () => {
   // Current period
   const current = useMemo(() => computeForRange(dateFrom, dateTo),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [stockItems, stocktakeData, purchaseData, productionIngData, productionRecords, wasteData, transferData, posSaleItems, recipeIngredients, dateFrom, dateTo, branchFilter, departmentFilter, itemCats, categories, getCost]);
+    [stockItems, stocktakeData, purchaseData, productionIngData, productionRecords, wasteData, transferData, posSaleItems, recipeIngredients, dateFrom, dateTo, branchFilter, departmentFilter, itemCats, categories, getCost, thresholds]);
 
   // Previous period (for prev-rate)
   const previous = useMemo(() => computeForRange(prevRange?.from, prevRange?.to),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [stockItems, stocktakeData, purchaseData, productionIngData, productionRecords, wasteData, transferData, posSaleItems, recipeIngredients, prevRange, branchFilter, departmentFilter, itemCats, categories, getCost]);
+    [stockItems, stocktakeData, purchaseData, productionIngData, productionRecords, wasteData, transferData, posSaleItems, recipeIngredients, prevRange, branchFilter, departmentFilter, itemCats, categories, getCost, thresholds]);
 
   // Net sales for period (branch scope)
   const netSales = useMemo(() => {
@@ -651,6 +680,80 @@ export const VarianceAnalysisPage: React.FC = () => {
 
     return { total: items.length, resultRows, analysisRows, prevRows };
   }, [current]);
+
+  /* ============ Cost variance KPIs & prev period comparison ============ */
+  const costKpis = useMemo(() => {
+    const items = Array.from(current.values()).filter(i => !i.isConsumable);
+    const shortVal = items.filter(i => i.costVar < 0).reduce((s, i) => s + i.costVar, 0);
+    const overVal = items.filter(i => i.costVar > 0).reduce((s, i) => s + i.costVar, 0);
+    const netVal = shortVal + overVal;
+    const absSum = items.reduce((s, i) => s + Math.abs(i.rate), 0);
+    const avgRate = items.length ? absSum / items.length : 0;
+
+    const prevItems = Array.from(previous.values()).filter(i => !i.isConsumable);
+    const prevAbsSum = prevItems.reduce((s, i) => s + Math.abs(i.rate), 0);
+    const prevAvgRate = prevItems.length ? prevAbsSum / prevItems.length : 0;
+    const prevNet = prevItems.reduce((s, i) => s + i.costVar, 0);
+    return { shortVal, overVal, netVal, avgRate, prevAvgRate, prevNet };
+  }, [current, previous]);
+
+  /* ============ Top N (all deviations sorted) ============ */
+  const topDeviations = useMemo(() => {
+    const items = Array.from(current.values()).filter(i => !i.isConsumable && i.rate !== 0);
+    if (topSortMode === "rate") {
+      items.sort((a, b) => Math.abs(b.rate) - Math.abs(a.rate));
+    } else {
+      items.sort((a, b) => Math.abs(b.costVar) - Math.abs(a.costVar));
+    }
+    return items;
+  }, [current, topSortMode]);
+
+  /* ============ Notes ============ */
+  const { data: notesData } = useQuery({
+    queryKey: ["var-notes", companyId, dateFrom, dateTo, branchFilter],
+    queryFn: async () => {
+      let q = supabase.from("variance_item_notes").select("*").eq("company_id", companyId!);
+      if (dateFrom) q = q.eq("period_from", format(dateFrom, "yyyy-MM-dd"));
+      if (dateTo) q = q.eq("period_to", format(dateTo, "yyyy-MM-dd"));
+      if (branchFilter !== "all") q = q.eq("branch_id", branchFilter);
+      else q = q.is("branch_id", null);
+      const { data } = await q;
+      return data || [];
+    },
+    enabled: !!companyId && !!dateFrom && !!dateTo,
+  });
+  const notesByItem = useMemo(() => {
+    const m = new Map<string, any>();
+    (notesData || []).forEach((n: any) => m.set(n.stock_item_id, n));
+    return m;
+  }, [notesData]);
+
+  const openNoteEditor = (itemId: string, itemName: string) => {
+    const existing = notesByItem.get(itemId);
+    setNoteDraft({ note: existing?.note || "", action_status: existing?.action_status || "pending" });
+    setNoteEditor({ itemId, itemName });
+  };
+  const saveNote = async () => {
+    if (!noteEditor || !companyId) return;
+    const existing = notesByItem.get(noteEditor.itemId);
+    const payload = {
+      company_id: companyId,
+      stock_item_id: noteEditor.itemId,
+      branch_id: branchFilter !== "all" ? branchFilter : null,
+      period_from: dateFrom ? format(dateFrom, "yyyy-MM-dd") : null,
+      period_to: dateTo ? format(dateTo, "yyyy-MM-dd") : null,
+      note: noteDraft.note,
+      action_status: noteDraft.action_status,
+      created_by: auth.user?.id ?? null,
+    };
+    const { error } = existing
+      ? await supabase.from("variance_item_notes").update(payload).eq("id", existing.id)
+      : await supabase.from("variance_item_notes").insert(payload);
+    if (error) { toast.error("فشل حفظ الملاحظة"); return; }
+    toast.success("تم الحفظ");
+    setNoteEditor(null);
+    qc.invalidateQueries({ queryKey: ["var-notes", companyId] });
+  };
 
   /* ============ Print + PDF (structured report, not UI capture) ============ */
   const reportRef = useRef<HTMLDivElement>(null);
@@ -896,11 +999,51 @@ export const VarianceAnalysisPage: React.FC = () => {
       const pdf = new jsPDF("l", "mm", "a4");
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
+
+      // ── Cover page ──
+      const printDateStr = new Date().toLocaleString("ar-EG");
+      pdf.setFillColor(240, 240, 240);
+      pdf.rect(0, 0, pageW, pageH, "F");
+      pdf.setTextColor(0, 0, 0);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(22);
+      pdf.text("Variance Analysis Report", pageW / 2, 60, { align: "center" });
+      pdf.setFontSize(14);
+      pdf.text("Kitchen Materials Deviation", pageW / 2, 72, { align: "center" });
+      pdf.setDrawColor(0);
+      pdf.line(30, 82, pageW - 30, 82);
+      pdf.setFontSize(11);
+      pdf.setFont("helvetica", "normal");
+      const meta: [string, string][] = [
+        ["Branch", branchFilter === "all" ? "All Branches" : ((branches || []).find((b: any) => b.id === branchFilter)?.name || "-")],
+        ["Department", departmentFilter === "all" ? "All Departments" : ((departments || []).find((d: any) => d.id === departmentFilter)?.name || "-")],
+        ["Period From", dateFrom ? format(dateFrom, "yyyy-MM-dd") : "-"],
+        ["Period To", dateTo ? format(dateTo, "yyyy-MM-dd") : "-"],
+        ["Previous Period", prevRange ? `${format(prevRange.from, "yyyy-MM-dd")} → ${format(prevRange.to, "yyyy-MM-dd")}` : "-"],
+        ["Net Sales", `${fmt(netSales)} EGP`],
+        ["Net Cost Variance", `${fmt(costKpis.netVal)} EGP`],
+        ["Total Items", String(current.size)],
+        ["Printed At", printDateStr],
+        ["Printed By", auth.profile?.full_name || "-"],
+      ];
+      let ly = 100;
+      meta.forEach(([k, v]) => {
+        pdf.setFont("helvetica", "bold");
+        pdf.text(`${k}:`, 40, ly);
+        pdf.setFont("helvetica", "normal");
+        pdf.text(String(v), 90, ly);
+        ly += 8;
+      });
+      pdf.setFontSize(8);
+      pdf.text("Powered by Mohamed Abdel Aal", pageW / 2, pageH - 8, { align: "center" });
+
+      // ── Content pages ──
       const imgW = pageW;
       const imgH = (canvas.height * imgW) / canvas.width;
       const imgData = canvas.toDataURL("image/jpeg", 0.92);
       let heightLeft = imgH;
       let position = 0;
+      pdf.addPage();
       pdf.addImage(imgData, "JPEG", 0, position, imgW, imgH);
       heightLeft -= pageH;
       while (heightLeft > 0) {
@@ -909,6 +1052,15 @@ export const VarianceAnalysisPage: React.FC = () => {
         pdf.addImage(imgData, "JPEG", 0, position, imgW, imgH);
         heightLeft -= pageH;
       }
+      // ── Footer with page numbers on all pages ──
+      const total = (pdf as any).internal.getNumberOfPages();
+      for (let i = 1; i <= total; i++) {
+        pdf.setPage(i);
+        pdf.setFontSize(8);
+        pdf.setTextColor(80, 80, 80);
+        pdf.text(`Page ${i} / ${total}`, pageW - 15, pageH - 5, { align: "right" });
+        pdf.text(printDateStr, 15, pageH - 5);
+      }
       pdf.save(`تحليل-الانحرافات-${dateFrom ? format(dateFrom, "yyyy-MM-dd") : ""}_${dateTo ? format(dateTo, "yyyy-MM-dd") : ""}.pdf`);
       toast.success("تم تصدير PDF");
     } catch (e) {
@@ -916,6 +1068,75 @@ export const VarianceAnalysisPage: React.FC = () => {
       toast.error("فشل التصدير");
     } finally {
       setPdfBusy(false);
+    }
+  };
+
+  const handleExportExcel = async () => {
+    if (!hasPeriod) return;
+    try {
+      const columns = [
+        { key: "catName", label: "المجموعة" },
+        { key: "name", label: "الخامة" },
+        { key: "unit", label: "الوحدة" },
+        { key: "openQty", label: "أول المدة" },
+        { key: "inQty", label: "وارد" },
+        { key: "outQty", label: "استهلاك نظري" },
+        { key: "bookQty", label: "آخر المدة نظري" },
+        { key: "countQty", label: "الرصيد الفعلي" },
+        { key: "diffQty", label: "الفرق" },
+        { key: "costVar", label: "قيمة الانحراف" },
+        { key: "actualConsumedQty", label: "استهلاك فعلي" },
+        { key: "actualConsumedVal", label: "قيمة الاستهلاك" },
+        { key: "rate", label: "نسبة الانحراف" },
+        { key: "result", label: "النتيجة" },
+        { key: "analysis", label: "التحليل" },
+        { key: "prevRate", label: "نسبة سابقة" },
+        { key: "prevResult", label: "مقارنة" },
+        { key: "note", label: "ملاحظة" },
+        { key: "action_status", label: "حالة الإجراء" },
+      ];
+      const rows: any[] = [];
+      for (const g of enriched) {
+        for (const i of g.items) {
+          const n = notesByItem.get(i.id);
+          rows.push({
+            catName: g.catName,
+            name: i.name,
+            unit: i.unit,
+            openQty: Number(i.openQty.toFixed(3)),
+            inQty: Number(i.inQty.toFixed(3)),
+            outQty: Number(i.outQty.toFixed(3)),
+            bookQty: Number(i.bookQty.toFixed(3)),
+            countQty: Number(i.countQty.toFixed(3)),
+            diffQty: Number(i.diffQty.toFixed(3)),
+            costVar: Number(i.costVar.toFixed(2)),
+            actualConsumedQty: Number(i.actualConsumedQty.toFixed(3)),
+            actualConsumedVal: Number(i.actualConsumedVal.toFixed(2)),
+            rate: (i.rate * 100).toFixed(2) + "%",
+            result: i.result === "Short" ? "عجز" : i.result === "Over" ? "زيادة" : "متطابق",
+            analysis: i.analysis,
+            prevRate: i.prevRate != null ? (i.prevRate * 100).toFixed(2) + "%" : "-",
+            prevResult: i.prevResult || "-",
+            note: n?.note || "",
+            action_status: n?.action_status || "",
+          });
+        }
+      }
+      await exportToExcel({
+        title: "تحليل الانحرافات",
+        filename: `variance-analysis-${dateFrom ? format(dateFrom, "yyyy-MM-dd") : ""}_${dateTo ? format(dateTo, "yyyy-MM-dd") : ""}`,
+        columns,
+        data: rows,
+        filters: [
+          { label: "الفرع", value: branchFilter === "all" ? "الكل" : ((branches || []).find((b: any) => b.id === branchFilter)?.name || "-") },
+          { label: "القسم", value: departmentFilter === "all" ? "الكل" : ((departments || []).find((d: any) => d.id === departmentFilter)?.name || "-") },
+          { label: "الفترة", value: `${dateFrom ? format(dateFrom, "yyyy-MM-dd") : ""} → ${dateTo ? format(dateTo, "yyyy-MM-dd") : ""}` },
+        ],
+      });
+      toast.success("تم تصدير Excel");
+    } catch (e) {
+      console.error(e);
+      toast.error("فشل التصدير");
     }
   };
 
@@ -935,6 +1156,9 @@ export const VarianceAnalysisPage: React.FC = () => {
           </Button>
           <Button variant="outline" onClick={handleExportPdf} disabled={!hasPeriod || pdfBusy}>
             {pdfBusy ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <FileDown className="w-4 h-4 ml-2" />} تصدير PDF
+          </Button>
+          <Button variant="outline" onClick={handleExportExcel} disabled={!hasPeriod}>
+            <FileDown className="w-4 h-4 ml-2 text-green-600" /> تصدير Excel
           </Button>
           <Button variant="outline" onClick={() => setManageOpen(true)}>
             <Settings2 className="w-4 h-4 ml-2" /> الإعدادات
@@ -1038,6 +1262,147 @@ export const VarianceAnalysisPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Cost Variance KPI + Previous period comparison */}
+      {hasPeriod && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="border rounded-lg p-4 bg-card">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground"><DollarSign className="w-4 h-4" /> صافي التأثير المالي</div>
+            <div className={cn("text-xl font-bold mt-1", costKpis.netVal < 0 ? "text-red-600" : costKpis.netVal > 0 ? "text-emerald-600" : "")}>{fmt(costKpis.netVal)} ج.م</div>
+            <div className="text-[10px] text-muted-foreground mt-1">الفترة السابقة: {fmt(costKpis.prevNet)}</div>
+          </div>
+          <div className="border rounded-lg p-4 bg-red-50 dark:bg-red-950/20">
+            <div className="flex items-center gap-2 text-xs text-red-700 dark:text-red-300"><TrendingDown className="w-4 h-4" /> قيمة العجز</div>
+            <div className="text-xl font-bold mt-1 text-red-700 dark:text-red-300">{fmt(costKpis.shortVal)} ج.م</div>
+          </div>
+          <div className="border rounded-lg p-4 bg-emerald-50 dark:bg-emerald-950/20">
+            <div className="flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-300"><TrendingUp className="w-4 h-4" /> قيمة الزيادة</div>
+            <div className="text-xl font-bold mt-1 text-emerald-700 dark:text-emerald-300">{fmt(costKpis.overVal)} ج.م</div>
+          </div>
+          <div className="border rounded-lg p-4 bg-card">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">متوسط نسبة الانحراف</div>
+            <div className="text-xl font-bold mt-1">{fmtPct(costKpis.avgRate)}</div>
+            <div className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
+              الفترة السابقة: {fmtPct(costKpis.prevAvgRate)}
+              {costKpis.avgRate < costKpis.prevAvgRate ? <ArrowDown className="w-3 h-3 text-emerald-600" /> :
+                costKpis.avgRate > costKpis.prevAvgRate ? <ArrowUp className="w-3 h-3 text-red-600" /> :
+                <Minus className="w-3 h-3" />}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Preset filters + Subtotals toggle */}
+      {hasPeriod && (
+        <div className="flex items-center gap-2 flex-wrap border rounded-lg p-2 bg-card no-print">
+          <span className="text-xs text-muted-foreground ml-2">فلاتر سريعة:</span>
+          {[
+            { id: "all", label: "الكل" },
+            { id: "consumables", label: "المستهلكات فقط" },
+            { id: "high", label: "أعلى انحراف (Deviation+)" },
+            { id: "with-notes", label: "بها ملاحظات" },
+            { id: "short", label: "العجز فقط" },
+            { id: "over", label: "الزيادة فقط" },
+          ].map(p => (
+            <Button key={p.id} size="sm" variant={activePreset === p.id ? "default" : "outline"} onClick={() => setActivePreset(p.id)}>{p.label}</Button>
+          ))}
+          {(departments || []).slice(0, 4).map((d: any) => (
+            <Button key={d.id} size="sm" variant={departmentFilter === d.id ? "default" : "outline"} onClick={() => setDepartmentFilter(departmentFilter === d.id ? "all" : d.id)}>قسم: {d.name}</Button>
+          ))}
+          <div className="mr-auto flex items-center gap-2">
+            <Checkbox id="subs" checked={showSubtotals} onCheckedChange={(v) => setShowSubtotals(!!v)} />
+            <Label htmlFor="subs" className="text-xs cursor-pointer">عرض إجماليات المجموعات</Label>
+          </div>
+        </div>
+      )}
+
+      {/* Chart + Top-N side by side */}
+      {hasPeriod && summaryStats.total > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="border rounded-lg p-3 bg-card">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-sm font-bold flex items-center gap-2"><BarChart3 className="w-4 h-4" /> توزيع الانحرافات</div>
+              <div className="flex gap-1">
+                <Button size="sm" variant={chartType === "bar" ? "default" : "outline"} onClick={() => setChartType("bar")}><BarChart3 className="w-4 h-4" /></Button>
+                <Button size="sm" variant={chartType === "pie" ? "default" : "outline"} onClick={() => setChartType("pie")}><PieChartIcon className="w-4 h-4" /></Button>
+              </div>
+            </div>
+            <div style={{ width: "100%", height: 260 }}>
+              <ResponsiveContainer>
+                {chartType === "bar" ? (
+                  <BarChart data={summaryStats.analysisRows}>
+                    <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="#0f766e">
+                      {summaryStats.analysisRows.map((r, i) => (
+                        <Cell key={i} fill={
+                          r.label === "Good" ? "#10b981" :
+                          r.label === "Normal" ? "#14b8a6" :
+                          r.label === "Accept" ? "#84cc16" :
+                          r.label === "Deviation" ? "#eab308" :
+                          r.label === "Operation error" ? "#f97316" :
+                          r.label === "High deflection" ? "#ef4444" : "#7f1d1d"} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                ) : (
+                  <PieChart>
+                    <Tooltip />
+                    <Legend wrapperStyle={{ fontSize: 10 }} />
+                    <Pie data={summaryStats.analysisRows.filter(r => r.count > 0)} dataKey="count" nameKey="label" outerRadius={90} label>
+                      {summaryStats.analysisRows.filter(r => r.count > 0).map((r, i) => (
+                        <Cell key={i} fill={
+                          r.label === "Good" ? "#10b981" :
+                          r.label === "Normal" ? "#14b8a6" :
+                          r.label === "Accept" ? "#84cc16" :
+                          r.label === "Deviation" ? "#eab308" :
+                          r.label === "Operation error" ? "#f97316" :
+                          r.label === "High deflection" ? "#ef4444" : "#7f1d1d"} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                )}
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="border rounded-lg p-3 bg-card">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-sm font-bold">أعلى الانحرافات</div>
+              <div className="flex gap-1">
+                <Button size="sm" variant={topSortMode === "rate" ? "default" : "outline"} onClick={() => setTopSortMode("rate")}>حسب النسبة</Button>
+                <Button size="sm" variant={topSortMode === "costVar" ? "default" : "outline"} onClick={() => setTopSortMode("costVar")}>حسب القيمة</Button>
+              </div>
+            </div>
+            <div className="max-h-[260px] overflow-y-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="text-xs">
+                    <TableHead className="text-right">الخامة</TableHead>
+                    <TableHead className="text-center">النسبة</TableHead>
+                    <TableHead className="text-center">قيمة الفرق</TableHead>
+                    <TableHead className="text-center">التحليل</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {topDeviations.length === 0 && (
+                    <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground text-xs py-3">لا توجد انحرافات</TableCell></TableRow>
+                  )}
+                  {topDeviations.map((i) => (
+                    <TableRow key={i.id} className="text-xs">
+                      <TableCell className="font-medium">{i.name}</TableCell>
+                      <TableCell className="text-center">{fmtPct(i.rate)}</TableCell>
+                      <TableCell className={cn("text-center font-semibold", i.costVar < 0 ? "text-red-600" : "text-emerald-600")}>{fmt(i.costVar)}</TableCell>
+                      <TableCell className="text-center"><span className={cn("px-2 py-0.5 rounded font-semibold", analysisColor(i.analysis))}>{i.analysis}</span></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </div>
+      )}
+
       {!hasPeriod && (
         <div className="p-8 text-center text-muted-foreground border rounded-lg">اختر فترة زمنية (من / إلى) لعرض التقرير</div>
       )}
@@ -1047,14 +1412,28 @@ export const VarianceAnalysisPage: React.FC = () => {
         <div className="p-8 text-center text-muted-foreground border rounded-lg">لا توجد بيانات مطابقة للفلاتر</div>
       )}
 
+
+
       {hasPeriod && enriched.map((group) => {
-        const shortSum = group.items.filter(i => i.costVar < 0).reduce((s, i) => s + i.costVar, 0);
-        const overSum = group.items.filter(i => i.costVar > 0).reduce((s, i) => s + i.costVar, 0);
+        // apply preset filter
+        const items = group.items.filter((i) => {
+          if (activePreset === "consumables") return i.isConsumable;
+          if (activePreset === "high") {
+            return ["Deviation", "Operation error", "High deflection", "Issue"].includes(i.analysis);
+          }
+          if (activePreset === "with-notes") return notesByItem.has(i.id);
+          if (activePreset === "short") return i.result === "Short";
+          if (activePreset === "over") return i.result === "Over";
+          return true;
+        });
+        if (items.length === 0) return null;
+        const shortSum = items.filter(i => i.costVar < 0).reduce((s, i) => s + i.costVar, 0);
+        const overSum = items.filter(i => i.costVar > 0).reduce((s, i) => s + i.costVar, 0);
         const netSum = shortSum + overSum;
-        const receiveValSum = group.items.reduce((s, i) => s + i.receiveVal, 0);
-        const consumedValSum = group.items.reduce((s, i) => s + i.actualConsumedVal, 0);
-        const chargedSum = group.items.reduce((s, i) => s + i.chargedRatio, 0);
-        const costSum = group.items.reduce((s, i) => s + i.costVar, 0);
+        const receiveValSum = items.reduce((s, i) => s + i.receiveVal, 0);
+        const consumedValSum = items.reduce((s, i) => s + i.actualConsumedVal, 0);
+        const chargedSum = items.reduce((s, i) => s + i.chargedRatio, 0);
+        const costSum = items.reduce((s, i) => s + i.costVar, 0);
         const allowedLoss = netSum * group.permissible;
         const ratioReceiptsSales = netSales > 0 ? receiveValSum / netSales : 0;
         const ratioConsumeSales = netSales > 0 ? consumedValSum / netSales : 0;
@@ -1064,7 +1443,7 @@ export const VarianceAnalysisPage: React.FC = () => {
         return (
           <div key={group.catId} className="border rounded-lg overflow-hidden bg-card">
             <div className="bg-primary/10 px-4 py-2 flex justify-between items-center">
-              <h2 className="font-bold text-base">{group.catName}</h2>
+              <h2 className="font-bold text-base">{group.catName} <span className="text-xs text-muted-foreground font-normal">({items.length} خامة)</span></h2>
               <div className="text-xs text-muted-foreground">
                 نسبة السماح: <span className="font-bold text-foreground">{fmtPct(group.permissible)}</span>
               </div>
@@ -1090,10 +1469,17 @@ export const VarianceAnalysisPage: React.FC = () => {
                     <TableHead className="text-center">القيمة المحملة</TableHead>
                     <TableHead className="text-center">النسبة السابقة</TableHead>
                     <TableHead className="text-center">مقارنة</TableHead>
+                    <TableHead className="text-center">ملاحظة</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {group.items.map((i) => (
+                  {items.map((i) => {
+                    const note = notesByItem.get(i.id);
+                    const statusColor = note?.action_status === "settled" ? "text-emerald-600" :
+                      note?.action_status === "reviewed" ? "text-blue-600" :
+                      note?.action_status === "needs_recount" ? "text-orange-600" :
+                      note?.action_status === "pending" ? "text-yellow-600" : "text-muted-foreground";
+                    return (
                     <TableRow key={i.id} className="text-xs">
                       <TableCell className="font-medium">{i.name}</TableCell>
                       <TableCell className="text-center">{fmt(i.openQty, 3)}</TableCell>
@@ -1110,22 +1496,31 @@ export const VarianceAnalysisPage: React.FC = () => {
                       <TableCell className="text-center">{fmt(i.chargedRatio)}</TableCell>
                       <TableCell className="text-center">{i.prevRate != null ? fmtPct(i.prevRate) : "-"}</TableCell>
                       <TableCell className={cn("text-center", prevResultColor(i.prevResult))}>{i.prevResult || "-"}</TableCell>
+                      <TableCell className="text-center">
+                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => openNoteEditor(i.id, i.name)} title={note?.note || "أضف ملاحظة"}>
+                          <MessageSquare className={cn("w-4 h-4", note ? statusColor : "text-muted-foreground/50")} />
+                        </Button>
+                      </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                   {/* Group total row */}
-                  <TableRow className="bg-muted font-bold text-xs">
-                    <TableCell>إجمالي {group.catName}</TableCell>
-                    <TableCell colSpan={6}></TableCell>
-                    <TableCell className={cn("text-center", costSum < 0 ? "text-red-600" : costSum > 0 ? "text-emerald-600" : "")}>{fmt(costSum)}</TableCell>
-                    <TableCell colSpan={4}></TableCell>
-                    <TableCell className="text-center">{fmt(chargedSum)}</TableCell>
-                    <TableCell colSpan={2}></TableCell>
-                  </TableRow>
+                  {showSubtotals && (
+                    <TableRow className="bg-muted font-bold text-xs">
+                      <TableCell>إجمالي {group.catName}</TableCell>
+                      <TableCell colSpan={6}></TableCell>
+                      <TableCell className={cn("text-center", costSum < 0 ? "text-red-600" : costSum > 0 ? "text-emerald-600" : "")}>{fmt(costSum)}</TableCell>
+                      <TableCell colSpan={4}></TableCell>
+                      <TableCell className="text-center">{fmt(chargedSum)}</TableCell>
+                      <TableCell colSpan={3}></TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </div>
 
             {/* Group summary box */}
+            {showSubtotals && (
             <div className="p-4 border-t bg-muted/30 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
               <div className="space-y-1">
                 <div className="text-muted-foreground">نسبة السماح</div>
@@ -1172,9 +1567,11 @@ export const VarianceAnalysisPage: React.FC = () => {
                 <div className={cn("font-bold", ratioVarConsume < 0 ? "text-red-600" : ratioVarConsume > 0 ? "text-emerald-600" : "")}>{fmtPct(ratioVarConsume)}</div>
               </div>
             </div>
+            )}
           </div>
         );
       })}
+
 
       {/* Excel-style summary boxes */}
       {hasPeriod && summaryStats.total > 0 && (
@@ -1225,8 +1622,34 @@ export const VarianceAnalysisPage: React.FC = () => {
           <div className="flex gap-2 border-b">
             <button className={cn("px-3 py-2 text-sm border-b-2", manageTab === "permissible" ? "border-primary font-bold" : "border-transparent text-muted-foreground")} onClick={() => setManageTab("permissible")}>نسب السماح للفئات</button>
             <button className={cn("px-3 py-2 text-sm border-b-2", manageTab === "consumables" ? "border-primary font-bold" : "border-transparent text-muted-foreground")} onClick={() => setManageTab("consumables")}>خامات المستهلكات</button>
+            <button className={cn("px-3 py-2 text-sm border-b-2", manageTab === "thresholds" ? "border-primary font-bold" : "border-transparent text-muted-foreground")} onClick={() => setManageTab("thresholds")}>عتبات التصنيف</button>
           </div>
           <div className="overflow-y-auto flex-1 py-3">
+            {manageTab === "thresholds" && (
+              <div className="space-y-3 max-w-lg mx-auto">
+                <p className="text-xs text-muted-foreground">حدّد الحد الأقصى (%) لكل تصنيف. القيم يجب أن تكون تصاعدية.</p>
+                {([
+                  ["normal", "Normal - طبيعي"],
+                  ["accept", "Accept - مقبول"],
+                  ["deviation", "Deviation - انحراف"],
+                  ["operation", "Operation error - خطأ تشغيلي"],
+                  ["highDefl", "High deflection - انحراف عالي"],
+                ] as const).map(([k, lbl]) => (
+                  <div key={k} className="flex items-center justify-between gap-3">
+                    <Label className="text-sm">{lbl}</Label>
+                    <div className="flex items-center gap-1">
+                      <Input type="number" step="0.1" className="h-8 w-24 text-center"
+                        value={(thresholds[k] * 100).toString()}
+                        onChange={(e) => setThresholds({ ...thresholds, [k]: (Number(e.target.value) || 0) / 100 })} />
+                      <span className="text-xs">%</span>
+                    </div>
+                  </div>
+                ))}
+                <div className="flex justify-end pt-2">
+                  <Button variant="outline" size="sm" onClick={() => setThresholds(DEFAULT_THRESHOLDS)}>إعادة الافتراضي</Button>
+                </div>
+              </div>
+            )}
             {manageTab === "permissible" && (
               <Table>
                 <TableHeader><TableRow><TableHead className="text-right">الفئة</TableHead><TableHead className="text-center">نسبة السماح %</TableHead><TableHead></TableHead></TableRow></TableHeader>
@@ -1343,6 +1766,35 @@ export const VarianceAnalysisPage: React.FC = () => {
             )}
           </div>
           <DialogFooter><Button variant="outline" onClick={() => setManageOpen(false)}>إغلاق</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Note editor dialog */}
+      <Dialog open={!!noteEditor} onOpenChange={(o) => !o && setNoteEditor(null)}>
+        <DialogContent className="max-w-md" dir="rtl">
+          <DialogHeader><DialogTitle>ملاحظة على: {noteEditor?.itemName}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs mb-1 block">حالة الإجراء</Label>
+              <Select value={noteDraft.action_status} onValueChange={(v) => setNoteDraft({ ...noteDraft, action_status: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">قيد المراجعة</SelectItem>
+                  <SelectItem value="reviewed">تمت المراجعة</SelectItem>
+                  <SelectItem value="needs_recount">يحتاج جرد</SelectItem>
+                  <SelectItem value="settled">تمت التسوية</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs mb-1 block">الملاحظة</Label>
+              <Textarea rows={4} value={noteDraft.note} onChange={(e) => setNoteDraft({ ...noteDraft, note: e.target.value })} placeholder="اكتب ملاحظتك..." />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNoteEditor(null)}>إلغاء</Button>
+            <Button onClick={saveNote}>حفظ</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

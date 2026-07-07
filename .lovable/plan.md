@@ -1,111 +1,79 @@
-# تطوير صفحة تسعير المخزن المركزي
+## خطة التنفيذ — تحسينات صفحة "تحليل الانحرافات"
 
-## 1) تحديد الأصناف المتاحة للتوريد الداخلي
-ليس كل صنف مربوط بالمخزن يُحوَّل للفروع. هنضيف **Toggle "متاح للتوريد"** على مستوى كل صنف داخل جدول التسعير. الأصناف الغير مفعلة تظهر بشكل باهت ولا تُحسب في معاينة أسعار الفروع، ولا يقترحها السيستم تلقائياً في أذونات التحويل.
+سأنفذ كل التحسينات على `src/pages/VarianceAnalysisPage.tsx` مع إضافات محدودة (جدول قاعدة بيانات للملاحظات، وتحديث `exportUtils`).
 
-- حقل جديد: `stock_item_supply_pricing.is_available_for_transfer` (boolean, default true)
-- فلتر سريع في الهيدر: **الكل / متاح للتوريد فقط / غير متاح**
+### 1) رسم بياني للانحرافات (Bar + Pie)
+- استخدام `recharts` (موجود في المشروع) لعرض توزيع الخامات على التصنيفات: Good / Normal / Accept / Deviation / Operation error / High deflection / Issue.
+- زر تبديل بين Bar و Pie.
 
----
+### 2) Top N أعلى الانحرافات
+- قسم جانبي يعرض كل الخامات مرتبة تنازليًا حسب نسبة الانحراف (أو قيمة التأثير المالي) — قابل للتبديل — بدون حد أقصى (قائمة قابلة للتمرير).
+- تلوين حسب تصنيف الانحراف.
 
-## 2) المصاريف غير المباشرة للمخزن (Overhead)
-قسم جديد في أعلى الصفحة: **"المصاريف غير المباشرة للمخزن"** — جدول بنود ديناميكية يقدر العميل يضيف/يحذف بنود (إيجار، مرتبات، فواتير، صيانة، أمن، …).
+### 3) بوكس التأثير المالي (Cost Variance)
+- بوكس KPI جديد يعرض:
+  - إجمالي قيمة الفرق (موجب/سالب)
+  - إجمالي قيمة العجز
+  - إجمالي قيمة الفائض
+  - صافي التأثير المالي
 
-- جدول جديد: `warehouse_overhead_expenses`
-  - `warehouse_id`, `expense_name`, `monthly_amount`, `is_active`
-- KPI: **إجمالي المصاريف الشهرية** + **عدد البنود النشطة**
-- Dialog "إضافة/تعديل بند" بسيط (اسم + مبلغ شهري + نشط)
+### 4) مقارنة بالفترة السابقة
+- عمود جديد في الجدول: نسبة الانحراف للفترة السابقة + سهم اتجاه (↑/↓/=).
+- بوكس ملخص: متوسط الانحراف الحالي مقابل السابق مع نسبة التغير.
 
-### طريقة التوزيع على الأصناف (Allocation Basis)
-Select واحد في أعلى القسم — يطبّق على كل المصاريف:
-- 💰 **حسب القيمة (Recommended)** — نسبة قيمة الصنف (الكمية × WAC) من إجمالي قيمة المخزن
-- ⚖️ **حسب الوزن** — يستخدم `unit_weight` × الكمية
-- 📦 **حسب الحجم** — يستخدم `unit_volume` × الكمية
-- 🔢 **حسب الكمية** — كل صنف ياخد نصيب متساوي حسب الكمية
-- ✋ **يدوي** — العميل يحدد نسبة لكل صنف
+### 5) تصدير Excel
+- استخدام `exportToExcel` الموجود مسبقًا (`src/lib/exportUtils.ts`) وإضافة زر "Excel" بجانب زر PDF.
 
-النتيجة: لكل صنف **"نصيب من المصاريف غير المباشرة لكل وحدة"** (per-unit overhead share).
+### 6) ملاحظات/إجراءات على كل خامة (تخزين في DB)
+- إنشاء جدول جديد `variance_item_notes`:
+  - `id, company_id, stock_item_id, period_from, period_to, branch_id (nullable), note, action_status ('pending'|'reviewed'|'needs_recount'|'settled'), created_at, updated_at, created_by`
+  - RLS + GRANTs عادية.
+- زر في كل صف يفتح Popover لكتابة ملاحظة + اختيار حالة الإجراء.
+- أيقونة ملونة تعكس الحالة.
 
----
+### 7) فلاتر جاهزة (Presets)
+- أزرار سريعة أعلى الجدول:
+  - "الكل"
+  - "المستهلكات فقط"
+  - "أعلى انحراف (Deviation فأعلى)"
+  - "قسم المطبخ فقط" / "قسم البار فقط" (ديناميكي حسب الأقسام)
+  - "بها ملاحظات"
 
-## 3) خانة "تكلفة التصنيع" تتعبأ تلقائياً
-حالياً `manufacturing_cost` يدوية. نخليها تعرض نصيب الصنف من المصاريف غير المباشرة كقيمة افتراضية، مع إمكانية override يدوي.
+### 8) تحديد عتبة الانحراف يدويًا
+- Dialog إعدادات (يستفيد من زر "Manage Settings" الموجود) بتبويب جديد "عتبات التصنيف":
+  - حقول إدخال لحدود Normal / Accept / Deviation / Operation error / High deflection.
+  - حفظ في `localStorage` per company.
+  - زر "إعادة الافتراضي".
 
-- زر صغير 🔄 جنب الحقل: "أعد الحساب من المصاريف غير المباشرة"
-- Tooltip يوضح: `(إجمالي المصاريف الشهرية × نسبة الصنف) ÷ كمية المخزن`
+### 9) تجميع حسب القسم / المجموعة (Subtotals)
+- Toggle "عرض بالإجماليات الفرعية".
+- عند التفعيل: إدراج صف "إجمالي القسم / المجموعة" داخل الجدول قبل الانتقال للقسم التالي مع الإجماليات المالية والكمية.
 
----
+### 10) تحسين طباعة التقرير
+- إعادة كتابة منطق PDF ليعتمد `jspdf-autotable` (كما في exportUtils) بدل `html2canvas`:
+  - صفحة غلاف (اسم الشركة، اسم التقرير، الفترة، الفرع، القسم، تاريخ ومستخدم الطباعة).
+  - ترويسة تتكرر على كل صفحة.
+  - تذييل: رقم الصفحة / إجمالي الصفحات + تاريخ الطباعة + Powered by.
+  - جدول شامل بكل الأعمدة (بما فيها المقارنة مع الفترة السابقة).
 
-## 4) توزيع تكلفة النقل والتحميل (Allocate Charges By)
-نفس الفكرة بس على مستوى **عملية التحويل** (مش شهري):
+### تفاصيل تقنية
+- ملف جديد: `supabase/migrations/xxx_variance_notes.sql` — جدول + RLS + GRANT.
+- تعديل: `src/pages/VarianceAnalysisPage.tsx` — كل تغييرات الـ UI والمنطق.
+- تعديل بسيط: `src/lib/exportUtils.ts` إن لزم (متوقع لا).
+- استخدام `recharts` (مثبتة أصلًا) للرسوم.
+- حفظ إعدادات العتبات والفلاتر في `localStorage` تحت مفتاح `variance-analysis-settings-${companyId}`.
 
-في `branch_supply_policies` نضيف:
-- `allocation_method` (`value` / `weight` / `volume` / `quantity` / `manual`)
+### ترتيب التنفيذ داخل نفس الجلسة
+1. إنشاء migration جدول الملاحظات.
+2. إضافة الحالات (state) والـ helpers الجديدة (thresholds، presets، sorting).
+3. حساب Cost Variance KPIs + Prev period stats.
+4. إضافة الرسم البياني + Top N + KPI boxes.
+5. إضافة عمود الفترة السابقة + subtotals.
+6. Popover الملاحظات + أزرار Presets.
+7. Dialog عتبات مخصصة.
+8. زر Excel + إعادة كتابة PDF بـ autotable.
 
-عند بناء التحويل في `TransferDetailPage`:
-- بدل قسمة `transportation_cost / qty` على كل صنف بالتساوي
-- يحسب نسبة كل صنف حسب الطريقة المختارة
-- ويوزع `transportation_cost + loading_cost` بشكل متناسب
-- يظهر breakdown شفاف تحت كل بند
-
----
-
-## 5) تحديثات قاعدة البيانات (Migration)
-
-```sql
--- 1) Overhead expenses per warehouse
-CREATE TABLE warehouse_overhead_expenses (
-  id, company_id, warehouse_id,
-  expense_name, monthly_amount,
-  is_active, created_at, updated_at
-);
-
--- 2) Overhead allocation settings (per warehouse)
-ALTER TABLE warehouses ADD COLUMN
-  overhead_allocation_method text DEFAULT 'value';
-
--- 3) Toggle availability per stock item
-ALTER TABLE stock_item_supply_pricing ADD COLUMN
-  is_available_for_transfer boolean DEFAULT true,
-  manual_overhead_share numeric DEFAULT 0,
-  unit_weight numeric DEFAULT 0,
-  unit_volume numeric DEFAULT 0;
-
--- 4) Per-policy transport allocation
-ALTER TABLE branch_supply_policies ADD COLUMN
-  allocation_method text DEFAULT 'value';
-```
-
-كل جدول جديد ياخد GRANT + RLS.
-
----
-
-## 6) تحديثات الواجهة
-
-### `SupplyPricingPage.tsx`
-- قسم جديد فوق: **بطاقة المصاريف غير المباشرة** (CRUD + select طريقة التوزيع)
-- عمود جديد في الجدول: **متاح للتوريد** (Switch)
-- عمود جديد: **نصيب من المصاريف** (محسوب)
-- زر إعادة حساب تكلفة التصنيع من المصاريف
-- فلتر "متاح للتوريد"
-
-### `TransferDetailPage.tsx`
-- استخدام `allocation_method` لتوزيع النقل/التحميل
-- إخفاء/تعطيل الأصناف غير المتاحة للتوريد عند المصدر = مخزن مركزي
-- تحديث breakdown ليعكس التوزيع المتناسب
-
-### `useSupplyPricing.ts`
-- دالة جديدة `computeOverheadShare(item, allocationMethod, totals)`
-- دالة `allocateTransportCharges(items, policy)` تُرجع نصيب كل بند
-- تعديل `computeSupplyPrice` يقبل `overheadPerUnit` و `transportPerUnit` محسوبين من برّه
-
----
-
-## ✅ المخرجات
-- كل صنف يقدر يتفعّل/يتعطّل من التوريد الداخلي بشكل صريح.
-- المخزن له بنود مصاريف غير مباشرة قابلة للإدارة.
-- 5 طرق توزيع للمصاريف + للنقل والتحميل، مع توصية بـ "حسب القيمة".
-- تكلفة التصنيع تتحدّث تلقائياً من نصيب الصنف من الـ Overhead.
-- تسعير التوريد النهائي يطلع دقيق وشفاف.
-
-أبدأ التنفيذ؟
+### ملاحظات
+- سأحافظ على كل المنطق الحسابي الحالي (المستهلكات، الأسعار البديلة للفرع، إلخ).
+- الرسم والـ KPIs والقوائم الجانبية ستظهر أعلى الجدول بشكل منظم.
+- عند غياب فترة (dateFrom/dateTo) ستُخفى مقارنة الفترة السابقة تلقائيًا.

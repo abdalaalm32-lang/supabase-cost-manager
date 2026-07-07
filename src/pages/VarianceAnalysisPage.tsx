@@ -1415,13 +1415,25 @@ export const VarianceAnalysisPage: React.FC = () => {
 
 
       {hasPeriod && enriched.map((group) => {
-        const shortSum = group.items.filter(i => i.costVar < 0).reduce((s, i) => s + i.costVar, 0);
-        const overSum = group.items.filter(i => i.costVar > 0).reduce((s, i) => s + i.costVar, 0);
+        // apply preset filter
+        const items = group.items.filter((i) => {
+          if (activePreset === "consumables") return i.isConsumable;
+          if (activePreset === "high") {
+            return ["Deviation", "Operation error", "High deflection", "Issue"].includes(i.analysis);
+          }
+          if (activePreset === "with-notes") return notesByItem.has(i.id);
+          if (activePreset === "short") return i.result === "Short";
+          if (activePreset === "over") return i.result === "Over";
+          return true;
+        });
+        if (items.length === 0) return null;
+        const shortSum = items.filter(i => i.costVar < 0).reduce((s, i) => s + i.costVar, 0);
+        const overSum = items.filter(i => i.costVar > 0).reduce((s, i) => s + i.costVar, 0);
         const netSum = shortSum + overSum;
-        const receiveValSum = group.items.reduce((s, i) => s + i.receiveVal, 0);
-        const consumedValSum = group.items.reduce((s, i) => s + i.actualConsumedVal, 0);
-        const chargedSum = group.items.reduce((s, i) => s + i.chargedRatio, 0);
-        const costSum = group.items.reduce((s, i) => s + i.costVar, 0);
+        const receiveValSum = items.reduce((s, i) => s + i.receiveVal, 0);
+        const consumedValSum = items.reduce((s, i) => s + i.actualConsumedVal, 0);
+        const chargedSum = items.reduce((s, i) => s + i.chargedRatio, 0);
+        const costSum = items.reduce((s, i) => s + i.costVar, 0);
         const allowedLoss = netSum * group.permissible;
         const ratioReceiptsSales = netSales > 0 ? receiveValSum / netSales : 0;
         const ratioConsumeSales = netSales > 0 ? consumedValSum / netSales : 0;
@@ -1431,7 +1443,7 @@ export const VarianceAnalysisPage: React.FC = () => {
         return (
           <div key={group.catId} className="border rounded-lg overflow-hidden bg-card">
             <div className="bg-primary/10 px-4 py-2 flex justify-between items-center">
-              <h2 className="font-bold text-base">{group.catName}</h2>
+              <h2 className="font-bold text-base">{group.catName} <span className="text-xs text-muted-foreground font-normal">({items.length} خامة)</span></h2>
               <div className="text-xs text-muted-foreground">
                 نسبة السماح: <span className="font-bold text-foreground">{fmtPct(group.permissible)}</span>
               </div>
@@ -1457,10 +1469,17 @@ export const VarianceAnalysisPage: React.FC = () => {
                     <TableHead className="text-center">القيمة المحملة</TableHead>
                     <TableHead className="text-center">النسبة السابقة</TableHead>
                     <TableHead className="text-center">مقارنة</TableHead>
+                    <TableHead className="text-center">ملاحظة</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {group.items.map((i) => (
+                  {items.map((i) => {
+                    const note = notesByItem.get(i.id);
+                    const statusColor = note?.action_status === "settled" ? "text-emerald-600" :
+                      note?.action_status === "reviewed" ? "text-blue-600" :
+                      note?.action_status === "needs_recount" ? "text-orange-600" :
+                      note?.action_status === "pending" ? "text-yellow-600" : "text-muted-foreground";
+                    return (
                     <TableRow key={i.id} className="text-xs">
                       <TableCell className="font-medium">{i.name}</TableCell>
                       <TableCell className="text-center">{fmt(i.openQty, 3)}</TableCell>
@@ -1477,22 +1496,31 @@ export const VarianceAnalysisPage: React.FC = () => {
                       <TableCell className="text-center">{fmt(i.chargedRatio)}</TableCell>
                       <TableCell className="text-center">{i.prevRate != null ? fmtPct(i.prevRate) : "-"}</TableCell>
                       <TableCell className={cn("text-center", prevResultColor(i.prevResult))}>{i.prevResult || "-"}</TableCell>
+                      <TableCell className="text-center">
+                        <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => openNoteEditor(i.id, i.name)} title={note?.note || "أضف ملاحظة"}>
+                          <MessageSquare className={cn("w-4 h-4", note ? statusColor : "text-muted-foreground/50")} />
+                        </Button>
+                      </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                   {/* Group total row */}
-                  <TableRow className="bg-muted font-bold text-xs">
-                    <TableCell>إجمالي {group.catName}</TableCell>
-                    <TableCell colSpan={6}></TableCell>
-                    <TableCell className={cn("text-center", costSum < 0 ? "text-red-600" : costSum > 0 ? "text-emerald-600" : "")}>{fmt(costSum)}</TableCell>
-                    <TableCell colSpan={4}></TableCell>
-                    <TableCell className="text-center">{fmt(chargedSum)}</TableCell>
-                    <TableCell colSpan={2}></TableCell>
-                  </TableRow>
+                  {showSubtotals && (
+                    <TableRow className="bg-muted font-bold text-xs">
+                      <TableCell>إجمالي {group.catName}</TableCell>
+                      <TableCell colSpan={6}></TableCell>
+                      <TableCell className={cn("text-center", costSum < 0 ? "text-red-600" : costSum > 0 ? "text-emerald-600" : "")}>{fmt(costSum)}</TableCell>
+                      <TableCell colSpan={4}></TableCell>
+                      <TableCell className="text-center">{fmt(chargedSum)}</TableCell>
+                      <TableCell colSpan={3}></TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </div>
 
             {/* Group summary box */}
+            {showSubtotals && (
             <div className="p-4 border-t bg-muted/30 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
               <div className="space-y-1">
                 <div className="text-muted-foreground">نسبة السماح</div>
@@ -1539,9 +1567,11 @@ export const VarianceAnalysisPage: React.FC = () => {
                 <div className={cn("font-bold", ratioVarConsume < 0 ? "text-red-600" : ratioVarConsume > 0 ? "text-emerald-600" : "")}>{fmtPct(ratioVarConsume)}</div>
               </div>
             </div>
+            )}
           </div>
         );
       })}
+
 
       {/* Excel-style summary boxes */}
       {hasPeriod && summaryStats.total > 0 && (

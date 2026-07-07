@@ -318,7 +318,7 @@ export const VarianceAnalysisPage: React.FC = () => {
       fetchAllRows<any>((from, to) =>
         supabase
           .from("pos_sales")
-          .select("id,date,total,branch_id,status")
+          .select("id,date,total_amount,tax_amount,discount_amount,discount_in_pnl,branch_id,status")
           .eq("company_id", companyId!)
           .eq("status", "مكتمل")
           .order("id")
@@ -518,7 +518,10 @@ export const VarianceAnalysisPage: React.FC = () => {
     (posSales || []).forEach((s: any) => {
       if (!inRange(s.date, dateFrom, dateTo)) return;
       if (branchFilter !== "all" && s.branch_id !== branchFilter) return;
-      total += Number(s.total || 0);
+      const invoiceTotal = Number(s.total_amount ?? 0);
+      const taxAmount = Number(s.tax_amount ?? 0);
+      const discountAmount = s.discount_in_pnl === false ? 0 : Number(s.discount_amount ?? 0);
+      total += invoiceTotal - taxAmount - discountAmount;
     });
     return total;
   }, [posSales, dateFrom, dateTo, branchFilter]);

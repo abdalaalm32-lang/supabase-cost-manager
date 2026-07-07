@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,11 +12,13 @@ import { Calendar } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { format, subMonths } from "date-fns";
-import { CalendarIcon, Store, Building2, Warehouse, Settings2, Package, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { CalendarIcon, Store, Building2, Warehouse, Settings2, Package, AlertTriangle, CheckCircle2, Printer, FileDown, Loader2 } from "lucide-react";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { useBranchCosts } from "@/hooks/useBranchCosts";
 import { fetchAllRows } from "@/lib/fetchAllRows";
 import { toast } from "sonner";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 /* =========================================================
    VARIANCE ANALYSIS PAGE (تقرير انحراف خامات المطبخ)
@@ -600,20 +602,115 @@ export const VarianceAnalysisPage: React.FC = () => {
     qc.invalidateQueries({ queryKey: ["var-stock-items", companyId] });
   };
 
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const bulkToggleConsumable = async (ids: string[], val: boolean) => {
+    if (ids.length === 0) return;
+    setBulkBusy(true);
+    const { error } = await supabase.from("stock_items").update({ is_consumable: val }).in("id", ids);
+    setBulkBusy(false);
+    if (error) { toast.error("فشل التحديث الجماعي"); return; }
+    toast.success(val ? `تم تحديد ${ids.length} خامة كمستهلكات` : `تم إلغاء تحديد ${ids.length} خامة`);
+    qc.invalidateQueries({ queryKey: ["var-stock-items", companyId] });
+  };
+
+  /* ============ Aggregated summary stats (for boxes like Excel) ============ */
+  const summaryStats = useMemo(() => {
+    const items = Array.from(current.values());
+    const total = items.length || 1;
+    const cnt = (fn: (i: ItemCalc) => boolean) => items.filter(fn).length;
+    const pct = (n: number) => n / total;
+
+    // Result: Short / Over / Equal
+    const resultRows = [
+      { label: "Short", count: cnt((i) => i.result === "Short"), ratio: pct(cnt((i) => i.result === "Short")) },
+      { label: "Over", count: cnt((i) => i.result === "Over"), ratio: pct(cnt((i) => i.result === "Over")) },
+      { label: "Equal", count: cnt((i) => i.result === "Equal"), ratio: pct(cnt((i) => i.result === "Equal")) },
+    ];
+
+    // Analysis distribution
+    const analyses: Analysis[] = ["Normal", "Accept", "Deviation", "Operation error", "High deflection", "Issue"];
+    const analysisRows = analyses.map((a) => {
+      const c = cnt((i) => i.analysis === a);
+      return { label: a, count: c, ratio: pct(c) };
+    });
+    // include Equal-only (rate=0) as "Equal" first row to mirror the excel image
+    const equalCount = cnt((i) => i.rate === 0 && i.result === "Equal");
+    const analysisFull = [{ label: "Equal", count: equalCount, ratio: pct(equalCount) }, ...analysisRows];
+
+    // Previous comparison distribution
+    const prevLabels: (PrevResult | "None")[] = ["Better", "High", "Fixed", "Change to Loss", "Change to Increase"];
+    const prevRows = prevLabels.map((l) => {
+      const c = cnt((i) => (i.prevResult || "None") === l);
+      return { label: l, count: c, ratio: pct(c) };
+    });
+
+    return { total: items.length, resultRows, analysisRows: analysisFull, prevRows };
+  }, [current]);
+
+  /* ============ Print + PDF ============ */
+  const reportRef = useRef<HTMLDivElement>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleExportPdf = async () => {
+    if (!reportRef.current) return;
+    setPdfBusy(true);
+    try {
+      const el = reportRef.current;
+      const canvas = await html2canvas(el, { scale: 2, backgroundColor: "#ffffff", useCORS: true });
+      const imgData = canvas.toDataURL("image/jpeg", 0.92);
+      const pdf = new jsPDF("l", "mm", "a4");
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const imgW = pageW;
+      const imgH = (canvas.height * imgW) / canvas.width;
+      let heightLeft = imgH;
+      let position = 0;
+      pdf.addImage(imgData, "JPEG", 0, position, imgW, imgH);
+      heightLeft -= pageH;
+      while (heightLeft > 0) {
+        position -= pageH;
+        pdf.addPage();
+        pdf.addImage(imgData, "JPEG", 0, position, imgW, imgH);
+        heightLeft -= pageH;
+      }
+      pdf.save(`تحليل-الانحرافات-${dateFrom ? format(dateFrom, "yyyy-MM-dd") : ""}_${dateTo ? format(dateTo, "yyyy-MM-dd") : ""}.pdf`);
+      toast.success("تم تصدير PDF");
+    } catch (e) {
+      console.error(e);
+      toast.error("فشل التصدير");
+    } finally {
+      setPdfBusy(false);
+    }
+  };
+
   /* ============ UI ============ */
   const hasPeriod = dateFrom && dateTo;
 
   return (
     <div className="p-4 md:p-6 space-y-5" dir="rtl">
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="flex items-center justify-between flex-wrap gap-3 no-print">
         <div>
           <h1 className="text-2xl font-bold">تحليل الانحرافات - Variance Analysis</h1>
           <p className="text-sm text-muted-foreground">تقرير انحراف خامات المطبخ - مقارنة الاستهلاك النظري بالفعلي</p>
         </div>
-        <Button variant="outline" onClick={() => setManageOpen(true)}>
-          <Settings2 className="w-4 h-4 ml-2" /> الإعدادات (نسب السماح والمستهلكات)
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" onClick={handlePrint} disabled={!hasPeriod}>
+            <Printer className="w-4 h-4 ml-2" /> طباعة
+          </Button>
+          <Button variant="outline" onClick={handleExportPdf} disabled={!hasPeriod || pdfBusy}>
+            {pdfBusy ? <Loader2 className="w-4 h-4 ml-2 animate-spin" /> : <FileDown className="w-4 h-4 ml-2" />} تصدير PDF
+          </Button>
+          <Button variant="outline" onClick={() => setManageOpen(true)}>
+            <Settings2 className="w-4 h-4 ml-2" /> الإعدادات
+          </Button>
+        </div>
       </div>
+
+      <div ref={reportRef} className="space-y-5 print-area">
 
       {/* Filters */}
       <div className="bg-card border rounded-lg p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -846,6 +943,48 @@ export const VarianceAnalysisPage: React.FC = () => {
         );
       })}
 
+      {/* Excel-style summary boxes */}
+      {hasPeriod && summaryStats.total > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <SummaryBox
+            title="النتيجة (Result)"
+            headers={["Ratio", "No.Repetition", "Result"]}
+            rows={summaryStats.resultRows.map((r) => ({
+              ratio: fmtPct(r.ratio, 2),
+              count: r.count,
+              label: r.label,
+              color: r.label === "Short" ? "bg-red-50 dark:bg-red-950/30" : r.label === "Over" ? "bg-amber-50 dark:bg-amber-950/30" : "bg-emerald-50 dark:bg-emerald-950/30",
+            }))}
+          />
+          <SummaryBox
+            title="التحليل (Analysis)"
+            headers={["Ratio", "No.Repetition", "Result"]}
+            rows={summaryStats.analysisRows.map((r) => ({
+              ratio: fmtPct(r.ratio, 2),
+              count: r.count,
+              label: r.label,
+              color: analysisColor(r.label as Analysis) || "",
+            }))}
+          />
+          <SummaryBox
+            title="مقارنة بالفترة السابقة (Previous)"
+            headers={["Ratio", "No.Repetition", "Result"]}
+            rows={summaryStats.prevRows.map((r) => ({
+              ratio: fmtPct(r.ratio, 2),
+              count: r.count,
+              label: r.label,
+              color: r.label === "Better" || r.label === "Change to Increase"
+                ? "bg-emerald-50 dark:bg-emerald-950/30"
+                : r.label === "High" || r.label === "Change to Loss"
+                ? "bg-red-50 dark:bg-red-950/30"
+                : "bg-muted",
+            }))}
+          />
+        </div>
+      )}
+      </div>{/* /print-area */}
+
+
       {/* Manage dialog */}
       <Dialog open={manageOpen} onOpenChange={setManageOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col" dir="rtl">
@@ -895,43 +1034,78 @@ export const VarianceAnalysisPage: React.FC = () => {
                     <Input value={consumableSearch} onChange={(e) => setConsumableSearch(e.target.value)} placeholder="ابحث..." className="h-9" />
                   </div>
                 </div>
-                <div className="flex items-center justify-between text-sm bg-muted/50 rounded px-3 py-2">
-                  <span className="text-muted-foreground">عدد الخامات المحددة كمستهلكات</span>
-                  <span className="font-bold">{(stockItems || []).filter((si: any) => si.is_consumable).length}</span>
-                </div>
-                <Table>
-                  <TableHeader><TableRow><TableHead className="text-right">الخامة</TableHead><TableHead className="text-center">مستهلكات؟</TableHead></TableRow></TableHeader>
-                  <TableBody>
-                    {(stockItems || [])
-                      .filter((si: any) => {
-                        if (consumableSearch.trim()) {
-                          const q = consumableSearch.trim().toLowerCase();
-                          if (!(si.name || "").toLowerCase().includes(q) && !(si.code || "").toLowerCase().includes(q)) return false;
-                        }
-                        if (consumableCatFilter !== "all") {
-                          const cats = itemCats.get(si.id);
-                          const inCat = (cats && cats.has(consumableCatFilter)) || si.category_id === consumableCatFilter;
-                          if (!inCat) return false;
-                        }
-                        if (consumableDeptFilter !== "all") {
-                          const cats = itemCats.get(si.id);
-                          const inDept = cats && Array.from(cats).some((cid) =>
-                            (categories || []).find((c: any) => c.id === cid && c.department_id === consumableDeptFilter)
-                          );
-                          if (!inDept && si.department_id !== consumableDeptFilter) return false;
-                        }
-                        return true;
-                      })
-                      .map((si: any) => (
-                        <TableRow key={si.id}>
-                          <TableCell>{si.name}</TableCell>
-                          <TableCell className="text-center">
-                            <Checkbox checked={!!si.is_consumable} onCheckedChange={(v) => toggleConsumable(si.id, !!v)} />
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
+                {(() => {
+                  const filteredItems = (stockItems || []).filter((si: any) => {
+                    if (consumableSearch.trim()) {
+                      const q = consumableSearch.trim().toLowerCase();
+                      if (!(si.name || "").toLowerCase().includes(q) && !(si.code || "").toLowerCase().includes(q)) return false;
+                    }
+                    if (consumableCatFilter !== "all") {
+                      const cats = itemCats.get(si.id);
+                      const inCat = (cats && cats.has(consumableCatFilter)) || si.category_id === consumableCatFilter;
+                      if (!inCat) return false;
+                    }
+                    if (consumableDeptFilter !== "all") {
+                      const cats = itemCats.get(si.id);
+                      const inDept = cats && Array.from(cats).some((cid) =>
+                        (categories || []).find((c: any) => c.id === cid && c.department_id === consumableDeptFilter)
+                      );
+                      if (!inDept && si.department_id !== consumableDeptFilter) return false;
+                    }
+                    return true;
+                  });
+                  const allSelected = filteredItems.length > 0 && filteredItems.every((si: any) => si.is_consumable);
+                  const someSelected = filteredItems.some((si: any) => si.is_consumable);
+                  return (
+                    <>
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-sm bg-muted/50 rounded px-3 py-2">
+                        <div className="flex items-center gap-4">
+                          <span className="text-muted-foreground">إجمالي المستهلكات: <span className="font-bold text-foreground">{(stockItems || []).filter((si: any) => si.is_consumable).length}</span></span>
+                          <span className="text-muted-foreground">المعروض: <span className="font-bold text-foreground">{filteredItems.length}</span></span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" variant="outline" disabled={bulkBusy || filteredItems.length === 0}
+                            onClick={() => bulkToggleConsumable(filteredItems.map((s: any) => s.id), !allSelected)}>
+                            {bulkBusy ? "..." : allSelected ? "إلغاء تحديد الكل" : "تحديد الكل"}
+                          </Button>
+                          {someSelected && !allSelected && (
+                            <Button size="sm" variant="ghost" disabled={bulkBusy}
+                              onClick={() => bulkToggleConsumable(filteredItems.filter((s: any) => s.is_consumable).map((s: any) => s.id), false)}>
+                              إلغاء المحددة
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="text-center w-12">
+                              <Checkbox checked={allSelected} onCheckedChange={(v) => bulkToggleConsumable(filteredItems.map((s: any) => s.id), !!v)} />
+                            </TableHead>
+                            <TableHead className="text-right">الخامة</TableHead>
+                            <TableHead className="text-right">الكود</TableHead>
+                            <TableHead className="text-center">مستهلكات؟</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredItems.map((si: any) => (
+                            <TableRow key={si.id}>
+                              <TableCell className="text-center">
+                                <Checkbox checked={!!si.is_consumable} onCheckedChange={(v) => toggleConsumable(si.id, !!v)} />
+                              </TableCell>
+                              <TableCell>{si.name}</TableCell>
+                              <TableCell className="text-muted-foreground text-xs">{si.code || "-"}</TableCell>
+                              <TableCell className="text-center">
+                                {si.is_consumable ? <span className="text-emerald-600 font-semibold">✓</span> : <span className="text-muted-foreground">-</span>}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </>
+                  );
+                })()}
+
               </div>
             )}
           </div>
@@ -958,4 +1132,42 @@ const PermissibleRow: React.FC<{ category: any; saving: boolean; onSave: (pct: n
   );
 };
 
+/* ---------- Summary box (Excel-style) ---------- */
+const SummaryBox: React.FC<{
+  title: string;
+  headers: [string, string, string];
+  rows: { ratio: string; count: number; label: string; color?: string }[];
+}> = ({ title, headers, rows }) => {
+  const total = rows.reduce((s, r) => s + r.count, 0);
+  return (
+    <div className="border rounded-lg overflow-hidden bg-card">
+      <div className="bg-primary/10 px-3 py-2 text-sm font-bold">{title}</div>
+      <Table>
+        <TableHeader>
+          <TableRow className="bg-muted/50 text-xs">
+            <TableHead className="text-center">{headers[0]}</TableHead>
+            <TableHead className="text-center">{headers[1]}</TableHead>
+            <TableHead className="text-center">{headers[2]}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((r, i) => (
+            <TableRow key={i} className="text-xs">
+              <TableCell className="text-center font-medium">{r.ratio}</TableCell>
+              <TableCell className="text-center">{r.count}</TableCell>
+              <TableCell className={cn("text-center font-semibold", r.color)}>{r.label}</TableCell>
+            </TableRow>
+          ))}
+          <TableRow className="bg-muted font-bold text-xs">
+            <TableCell></TableCell>
+            <TableCell className="text-center">{total}</TableCell>
+            <TableCell></TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </div>
+  );
+};
+
 export default VarianceAnalysisPage;
+

@@ -486,11 +486,6 @@ export const VarianceAnalysisPage: React.FC = () => {
       c.bookQty = round(c.openQty + c.inQty - c.outQty);
       c.diffQty = round(c.countQty - c.bookQty);
       if (Math.abs(c.diffQty) < 0.005) c.diffQty = 0;
-      // Consumables: if in shortage, zero out the difference (set actual = book)
-      if (c.isConsumable && c.diffQty < 0) {
-        c.countQty = c.bookQty;
-        c.diffQty = 0;
-      }
       c.costVar = round(c.diffQty * c.avgCost);
       c.actualConsumedQty = round(c.outQty - c.diffQty);
       c.actualConsumedVal = round(c.actualConsumedQty * c.avgCost);
@@ -649,26 +644,253 @@ export const VarianceAnalysisPage: React.FC = () => {
     return { total: items.length, resultRows, analysisRows: analysisFull, prevRows };
   }, [current]);
 
-  /* ============ Print + PDF ============ */
+  /* ============ Print + PDF (structured report, not UI capture) ============ */
   const reportRef = useRef<HTMLDivElement>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
 
+  const branchName = branchFilter === "all" ? "كل الفروع" : (branches || []).find((b: any) => b.id === branchFilter)?.name || "-";
+  const deptName = departmentFilter === "all" ? "كل الأقسام" : (departments || []).find((d: any) => d.id === departmentFilter)?.name || "-";
+
+  const buildReportHTML = () => {
+    const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
+    const periodStr = `${dateFrom ? format(dateFrom, "yyyy-MM-dd") : ""} → ${dateTo ? format(dateTo, "yyyy-MM-dd") : ""}`;
+    const prevStr = prevRange ? `${format(prevRange.from, "yyyy-MM-dd")} → ${format(prevRange.to, "yyyy-MM-dd")}` : "-";
+    const logoSrc = `${window.location.origin}/logo.png`;
+
+    // Filter chips
+    const filtersHTML = `
+      <div class="filters">
+        <span><b>الفرع:</b> ${branchName}</span>
+        <span><b>القسم:</b> ${deptName}</span>
+        <span><b>الفترة:</b> ${periodStr}</span>
+        <span><b>الفترة السابقة:</b> ${prevStr}</span>
+      </div>`;
+
+    // KPI row
+    const kpiHTML = `
+      <div class="kpi-row">
+        <div class="kpi-box">
+          <div class="kpi-title">بيانات الفترة</div>
+          <div class="kpi-line"><span>مبيعات الفترة</span><b>${fmt(netSales)} ج.م</b></div>
+        </div>
+        <div class="kpi-box">
+          <div class="kpi-title">رقابة المستهلكات</div>
+          <div class="kpi-line"><span>قيمة استهلاك المستهلكات</span><b>${fmt(consumables.consumedVal)} ج.م</b></div>
+          <div class="kpi-line"><span>النسبة / المبيعات</span><b>${fmtPct(consumables.ratio)}</b></div>
+          <div class="kpi-line"><span>الحد المسموح</span><b>${consumablesLimitPct}%</b></div>
+          <div class="kpi-line"><span>الحالة</span><b>${consumables.status === "alert" ? "تخطت النسبة" : "مستقر"}</b></div>
+        </div>
+        <div class="kpi-box">
+          <div class="kpi-title">نسب الانحراف</div>
+          <div class="range-line"><span>طبيعي</span><b>0% : 2%</b></div>
+          <div class="range-line"><span>مقبول</span><b>2% : 5%</b></div>
+          <div class="range-line"><span>انحراف</span><b>5% : 10%</b></div>
+          <div class="range-line"><span>خطأ تشغيلي</span><b>10% : 20%</b></div>
+          <div class="range-line"><span>انحراف عالي</span><b>20% : 50%</b></div>
+          <div class="range-line"><span>مشكلة</span><b>&gt; 50%</b></div>
+        </div>
+      </div>`;
+
+    // Groups tables
+    const groupsHTML = enriched.map((group) => {
+      const shortSum = group.items.filter(i => i.costVar < 0).reduce((s, i) => s + i.costVar, 0);
+      const overSum = group.items.filter(i => i.costVar > 0).reduce((s, i) => s + i.costVar, 0);
+      const netSum = shortSum + overSum;
+      const receiveValSum = group.items.reduce((s, i) => s + i.receiveVal, 0);
+      const consumedValSum = group.items.reduce((s, i) => s + i.actualConsumedVal, 0);
+      const chargedSum = group.items.reduce((s, i) => s + i.chargedRatio, 0);
+      const costSum = group.items.reduce((s, i) => s + i.costVar, 0);
+      const allowedLoss = netSum * group.permissible;
+      const ratioReceiptsSales = netSales > 0 ? receiveValSum / netSales : 0;
+      const ratioConsumeSales = netSales > 0 ? consumedValSum / netSales : 0;
+      const ratioVarSales = netSales > 0 ? netSum / netSales : 0;
+      const ratioVarConsume = consumedValSum > 0 ? netSum / consumedValSum : 0;
+
+      const rows = group.items.map((i) => `
+        <tr>
+          <td class="name">${i.name}</td>
+          <td>${fmt(i.openQty, 3)}</td>
+          <td>${fmt(i.inQty, 3)}</td>
+          <td>${fmt(i.outQty, 3)}</td>
+          <td>${fmt(i.bookQty, 3)}</td>
+          <td>${fmt(i.countQty, 3)}</td>
+          <td class="${i.diffQty < 0 ? "neg" : i.diffQty > 0 ? "pos" : ""}">${fmt(i.diffQty, 3)}</td>
+          <td class="${i.costVar < 0 ? "neg" : i.costVar > 0 ? "pos" : ""}">${fmt(i.costVar)}</td>
+          <td>${fmt(i.actualConsumedQty, 3)}</td>
+          <td>${fmtPct(i.rate)}</td>
+          <td>${i.result === "Short" ? "عجز" : i.result === "Over" ? "زيادة" : "متطابق"}</td>
+          <td>${i.analysis}</td>
+          <td>${fmt(i.chargedRatio)}</td>
+          <td>${i.prevRate != null ? fmtPct(i.prevRate) : "-"}</td>
+          <td>${i.prevResult || "-"}</td>
+        </tr>`).join("");
+
+      return `
+        <div class="group">
+          <div class="group-title">
+            <span>${group.catName}</span>
+            <span>نسبة السماح: <b>${fmtPct(group.permissible)}</b></span>
+          </div>
+          <table class="items">
+            <thead>
+              <tr>
+                <th>الخامة</th><th>أول المدة</th><th>وارد</th><th>استهلاك نظري</th>
+                <th>آخر المدة نظري</th><th>الرصيد الفعلي</th><th>الفرق</th><th>قيمة الانحراف</th>
+                <th>استهلاك فعلي</th><th>نسبة الانحراف</th><th>النتيجة</th><th>التحليل</th>
+                <th>القيمة المحملة</th><th>النسبة السابقة</th><th>مقارنة</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows}
+              <tr class="total">
+                <td>إجمالي ${group.catName}</td>
+                <td colspan="6"></td>
+                <td class="${costSum < 0 ? "neg" : costSum > 0 ? "pos" : ""}">${fmt(costSum)}</td>
+                <td colspan="4"></td>
+                <td>${fmt(chargedSum)}</td>
+                <td colspan="2"></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="group-summary">
+            <div><span>نسبة السماح</span><b>${fmtPct(group.permissible)}</b></div>
+            <div><span>القيمة المسموحة</span><b>${fmt(allowedLoss)}</b></div>
+            <div><span>إجمالي الاستلامات</span><b>${fmt(receiveValSum)}</b></div>
+            <div><span>إجمالي الاستهلاك الفعلي</span><b>${fmt(consumedValSum)}</b></div>
+            <div><span>إجمالي العجز</span><b class="neg">${fmt(shortSum)}</b></div>
+            <div><span>إجمالي الزيادة</span><b class="pos">${fmt(overSum)}</b></div>
+            <div><span>صافي الانحراف</span><b class="${netSum < 0 ? "neg" : "pos"}">${fmt(netSum)}</b></div>
+            <div><span>الاستلامات / المبيعات</span><b>${fmtPct(ratioReceiptsSales)}</b></div>
+            <div><span>الاستهلاك / المبيعات</span><b>${fmtPct(ratioConsumeSales)}</b></div>
+            <div><span>الانحراف / المبيعات</span><b>${fmtPct(ratioVarSales)}</b></div>
+            <div><span>الانحراف / الاستهلاك</span><b>${fmtPct(ratioVarConsume)}</b></div>
+          </div>
+        </div>`;
+    }).join("");
+
+    // Summary boxes
+    const boxHTML = (title: string, rows: { ratio: string; count: number; label: string }[]) => {
+      const total = rows.reduce((s, r) => s + r.count, 0);
+      return `
+        <div class="sbox">
+          <div class="sbox-title">${title}</div>
+          <table class="sbox-table">
+            <thead><tr><th>Ratio</th><th>No.Repetition</th><th>Result</th></tr></thead>
+            <tbody>
+              ${rows.map(r => `<tr><td>${r.ratio}</td><td>${r.count}</td><td>${r.label}</td></tr>`).join("")}
+              <tr class="total"><td></td><td>${total}</td><td></td></tr>
+            </tbody>
+          </table>
+        </div>`;
+    };
+    const summaryHTML = `
+      <div class="summary-row">
+        ${boxHTML("النتيجة (Result)", summaryStats.resultRows.map(r => ({ ratio: fmtPct(r.ratio), count: r.count, label: r.label })))}
+        ${boxHTML("التحليل (Analysis)", summaryStats.analysisRows.map(r => ({ ratio: fmtPct(r.ratio), count: r.count, label: r.label })))}
+        ${boxHTML("مقارنة بالفترة السابقة", summaryStats.prevRows.map(r => ({ ratio: fmtPct(r.ratio), count: r.count, label: r.label })))}
+      </div>`;
+
+    return `
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>تحليل الانحرافات</title>
+  <style>
+    @font-face { font-family: 'CairoLocal'; src: url('${window.location.origin}/fonts/Cairo-Regular.ttf') format('truetype'); font-display: swap; }
+    @font-face { font-family: 'AmiriLocal'; src: url('${window.location.origin}/fonts/Amiri-Regular.ttf') format('truetype'); font-display: swap; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'CairoLocal', 'AmiriLocal', sans-serif; direction: rtl; padding: 12px; color: #000; background: #fff; }
+    @media print { @page { size: A4 landscape; margin: 6mm; } body { padding: 0; } }
+    .header { display: flex; align-items: center; justify-content: center; gap: 12px; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px; }
+    .header img { width: 60px; height: 60px; object-fit: contain; }
+    .header h1 { font-size: 16px; }
+    .header p { font-size: 10px; }
+    .filters { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; border: 1px solid #000; padding: 5px 8px; font-size: 10px; margin-bottom: 8px; }
+    .kpi-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+    .kpi-box { border: 1px solid #000; padding: 6px 8px; font-size: 10px; }
+    .kpi-title { font-weight: bold; border-bottom: 1px solid #000; padding-bottom: 3px; margin-bottom: 4px; font-size: 11px; }
+    .kpi-line, .range-line { display: flex; justify-content: space-between; padding: 1px 0; }
+    .group { border: 1px solid #000; margin-bottom: 8px; page-break-inside: avoid; }
+    .group-title { background: #f0f0f0; padding: 5px 8px; display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; border-bottom: 1px solid #000; }
+    table.items { width: 100%; border-collapse: collapse; font-size: 8.5px; }
+    table.items th, table.items td { border: 1px solid #666; padding: 2px 3px; text-align: center; }
+    table.items th { background: #e5e5e5; font-weight: bold; }
+    table.items td.name { text-align: right; font-weight: 500; }
+    table.items tr.total td { background: #ddd; font-weight: bold; }
+    .neg { color: #b91c1c; font-weight: bold; }
+    .pos { color: #059669; font-weight: bold; }
+    .group-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 6px; font-size: 9px; background: #fafafa; }
+    .group-summary > div { border: 1px solid #ccc; padding: 3px 6px; display: flex; justify-content: space-between; }
+    .summary-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-top: 6px; }
+    .sbox { border: 1px solid #000; }
+    .sbox-title { background: #f0f0f0; padding: 4px 8px; font-size: 11px; font-weight: bold; border-bottom: 1px solid #000; }
+    .sbox-table { width: 100%; border-collapse: collapse; font-size: 9px; }
+    .sbox-table th, .sbox-table td { border: 1px solid #666; padding: 3px 5px; text-align: center; }
+    .sbox-table th { background: #e5e5e5; }
+    .sbox-table tr.total td { background: #ddd; font-weight: bold; }
+    .footer { text-align: center; margin-top: 10px; font-size: 8px; border-top: 1px solid #000; padding-top: 5px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="${logoSrc}" alt="Logo" onerror="this.style.display='none'" />
+    <div>
+      <h1>تحليل الانحرافات - تقرير انحراف خامات المطبخ</h1>
+      <p>نظام إدارة التكاليف • ${dateStr}</p>
+    </div>
+  </div>
+  ${filtersHTML}
+  ${kpiHTML}
+  ${groupsHTML || '<div style="text-align:center;padding:20px;border:1px solid #000;">لا توجد بيانات</div>'}
+  ${summaryHTML}
+  <div class="footer">Powered by Mohamed Abdel Aal</div>
+</body>
+</html>`;
+  };
+
   const handlePrint = () => {
-    window.print();
+    if (!hasPeriod) return;
+    const html = buildReportHTML();
+    const w = window.open("", "_blank");
+    if (!w) { toast.error("افتح النوافذ المنبثقة"); return; }
+    w.document.write(html + `<script>
+      (async function(){ try{ if(document.fonts && document.fonts.ready) await document.fonts.ready; }catch(e){}
+        setTimeout(function(){ window.print(); window.onafterprint = function(){ window.close(); }; }, 300);
+      })();
+    </script>`);
+    w.document.close();
   };
 
   const handleExportPdf = async () => {
-    if (!reportRef.current) return;
+    if (!hasPeriod) return;
     setPdfBusy(true);
     try {
-      const el = reportRef.current;
-      const canvas = await html2canvas(el, { scale: 2, backgroundColor: "#ffffff", useCORS: true });
-      const imgData = canvas.toDataURL("image/jpeg", 0.92);
+      // Render the same HTML off-screen then rasterize to PDF (preserves formatted report layout)
+      const html = buildReportHTML();
+      const iframe = document.createElement("iframe");
+      iframe.style.position = "fixed";
+      iframe.style.left = "-10000px";
+      iframe.style.top = "0";
+      iframe.style.width = "1200px";
+      iframe.style.height = "800px";
+      document.body.appendChild(iframe);
+      const doc = iframe.contentDocument!;
+      doc.open(); doc.write(html); doc.close();
+      // wait for fonts + images
+      await new Promise((r) => setTimeout(r, 600));
+      try { await (doc as any).fonts?.ready; } catch {}
+      const body = doc.body;
+      body.style.width = "1200px";
+      const canvas = await html2canvas(body, { scale: 2, backgroundColor: "#ffffff", useCORS: true, windowWidth: 1200 });
+      document.body.removeChild(iframe);
+
       const pdf = new jsPDF("l", "mm", "a4");
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
       const imgW = pageW;
       const imgH = (canvas.height * imgW) / canvas.width;
+      const imgData = canvas.toDataURL("image/jpeg", 0.92);
       let heightLeft = imgH;
       let position = 0;
       pdf.addImage(imgData, "JPEG", 0, position, imgW, imgH);
@@ -934,11 +1156,11 @@ export const VarianceAnalysisPage: React.FC = () => {
               </div>
               <div className="space-y-1">
                 <div className="text-muted-foreground">نسبة الانحراف / المبيعات</div>
-                <div className={cn("font-bold", ratioVarSales < 0 ? "text-red-600" : ratioVarSales > 0 ? "text-emerald-600" : "")}>{fmtPct(ratioVarSales, 4)}</div>
+                <div className={cn("font-bold", ratioVarSales < 0 ? "text-red-600" : ratioVarSales > 0 ? "text-emerald-600" : "")}>{fmtPct(ratioVarSales)}</div>
               </div>
               <div className="space-y-1">
                 <div className="text-muted-foreground">نسبة الانحراف / الاستهلاك</div>
-                <div className={cn("font-bold", ratioVarConsume < 0 ? "text-red-600" : ratioVarConsume > 0 ? "text-emerald-600" : "")}>{fmtPct(ratioVarConsume, 4)}</div>
+                <div className={cn("font-bold", ratioVarConsume < 0 ? "text-red-600" : ratioVarConsume > 0 ? "text-emerald-600" : "")}>{fmtPct(ratioVarConsume)}</div>
               </div>
             </div>
           </div>

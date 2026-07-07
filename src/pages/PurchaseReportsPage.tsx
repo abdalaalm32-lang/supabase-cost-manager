@@ -674,7 +674,7 @@ export const PurchaseReportsPage: React.FC = () => {
 
       // Data table
       const headerRow = ws.addRow(["الكود", "اسم الخامة", "المجموعة", "عدد الشراء", "المورد الأكثر", "إجمالي الكمية", "الوحدة", "التكلفة المعيارية", "متوسط التكلفة", "فرق السعر", "إجمالي القيمة"]);
-      headerRow.eachCell((c) => { c.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10, name: "Cairo" }; c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F766E" } }; c.alignment = { horizontal: "center" }; c.border = { top: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" }, bottom: { style: "thin" } }; });
+      headerRow.eachCell((c) => { c.font = { bold: true, color: { argb: "FF000000" }, size: 10, name: "Cairo" }; c.alignment = { horizontal: "center" }; c.border = { top: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" }, bottom: { style: "thin" } }; });
       filteredData.forEach((i: any) => {
         const r = ws.addRow([i.code || "—", i.name, i.categoryName, i.purchaseCount, `${i.topSupplier} (${i.topSupplierCount})`, fmt(i.totalQty), i.unit, fmt(i.standardCost), fmt(i.avgCost), fmt(i.priceDiff), fmt(i.totalValue)]);
         r.eachCell((c) => { c.alignment = { horizontal: "center" }; c.font = { size: 9, name: "Cairo" }; c.border = { top: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" }, bottom: { style: "thin" } }; });

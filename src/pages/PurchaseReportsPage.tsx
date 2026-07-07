@@ -483,7 +483,7 @@ export const PurchaseReportsPage: React.FC = () => {
         <td>${i.unit}</td>
         <td>${fmt(i.standardCost)}</td>
         <td>${fmt(i.avgCost)}</td>
-        <td style="color:${i.priceDiff < 0 ? "#c00" : i.priceDiff > 0 ? "#0a7" : "#000"};font-weight:bold;">${i.priceDiff > 0 ? "+" : ""}${fmt(i.priceDiff)}</td>
+        <td style="color:#000;font-weight:bold;">${i.priceDiff > 0 ? "+" : ""}${fmt(i.priceDiff)}</td>
         <td style="font-weight:bold;">${fmt(i.totalValue)}</td>
       </tr>`;
     });

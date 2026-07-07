@@ -38,6 +38,7 @@ const ALL_PERMISSIONS = [
   { key: "waste", label: "الهالك" },
   { key: "purchases", label: "المشتريات" },
   { key: "costing", label: "تحليل التكاليف" },
+  { key: "variance-analysis", label: "تحليل الانحرافات" },
   { key: "menu-costing", label: "تكلفة المنيو" },
   { key: "menu-engineering", label: "هندسة المنيو" },
   { key: "cost-adjustment", label: "تعديل التكاليف" },

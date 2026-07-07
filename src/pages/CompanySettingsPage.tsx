@@ -78,6 +78,8 @@ export const CompanySettingsPage: React.FC = () => {
   const [formSubscriptionMinutes, setFormSubscriptionMinutes] = useState<number | "">("");
   const [formSubscriptionStart, setFormSubscriptionStart] = useState<Date | undefined>();
   const [formSubscriptionEnd, setFormSubscriptionEnd] = useState<Date | undefined>();
+  const [formAvatarUrl, setFormAvatarUrl] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   // Company name edit
   const [isEditCompanyName, setIsEditCompanyName] = useState(false);
@@ -152,6 +154,7 @@ export const CompanySettingsPage: React.FC = () => {
     setFormName(""); setFormEmail(""); setFormPassword(""); setFormJobRoleId(""); setFormBranchId("");
     setFormStatus(true); setFormPermissions(["dashboard"]); setFormSubscriptionType("unlimited");
     setFormSubscriptionMinutes(""); setFormSubscriptionStart(undefined); setFormSubscriptionEnd(undefined);
+    setFormAvatarUrl(null);
     setActiveTab("account"); setDetailUser(null);
   };
 
@@ -166,11 +169,56 @@ export const CompanySettingsPage: React.FC = () => {
     setFormSubscriptionMinutes(user.subscription_minutes || "");
     setFormSubscriptionStart(user.subscription_start ? new Date(user.subscription_start) : undefined);
     setFormSubscriptionEnd(user.subscription_end ? new Date(user.subscription_end) : undefined);
+    setFormAvatarUrl(user.avatar_url || null);
     setActiveTab("account"); setIsDialogOpen(true);
   };
 
   const togglePermission = (key: string) => {
     setFormPermissions((prev) => prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]);
+  };
+
+  const handleAvatarUpload = async (file?: File) => {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("حجم الصورة أكبر من 5MB");
+      return;
+    }
+    setAvatarUploading(true);
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => {
+            const size = 256;
+            const canvas = document.createElement("canvas");
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext("2d")!;
+            const scale = Math.max(size / img.width, size / img.height);
+            const w = img.width * scale;
+            const h = img.height * scale;
+            ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+            resolve(canvas.toDataURL("image/jpeg", 0.8));
+          };
+          img.onerror = reject;
+          img.src = reader.result as string;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      setFormAvatarUrl(dataUrl);
+      if (detailUser) {
+        const { error } = await supabase.from("profiles").update({ avatar_url: dataUrl } as any).eq("id", detailUser.id);
+        if (error) throw error;
+        queryClient.invalidateQueries({ queryKey: ["company-users"] });
+        toast.success("تم تحديث الصورة");
+      }
+    } catch (err: any) {
+      toast.error("فشل رفع الصورة: " + (err?.message || ""));
+    } finally {
+      setAvatarUploading(false);
+    }
   };
 
   const createUser = useMutation({
@@ -195,6 +243,7 @@ export const CompanySettingsPage: React.FC = () => {
           subscription_minutes: formSubscriptionType === "minutes" ? formSubscriptionMinutes : null,
           subscription_start: formSubscriptionType === "date_range" && formSubscriptionStart ? formSubscriptionStart.toISOString() : null,
           subscription_end: formSubscriptionType === "date_range" && formSubscriptionEnd ? formSubscriptionEnd.toISOString() : null,
+          avatar_url: formAvatarUrl,
         },
       });
       if (res.error) throw new Error(res.error.message || "حدث خطأ");
@@ -225,6 +274,7 @@ export const CompanySettingsPage: React.FC = () => {
             subscription_minutes: formSubscriptionType === "minutes" ? (formSubscriptionMinutes as number) : null,
             subscription_start: formSubscriptionType === "date_range" && formSubscriptionStart ? formSubscriptionStart.toISOString() : null,
             subscription_end: formSubscriptionType === "date_range" && formSubscriptionEnd ? formSubscriptionEnd.toISOString() : null,
+            avatar_url: formAvatarUrl,
           },
         },
       });
@@ -633,7 +683,7 @@ export const CompanySettingsPage: React.FC = () => {
 
       {/* Add/Edit User Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) { setIsDialogOpen(false); resetForm(); } else setIsDialogOpen(true); }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col" dir="rtl">
+        <DialogContent className="max-w-2xl h-[90vh] overflow-hidden flex flex-col" dir="rtl">
           <DialogHeader>
             <DialogTitle>{detailUser ? "تعديل المستخدم" : "إضافة مستخدم جديد"}</DialogTitle>
           </DialogHeader>
@@ -641,7 +691,7 @@ export const CompanySettingsPage: React.FC = () => {
             <Button variant={activeTab === "account" ? "default" : "ghost"} size="sm" onClick={() => setActiveTab("account")}>بيانات الحساب</Button>
             <Button variant={activeTab === "permissions" ? "default" : "ghost"} size="sm" onClick={() => setActiveTab("permissions")}>صلاحيات الوصول</Button>
           </div>
-          <ScrollArea className="flex-1 min-h-0 max-h-[55vh] px-1 overflow-y-auto">
+          <ScrollArea className="flex-1 min-h-0 px-1 overflow-y-auto">
             {activeTab === "account" && (
               <div className="space-y-4 py-2">
                 <div className="space-y-2">
@@ -690,6 +740,54 @@ export const CompanySettingsPage: React.FC = () => {
                 </div>
                 <div className="space-y-3 p-3 rounded-xl border border-border/50 bg-muted/30">
                   <Label className="font-bold">مدة الاشتراك</Label>
+                  <div className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+                    <div className="flex items-center gap-3">
+                      {formAvatarUrl ? (
+                        <img src={formAvatarUrl} alt="صورة المستخدم" className="w-12 h-12 rounded-full object-cover border-2 border-primary/30" />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-lg">
+                          {(formName || "U").charAt(0)}
+                        </div>
+                      )}
+                      <div>
+                        <Label className="font-bold">قسم رفع صورة المستخدم</Label>
+                        <p className="text-[10px] text-muted-foreground">JPG/PNG • أقصى حجم 5MB</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        id="company-avatar-upload"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          await handleAvatarUpload(e.target.files?.[0]);
+                          e.target.value = "";
+                        }}
+                      />
+                      <Button type="button" variant="outline" size="sm" disabled={avatarUploading} onClick={() => document.getElementById("company-avatar-upload")?.click()}>
+                        {avatarUploading ? "جاري الرفع..." : formAvatarUrl ? "تغيير" : "رفع"}
+                      </Button>
+                      {formAvatarUrl && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive"
+                          onClick={async () => {
+                            setFormAvatarUrl(null);
+                            if (detailUser) {
+                              await supabase.from("profiles").update({ avatar_url: null } as any).eq("id", detailUser.id);
+                              queryClient.invalidateQueries({ queryKey: ["company-users"] });
+                              toast.success("تم حذف الصورة");
+                            }
+                          }}
+                        >
+                          حذف
+                        </Button>
+                      )}
+                    </div>
+                  </div>
                   <Select value={formSubscriptionType} onValueChange={setFormSubscriptionType}>
                     <SelectTrigger className="glass-input"><SelectValue /></SelectTrigger>
                     <SelectContent>

@@ -30,13 +30,13 @@ import jsPDF from "jspdf";
     - Consumables ratio monitor vs configurable limit
    ========================================================= */
 
-type Analysis = "Normal" | "Accept" | "Deviation" | "Operation error" | "High deflection" | "Issue";
+type Analysis = "Good" | "Normal" | "Accept" | "Deviation" | "Operation error" | "High deflection" | "Issue";
 type ResultSign = "Short" | "Over" | "Equal";
 type PrevResult = "Better" | "High" | "Fixed" | "Change to Loss" | "Change to Increase";
 
 const analyzeRate = (rate: number): Analysis => {
   const a = Math.abs(rate);
-  if (a === 0) return "Normal";
+  if (a === 0) return "Good";
   if (a <= 0.02) return "Normal";
   if (a <= 0.05) return "Accept";
   if (a <= 0.10) return "Deviation";
@@ -47,7 +47,8 @@ const analyzeRate = (rate: number): Analysis => {
 
 const analysisColor = (a: Analysis) => {
   switch (a) {
-    case "Normal": return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200";
+    case "Good": return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200";
+    case "Normal": return "bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-200";
     case "Accept": return "bg-lime-100 text-lime-800 dark:bg-lime-900/40 dark:text-lime-200";
     case "Deviation": return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200";
     case "Operation error": return "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200";
@@ -634,17 +635,12 @@ export const VarianceAnalysisPage: React.FC = () => {
       { label: "Equal", count: cnt((i) => i.result === "Equal"), ratio: pct(cnt((i) => i.result === "Equal")) },
     ];
 
-    // Analysis distribution (exclude Equal items from Normal to avoid double-counting)
-    const analyses: Analysis[] = ["Normal", "Accept", "Deviation", "Operation error", "High deflection", "Issue"];
+    // Analysis distribution: 0% -> Good, 1%-2% -> Normal
+    const analyses: Analysis[] = ["Good", "Normal", "Accept", "Deviation", "Operation error", "High deflection", "Issue"];
     const analysisRows = analyses.map((a) => {
-      const c = a === "Normal"
-        ? cnt((i) => i.analysis === a && i.result !== "Equal")
-        : cnt((i) => i.analysis === a);
+      const c = cnt((i) => i.analysis === a);
       return { label: a, count: c, ratio: pct(c) };
     });
-    // Equal row (rate=0 / result=Equal) shown first so total sums to items count
-    const equalCount = cnt((i) => i.result === "Equal");
-    const analysisFull = [{ label: "Equal", count: equalCount, ratio: pct(equalCount) }, ...analysisRows];
 
     // Previous comparison distribution
     const prevLabels: (PrevResult | "None")[] = ["Better", "High", "Fixed", "Change to Loss", "Change to Increase"];
@@ -653,7 +649,7 @@ export const VarianceAnalysisPage: React.FC = () => {
       return { label: l, count: c, ratio: pct(c) };
     });
 
-    return { total: items.length, resultRows, analysisRows: analysisFull, prevRows };
+    return { total: items.length, resultRows, analysisRows, prevRows };
   }, [current]);
 
   /* ============ Print + PDF (structured report, not UI capture) ============ */
@@ -1031,7 +1027,8 @@ export const VarianceAnalysisPage: React.FC = () => {
         <div className="bg-card border rounded-lg p-4">
           <div className="flex items-center gap-2 text-sm font-semibold border-b pb-2 mb-2">نسب الانحراف</div>
           <div className="space-y-1 text-xs">
-            <div className="flex justify-between items-center px-2 py-1 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200"><span>طبيعي (Normal)</span><span className="font-bold">0% : 2%</span></div>
+            <div className="flex justify-between items-center px-2 py-1 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200"><span>جيد (Good)</span><span className="font-bold">0%</span></div>
+            <div className="flex justify-between items-center px-2 py-1 rounded bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-200"><span>طبيعي (Normal)</span><span className="font-bold">1% : 2%</span></div>
             <div className="flex justify-between items-center px-2 py-1 rounded bg-lime-100 text-lime-800 dark:bg-lime-900/40 dark:text-lime-200"><span>مقبول (Accept)</span><span className="font-bold">2% : 5%</span></div>
             <div className="flex justify-between items-center px-2 py-1 rounded bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200"><span>انحراف (Deviation)</span><span className="font-bold">5% : 10%</span></div>
             <div className="flex justify-between items-center px-2 py-1 rounded bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200"><span>خطأ تشغيلي</span><span className="font-bold">10% : 20%</span></div>

@@ -556,7 +556,7 @@ export const SettingsUsersPage: React.FC = () => {
 
       {/* Add/Edit User Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) { setIsDialogOpen(false); resetForm(); } else setIsDialogOpen(true); }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col" dir="rtl">
+        <DialogContent className="max-w-2xl h-[90vh] overflow-hidden flex flex-col" dir="rtl">
           <DialogHeader>
             <DialogTitle>{detailUser ? "تعديل المستخدم" : "إضافة مستخدم جديد"}</DialogTitle>
           </DialogHeader>
@@ -570,7 +570,7 @@ export const SettingsUsersPage: React.FC = () => {
             </Button>
           </div>
 
-          <ScrollArea className="flex-1 min-h-0 h-[50vh] px-1 overflow-y-auto">
+          <ScrollArea className="flex-1 min-h-0 px-1 overflow-y-auto">
             {activeTab === "account" && (
               <div className="space-y-4 py-2">
 
@@ -729,12 +729,10 @@ export const SettingsUsersPage: React.FC = () => {
                       </div>
                     </div>
                   )}
-                </div>
-
-                {/* Avatar upload - قسم صورة المستخدم */}
-                <div className="space-y-3 p-3 rounded-xl border border-border/50 bg-muted/30">
-                  <Label className="font-bold">صورة المستخدم</Label>
-                  <div className="flex items-center gap-4">
+                  {/* Avatar upload - قسم صورة المستخدم */}
+                  <div className="space-y-3 border-t border-border/50 pt-3">
+                    <Label className="font-bold">قسم رفع صورة المستخدم</Label>
+                    <div className="flex items-center gap-4">
                     <div className="relative">
                       {formAvatarUrl ? (
                         <img src={formAvatarUrl} alt="avatar" className="w-20 h-20 rounded-full object-cover border-2 border-primary/30 shadow-md" />
@@ -829,6 +827,7 @@ export const SettingsUsersPage: React.FC = () => {
                         )}
                       </div>
                       <p className="text-[10px] text-muted-foreground">JPG/PNG • أقصى حجم 5MB (يتم ضغط الصورة تلقائياً)</p>
+                      </div>
                     </div>
                   </div>
                 </div>

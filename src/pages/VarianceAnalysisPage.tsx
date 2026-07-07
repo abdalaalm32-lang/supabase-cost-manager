@@ -171,7 +171,7 @@ export const VarianceAnalysisPage: React.FC = () => {
           .select("id,name,code,stock_unit,avg_cost,conversion_factor,category_id,department_id,is_consumable")
           .eq("company_id", companyId!)
           .eq("active", true)
-          .order("name")
+          .order("created_at", { ascending: true })
           .range(from, to)
       );
     },

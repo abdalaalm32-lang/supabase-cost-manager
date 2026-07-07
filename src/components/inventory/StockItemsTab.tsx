@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Pencil, Trash2, Search, Warehouse, Building2, Link2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Warehouse, Building2, Link2, Package, Layers, CheckCircle2, XCircle } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ExportButtons } from "@/components/ExportButtons";
 import { Separator } from "@/components/ui/separator";
@@ -588,6 +588,102 @@ export const StockItemsTab: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {/* KPI Boxes */}
+      {(() => {
+        const activeItems = items.filter((i: any) => i.active);
+        const inactiveItems = items.filter((i: any) => !i.active);
+        // Build per-department stats respecting active-only base
+        const deptStats = departments.map((d: any) => {
+          const itemIdsInDept = new Set(
+            itemDepartments
+              .filter((dl: any) => dl.department_id === d.id)
+              .map((dl: any) => dl.stock_item_id)
+          );
+          const deptItems = activeItems.filter((i: any) => itemIdsInDept.has(i.id));
+          // Categories under this dept: group deptItems by their categories
+          const catCounts: Record<string, number> = {};
+          deptItems.forEach((it: any) => {
+            const cats = getAllCatIdsForItem(it);
+            if (cats.length === 0) {
+              catCounts["__none__"] = (catCounts["__none__"] || 0) + 1;
+            } else {
+              cats.forEach((cid) => { catCounts[cid] = (catCounts[cid] || 0) + 1; });
+            }
+          });
+          return { dept: d, count: deptItems.length, catCounts };
+        });
+        const visibleDepts = filterDepartment === "all" ? deptStats : deptStats.filter((s) => s.dept.id === filterDepartment);
+
+        return (
+          <div className="space-y-3">
+            {/* Top KPI row */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="glass-card p-3 flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/15 text-primary"><Package size={20} /></div>
+                <div>
+                  <div className="text-xs text-muted-foreground">إجمالي الأصناف</div>
+                  <div className="text-lg font-bold">{items.length}</div>
+                </div>
+              </div>
+              <div className="glass-card p-3 flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-emerald-500/15 text-emerald-600"><CheckCircle2 size={20} /></div>
+                <div>
+                  <div className="text-xs text-muted-foreground">أصناف نشطة</div>
+                  <div className="text-lg font-bold">{activeItems.length}</div>
+                </div>
+              </div>
+              <div className="glass-card p-3 flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-red-500/15 text-red-500"><XCircle size={20} /></div>
+                <div>
+                  <div className="text-xs text-muted-foreground">أصناف غير نشطة</div>
+                  <div className="text-lg font-bold">{inactiveItems.length}</div>
+                </div>
+              </div>
+              <div className="glass-card p-3 flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-accent/15 text-accent"><Layers size={20} /></div>
+                <div>
+                  <div className="text-xs text-muted-foreground">الأقسام / المجموعات</div>
+                  <div className="text-lg font-bold">{departments.length} / {categories.length}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Departments → Categories breakdown */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {visibleDepts.map(({ dept, count, catCounts }) => (
+                <div key={dept.id} className="glass-card p-3 space-y-2">
+                  <div className="flex items-center justify-between border-b pb-2">
+                    <div className="flex items-center gap-2 font-bold text-sm">
+                      <Building2 size={16} className="text-primary" />
+                      {dept.name}
+                    </div>
+                    <Badge className="bg-primary/15 text-primary border-primary/30">{count} صنف</Badge>
+                  </div>
+                  <div className="space-y-1 max-h-48 overflow-y-auto">
+                    {Object.keys(catCounts).length === 0 ? (
+                      <div className="text-xs text-muted-foreground py-2 text-center">لا توجد أصناف</div>
+                    ) : (
+                      Object.entries(catCounts)
+                        .sort((a, b) => b[1] - a[1])
+                        .map(([cid, cnt]) => {
+                          const cat = cid === "__none__" ? null : categories.find((c: any) => c.id === cid);
+                          const name = cat ? cat.name : "بدون مجموعة";
+                          return (
+                            <div key={cid} className="flex justify-between items-center text-xs px-2 py-1 rounded bg-muted/40">
+                              <span className="flex items-center gap-1"><Layers size={12} className="text-muted-foreground" /> {name}</span>
+                              <span className="font-bold">{cnt}</span>
+                            </div>
+                          );
+                        })
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Search + Filters */}
       <div className="flex items-center gap-3 flex-wrap">

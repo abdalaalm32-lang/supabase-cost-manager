@@ -661,8 +661,7 @@ export const PurchaseReportsPage: React.FC = () => {
         const titleRowIdx = row;
         const titleCellRef = ws.getRow(titleRowIdx).getCell(col + 1);
         titleCellRef.value = c.title;
-        titleCellRef.font = { bold: true, size: 11, name: "Cairo", color: { argb: "FFFFFFFF" } };
-        titleCellRef.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F766E" } };
+        titleCellRef.font = { bold: true, size: 11, name: "Cairo", color: { argb: "FF000000" } };
         titleCellRef.alignment = { horizontal: "center" };
         ws.mergeCells(titleRowIdx, col + 1, titleRowIdx, col + 6);
         const imgId = wb.addImage({ base64: c.img, extension: "png" });

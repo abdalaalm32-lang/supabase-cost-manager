@@ -1622,8 +1622,34 @@ export const VarianceAnalysisPage: React.FC = () => {
           <div className="flex gap-2 border-b">
             <button className={cn("px-3 py-2 text-sm border-b-2", manageTab === "permissible" ? "border-primary font-bold" : "border-transparent text-muted-foreground")} onClick={() => setManageTab("permissible")}>نسب السماح للفئات</button>
             <button className={cn("px-3 py-2 text-sm border-b-2", manageTab === "consumables" ? "border-primary font-bold" : "border-transparent text-muted-foreground")} onClick={() => setManageTab("consumables")}>خامات المستهلكات</button>
+            <button className={cn("px-3 py-2 text-sm border-b-2", manageTab === "thresholds" ? "border-primary font-bold" : "border-transparent text-muted-foreground")} onClick={() => setManageTab("thresholds")}>عتبات التصنيف</button>
           </div>
           <div className="overflow-y-auto flex-1 py-3">
+            {manageTab === "thresholds" && (
+              <div className="space-y-3 max-w-lg mx-auto">
+                <p className="text-xs text-muted-foreground">حدّد الحد الأقصى (%) لكل تصنيف. القيم يجب أن تكون تصاعدية.</p>
+                {([
+                  ["normal", "Normal - طبيعي"],
+                  ["accept", "Accept - مقبول"],
+                  ["deviation", "Deviation - انحراف"],
+                  ["operation", "Operation error - خطأ تشغيلي"],
+                  ["highDefl", "High deflection - انحراف عالي"],
+                ] as const).map(([k, lbl]) => (
+                  <div key={k} className="flex items-center justify-between gap-3">
+                    <Label className="text-sm">{lbl}</Label>
+                    <div className="flex items-center gap-1">
+                      <Input type="number" step="0.1" className="h-8 w-24 text-center"
+                        value={(thresholds[k] * 100).toString()}
+                        onChange={(e) => setThresholds({ ...thresholds, [k]: (Number(e.target.value) || 0) / 100 })} />
+                      <span className="text-xs">%</span>
+                    </div>
+                  </div>
+                ))}
+                <div className="flex justify-end pt-2">
+                  <Button variant="outline" size="sm" onClick={() => setThresholds(DEFAULT_THRESHOLDS)}>إعادة الافتراضي</Button>
+                </div>
+              </div>
+            )}
             {manageTab === "permissible" && (
               <Table>
                 <TableHeader><TableRow><TableHead className="text-right">الفئة</TableHead><TableHead className="text-center">نسبة السماح %</TableHead><TableHead></TableHead></TableRow></TableHeader>

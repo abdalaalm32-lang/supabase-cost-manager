@@ -602,6 +602,91 @@ export const VarianceAnalysisPage: React.FC = () => {
     qc.invalidateQueries({ queryKey: ["var-stock-items", companyId] });
   };
 
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const bulkToggleConsumable = async (ids: string[], val: boolean) => {
+    if (ids.length === 0) return;
+    setBulkBusy(true);
+    const { error } = await supabase.from("stock_items").update({ is_consumable: val }).in("id", ids);
+    setBulkBusy(false);
+    if (error) { toast.error("فشل التحديث الجماعي"); return; }
+    toast.success(val ? `تم تحديد ${ids.length} خامة كمستهلكات` : `تم إلغاء تحديد ${ids.length} خامة`);
+    qc.invalidateQueries({ queryKey: ["var-stock-items", companyId] });
+  };
+
+  /* ============ Aggregated summary stats (for boxes like Excel) ============ */
+  const summaryStats = useMemo(() => {
+    const items = Array.from(current.values());
+    const total = items.length || 1;
+    const cnt = (fn: (i: ItemCalc) => boolean) => items.filter(fn).length;
+    const pct = (n: number) => n / total;
+
+    // Result: Short / Over / Equal
+    const resultRows = [
+      { label: "Short", count: cnt((i) => i.result === "Short"), ratio: pct(cnt((i) => i.result === "Short")) },
+      { label: "Over", count: cnt((i) => i.result === "Over"), ratio: pct(cnt((i) => i.result === "Over")) },
+      { label: "Equal", count: cnt((i) => i.result === "Equal"), ratio: pct(cnt((i) => i.result === "Equal")) },
+    ];
+
+    // Analysis distribution
+    const analyses: Analysis[] = ["Normal", "Accept", "Deviation", "Operation error", "High deflection", "Issue"];
+    const analysisRows = analyses.map((a) => {
+      const c = cnt((i) => i.analysis === a);
+      return { label: a, count: c, ratio: pct(c) };
+    });
+    // include Equal-only (rate=0) as "Equal" first row to mirror the excel image
+    const equalCount = cnt((i) => i.rate === 0 && i.result === "Equal");
+    const analysisFull = [{ label: "Equal", count: equalCount, ratio: pct(equalCount) }, ...analysisRows];
+
+    // Previous comparison distribution
+    const prevLabels: (PrevResult | "None")[] = ["Better", "High", "Fixed", "Change to Loss", "Change to Increase"];
+    const prevRows = prevLabels.map((l) => {
+      const c = cnt((i) => (i.prevResult || "None") === l);
+      return { label: l, count: c, ratio: pct(c) };
+    });
+
+    return { total: items.length, resultRows, analysisRows: analysisFull, prevRows };
+  }, [current]);
+
+  /* ============ Print + PDF ============ */
+  const reportRef = useRef<HTMLDivElement>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleExportPdf = async () => {
+    if (!reportRef.current) return;
+    setPdfBusy(true);
+    try {
+      const el = reportRef.current;
+      const canvas = await html2canvas(el, { scale: 2, backgroundColor: "#ffffff", useCORS: true });
+      const imgData = canvas.toDataURL("image/jpeg", 0.92);
+      const pdf = new jsPDF("l", "mm", "a4");
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const imgW = pageW;
+      const imgH = (canvas.height * imgW) / canvas.width;
+      let heightLeft = imgH;
+      let position = 0;
+      pdf.addImage(imgData, "JPEG", 0, position, imgW, imgH);
+      heightLeft -= pageH;
+      while (heightLeft > 0) {
+        position -= pageH;
+        pdf.addPage();
+        pdf.addImage(imgData, "JPEG", 0, position, imgW, imgH);
+        heightLeft -= pageH;
+      }
+      pdf.save(`تحليل-الانحرافات-${dateFrom ? format(dateFrom, "yyyy-MM-dd") : ""}_${dateTo ? format(dateTo, "yyyy-MM-dd") : ""}.pdf`);
+      toast.success("تم تصدير PDF");
+    } catch (e) {
+      console.error(e);
+      toast.error("فشل التصدير");
+    } finally {
+      setPdfBusy(false);
+    }
+  };
+
   /* ============ UI ============ */
   const hasPeriod = dateFrom && dateTo;
 

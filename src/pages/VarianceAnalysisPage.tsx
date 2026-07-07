@@ -791,16 +791,16 @@ export const VarianceAnalysisPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Legend */}
+        {/* Variance ranges */}
         <div className="bg-card border rounded-lg p-4">
-          <div className="flex items-center gap-2 text-sm font-semibold border-b pb-2 mb-2">دلالة الألوان</div>
+          <div className="flex items-center gap-2 text-sm font-semibold border-b pb-2 mb-2">نسب الانحراف</div>
           <div className="space-y-1 text-xs">
-            <div className="flex justify-between items-center px-2 py-1 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200"><span>Normal</span><span>0% : 2%</span></div>
-            <div className="flex justify-between items-center px-2 py-1 rounded bg-lime-100 text-lime-800 dark:bg-lime-900/40 dark:text-lime-200"><span>Accept</span><span>2% : 5%</span></div>
-            <div className="flex justify-between items-center px-2 py-1 rounded bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200"><span>Deviation</span><span>5% : 10%</span></div>
-            <div className="flex justify-between items-center px-2 py-1 rounded bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200"><span>Operation error</span><span>10% : 20%</span></div>
-            <div className="flex justify-between items-center px-2 py-1 rounded bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200"><span>High deflection</span><span>20% : 50%</span></div>
-            <div className="flex justify-between items-center px-2 py-1 rounded bg-red-600 text-white"><span>Issue</span><span>&gt; 50%</span></div>
+            <div className="flex justify-between items-center px-2 py-1 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200"><span>طبيعي (Normal)</span><span className="font-bold">0% : 2%</span></div>
+            <div className="flex justify-between items-center px-2 py-1 rounded bg-lime-100 text-lime-800 dark:bg-lime-900/40 dark:text-lime-200"><span>مقبول (Accept)</span><span className="font-bold">2% : 5%</span></div>
+            <div className="flex justify-between items-center px-2 py-1 rounded bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200"><span>انحراف (Deviation)</span><span className="font-bold">5% : 10%</span></div>
+            <div className="flex justify-between items-center px-2 py-1 rounded bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200"><span>خطأ تشغيلي</span><span className="font-bold">10% : 20%</span></div>
+            <div className="flex justify-between items-center px-2 py-1 rounded bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200"><span>انحراف عالي</span><span className="font-bold">20% : 50%</span></div>
+            <div className="flex justify-between items-center px-2 py-1 rounded bg-red-600 text-white"><span>مشكلة (Issue)</span><span className="font-bold">&gt; 50%</span></div>
           </div>
         </div>
       </div>

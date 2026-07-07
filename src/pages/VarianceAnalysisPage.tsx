@@ -486,11 +486,6 @@ export const VarianceAnalysisPage: React.FC = () => {
       c.bookQty = round(c.openQty + c.inQty - c.outQty);
       c.diffQty = round(c.countQty - c.bookQty);
       if (Math.abs(c.diffQty) < 0.005) c.diffQty = 0;
-      // Consumables: if in shortage, zero out the difference (set actual = book)
-      if (c.isConsumable && c.diffQty < 0) {
-        c.countQty = c.bookQty;
-        c.diffQty = 0;
-      }
       c.costVar = round(c.diffQty * c.avgCost);
       c.actualConsumedQty = round(c.outQty - c.diffQty);
       c.actualConsumedVal = round(c.actualConsumedQty * c.avgCost);

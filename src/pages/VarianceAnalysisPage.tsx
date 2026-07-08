@@ -636,11 +636,24 @@ export const VarianceAnalysisPage: React.FC = () => {
       return arr;
     };
 
-    // Group per department
-    type Row = { deptId: string; deptName: string; kind: "packaging" | "general" | "consumables"; consumedVal: number };
+    // Group per department, with per-category sub-breakdown
+    type CatRow = { catId: string; catName: string; consumedVal: number; ratio: number };
+    type Row = { deptId: string; deptName: string; kind: "packaging" | "general" | "consumables"; consumedVal: number; cats: Map<string, CatRow> };
     const perDept = new Map<string, Row>();
     const primaryDeptMap = new Map<string, string | null>();
     (stockItems || []).forEach((si: any) => primaryDeptMap.set(si.id, si.department_id ?? null));
+
+    // Resolve item -> categories relevant to a given department
+    const itemCatsForDept = (itemId: string, deptId: string): string[] => {
+      const cats = itemCats.get(itemId);
+      const out: string[] = [];
+      if (cats) {
+        for (const cid of cats) {
+          if (catById.get(cid)?.department_id === deptId) out.push(cid);
+        }
+      }
+      return out;
+    };
 
     for (const c of current.values()) {
       if (!c.isConsumable) continue;
@@ -650,9 +663,22 @@ export const VarianceAnalysisPage: React.FC = () => {
       for (const did of depts) {
         if (!perDept.has(did)) {
           const dName = deptById.get(did)?.name || "غير معروف";
-          perDept.set(did, { deptId: did, deptName: dName, kind: classifyDeptKind(dName), consumedVal: 0 });
+          perDept.set(did, { deptId: did, deptName: dName, kind: classifyDeptKind(dName), consumedVal: 0, cats: new Map() });
         }
-        perDept.get(did)!.consumedVal += share;
+        const row = perDept.get(did)!;
+        row.consumedVal += share;
+
+        // sub-split share across item's categories inside this department
+        const catIds = itemCatsForDept(c.id, did);
+        const useCatIds = catIds.length > 0 ? catIds : ["__none__"];
+        const catShare = share / useCatIds.length;
+        for (const cid of useCatIds) {
+          if (!row.cats.has(cid)) {
+            const cName = cid === "__none__" ? "بدون مجموعة" : (catById.get(cid)?.name || "غير معروف");
+            row.cats.set(cid, { catId: cid, catName: cName, consumedVal: 0, ratio: 0 });
+          }
+          row.cats.get(cid)!.consumedVal += catShare;
+        }
       }
     }
 
@@ -660,10 +686,12 @@ export const VarianceAnalysisPage: React.FC = () => {
     const rows = Array.from(perDept.values())
       .map((r) => {
         const ratio = netSales > 0 ? r.consumedVal / netSales : 0;
-        // Packaging & General do NOT use the same alert limit — they are informational KPIs
         const status: "ok" | "alert" =
           r.kind === "consumables" ? (ratio <= limit ? "ok" : "alert") : "ok";
-        return { ...r, ratio, status };
+        const cats = Array.from(r.cats.values())
+          .map((cr) => ({ ...cr, ratio: netSales > 0 ? cr.consumedVal / netSales : 0 }))
+          .sort((a, b) => b.consumedVal - a.consumedVal);
+        return { ...r, ratio, status, cats };
       })
       .sort((a, b) => b.consumedVal - a.consumedVal);
 

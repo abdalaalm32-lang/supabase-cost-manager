@@ -156,7 +156,7 @@ export const VarianceAnalysisPage: React.FC = () => {
   const [dateTo, setDateTo] = useState<Date | undefined>();
   const [consumablesLimitPct, setConsumablesLimitPct] = useState<number>(3); // default 3%
   const [manageOpen, setManageOpen] = useState(false);
-  const [manageTab, setManageTab] = useState<"permissible" | "consumables" | "thresholds">("permissible");
+  const [manageTab, setManageTab] = useState<"permissible" | "consumables" | "thresholds" | "activity">("permissible");
   const [consumableDeptFilter, setConsumableDeptFilter] = useState<string>("all");
   const [consumableCatFilter, setConsumableCatFilter] = useState<string>("all");
   const [consumableSearch, setConsumableSearch] = useState<string>("");

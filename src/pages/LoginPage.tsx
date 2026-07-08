@@ -204,8 +204,8 @@ export const LoginPage: React.FC = () => {
 
         <div className="relative w-full max-w-[440px]">
           {/* Logo */}
-          <div className="text-center mb-8">
-            <img src={logo3m} alt="3M CMS Logo" className="w-28 h-28 mx-auto mb-3 object-contain drop-shadow-md" />
+          <div className="text-center mb-6">
+            <img src={logo3m} alt="3M CMS Logo" className="w-24 h-24 mx-auto mb-3 object-contain drop-shadow-md" />
             <h1
               className="text-2xl font-black tracking-tight bg-gradient-to-r from-sky-600 via-blue-700 to-indigo-700 bg-clip-text text-transparent"
               style={{ fontFamily: "'Georgia', serif", letterSpacing: '0.03em' }}
@@ -216,6 +216,11 @@ export const LoginPage: React.FC = () => {
               مرحباً بك في نظام إدارة التكاليف
             </p>
           </div>
+
+          {/* Animated glowing frame wrapping the login card */}
+          <div className="login-glow-frame">
+            <div className="relative z-[2] bg-white rounded-[calc(1.25rem-2px)] p-6 sm:p-7">
+
 
           {!showForgot ? (
             <>
@@ -345,6 +350,10 @@ export const LoginPage: React.FC = () => {
               )}
             </>
           )}
+            </div>
+          </div>
+
+
 
           {/* Footer signature */}
           <div className="mt-10 text-center">
@@ -427,19 +436,21 @@ export const LoginPage: React.FC = () => {
 
           {/* bottom: dots + stats */}
           <div className="space-y-8">
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
               {[
                 { icon: TrendingUp, label: "زيادة الكفاءة", value: "+35%" },
                 { icon: Target, label: "دقة الرقابة", value: "99.9%" },
                 { icon: Zap, label: "قرارات لحظية", value: "Realtime" },
+                { icon: ShieldCheck, label: "توفير التكاليف", value: "+25%" },
               ].map((s, i) => (
-                <div key={i} className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-4">
+                <div key={i} className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-4 hover:bg-white/10 hover:border-white/20 transition-all">
                   <s.icon size={20} className="text-sky-300 mb-2" />
-                  <div className="text-xl font-black text-white">{s.value}</div>
+                  <div className="text-lg xl:text-xl font-black text-white">{s.value}</div>
                   <div className="text-[11px] text-sky-200/70 mt-0.5">{s.label}</div>
                 </div>
               ))}
             </div>
+
 
             {/* dots */}
             <div className="flex items-center gap-2">

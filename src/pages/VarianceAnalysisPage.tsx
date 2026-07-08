@@ -1873,6 +1873,7 @@ export const VarianceAnalysisPage: React.FC = () => {
             <button className={cn("px-3 py-2 text-sm border-b-2", manageTab === "permissible" ? "border-primary font-bold" : "border-transparent text-muted-foreground")} onClick={() => setManageTab("permissible")}>نسب السماح للفئات</button>
             <button className={cn("px-3 py-2 text-sm border-b-2", manageTab === "consumables" ? "border-primary font-bold" : "border-transparent text-muted-foreground")} onClick={() => setManageTab("consumables")}>خامات المستهلكات</button>
             <button className={cn("px-3 py-2 text-sm border-b-2", manageTab === "thresholds" ? "border-primary font-bold" : "border-transparent text-muted-foreground")} onClick={() => setManageTab("thresholds")}>عتبات التصنيف</button>
+            <button className={cn("px-3 py-2 text-sm border-b-2", manageTab === "activity" ? "border-primary font-bold" : "border-transparent text-muted-foreground")} onClick={() => setManageTab("activity")}>معايير نوع النشاط</button>
           </div>
           <div className="overflow-y-auto flex-1 py-3">
             {manageTab === "thresholds" && (

@@ -734,14 +734,26 @@ export const VarianceAnalysisPage: React.FC = () => {
     const rows = Array.from(perDept.values())
       .map((r) => {
         const ratio = netSales > 0 ? r.consumedVal / netSales : 0;
-        const status: "ok" | "alert" =
-          r.kind === "consumables" ? (ratio <= limit ? "ok" : "alert") : "ok";
+        let status: "ok" | "alert" | "low" = "ok";
+        let targetMin = 0, targetMax = 0;
+        if (r.kind === "consumables") {
+          status = ratio <= limit ? "ok" : "alert";
+        } else if (r.kind === "packaging") {
+          targetMin = consumablesTargets.packagingMin;
+          targetMax = consumablesTargets.packagingMax;
+          status = ratio > targetMax ? "alert" : ratio < targetMin ? "low" : "ok";
+        } else if (r.kind === "general") {
+          targetMin = consumablesTargets.generalMin;
+          targetMax = consumablesTargets.generalMax;
+          status = ratio > targetMax ? "alert" : ratio < targetMin ? "low" : "ok";
+        }
         const cats = Array.from(r.cats.values())
           .map((cr) => ({ ...cr, ratio: netSales > 0 ? cr.consumedVal / netSales : 0 }))
           .sort((a, b) => b.consumedVal - a.consumedVal);
-        return { ...r, ratio, status, cats };
+        return { ...r, ratio, status, targetMin, targetMax, cats };
       })
       .sort((a, b) => b.consumedVal - a.consumedVal);
+
 
     const totalConsumedVal = rows
       .filter((r) => r.kind === "consumables")

@@ -350,6 +350,10 @@ export const LoginPage: React.FC = () => {
               )}
             </>
           )}
+            </div>
+          </div>
+
+
 
           {/* Footer signature */}
           <div className="mt-10 text-center">

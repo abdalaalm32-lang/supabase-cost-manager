@@ -1356,6 +1356,18 @@ export const VarianceAnalysisPage: React.FC = () => {
                   {r.kind !== "consumables" && (
                     <div className="text-[11px] text-muted-foreground">مؤشر مستقل — لا يخضع لحد رقابة المستهلكات</div>
                   )}
+                  {r.cats.length > 0 && (
+                    <div className="mt-2 border-t pt-2 space-y-1">
+                      <div className="text-[10px] font-semibold text-muted-foreground">تفصيل حسب المجموعة</div>
+                      {r.cats.map((cr) => (
+                        <div key={cr.catId} className="rounded bg-muted/40 px-2 py-1">
+                          <div className="flex justify-between text-[11px] font-semibold"><span>{cr.catName}</span></div>
+                          <div className="flex justify-between text-[11px]"><span className="text-muted-foreground">قيمة الاستهلاك</span><span className="font-bold">{fmt(cr.consumedVal)} ج.م</span></div>
+                          <div className="flex justify-between text-[11px]"><span className="text-muted-foreground">النسبة / المبيعات</span><span className="font-bold">{fmtPct(cr.ratio)}</span></div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}

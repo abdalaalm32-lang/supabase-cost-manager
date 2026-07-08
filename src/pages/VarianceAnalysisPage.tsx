@@ -1154,42 +1154,75 @@ export const VarianceAnalysisPage: React.FC = () => {
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
 
-      // ── Cover page ──
+      // ── Cover page (rendered as HTML in Arabic then rasterized) ──
       const printDateStr = new Date().toLocaleString("ar-EG");
-      pdf.setFillColor(240, 240, 240);
-      pdf.rect(0, 0, pageW, pageH, "F");
-      pdf.setTextColor(0, 0, 0);
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(22);
-      pdf.text("Variance Analysis Report", pageW / 2, 60, { align: "center" });
-      pdf.setFontSize(14);
-      pdf.text("Kitchen Materials Deviation", pageW / 2, 72, { align: "center" });
-      pdf.setDrawColor(0);
-      pdf.line(30, 82, pageW - 30, 82);
-      pdf.setFontSize(11);
-      pdf.setFont("helvetica", "normal");
-      const meta: [string, string][] = [
-        ["Branch", branchFilter === "all" ? "All Branches" : ((branches || []).find((b: any) => b.id === branchFilter)?.name || "-")],
-        ["Department", departmentFilter === "all" ? "All Departments" : ((departments || []).find((d: any) => d.id === departmentFilter)?.name || "-")],
-        ["Period From", dateFrom ? format(dateFrom, "yyyy-MM-dd") : "-"],
-        ["Period To", dateTo ? format(dateTo, "yyyy-MM-dd") : "-"],
-        ["Previous Period", prevRange ? `${format(prevRange.from, "yyyy-MM-dd")} → ${format(prevRange.to, "yyyy-MM-dd")}` : "-"],
-        ["Net Sales", `${fmt(netSales)} EGP`],
-        ["Net Cost Variance", `${fmt(costKpis.netVal)} EGP`],
-        ["Total Items", String(current.size)],
-        ["Printed At", printDateStr],
-        ["Printed By", auth.profile?.full_name || "-"],
-      ];
-      let ly = 100;
-      meta.forEach(([k, v]) => {
-        pdf.setFont("helvetica", "bold");
-        pdf.text(`${k}:`, 40, ly);
-        pdf.setFont("helvetica", "normal");
-        pdf.text(String(v), 90, ly);
-        ly += 8;
-      });
-      pdf.setFontSize(8);
-      pdf.text("Powered by Mohamed Abdel Aal", pageW / 2, pageH - 8, { align: "center" });
+      const coverBranch = branchFilter === "all" ? "كل الفروع" : ((branches || []).find((b: any) => b.id === branchFilter)?.name || "-");
+      const coverDept = departmentFilter === "all" ? "كل الأقسام" : ((departments || []).find((d: any) => d.id === departmentFilter)?.name || "-");
+      const coverPrev = prevRange ? `${format(prevRange.from, "yyyy-MM-dd")} → ${format(prevRange.to, "yyyy-MM-dd")}` : "-";
+      const logoSrc = `${window.location.origin}/logo.png`;
+      const coverHTML = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8">
+        <style>
+          @font-face { font-family: 'CairoLocal'; src: url('${window.location.origin}/fonts/Cairo-Regular.ttf') format('truetype'); font-display: swap; }
+          @font-face { font-family: 'AmiriLocal'; src: url('${window.location.origin}/fonts/Amiri-Regular.ttf') format('truetype'); font-display: swap; }
+          * { margin:0; padding:0; box-sizing:border-box; }
+          body { font-family: 'CairoLocal','AmiriLocal', sans-serif; direction: rtl; background: #fff; color:#000; padding: 40px 60px; width: 1400px; height: 950px; }
+          .cover { border: 3px double #000; height: 100%; padding: 40px 50px; display: flex; flex-direction: column; }
+          .top { display:flex; align-items:center; justify-content:space-between; border-bottom: 2px solid #000; padding-bottom: 20px; }
+          .top img { width: 90px; height: 90px; object-fit: contain; }
+          .top .brand { text-align:center; flex:1; }
+          .top .brand h1 { font-size: 34px; font-weight: 800; letter-spacing:1px; }
+          .top .brand p  { font-size: 16px; color:#333; margin-top:6px; }
+          .top .spacer { width: 90px; }
+          .title-block { text-align:center; margin: 40px 0 30px; }
+          .title-block h2 { font-size: 38px; font-weight: 800; }
+          .title-block .sub { font-size: 20px; color:#222; margin-top: 10px; }
+          .divider { height: 2px; background:#000; margin: 10px auto 30px; width: 60%; }
+          .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 40px; font-size: 18px; margin: 0 40px; }
+          .meta .row { display:flex; justify-content:space-between; border-bottom: 1px dashed #666; padding: 10px 4px; }
+          .meta .row .k { font-weight: 700; color:#000; }
+          .meta .row .v { color:#111; }
+          .foot { margin-top:auto; text-align:center; border-top: 2px solid #000; padding-top: 14px; font-size: 13px; color:#333; }
+        </style></head><body>
+        <div class="cover">
+          <div class="top">
+            <img src="${logoSrc}" onerror="this.style.display='none'"/>
+            <div class="brand">
+              <h1>${auth.profile?.company_name || "نظام إدارة التكاليف"}</h1>
+              <p>Cost Management System</p>
+            </div>
+            <div class="spacer"></div>
+          </div>
+          <div class="title-block">
+            <h2>تقرير تحليل الانحرافات</h2>
+            <div class="sub">Variance Analysis Report — انحراف خامات المطبخ</div>
+            <div class="divider"></div>
+          </div>
+          <div class="meta">
+            <div class="row"><span class="k">الفرع</span><span class="v">${coverBranch}</span></div>
+            <div class="row"><span class="k">القسم</span><span class="v">${coverDept}</span></div>
+            <div class="row"><span class="k">من تاريخ</span><span class="v">${dateFrom ? format(dateFrom, "yyyy-MM-dd") : "-"}</span></div>
+            <div class="row"><span class="k">إلى تاريخ</span><span class="v">${dateTo ? format(dateTo, "yyyy-MM-dd") : "-"}</span></div>
+            <div class="row"><span class="k">الفترة السابقة</span><span class="v">${coverPrev}</span></div>
+            <div class="row"><span class="k">صافي المبيعات</span><span class="v">${fmt(netSales)} ج.م</span></div>
+            <div class="row"><span class="k">صافي الانحراف</span><span class="v">${fmt(costKpis.netVal)} ج.م</span></div>
+            <div class="row"><span class="k">عدد الخامات</span><span class="v">${current.size}</span></div>
+            <div class="row"><span class="k">تاريخ الطباعة</span><span class="v">${printDateStr}</span></div>
+            <div class="row"><span class="k">أعده</span><span class="v">${auth.profile?.full_name || "-"}</span></div>
+          </div>
+          <div class="foot">Powered by Mohamed Abdel Aal • ${new Date().getFullYear()}</div>
+        </div></body></html>`;
+
+      const coverFrame = document.createElement("iframe");
+      coverFrame.style.cssText = "position:fixed;left:-10000px;top:0;width:1400px;height:950px;border:0;";
+      document.body.appendChild(coverFrame);
+      const cdoc = coverFrame.contentDocument!;
+      cdoc.open(); cdoc.write(coverHTML); cdoc.close();
+      await new Promise((r) => setTimeout(r, 600));
+      try { await (cdoc as any).fonts?.ready; } catch {}
+      const coverCanvas = await html2canvas(cdoc.body, { scale: 2, backgroundColor: "#ffffff", useCORS: true, windowWidth: 1400 });
+      document.body.removeChild(coverFrame);
+      const coverImg = coverCanvas.toDataURL("image/jpeg", 0.95);
+      pdf.addImage(coverImg, "JPEG", 0, 0, pageW, pageH);
 
       // ── Content pages ──
       const imgW = pageW;

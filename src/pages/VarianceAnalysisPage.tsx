@@ -1290,20 +1290,59 @@ export const VarianceAnalysisPage: React.FC = () => {
           )}
         </div>
 
-        {/* Consumables monitor */}
+        {/* Consumables monitor — per department */}
         <div className={cn("border rounded-lg p-4 space-y-2",
           consumables.status === "alert" ? "bg-red-50 dark:bg-red-950/30 border-red-300" : "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300")}>
           <div className="flex items-center gap-2 text-sm font-semibold border-b pb-2">
-            <Package className="w-4 h-4" /> رقابة المستهلكات
+            <Package className="w-4 h-4" /> رقابة المستهلكات {departmentFilter !== "all" ? "(القسم المحدد)" : "(كل الأقسام)"}
           </div>
-          <div className="flex justify-between text-sm"><span className="text-muted-foreground">قيمة استهلاك المستهلكات</span><span className="font-bold">{fmt(consumables.consumedVal)} ج.م</span></div>
-          <div className="flex justify-between text-sm"><span className="text-muted-foreground">النسبة / المبيعات</span><span className="font-bold">{fmtPct(consumables.ratio)}</span></div>
-          <div className="flex items-center gap-2">
-            <Label className="text-xs">الحد المسموح %</Label>
-            <Input type="number" step="0.1" className="h-7 w-20 text-xs" value={consumablesLimitPct} onChange={(e) => setConsumablesLimitPct(Number(e.target.value) || 0)} />
+
+          {consumables.rows.length === 0 && (
+            <div className="text-xs text-muted-foreground py-2">لا توجد مستهلكات مسجلة لهذا النطاق</div>
+          )}
+
+          <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+            {consumables.rows.map((r) => {
+              const label =
+                r.kind === "packaging" ? "Packaging Cost %"
+                : r.kind === "general" ? "General Consumables %"
+                : "نسبة المستهلكات";
+              const badgeCls =
+                r.kind === "packaging" ? "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200"
+                : r.kind === "general" ? "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-200"
+                : r.status === "alert" ? "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200"
+                : "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200";
+              return (
+                <div key={r.deptId} className="border rounded p-2 bg-background/60 space-y-1">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-semibold">{r.deptName}</span>
+                    <span className={cn("px-2 py-0.5 rounded text-[10px] font-bold", badgeCls)}>{label}</span>
+                  </div>
+                  <div className="flex justify-between text-xs"><span className="text-muted-foreground">قيمة الاستهلاك</span><span className="font-bold">{fmt(r.consumedVal)} ج.م</span></div>
+                  <div className="flex justify-between text-xs"><span className="text-muted-foreground">النسبة / المبيعات</span><span className="font-bold">{fmtPct(r.ratio)}</span></div>
+                  {r.kind === "consumables" && (
+                    <div className={cn("text-[11px] font-semibold", r.status === "alert" ? "text-red-700 dark:text-red-300" : "text-emerald-700 dark:text-emerald-300")}>
+                      {r.status === "alert" ? "تخطت الحد" : "مستقر"}
+                    </div>
+                  )}
+                  {r.kind !== "consumables" && (
+                    <div className="text-[11px] text-muted-foreground">مؤشر مستقل — لا يخضع لحد رقابة المستهلكات</div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-          <div className={cn("flex items-center gap-2 text-sm font-semibold", consumables.status === "alert" ? "text-red-700 dark:text-red-300" : "text-emerald-700 dark:text-emerald-300")}>
-            {consumables.status === "alert" ? <><AlertTriangle className="w-4 h-4" /> تخطت النسبة المحددة - رقابة مطلوبة</> : <><CheckCircle2 className="w-4 h-4" /> الوضع مستقر</>}
+
+          <div className="border-t pt-2 space-y-1">
+            <div className="flex justify-between text-xs"><span className="text-muted-foreground">إجمالي المستهلكات (بدون Packaging/General)</span><span className="font-bold">{fmt(consumables.consumedVal)} ج.م</span></div>
+            <div className="flex justify-between text-xs"><span className="text-muted-foreground">النسبة الإجمالية</span><span className="font-bold">{fmtPct(consumables.ratio)}</span></div>
+            <div className="flex items-center gap-2">
+              <Label className="text-xs">الحد المسموح %</Label>
+              <Input type="number" step="0.1" className="h-7 w-20 text-xs" value={consumablesLimitPct} onChange={(e) => setConsumablesLimitPct(Number(e.target.value) || 0)} />
+            </div>
+            <div className={cn("flex items-center gap-2 text-xs font-semibold", consumables.status === "alert" ? "text-red-700 dark:text-red-300" : "text-emerald-700 dark:text-emerald-300")}>
+              {consumables.status === "alert" ? <><AlertTriangle className="w-3.5 h-3.5" /> تخطت النسبة المحددة - رقابة مطلوبة</> : <><CheckCircle2 className="w-3.5 h-3.5" /> الوضع مستقر</>}
+            </div>
           </div>
         </div>
 

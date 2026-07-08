@@ -1440,7 +1440,7 @@ export const VarianceAnalysisPage: React.FC = () => {
       <div ref={reportRef} className="space-y-5 print-area">
 
       {/* Filters */}
-      <div className="bg-card border rounded-lg p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
+      <div className="bg-card border rounded-lg p-4 grid grid-cols-1 md:grid-cols-5 gap-3">
         <div>
           <Label className="text-xs mb-1 block">الفرع</Label>
           <Select value={branchFilter} onValueChange={setBranchFilter}>
@@ -1484,6 +1484,11 @@ export const VarianceAnalysisPage: React.FC = () => {
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={dateTo} onSelect={setDateTo} className="pointer-events-auto" /></PopoverContent>
           </Popover>
+        </div>
+        <div className="flex items-end">
+          <Button variant="outline" className="w-full" onClick={resetFilters}>
+            <RotateCcw className="w-4 h-4 ml-2" /> مسح الفلاتر
+          </Button>
         </div>
       </div>
 

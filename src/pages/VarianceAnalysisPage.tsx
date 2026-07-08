@@ -13,7 +13,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { format, subMonths, subDays } from "date-fns";
-import { CalendarIcon, Store, Building2, Warehouse, Settings2, Package, AlertTriangle, CheckCircle2, Printer, FileDown, Loader2, MessageSquare, TrendingUp, TrendingDown, BarChart3, PieChart as PieChartIcon, DollarSign, ArrowUp, ArrowDown, Minus } from "lucide-react";
+import { CalendarIcon, Store, Building2, Warehouse, Settings2, Package, AlertTriangle, CheckCircle2, Printer, FileDown, Loader2, MessageSquare, TrendingUp, TrendingDown, BarChart3, PieChart as PieChartIcon, DollarSign, ArrowUp, ArrowDown, Minus, RotateCcw } from "lucide-react";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { useBranchCosts } from "@/hooks/useBranchCosts";
 import { fetchAllRows } from "@/lib/fetchAllRows";
@@ -150,22 +150,41 @@ export const VarianceAnalysisPage: React.FC = () => {
   const companyId = auth.profile?.company_id;
   const qc = useQueryClient();
 
-  const [branchFilter, setBranchFilter] = useState<string>("all");
-  const [departmentFilter, setDepartmentFilter] = useState<string>("all");
-  const [dateFrom, setDateFrom] = useState<Date | undefined>();
-  const [dateTo, setDateTo] = useState<Date | undefined>();
-  const [consumablesLimitPct, setConsumablesLimitPct] = useState<number>(3); // default 3%
+  const filtersStorageKey = companyId ? `variance-filters-${companyId}` : null;
+
+  const defaultFilters = {
+    branchFilter: "all",
+    departmentFilter: "all",
+    dateFrom: undefined as string | undefined,
+    dateTo: undefined as string | undefined,
+    consumablesLimitPct: 3,
+    consumableDeptFilter: "all",
+    consumableCatFilter: "all",
+    consumableSearch: "",
+    chartType: "bar" as "bar" | "pie",
+    topSortMode: "rate" as "rate" | "costVar",
+    showSubtotals: true,
+    activePreset: "all",
+    selectedActivity: "",
+  };
+
+  const [filtersLoaded, setFiltersLoaded] = useState(false);
+  const [branchFilter, setBranchFilter] = useState<string>(defaultFilters.branchFilter);
+  const [departmentFilter, setDepartmentFilter] = useState<string>(defaultFilters.departmentFilter);
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(defaultFilters.dateFrom ? new Date(defaultFilters.dateFrom) : undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(defaultFilters.dateTo ? new Date(defaultFilters.dateTo) : undefined);
+  const [consumablesLimitPct, setConsumablesLimitPct] = useState<number>(defaultFilters.consumablesLimitPct);
   const [manageOpen, setManageOpen] = useState(false);
   const [manageTab, setManageTab] = useState<"permissible" | "consumables" | "thresholds" | "activity">("permissible");
-  const [consumableDeptFilter, setConsumableDeptFilter] = useState<string>("all");
-  const [consumableCatFilter, setConsumableCatFilter] = useState<string>("all");
-  const [consumableSearch, setConsumableSearch] = useState<string>("");
+  const [consumableDeptFilter, setConsumableDeptFilter] = useState<string>(defaultFilters.consumableDeptFilter);
+  const [consumableCatFilter, setConsumableCatFilter] = useState<string>(defaultFilters.consumableCatFilter);
+  const [consumableSearch, setConsumableSearch] = useState<string>(defaultFilters.consumableSearch);
 
   // New UI state
-  const [chartType, setChartType] = useState<"bar" | "pie">("bar");
-  const [topSortMode, setTopSortMode] = useState<"rate" | "costVar">("rate");
-  const [showSubtotals, setShowSubtotals] = useState<boolean>(true);
-  const [activePreset, setActivePreset] = useState<string>("all");
+  const [chartType, setChartType] = useState<"bar" | "pie">(defaultFilters.chartType);
+  const [topSortMode, setTopSortMode] = useState<"rate" | "costVar">(defaultFilters.topSortMode);
+  const [showSubtotals, setShowSubtotals] = useState<boolean>(defaultFilters.showSubtotals);
+  const [activePreset, setActivePreset] = useState<string>(defaultFilters.activePreset);
   const [thresholds, setThresholds] = useState<Thresholds>(() => {
     try {
       const raw = localStorage.getItem("variance-thresholds");
@@ -194,10 +213,75 @@ export const VarianceAnalysisPage: React.FC = () => {
   });
   useEffect(() => { localStorage.setItem("variance-activity-benchmarks", JSON.stringify(activityBenchmarks)); }, [activityBenchmarks]);
 
-  const [selectedActivity, setSelectedActivity] = useState<string>(() => {
-    return localStorage.getItem("variance-selected-activity") || "";
-  });
-  useEffect(() => { localStorage.setItem("variance-selected-activity", selectedActivity); }, [selectedActivity]);
+  const [selectedActivity, setSelectedActivity] = useState<string>(defaultFilters.selectedActivity);
+
+  // Load saved filters once on mount
+  useEffect(() => {
+    if (!filtersStorageKey) return;
+    try {
+      const raw = localStorage.getItem(filtersStorageKey);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        if (saved.branchFilter) setBranchFilter(saved.branchFilter);
+        if (saved.departmentFilter) setDepartmentFilter(saved.departmentFilter);
+        if (saved.dateFrom) setDateFrom(new Date(saved.dateFrom));
+        if (saved.dateTo) setDateTo(new Date(saved.dateTo));
+        if (typeof saved.consumablesLimitPct === "number") setConsumablesLimitPct(saved.consumablesLimitPct);
+        if (saved.consumableDeptFilter) setConsumableDeptFilter(saved.consumableDeptFilter);
+        if (saved.consumableCatFilter) setConsumableCatFilter(saved.consumableCatFilter);
+        if (typeof saved.consumableSearch === "string") setConsumableSearch(saved.consumableSearch);
+        if (saved.chartType === "bar" || saved.chartType === "pie") setChartType(saved.chartType);
+        if (saved.topSortMode === "rate" || saved.topSortMode === "costVar") setTopSortMode(saved.topSortMode);
+        if (typeof saved.showSubtotals === "boolean") setShowSubtotals(saved.showSubtotals);
+        if (typeof saved.activePreset === "string") setActivePreset(saved.activePreset);
+        if (typeof saved.selectedActivity === "string") setSelectedActivity(saved.selectedActivity);
+      }
+    } catch { /* ignore */ }
+    setFiltersLoaded(true);
+  }, [filtersStorageKey]);
+
+  // Persist filters whenever they change
+  useEffect(() => {
+    if (!filtersStorageKey || !filtersLoaded) return;
+    const payload = {
+      branchFilter,
+      departmentFilter,
+      dateFrom: dateFrom ? format(dateFrom, "yyyy-MM-dd") : undefined,
+      dateTo: dateTo ? format(dateTo, "yyyy-MM-dd") : undefined,
+      consumablesLimitPct,
+      consumableDeptFilter,
+      consumableCatFilter,
+      consumableSearch,
+      chartType,
+      topSortMode,
+      showSubtotals,
+      activePreset,
+      selectedActivity,
+    };
+    localStorage.setItem(filtersStorageKey, JSON.stringify(payload));
+  }, [
+    filtersStorageKey, filtersLoaded,
+    branchFilter, departmentFilter, dateFrom, dateTo, consumablesLimitPct,
+    consumableDeptFilter, consumableCatFilter, consumableSearch,
+    chartType, topSortMode, showSubtotals, activePreset, selectedActivity,
+  ]);
+
+  const resetFilters = () => {
+    setBranchFilter(defaultFilters.branchFilter);
+    setDepartmentFilter(defaultFilters.departmentFilter);
+    setDateFrom(defaultFilters.dateFrom ? new Date(defaultFilters.dateFrom) : undefined);
+    setDateTo(defaultFilters.dateTo ? new Date(defaultFilters.dateTo) : undefined);
+    setConsumablesLimitPct(defaultFilters.consumablesLimitPct);
+    setConsumableDeptFilter(defaultFilters.consumableDeptFilter);
+    setConsumableCatFilter(defaultFilters.consumableCatFilter);
+    setConsumableSearch(defaultFilters.consumableSearch);
+    setChartType(defaultFilters.chartType);
+    setTopSortMode(defaultFilters.topSortMode);
+    setShowSubtotals(defaultFilters.showSubtotals);
+    setActivePreset(defaultFilters.activePreset);
+    setSelectedActivity(defaultFilters.selectedActivity);
+    if (filtersStorageKey) localStorage.removeItem(filtersStorageKey);
+  };
   const [noteEditor, setNoteEditor] = useState<{ itemId: string; itemName: string } | null>(null);
   const [noteDraft, setNoteDraft] = useState<{ note: string; action_status: string }>({ note: "", action_status: "pending" });
 
@@ -1356,7 +1440,7 @@ export const VarianceAnalysisPage: React.FC = () => {
       <div ref={reportRef} className="space-y-5 print-area">
 
       {/* Filters */}
-      <div className="bg-card border rounded-lg p-4 grid grid-cols-1 md:grid-cols-4 gap-3">
+      <div className="bg-card border rounded-lg p-4 grid grid-cols-1 md:grid-cols-5 gap-3">
         <div>
           <Label className="text-xs mb-1 block">الفرع</Label>
           <Select value={branchFilter} onValueChange={setBranchFilter}>
@@ -1400,6 +1484,11 @@ export const VarianceAnalysisPage: React.FC = () => {
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={dateTo} onSelect={setDateTo} className="pointer-events-auto" /></PopoverContent>
           </Popover>
+        </div>
+        <div className="flex items-end">
+          <Button variant="outline" className="w-full" onClick={resetFilters}>
+            <RotateCcw className="w-4 h-4 ml-2" /> مسح الفلاتر
+          </Button>
         </div>
       </div>
 

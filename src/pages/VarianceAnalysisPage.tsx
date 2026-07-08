@@ -175,6 +175,29 @@ export const VarianceAnalysisPage: React.FC = () => {
   useEffect(() => {
     localStorage.setItem("variance-thresholds", JSON.stringify(thresholds));
   }, [thresholds]);
+
+  // Consumables target ranges (packaging / general) — editable, persisted
+  const [consumablesTargets, setConsumablesTargets] = useState<ConsumablesTargets>(() => {
+    try {
+      const raw = localStorage.getItem("variance-consumables-targets");
+      return raw ? { ...DEFAULT_CONSUMABLES_TARGETS, ...JSON.parse(raw) } : DEFAULT_CONSUMABLES_TARGETS;
+    } catch { return DEFAULT_CONSUMABLES_TARGETS; }
+  });
+  useEffect(() => { localStorage.setItem("variance-consumables-targets", JSON.stringify(consumablesTargets)); }, [consumablesTargets]);
+
+  // Activity benchmarks + selected activity
+  const [activityBenchmarks, setActivityBenchmarks] = useState<ActivityBenchmark[]>(() => {
+    try {
+      const raw = localStorage.getItem("variance-activity-benchmarks");
+      return raw ? JSON.parse(raw) : DEFAULT_ACTIVITY_BENCHMARKS;
+    } catch { return DEFAULT_ACTIVITY_BENCHMARKS; }
+  });
+  useEffect(() => { localStorage.setItem("variance-activity-benchmarks", JSON.stringify(activityBenchmarks)); }, [activityBenchmarks]);
+
+  const [selectedActivity, setSelectedActivity] = useState<string>(() => {
+    return localStorage.getItem("variance-selected-activity") || "";
+  });
+  useEffect(() => { localStorage.setItem("variance-selected-activity", selectedActivity); }, [selectedActivity]);
   const [noteEditor, setNoteEditor] = useState<{ itemId: string; itemName: string } | null>(null);
   const [noteDraft, setNoteDraft] = useState<{ note: string; action_status: string }>({ note: "", action_status: "pending" });
 

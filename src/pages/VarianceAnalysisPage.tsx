@@ -1187,7 +1187,7 @@ export const VarianceAnalysisPage: React.FC = () => {
           <div class="top">
             <img src="${logoSrc}" onerror="this.style.display='none'"/>
             <div class="brand">
-              <h1>${auth.profile?.company_name || "نظام إدارة التكاليف"}</h1>
+              <h1>${(auth.profile as any)?.company_name || "نظام إدارة التكاليف"}</h1>
               <p>Cost Management System</p>
             </div>
             <div class="spacer"></div>

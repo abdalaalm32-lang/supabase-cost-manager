@@ -760,6 +760,7 @@ export const VarianceAnalysisPage: React.FC = () => {
       .reduce((s, r) => s + r.consumedVal, 0);
     const totalRatio = netSales > 0 ? totalConsumedVal / netSales : 0;
 
+    const hasConsumablesKind = rows.some((r) => r.kind === "consumables");
     return {
       // aggregate (only "consumables" kind departments — packaging/general excluded)
       consumedVal: totalConsumedVal,
@@ -767,8 +768,9 @@ export const VarianceAnalysisPage: React.FC = () => {
       limit,
       status: (totalRatio <= limit ? "ok" : "alert") as "ok" | "alert",
       rows,
+      hasConsumablesKind,
     };
-  }, [current, netSales, consumablesLimitPct, categories, departments, itemCats, stockItems, departmentFilter]);
+  }, [current, netSales, consumablesLimitPct, consumablesTargets, categories, departments, itemCats, stockItems, departmentFilter]);
 
   /* ============ Category permissible update ============ */
   const [savingCat, setSavingCat] = useState<string | null>(null);

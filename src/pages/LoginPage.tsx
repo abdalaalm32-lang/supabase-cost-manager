@@ -204,8 +204,8 @@ export const LoginPage: React.FC = () => {
 
         <div className="relative w-full max-w-[440px]">
           {/* Logo */}
-          <div className="text-center mb-8">
-            <img src={logo3m} alt="3M CMS Logo" className="w-28 h-28 mx-auto mb-3 object-contain drop-shadow-md" />
+          <div className="text-center mb-6">
+            <img src={logo3m} alt="3M CMS Logo" className="w-24 h-24 mx-auto mb-3 object-contain drop-shadow-md" />
             <h1
               className="text-2xl font-black tracking-tight bg-gradient-to-r from-sky-600 via-blue-700 to-indigo-700 bg-clip-text text-transparent"
               style={{ fontFamily: "'Georgia', serif", letterSpacing: '0.03em' }}
@@ -216,6 +216,11 @@ export const LoginPage: React.FC = () => {
               مرحباً بك في نظام إدارة التكاليف
             </p>
           </div>
+
+          {/* Animated glowing frame wrapping the login card */}
+          <div className="login-glow-frame">
+            <div className="relative z-[2] bg-white rounded-[calc(1.25rem-2px)] p-6 sm:p-7">
+
 
           {!showForgot ? (
             <>

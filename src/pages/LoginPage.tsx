@@ -436,19 +436,21 @@ export const LoginPage: React.FC = () => {
 
           {/* bottom: dots + stats */}
           <div className="space-y-8">
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
               {[
                 { icon: TrendingUp, label: "زيادة الكفاءة", value: "+35%" },
                 { icon: Target, label: "دقة الرقابة", value: "99.9%" },
                 { icon: Zap, label: "قرارات لحظية", value: "Realtime" },
+                { icon: ShieldCheck, label: "توفير التكاليف", value: "+25%" },
               ].map((s, i) => (
-                <div key={i} className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-4">
+                <div key={i} className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-4 hover:bg-white/10 hover:border-white/20 transition-all">
                   <s.icon size={20} className="text-sky-300 mb-2" />
-                  <div className="text-xl font-black text-white">{s.value}</div>
+                  <div className="text-lg xl:text-xl font-black text-white">{s.value}</div>
                   <div className="text-[11px] text-sky-200/70 mt-0.5">{s.label}</div>
                 </div>
               ))}
             </div>
+
 
             {/* dots */}
             <div className="flex items-center gap-2">

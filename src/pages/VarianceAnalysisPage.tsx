@@ -606,21 +606,81 @@ export const VarianceAnalysisPage: React.FC = () => {
     return out;
   }, [current, previous, categories, itemCats, departmentFilter]);
 
-  // Consumables monitor
+  // Consumables monitor — broken down per department
+  const classifyDeptKind = (name: string): "packaging" | "general" | "consumables" => {
+    const n = (name || "").toLowerCase();
+    if (n.includes("باكينج") || n.includes("packing") || n.includes("packaging") || n.includes("تغليف")) return "packaging";
+    if (n.includes("جنرال") || n.includes("general") || n.includes("عام")) return "general";
+    return "consumables";
+  };
+
   const consumables = useMemo(() => {
-    let consumedVal = 0;
-    for (const c of current.values()) {
-      if (c.isConsumable) consumedVal += c.actualConsumedVal;
-    }
-    const ratio = netSales > 0 ? consumedVal / netSales : 0;
-    const limit = consumablesLimitPct / 100;
-    return {
-      consumedVal,
-      ratio,
-      limit,
-      status: ratio <= limit ? "ok" : "alert" as "ok" | "alert",
+    const catById = new Map<string, any>();
+    (categories || []).forEach((c: any) => catById.set(c.id, c));
+    const deptById = new Map<string, any>();
+    (departments || []).forEach((d: any) => deptById.set(d.id, d));
+
+    // Resolve item -> set of department ids (filtered by current department filter)
+    const resolveItemDepts = (itemId: string, primaryDeptId: string | null): string[] => {
+      const set = new Set<string>();
+      const cats = itemCats.get(itemId);
+      if (cats) {
+        for (const cid of cats) {
+          const did = catById.get(cid)?.department_id;
+          if (did) set.add(did);
+        }
+      }
+      if (set.size === 0 && primaryDeptId) set.add(primaryDeptId);
+      let arr = Array.from(set);
+      if (departmentFilter !== "all") arr = arr.filter((d) => d === departmentFilter);
+      return arr;
     };
-  }, [current, netSales, consumablesLimitPct]);
+
+    // Group per department
+    type Row = { deptId: string; deptName: string; kind: "packaging" | "general" | "consumables"; consumedVal: number };
+    const perDept = new Map<string, Row>();
+    const primaryDeptMap = new Map<string, string | null>();
+    (stockItems || []).forEach((si: any) => primaryDeptMap.set(si.id, si.department_id ?? null));
+
+    for (const c of current.values()) {
+      if (!c.isConsumable) continue;
+      const depts = resolveItemDepts(c.id, primaryDeptMap.get(c.id) ?? null);
+      if (depts.length === 0) continue;
+      const share = c.actualConsumedVal / depts.length;
+      for (const did of depts) {
+        if (!perDept.has(did)) {
+          const dName = deptById.get(did)?.name || "غير معروف";
+          perDept.set(did, { deptId: did, deptName: dName, kind: classifyDeptKind(dName), consumedVal: 0 });
+        }
+        perDept.get(did)!.consumedVal += share;
+      }
+    }
+
+    const limit = consumablesLimitPct / 100;
+    const rows = Array.from(perDept.values())
+      .map((r) => {
+        const ratio = netSales > 0 ? r.consumedVal / netSales : 0;
+        // Packaging & General do NOT use the same alert limit — they are informational KPIs
+        const status: "ok" | "alert" =
+          r.kind === "consumables" ? (ratio <= limit ? "ok" : "alert") : "ok";
+        return { ...r, ratio, status };
+      })
+      .sort((a, b) => b.consumedVal - a.consumedVal);
+
+    const totalConsumedVal = rows
+      .filter((r) => r.kind === "consumables")
+      .reduce((s, r) => s + r.consumedVal, 0);
+    const totalRatio = netSales > 0 ? totalConsumedVal / netSales : 0;
+
+    return {
+      // aggregate (only "consumables" kind departments — packaging/general excluded)
+      consumedVal: totalConsumedVal,
+      ratio: totalRatio,
+      limit,
+      status: (totalRatio <= limit ? "ok" : "alert") as "ok" | "alert",
+      rows,
+    };
+  }, [current, netSales, consumablesLimitPct, categories, departments, itemCats, stockItems, departmentFilter]);
 
   /* ============ Category permissible update ============ */
   const [savingCat, setSavingCat] = useState<string | null>(null);
@@ -1230,20 +1290,59 @@ export const VarianceAnalysisPage: React.FC = () => {
           )}
         </div>
 
-        {/* Consumables monitor */}
+        {/* Consumables monitor — per department */}
         <div className={cn("border rounded-lg p-4 space-y-2",
           consumables.status === "alert" ? "bg-red-50 dark:bg-red-950/30 border-red-300" : "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300")}>
           <div className="flex items-center gap-2 text-sm font-semibold border-b pb-2">
-            <Package className="w-4 h-4" /> رقابة المستهلكات
+            <Package className="w-4 h-4" /> رقابة المستهلكات {departmentFilter !== "all" ? "(القسم المحدد)" : "(كل الأقسام)"}
           </div>
-          <div className="flex justify-between text-sm"><span className="text-muted-foreground">قيمة استهلاك المستهلكات</span><span className="font-bold">{fmt(consumables.consumedVal)} ج.م</span></div>
-          <div className="flex justify-between text-sm"><span className="text-muted-foreground">النسبة / المبيعات</span><span className="font-bold">{fmtPct(consumables.ratio)}</span></div>
-          <div className="flex items-center gap-2">
-            <Label className="text-xs">الحد المسموح %</Label>
-            <Input type="number" step="0.1" className="h-7 w-20 text-xs" value={consumablesLimitPct} onChange={(e) => setConsumablesLimitPct(Number(e.target.value) || 0)} />
+
+          {consumables.rows.length === 0 && (
+            <div className="text-xs text-muted-foreground py-2">لا توجد مستهلكات مسجلة لهذا النطاق</div>
+          )}
+
+          <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+            {consumables.rows.map((r) => {
+              const label =
+                r.kind === "packaging" ? "Packaging Cost %"
+                : r.kind === "general" ? "General Consumables %"
+                : "نسبة المستهلكات";
+              const badgeCls =
+                r.kind === "packaging" ? "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200"
+                : r.kind === "general" ? "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-200"
+                : r.status === "alert" ? "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200"
+                : "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200";
+              return (
+                <div key={r.deptId} className="border rounded p-2 bg-background/60 space-y-1">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="font-semibold">{r.deptName}</span>
+                    <span className={cn("px-2 py-0.5 rounded text-[10px] font-bold", badgeCls)}>{label}</span>
+                  </div>
+                  <div className="flex justify-between text-xs"><span className="text-muted-foreground">قيمة الاستهلاك</span><span className="font-bold">{fmt(r.consumedVal)} ج.م</span></div>
+                  <div className="flex justify-between text-xs"><span className="text-muted-foreground">النسبة / المبيعات</span><span className="font-bold">{fmtPct(r.ratio)}</span></div>
+                  {r.kind === "consumables" && (
+                    <div className={cn("text-[11px] font-semibold", r.status === "alert" ? "text-red-700 dark:text-red-300" : "text-emerald-700 dark:text-emerald-300")}>
+                      {r.status === "alert" ? "تخطت الحد" : "مستقر"}
+                    </div>
+                  )}
+                  {r.kind !== "consumables" && (
+                    <div className="text-[11px] text-muted-foreground">مؤشر مستقل — لا يخضع لحد رقابة المستهلكات</div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-          <div className={cn("flex items-center gap-2 text-sm font-semibold", consumables.status === "alert" ? "text-red-700 dark:text-red-300" : "text-emerald-700 dark:text-emerald-300")}>
-            {consumables.status === "alert" ? <><AlertTriangle className="w-4 h-4" /> تخطت النسبة المحددة - رقابة مطلوبة</> : <><CheckCircle2 className="w-4 h-4" /> الوضع مستقر</>}
+
+          <div className="border-t pt-2 space-y-1">
+            <div className="flex justify-between text-xs"><span className="text-muted-foreground">إجمالي المستهلكات (بدون Packaging/General)</span><span className="font-bold">{fmt(consumables.consumedVal)} ج.م</span></div>
+            <div className="flex justify-between text-xs"><span className="text-muted-foreground">النسبة الإجمالية</span><span className="font-bold">{fmtPct(consumables.ratio)}</span></div>
+            <div className="flex items-center gap-2">
+              <Label className="text-xs">الحد المسموح %</Label>
+              <Input type="number" step="0.1" className="h-7 w-20 text-xs" value={consumablesLimitPct} onChange={(e) => setConsumablesLimitPct(Number(e.target.value) || 0)} />
+            </div>
+            <div className={cn("flex items-center gap-2 text-xs font-semibold", consumables.status === "alert" ? "text-red-700 dark:text-red-300" : "text-emerald-700 dark:text-emerald-300")}>
+              {consumables.status === "alert" ? <><AlertTriangle className="w-3.5 h-3.5" /> تخطت النسبة المحددة - رقابة مطلوبة</> : <><CheckCircle2 className="w-3.5 h-3.5" /> الوضع مستقر</>}
+            </div>
           </div>
         </div>
 

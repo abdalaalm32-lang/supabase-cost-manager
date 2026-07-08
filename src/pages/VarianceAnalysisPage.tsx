@@ -46,6 +46,31 @@ export type Thresholds = {
 };
 const DEFAULT_THRESHOLDS: Thresholds = { normal: 0.02, accept: 0.05, deviation: 0.10, operation: 0.20, highDefl: 0.50 };
 
+export type ConsumablesTargets = {
+  packagingMin: number; packagingMax: number;
+  generalMin: number;   generalMax: number;
+};
+const DEFAULT_CONSUMABLES_TARGETS: ConsumablesTargets = {
+  packagingMin: 0.02, packagingMax: 0.05,
+  generalMin:   0.005, generalMax:   0.02,
+};
+
+export type ActivityBenchmark = {
+  key: string; name: string;
+  acceptMin: number; acceptMax: number;   // مقبول
+  warnMin: number;   warnMax: number;     // إنذار
+  dangerMin: number;                      // خطر (> dangerMin)
+};
+const DEFAULT_ACTIVITY_BENCHMARKS: ActivityBenchmark[] = [
+  { key: "pizza",   name: "بيتزا",         acceptMin: 0.01,  acceptMax: 0.025, warnMin: 0.025, warnMax: 0.04,  dangerMin: 0.04  },
+  { key: "burger",  name: "برجر / فاست فود", acceptMin: 0.015, acceptMax: 0.03,  warnMin: 0.03,  warnMax: 0.045, dangerMin: 0.045 },
+  { key: "grill",   name: "مشويات",        acceptMin: 0.02,  acceptMax: 0.04,  warnMin: 0.04,  warnMax: 0.055, dangerMin: 0.055 },
+  { key: "eastern", name: "مطاعم شرقي",     acceptMin: 0.025, acceptMax: 0.05,  warnMin: 0.05,  warnMax: 0.07,  dangerMin: 0.07  },
+  { key: "western", name: "مطاعم غربي",     acceptMin: 0.015, acceptMax: 0.035, warnMin: 0.035, warnMax: 0.05,  dangerMin: 0.05  },
+  { key: "cafe",    name: "كافيه",          acceptMin: 0.01,  acceptMax: 0.02,  warnMin: 0.02,  warnMax: 0.03,  dangerMin: 0.03  },
+  { key: "central", name: "سنتر كيتشن",     acceptMin: 0.005, acceptMax: 0.015, warnMin: 0.015, warnMax: 0.025, dangerMin: 0.025 },
+];
+
 const analyzeRate = (rate: number, t: Thresholds = DEFAULT_THRESHOLDS): Analysis => {
   const a = Math.abs(rate);
   if (a === 0) return "Good";

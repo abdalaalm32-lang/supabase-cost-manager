@@ -606,21 +606,81 @@ export const VarianceAnalysisPage: React.FC = () => {
     return out;
   }, [current, previous, categories, itemCats, departmentFilter]);
 
-  // Consumables monitor
+  // Consumables monitor — broken down per department
+  const classifyDeptKind = (name: string): "packaging" | "general" | "consumables" => {
+    const n = (name || "").toLowerCase();
+    if (n.includes("باكينج") || n.includes("packing") || n.includes("packaging") || n.includes("تغليف")) return "packaging";
+    if (n.includes("جنرال") || n.includes("general") || n.includes("عام")) return "general";
+    return "consumables";
+  };
+
   const consumables = useMemo(() => {
-    let consumedVal = 0;
-    for (const c of current.values()) {
-      if (c.isConsumable) consumedVal += c.actualConsumedVal;
-    }
-    const ratio = netSales > 0 ? consumedVal / netSales : 0;
-    const limit = consumablesLimitPct / 100;
-    return {
-      consumedVal,
-      ratio,
-      limit,
-      status: ratio <= limit ? "ok" : "alert" as "ok" | "alert",
+    const catById = new Map<string, any>();
+    (categories || []).forEach((c: any) => catById.set(c.id, c));
+    const deptById = new Map<string, any>();
+    (departments || []).forEach((d: any) => deptById.set(d.id, d));
+
+    // Resolve item -> set of department ids (filtered by current department filter)
+    const resolveItemDepts = (itemId: string, primaryDeptId: string | null): string[] => {
+      const set = new Set<string>();
+      const cats = itemCats.get(itemId);
+      if (cats) {
+        for (const cid of cats) {
+          const did = catById.get(cid)?.department_id;
+          if (did) set.add(did);
+        }
+      }
+      if (set.size === 0 && primaryDeptId) set.add(primaryDeptId);
+      let arr = Array.from(set);
+      if (departmentFilter !== "all") arr = arr.filter((d) => d === departmentFilter);
+      return arr;
     };
-  }, [current, netSales, consumablesLimitPct]);
+
+    // Group per department
+    type Row = { deptId: string; deptName: string; kind: "packaging" | "general" | "consumables"; consumedVal: number };
+    const perDept = new Map<string, Row>();
+    const primaryDeptMap = new Map<string, string | null>();
+    (stockItems || []).forEach((si: any) => primaryDeptMap.set(si.id, si.department_id ?? null));
+
+    for (const c of current.values()) {
+      if (!c.isConsumable) continue;
+      const depts = resolveItemDepts(c.id, primaryDeptMap.get(c.id) ?? null);
+      if (depts.length === 0) continue;
+      const share = c.actualConsumedVal / depts.length;
+      for (const did of depts) {
+        if (!perDept.has(did)) {
+          const dName = deptById.get(did)?.name || "غير معروف";
+          perDept.set(did, { deptId: did, deptName: dName, kind: classifyDeptKind(dName), consumedVal: 0 });
+        }
+        perDept.get(did)!.consumedVal += share;
+      }
+    }
+
+    const limit = consumablesLimitPct / 100;
+    const rows = Array.from(perDept.values())
+      .map((r) => {
+        const ratio = netSales > 0 ? r.consumedVal / netSales : 0;
+        // Packaging & General do NOT use the same alert limit — they are informational KPIs
+        const status: "ok" | "alert" =
+          r.kind === "consumables" ? (ratio <= limit ? "ok" : "alert") : "ok";
+        return { ...r, ratio, status };
+      })
+      .sort((a, b) => b.consumedVal - a.consumedVal);
+
+    const totalConsumedVal = rows
+      .filter((r) => r.kind === "consumables")
+      .reduce((s, r) => s + r.consumedVal, 0);
+    const totalRatio = netSales > 0 ? totalConsumedVal / netSales : 0;
+
+    return {
+      // aggregate (only "consumables" kind departments — packaging/general excluded)
+      consumedVal: totalConsumedVal,
+      ratio: totalRatio,
+      limit,
+      status: (totalRatio <= limit ? "ok" : "alert") as "ok" | "alert",
+      rows,
+    };
+  }, [current, netSales, consumablesLimitPct, categories, departments, itemCats, stockItems, departmentFilter]);
 
   /* ============ Category permissible update ============ */
   const [savingCat, setSavingCat] = useState<string | null>(null);

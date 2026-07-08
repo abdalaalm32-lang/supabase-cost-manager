@@ -46,6 +46,31 @@ export type Thresholds = {
 };
 const DEFAULT_THRESHOLDS: Thresholds = { normal: 0.02, accept: 0.05, deviation: 0.10, operation: 0.20, highDefl: 0.50 };
 
+export type ConsumablesTargets = {
+  packagingMin: number; packagingMax: number;
+  generalMin: number;   generalMax: number;
+};
+const DEFAULT_CONSUMABLES_TARGETS: ConsumablesTargets = {
+  packagingMin: 0.02, packagingMax: 0.05,
+  generalMin:   0.005, generalMax:   0.02,
+};
+
+export type ActivityBenchmark = {
+  key: string; name: string;
+  acceptMin: number; acceptMax: number;   // مقبول
+  warnMin: number;   warnMax: number;     // إنذار
+  dangerMin: number;                      // خطر (> dangerMin)
+};
+const DEFAULT_ACTIVITY_BENCHMARKS: ActivityBenchmark[] = [
+  { key: "pizza",   name: "بيتزا",         acceptMin: 0.01,  acceptMax: 0.025, warnMin: 0.025, warnMax: 0.04,  dangerMin: 0.04  },
+  { key: "burger",  name: "برجر / فاست فود", acceptMin: 0.015, acceptMax: 0.03,  warnMin: 0.03,  warnMax: 0.045, dangerMin: 0.045 },
+  { key: "grill",   name: "مشويات",        acceptMin: 0.02,  acceptMax: 0.04,  warnMin: 0.04,  warnMax: 0.055, dangerMin: 0.055 },
+  { key: "eastern", name: "مطاعم شرقي",     acceptMin: 0.025, acceptMax: 0.05,  warnMin: 0.05,  warnMax: 0.07,  dangerMin: 0.07  },
+  { key: "western", name: "مطاعم غربي",     acceptMin: 0.015, acceptMax: 0.035, warnMin: 0.035, warnMax: 0.05,  dangerMin: 0.05  },
+  { key: "cafe",    name: "كافيه",          acceptMin: 0.01,  acceptMax: 0.02,  warnMin: 0.02,  warnMax: 0.03,  dangerMin: 0.03  },
+  { key: "central", name: "سنتر كيتشن",     acceptMin: 0.005, acceptMax: 0.015, warnMin: 0.015, warnMax: 0.025, dangerMin: 0.025 },
+];
+
 const analyzeRate = (rate: number, t: Thresholds = DEFAULT_THRESHOLDS): Analysis => {
   const a = Math.abs(rate);
   if (a === 0) return "Good";
@@ -131,7 +156,7 @@ export const VarianceAnalysisPage: React.FC = () => {
   const [dateTo, setDateTo] = useState<Date | undefined>();
   const [consumablesLimitPct, setConsumablesLimitPct] = useState<number>(3); // default 3%
   const [manageOpen, setManageOpen] = useState(false);
-  const [manageTab, setManageTab] = useState<"permissible" | "consumables" | "thresholds">("permissible");
+  const [manageTab, setManageTab] = useState<"permissible" | "consumables" | "thresholds" | "activity">("permissible");
   const [consumableDeptFilter, setConsumableDeptFilter] = useState<string>("all");
   const [consumableCatFilter, setConsumableCatFilter] = useState<string>("all");
   const [consumableSearch, setConsumableSearch] = useState<string>("");
@@ -150,6 +175,29 @@ export const VarianceAnalysisPage: React.FC = () => {
   useEffect(() => {
     localStorage.setItem("variance-thresholds", JSON.stringify(thresholds));
   }, [thresholds]);
+
+  // Consumables target ranges (packaging / general) — editable, persisted
+  const [consumablesTargets, setConsumablesTargets] = useState<ConsumablesTargets>(() => {
+    try {
+      const raw = localStorage.getItem("variance-consumables-targets");
+      return raw ? { ...DEFAULT_CONSUMABLES_TARGETS, ...JSON.parse(raw) } : DEFAULT_CONSUMABLES_TARGETS;
+    } catch { return DEFAULT_CONSUMABLES_TARGETS; }
+  });
+  useEffect(() => { localStorage.setItem("variance-consumables-targets", JSON.stringify(consumablesTargets)); }, [consumablesTargets]);
+
+  // Activity benchmarks + selected activity
+  const [activityBenchmarks, setActivityBenchmarks] = useState<ActivityBenchmark[]>(() => {
+    try {
+      const raw = localStorage.getItem("variance-activity-benchmarks");
+      return raw ? JSON.parse(raw) : DEFAULT_ACTIVITY_BENCHMARKS;
+    } catch { return DEFAULT_ACTIVITY_BENCHMARKS; }
+  });
+  useEffect(() => { localStorage.setItem("variance-activity-benchmarks", JSON.stringify(activityBenchmarks)); }, [activityBenchmarks]);
+
+  const [selectedActivity, setSelectedActivity] = useState<string>(() => {
+    return localStorage.getItem("variance-selected-activity") || "";
+  });
+  useEffect(() => { localStorage.setItem("variance-selected-activity", selectedActivity); }, [selectedActivity]);
   const [noteEditor, setNoteEditor] = useState<{ itemId: string; itemName: string } | null>(null);
   const [noteDraft, setNoteDraft] = useState<{ note: string; action_status: string }>({ note: "", action_status: "pending" });
 
@@ -686,20 +734,33 @@ export const VarianceAnalysisPage: React.FC = () => {
     const rows = Array.from(perDept.values())
       .map((r) => {
         const ratio = netSales > 0 ? r.consumedVal / netSales : 0;
-        const status: "ok" | "alert" =
-          r.kind === "consumables" ? (ratio <= limit ? "ok" : "alert") : "ok";
+        let status: "ok" | "alert" | "low" = "ok";
+        let targetMin = 0, targetMax = 0;
+        if (r.kind === "consumables") {
+          status = ratio <= limit ? "ok" : "alert";
+        } else if (r.kind === "packaging") {
+          targetMin = consumablesTargets.packagingMin;
+          targetMax = consumablesTargets.packagingMax;
+          status = ratio > targetMax ? "alert" : ratio < targetMin ? "low" : "ok";
+        } else if (r.kind === "general") {
+          targetMin = consumablesTargets.generalMin;
+          targetMax = consumablesTargets.generalMax;
+          status = ratio > targetMax ? "alert" : ratio < targetMin ? "low" : "ok";
+        }
         const cats = Array.from(r.cats.values())
           .map((cr) => ({ ...cr, ratio: netSales > 0 ? cr.consumedVal / netSales : 0 }))
           .sort((a, b) => b.consumedVal - a.consumedVal);
-        return { ...r, ratio, status, cats };
+        return { ...r, ratio, status, targetMin, targetMax, cats };
       })
       .sort((a, b) => b.consumedVal - a.consumedVal);
+
 
     const totalConsumedVal = rows
       .filter((r) => r.kind === "consumables")
       .reduce((s, r) => s + r.consumedVal, 0);
     const totalRatio = netSales > 0 ? totalConsumedVal / netSales : 0;
 
+    const hasConsumablesKind = rows.some((r) => r.kind === "consumables");
     return {
       // aggregate (only "consumables" kind departments — packaging/general excluded)
       consumedVal: totalConsumedVal,
@@ -707,8 +768,9 @@ export const VarianceAnalysisPage: React.FC = () => {
       limit,
       status: (totalRatio <= limit ? "ok" : "alert") as "ok" | "alert",
       rows,
+      hasConsumablesKind,
     };
-  }, [current, netSales, consumablesLimitPct, categories, departments, itemCats, stockItems, departmentFilter]);
+  }, [current, netSales, consumablesLimitPct, consumablesTargets, categories, departments, itemCats, stockItems, departmentFilter]);
 
   /* ============ Category permissible update ============ */
   const [savingCat, setSavingCat] = useState<string | null>(null);
@@ -1310,6 +1372,28 @@ export const VarianceAnalysisPage: React.FC = () => {
         <div className="bg-card border rounded-lg p-4 space-y-2">
           <div className="flex items-center gap-2 text-sm font-semibold border-b pb-2"><Store className="w-4 h-4" /> بيانات الفترة</div>
           <div className="flex justify-between text-sm"><span className="text-muted-foreground">مبيعات الفترة</span><span className="font-bold">{fmt(netSales)} ج.م</span></div>
+          {hasPeriod && netSales > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">نسبة الانحراف من المبيعات</span>
+              <span className={cn("font-bold", Math.abs(costKpis.netVal / netSales) > 0.02 ? "text-red-600" : "text-emerald-600")}>
+                {fmtPct(costKpis.netVal / netSales)}
+              </span>
+            </div>
+          )}
+          {hasPeriod && selectedActivity && (() => {
+            const bench = activityBenchmarks.find((b) => b.key === selectedActivity);
+            if (!bench || netSales <= 0) return null;
+            const r = Math.abs(costKpis.netVal / netSales);
+            const status = r > bench.dangerMin ? { lbl: "خطر", cls: "text-red-700 dark:text-red-300" }
+              : r > bench.warnMin ? { lbl: "إنذار", cls: "text-orange-700 dark:text-orange-300" }
+              : { lbl: "مقبول", cls: "text-emerald-700 dark:text-emerald-300" };
+            return (
+              <div className="text-[11px] flex items-center justify-between border-t pt-2">
+                <span className="text-muted-foreground">مقارنة بمعيار: {bench.name}</span>
+                <span className={cn("font-bold", status.cls)}>{status.lbl}</span>
+              </div>
+            );
+          })()}
           {prevRange && (
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>الفترة السابقة</span>
@@ -1320,7 +1404,7 @@ export const VarianceAnalysisPage: React.FC = () => {
 
         {/* Consumables monitor — per department */}
         <div className={cn("border rounded-lg p-4 space-y-2",
-          consumables.status === "alert" ? "bg-red-50 dark:bg-red-950/30 border-red-300" : "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300")}>
+          consumables.status === "alert" && consumables.hasConsumablesKind ? "bg-red-50 dark:bg-red-950/30 border-red-300" : "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300")}>
           <div className="flex items-center gap-2 text-sm font-semibold border-b pb-2">
             <Package className="w-4 h-4" /> رقابة المستهلكات {departmentFilter !== "all" ? "(القسم المحدد)" : "(كل الأقسام)"}
           </div>
@@ -1329,17 +1413,23 @@ export const VarianceAnalysisPage: React.FC = () => {
             <div className="text-xs text-muted-foreground py-2">لا توجد مستهلكات مسجلة لهذا النطاق</div>
           )}
 
-          <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+          <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
             {consumables.rows.map((r) => {
               const label =
-                r.kind === "packaging" ? "Packaging Cost %"
-                : r.kind === "general" ? "General Consumables %"
+                r.kind === "packaging" ? "Packaging Control"
+                : r.kind === "general" ? "General Consumables Control"
                 : "نسبة المستهلكات";
               const badgeCls =
                 r.kind === "packaging" ? "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200"
                 : r.kind === "general" ? "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-200"
                 : r.status === "alert" ? "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200"
                 : "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200";
+              const statusCls = r.status === "alert" ? "text-red-700 dark:text-red-300"
+                : r.status === "low" ? "text-blue-700 dark:text-blue-300"
+                : "text-emerald-700 dark:text-emerald-300";
+              const statusLbl = r.kind === "consumables"
+                ? (r.status === "alert" ? "تخطت الحد" : "مستقر")
+                : (r.status === "alert" ? "أعلى من الهدف" : r.status === "low" ? "أقل من الهدف" : "ضمن الهدف");
               return (
                 <div key={r.deptId} className="border rounded p-2 bg-background/60 space-y-1">
                   <div className="flex justify-between items-center text-xs">
@@ -1348,13 +1438,32 @@ export const VarianceAnalysisPage: React.FC = () => {
                   </div>
                   <div className="flex justify-between text-xs"><span className="text-muted-foreground">قيمة الاستهلاك</span><span className="font-bold">{fmt(r.consumedVal)} ج.م</span></div>
                   <div className="flex justify-between text-xs"><span className="text-muted-foreground">النسبة / المبيعات</span><span className="font-bold">{fmtPct(r.ratio)}</span></div>
-                  {r.kind === "consumables" && (
-                    <div className={cn("text-[11px] font-semibold", r.status === "alert" ? "text-red-700 dark:text-red-300" : "text-emerald-700 dark:text-emerald-300")}>
-                      {r.status === "alert" ? "تخطت الحد" : "مستقر"}
-                    </div>
-                  )}
                   {r.kind !== "consumables" && (
-                    <div className="text-[11px] text-muted-foreground">مؤشر مستقل — لا يخضع لحد رقابة المستهلكات</div>
+                    <>
+                      <div className="flex items-center justify-between gap-1 text-[11px] border-t pt-1 mt-1">
+                        <span className="text-muted-foreground">الهدف من - إلى %</span>
+                        <div className="flex items-center gap-1">
+                          <Input type="number" step="0.1" className="h-6 w-14 text-[11px] text-center px-1"
+                            value={(r.targetMin * 100).toString()}
+                            onChange={(e) => {
+                              const v = (Number(e.target.value) || 0) / 100;
+                              setConsumablesTargets(t => r.kind === "packaging" ? { ...t, packagingMin: v } : { ...t, generalMin: v });
+                            }} />
+                          <span>-</span>
+                          <Input type="number" step="0.1" className="h-6 w-14 text-[11px] text-center px-1"
+                            value={(r.targetMax * 100).toString()}
+                            onChange={(e) => {
+                              const v = (Number(e.target.value) || 0) / 100;
+                              setConsumablesTargets(t => r.kind === "packaging" ? { ...t, packagingMax: v } : { ...t, generalMax: v });
+                            }} />
+                          <span>%</span>
+                        </div>
+                      </div>
+                      <div className={cn("text-[11px] font-semibold", statusCls)}>{statusLbl}</div>
+                    </>
+                  )}
+                  {r.kind === "consumables" && (
+                    <div className={cn("text-[11px] font-semibold", statusCls)}>{statusLbl}</div>
                   )}
                   {r.cats.length > 0 && (
                     <div className="mt-2 border-t pt-2 space-y-1">
@@ -1373,17 +1482,19 @@ export const VarianceAnalysisPage: React.FC = () => {
             })}
           </div>
 
-          <div className="border-t pt-2 space-y-1">
-            <div className="flex justify-between text-xs"><span className="text-muted-foreground">إجمالي المستهلكات (بدون Packaging/General)</span><span className="font-bold">{fmt(consumables.consumedVal)} ج.م</span></div>
-            <div className="flex justify-between text-xs"><span className="text-muted-foreground">النسبة الإجمالية</span><span className="font-bold">{fmtPct(consumables.ratio)}</span></div>
-            <div className="flex items-center gap-2">
-              <Label className="text-xs">الحد المسموح %</Label>
-              <Input type="number" step="0.1" className="h-7 w-20 text-xs" value={consumablesLimitPct} onChange={(e) => setConsumablesLimitPct(Number(e.target.value) || 0)} />
+          {consumables.hasConsumablesKind && (
+            <div className="border-t pt-2 space-y-1">
+              <div className="flex justify-between text-xs"><span className="text-muted-foreground">إجمالي المستهلكات (بدون Packaging/General)</span><span className="font-bold">{fmt(consumables.consumedVal)} ج.م</span></div>
+              <div className="flex justify-between text-xs"><span className="text-muted-foreground">النسبة الإجمالية</span><span className="font-bold">{fmtPct(consumables.ratio)}</span></div>
+              <div className="flex items-center gap-2">
+                <Label className="text-xs">الحد المسموح %</Label>
+                <Input type="number" step="0.1" className="h-7 w-20 text-xs" value={consumablesLimitPct} onChange={(e) => setConsumablesLimitPct(Number(e.target.value) || 0)} />
+              </div>
+              <div className={cn("flex items-center gap-2 text-xs font-semibold", consumables.status === "alert" ? "text-red-700 dark:text-red-300" : "text-emerald-700 dark:text-emerald-300")}>
+                {consumables.status === "alert" ? <><AlertTriangle className="w-3.5 h-3.5" /> تخطت النسبة المحددة - رقابة مطلوبة</> : <><CheckCircle2 className="w-3.5 h-3.5" /> الوضع مستقر</>}
+              </div>
             </div>
-            <div className={cn("flex items-center gap-2 text-xs font-semibold", consumables.status === "alert" ? "text-red-700 dark:text-red-300" : "text-emerald-700 dark:text-emerald-300")}>
-              {consumables.status === "alert" ? <><AlertTriangle className="w-3.5 h-3.5" /> تخطت النسبة المحددة - رقابة مطلوبة</> : <><CheckCircle2 className="w-3.5 h-3.5" /> الوضع مستقر</>}
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Variance ranges */}
@@ -1762,6 +1873,7 @@ export const VarianceAnalysisPage: React.FC = () => {
             <button className={cn("px-3 py-2 text-sm border-b-2", manageTab === "permissible" ? "border-primary font-bold" : "border-transparent text-muted-foreground")} onClick={() => setManageTab("permissible")}>نسب السماح للفئات</button>
             <button className={cn("px-3 py-2 text-sm border-b-2", manageTab === "consumables" ? "border-primary font-bold" : "border-transparent text-muted-foreground")} onClick={() => setManageTab("consumables")}>خامات المستهلكات</button>
             <button className={cn("px-3 py-2 text-sm border-b-2", manageTab === "thresholds" ? "border-primary font-bold" : "border-transparent text-muted-foreground")} onClick={() => setManageTab("thresholds")}>عتبات التصنيف</button>
+            <button className={cn("px-3 py-2 text-sm border-b-2", manageTab === "activity" ? "border-primary font-bold" : "border-transparent text-muted-foreground")} onClick={() => setManageTab("activity")}>معايير نوع النشاط</button>
           </div>
           <div className="overflow-y-auto flex-1 py-3">
             {manageTab === "thresholds" && (
@@ -1786,6 +1898,85 @@ export const VarianceAnalysisPage: React.FC = () => {
                 ))}
                 <div className="flex justify-end pt-2">
                   <Button variant="outline" size="sm" onClick={() => setThresholds(DEFAULT_THRESHOLDS)}>إعادة الافتراضي</Button>
+                </div>
+              </div>
+            )}
+            {manageTab === "activity" && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm">نوع نشاط الشركة الحالي</Label>
+                    <Select value={selectedActivity || "__none__"} onValueChange={(v) => setSelectedActivity(v === "__none__" ? "" : v)}>
+                      <SelectTrigger className="h-8 w-56"><SelectValue placeholder="اختر النشاط" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">— بدون —</SelectItem>
+                        {activityBenchmarks.map((b) => <SelectItem key={b.key} value={b.key}>{b.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => setActivityBenchmarks(DEFAULT_ACTIVITY_BENCHMARKS)}>إعادة الافتراضي</Button>
+                </div>
+                <p className="text-xs text-muted-foreground">النسب تُستخدم كمعيار مقارنة في بوكس "بيانات الفترة" (نسبة الانحراف من المبيعات). القيم قابلة للتعديل.</p>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-right">نوع النشاط</TableHead>
+                        <TableHead className="text-center">مقبول من - إلى %</TableHead>
+                        <TableHead className="text-center">إنذار من - إلى %</TableHead>
+                        <TableHead className="text-center">خطر أكثر من %</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {activityBenchmarks.map((b, idx) => {
+                        const upd = (patch: Partial<ActivityBenchmark>) => {
+                          const next = [...activityBenchmarks];
+                          next[idx] = { ...b, ...patch };
+                          setActivityBenchmarks(next);
+                        };
+                        const numInput = (val: number, on: (v: number) => void) => (
+                          <Input type="number" step="0.1" className="h-8 w-16 text-center px-1 inline-block"
+                            value={(val * 100).toString()}
+                            onChange={(e) => on((Number(e.target.value) || 0) / 100)} />
+                        );
+                        return (
+                          <TableRow key={b.key}>
+                            <TableCell>
+                              <Input value={b.name} onChange={(e) => upd({ name: e.target.value })} className="h-8" />
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                {numInput(b.acceptMin, (v) => upd({ acceptMin: v }))}
+                                <span>-</span>
+                                {numInput(b.acceptMax, (v) => upd({ acceptMax: v }))}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                {numInput(b.warnMin, (v) => upd({ warnMin: v }))}
+                                <span>-</span>
+                                {numInput(b.warnMax, (v) => upd({ warnMax: v }))}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {numInput(b.dangerMin, (v) => upd({ dangerMin: v }))}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="border-t pt-3 mt-3">
+                  <div className="text-sm font-semibold mb-2">تصنيف 3M GSC للانحراف الإجمالي</div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+                    <div className="flex justify-between px-2 py-1 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200"><span>ممتاز</span><span className="font-bold">0% - 1%</span></div>
+                    <div className="flex justify-between px-2 py-1 rounded bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-200"><span>جيد جدًا</span><span className="font-bold">1% - 2%</span></div>
+                    <div className="flex justify-between px-2 py-1 rounded bg-lime-100 text-lime-800 dark:bg-lime-900/40 dark:text-lime-200"><span>طبيعي</span><span className="font-bold">2% - 3%</span></div>
+                    <div className="flex justify-between px-2 py-1 rounded bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200"><span>يحتاج متابعة</span><span className="font-bold">3% - 5%</span></div>
+                    <div className="flex justify-between px-2 py-1 rounded bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200"><span>انحراف مرتفع</span><span className="font-bold">5% - 8%</span></div>
+                    <div className="flex justify-between px-2 py-1 rounded bg-red-600 text-white"><span>مشكلة تشغيلية</span><span className="font-bold">&gt; 8%</span></div>
+                  </div>
                 </div>
               </div>
             )}

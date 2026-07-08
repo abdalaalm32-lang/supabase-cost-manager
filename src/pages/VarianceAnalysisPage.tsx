@@ -1901,6 +1901,85 @@ export const VarianceAnalysisPage: React.FC = () => {
                 </div>
               </div>
             )}
+            {manageTab === "activity" && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm">نوع نشاط الشركة الحالي</Label>
+                    <Select value={selectedActivity || "__none__"} onValueChange={(v) => setSelectedActivity(v === "__none__" ? "" : v)}>
+                      <SelectTrigger className="h-8 w-56"><SelectValue placeholder="اختر النشاط" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">— بدون —</SelectItem>
+                        {activityBenchmarks.map((b) => <SelectItem key={b.key} value={b.key}>{b.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => setActivityBenchmarks(DEFAULT_ACTIVITY_BENCHMARKS)}>إعادة الافتراضي</Button>
+                </div>
+                <p className="text-xs text-muted-foreground">النسب تُستخدم كمعيار مقارنة في بوكس "بيانات الفترة" (نسبة الانحراف من المبيعات). القيم قابلة للتعديل.</p>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-right">نوع النشاط</TableHead>
+                        <TableHead className="text-center">مقبول من - إلى %</TableHead>
+                        <TableHead className="text-center">إنذار من - إلى %</TableHead>
+                        <TableHead className="text-center">خطر أكثر من %</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {activityBenchmarks.map((b, idx) => {
+                        const upd = (patch: Partial<ActivityBenchmark>) => {
+                          const next = [...activityBenchmarks];
+                          next[idx] = { ...b, ...patch };
+                          setActivityBenchmarks(next);
+                        };
+                        const numInput = (val: number, on: (v: number) => void) => (
+                          <Input type="number" step="0.1" className="h-8 w-16 text-center px-1 inline-block"
+                            value={(val * 100).toString()}
+                            onChange={(e) => on((Number(e.target.value) || 0) / 100)} />
+                        );
+                        return (
+                          <TableRow key={b.key}>
+                            <TableCell>
+                              <Input value={b.name} onChange={(e) => upd({ name: e.target.value })} className="h-8" />
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                {numInput(b.acceptMin, (v) => upd({ acceptMin: v }))}
+                                <span>-</span>
+                                {numInput(b.acceptMax, (v) => upd({ acceptMax: v }))}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                {numInput(b.warnMin, (v) => upd({ warnMin: v }))}
+                                <span>-</span>
+                                {numInput(b.warnMax, (v) => upd({ warnMax: v }))}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {numInput(b.dangerMin, (v) => upd({ dangerMin: v }))}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="border-t pt-3 mt-3">
+                  <div className="text-sm font-semibold mb-2">تصنيف 3M GSC للانحراف الإجمالي</div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+                    <div className="flex justify-between px-2 py-1 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200"><span>ممتاز</span><span className="font-bold">0% - 1%</span></div>
+                    <div className="flex justify-between px-2 py-1 rounded bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-200"><span>جيد جدًا</span><span className="font-bold">1% - 2%</span></div>
+                    <div className="flex justify-between px-2 py-1 rounded bg-lime-100 text-lime-800 dark:bg-lime-900/40 dark:text-lime-200"><span>طبيعي</span><span className="font-bold">2% - 3%</span></div>
+                    <div className="flex justify-between px-2 py-1 rounded bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200"><span>يحتاج متابعة</span><span className="font-bold">3% - 5%</span></div>
+                    <div className="flex justify-between px-2 py-1 rounded bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200"><span>انحراف مرتفع</span><span className="font-bold">5% - 8%</span></div>
+                    <div className="flex justify-between px-2 py-1 rounded bg-red-600 text-white"><span>مشكلة تشغيلية</span><span className="font-bold">&gt; 8%</span></div>
+                  </div>
+                </div>
+              </div>
+            )}
             {manageTab === "permissible" && (
               <Table>
                 <TableHeader><TableRow><TableHead className="text-right">الفئة</TableHead><TableHead className="text-center">نسبة السماح %</TableHead><TableHead></TableHead></TableRow></TableHeader>

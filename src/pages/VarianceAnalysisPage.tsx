@@ -215,6 +215,15 @@ export const VarianceAnalysisPage: React.FC = () => {
 
   const [selectedActivity, setSelectedActivity] = useState<string>(defaultFilters.selectedActivity);
 
+  // Scope for "Actual Consumed Cost %" — kitchen + packaging (default) or kitchen only
+  const [costScopeMode, setCostScopeMode] = useState<"kitchen_packaging" | "kitchen_only">(() => {
+    try {
+      const v = localStorage.getItem("variance-cost-scope-mode");
+      return v === "kitchen_only" ? "kitchen_only" : "kitchen_packaging";
+    } catch { return "kitchen_packaging"; }
+  });
+  useEffect(() => { localStorage.setItem("variance-cost-scope-mode", costScopeMode); }, [costScopeMode]);
+
   // Load saved filters once on mount
   useEffect(() => {
     if (!filtersStorageKey) return;

@@ -993,17 +993,20 @@ export const VarianceAnalysisPage: React.FC = () => {
     return { totalVal, pct };
   }, [current, netSales, categories, itemCats, stockItems, deptInScope]);
 
-  const [benchmarkInfo, setBenchmarkInfo] = useState<{ avgDirectPct: number; periodName: string; updatedAt: string } | null>(null);
+  // Manual standard-ratio (percentage number, e.g. 59.6 means 59.60%) — persisted per company
+  const benchmarkKey = companyId ? `variance-manual-benchmark-${companyId}` : null;
+  const [manualBenchmark, setManualBenchmark] = useState<number>(0);
   useEffect(() => {
-    if (!companyId) return;
+    if (!benchmarkKey) return;
     try {
-      const raw = localStorage.getItem(`menu_analysis_benchmark_${companyId}`);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        setBenchmarkInfo({ avgDirectPct: parsed.avgDirectPct || 0, periodName: parsed.periodName || "", updatedAt: parsed.updatedAt || "" });
-      } else setBenchmarkInfo(null);
-    } catch { setBenchmarkInfo(null); }
-  }, [companyId, dateFrom, dateTo]);
+      const raw = localStorage.getItem(benchmarkKey);
+      setManualBenchmark(raw ? Number(raw) || 0 : 0);
+    } catch { setManualBenchmark(0); }
+  }, [benchmarkKey]);
+  useEffect(() => {
+    if (!benchmarkKey) return;
+    localStorage.setItem(benchmarkKey, String(manualBenchmark || 0));
+  }, [benchmarkKey, manualBenchmark]);
 
   /* ============ Top N (all deviations sorted) ============ */
   const topDeviations = useMemo(() => {

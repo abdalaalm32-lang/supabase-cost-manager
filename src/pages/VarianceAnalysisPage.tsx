@@ -935,6 +935,25 @@ export const VarianceAnalysisPage: React.FC = () => {
     return { shortVal, overVal, netVal, avgRate, prevAvgRate, prevNet };
   }, [current, previous]);
 
+  /* ============ Actual Consumed Cost vs Menu Analysis benchmark ============ */
+  const actualCost = useMemo(() => {
+    const totalVal = Array.from(current.values()).reduce((s, i) => s + (i.actualConsumedVal || 0), 0);
+    const pct = netSales > 0 ? totalVal / netSales : 0;
+    return { totalVal, pct };
+  }, [current, netSales]);
+
+  const [benchmarkInfo, setBenchmarkInfo] = useState<{ avgDirectPct: number; periodName: string; updatedAt: string } | null>(null);
+  useEffect(() => {
+    if (!companyId) return;
+    try {
+      const raw = localStorage.getItem(`menu_analysis_benchmark_${companyId}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        setBenchmarkInfo({ avgDirectPct: parsed.avgDirectPct || 0, periodName: parsed.periodName || "", updatedAt: parsed.updatedAt || "" });
+      } else setBenchmarkInfo(null);
+    } catch { setBenchmarkInfo(null); }
+  }, [companyId, dateFrom, dateTo]);
+
   /* ============ Top N (all deviations sorted) ============ */
   const topDeviations = useMemo(() => {
     const items = Array.from(current.values()).filter(i => !i.isConsumable && i.rate !== 0);

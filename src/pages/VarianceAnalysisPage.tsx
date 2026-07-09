@@ -935,6 +935,25 @@ export const VarianceAnalysisPage: React.FC = () => {
     return { shortVal, overVal, netVal, avgRate, prevAvgRate, prevNet };
   }, [current, previous]);
 
+  /* ============ Actual Consumed Cost vs Menu Analysis benchmark ============ */
+  const actualCost = useMemo(() => {
+    const totalVal = Array.from(current.values()).reduce((s, i) => s + (i.actualConsumedVal || 0), 0);
+    const pct = netSales > 0 ? totalVal / netSales : 0;
+    return { totalVal, pct };
+  }, [current, netSales]);
+
+  const [benchmarkInfo, setBenchmarkInfo] = useState<{ avgDirectPct: number; periodName: string; updatedAt: string } | null>(null);
+  useEffect(() => {
+    if (!companyId) return;
+    try {
+      const raw = localStorage.getItem(`menu_analysis_benchmark_${companyId}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        setBenchmarkInfo({ avgDirectPct: parsed.avgDirectPct || 0, periodName: parsed.periodName || "", updatedAt: parsed.updatedAt || "" });
+      } else setBenchmarkInfo(null);
+    } catch { setBenchmarkInfo(null); }
+  }, [companyId, dateFrom, dateTo]);
+
   /* ============ Top N (all deviations sorted) ============ */
   const topDeviations = useMemo(() => {
     const items = Array.from(current.values()).filter(i => !i.isConsumable && i.rate !== 0);
@@ -1520,6 +1539,45 @@ export const VarianceAnalysisPage: React.FC = () => {
               </div>
             );
           })()}
+          {hasPeriod && netSales > 0 && (
+            <div className="border-t pt-2 space-y-1">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">التكلفة الفعلية المستهلكة</span>
+                <span className="font-bold">{fmt(actualCost.totalVal)} ج.م</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">نسبة التكلفة الفعلية</span>
+                <span className="font-bold text-blue-700 dark:text-blue-300">{fmtPct(actualCost.pct)}</span>
+              </div>
+              {benchmarkInfo && benchmarkInfo.avgDirectPct > 0 && (() => {
+                const benchPct = benchmarkInfo.avgDirectPct / 100;
+                const diff = actualCost.pct - benchPct;
+                const good = diff <= 0.005;
+                return (
+                  <>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">النسبة المعيارية (تحليل القائمة)</span>
+                      <span className="font-semibold text-purple-700 dark:text-purple-300">{fmtPct(benchPct)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">الفرق (فعلي − معياري)</span>
+                      <span className={cn("font-bold", good ? "text-emerald-600" : "text-red-600")}>
+                        {diff >= 0 ? "+" : ""}{fmtPct(diff)}
+                      </span>
+                    </div>
+                    {benchmarkInfo.periodName && (
+                      <div className="text-[10px] text-muted-foreground text-left">مصدر: {benchmarkInfo.periodName}</div>
+                    )}
+                  </>
+                );
+              })()}
+              {!benchmarkInfo && (
+                <div className="text-[10px] text-muted-foreground border-t pt-1">
+                  افتح صفحة تحليل القائمة أولاً لجلب النسبة المعيارية تلقائياً
+                </div>
+              )}
+            </div>
+          )}
           {prevRange && (
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>الفترة السابقة</span>

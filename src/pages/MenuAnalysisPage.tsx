@@ -468,6 +468,21 @@ export const MenuAnalysisPage: React.FC = () => {
   const metricsA = useMemo(() => computeMetrics(periodAResolved, categoryPackingItems, categorySideCostItems), [computeMetrics, periodAResolved, categoryPackingItems, categorySideCostItems]);
   const metricsB = useMemo(() => computeMetrics(periodBResolved, periodBPacking, periodBSideCost), [computeMetrics, periodBResolved, periodBPacking, periodBSideCost]);
 
+  // Persist the current (latest) benchmark for use by Variance Analysis page
+  useEffect(() => {
+    if (!companyId || !metricsA || !periodAResolved) return;
+    try {
+      const payload = {
+        avgDirectPct: metricsA.avgDirectPct,
+        periodId: periodAResolved.id,
+        periodName: periodAResolved.name,
+        branchId: selectedBranchId || "all",
+        updatedAt: new Date().toISOString(),
+      };
+      localStorage.setItem(`menu_analysis_benchmark_${companyId}`, JSON.stringify(payload));
+    } catch {}
+  }, [companyId, metricsA, periodAResolved, selectedBranchId]);
+
   // Build full breakdown (totals + categories + items) for any period — used by the comparison dialog.
   const loadBreakdown = useCallback(async (periodId: string): Promise<MenuBreakdown | null> => {
     const period = periods.find(p => p.id === periodId);

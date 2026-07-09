@@ -1592,6 +1592,21 @@ export const VarianceAnalysisPage: React.FC = () => {
           })()}
           {hasPeriod && netSales > 0 && (
             <div className="border-t pt-2 space-y-1">
+              <div className="flex items-center justify-between gap-2 pb-1">
+                <span className="text-[11px] text-muted-foreground">نطاق حساب التكلفة</span>
+                <div className="flex items-center gap-1 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => setCostScopeMode("kitchen_packaging")}
+                    className={cn("px-2 py-0.5 rounded border", costScopeMode === "kitchen_packaging" ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted")}
+                  >مطبخ + باكينج</button>
+                  <button
+                    type="button"
+                    onClick={() => setCostScopeMode("kitchen_only")}
+                    className={cn("px-2 py-0.5 rounded border", costScopeMode === "kitchen_only" ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted")}
+                  >مطبخ فقط</button>
+                </div>
+              </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">التكلفة الفعلية المستهلكة</span>
                 <span className="font-bold">{fmt(actualCost.totalVal)} ج.م</span>

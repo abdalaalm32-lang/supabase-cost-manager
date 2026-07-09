@@ -969,24 +969,29 @@ export const VarianceAnalysisPage: React.FC = () => {
   const actualCost = useMemo(() => {
     const catById = new Map<string, any>();
     (categories || []).forEach((c: any) => catById.set(c.id, c));
-    const itemDeptIds = (i: any): string[] => {
+    const primaryDept = new Map<string, string | null>();
+    (stockItems || []).forEach((si: any) => primaryDept.set(si.id, si.department_id ?? null));
+    const itemDeptIds = (itemId: string): string[] => {
       const set = new Set<string>();
-      const cats = itemCats.get(i.id);
+      const cats = itemCats.get(itemId);
       if (cats) for (const cid of cats) {
         const did = catById.get(cid)?.department_id;
         if (did) set.add(did);
       }
-      if (set.size === 0 && i.departmentId) set.add(i.departmentId);
+      if (set.size === 0) {
+        const p = primaryDept.get(itemId);
+        if (p) set.add(p);
+      }
       return Array.from(set);
     };
     let totalVal = 0;
     for (const i of current.values()) {
-      const dids = itemDeptIds(i);
+      const dids = itemDeptIds(i.id);
       if (dids.some(d => deptInScope.get(d))) totalVal += (i.actualConsumedVal || 0);
     }
     const pct = netSales > 0 ? totalVal / netSales : 0;
     return { totalVal, pct };
-  }, [current, netSales, categories, itemCats, deptInScope]);
+  }, [current, netSales, categories, itemCats, stockItems, deptInScope]);
 
   const [benchmarkInfo, setBenchmarkInfo] = useState<{ avgDirectPct: number; periodName: string; updatedAt: string } | null>(null);
   useEffect(() => {

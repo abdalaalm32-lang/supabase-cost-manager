@@ -993,17 +993,20 @@ export const VarianceAnalysisPage: React.FC = () => {
     return { totalVal, pct };
   }, [current, netSales, categories, itemCats, stockItems, deptInScope]);
 
-  const [benchmarkInfo, setBenchmarkInfo] = useState<{ avgDirectPct: number; periodName: string; updatedAt: string } | null>(null);
+  // Manual standard-ratio (percentage number, e.g. 59.6 means 59.60%) — persisted per company
+  const benchmarkKey = companyId ? `variance-manual-benchmark-${companyId}` : null;
+  const [manualBenchmark, setManualBenchmark] = useState<number>(0);
   useEffect(() => {
-    if (!companyId) return;
+    if (!benchmarkKey) return;
     try {
-      const raw = localStorage.getItem(`menu_analysis_benchmark_${companyId}`);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        setBenchmarkInfo({ avgDirectPct: parsed.avgDirectPct || 0, periodName: parsed.periodName || "", updatedAt: parsed.updatedAt || "" });
-      } else setBenchmarkInfo(null);
-    } catch { setBenchmarkInfo(null); }
-  }, [companyId, dateFrom, dateTo]);
+      const raw = localStorage.getItem(benchmarkKey);
+      setManualBenchmark(raw ? Number(raw) || 0 : 0);
+    } catch { setManualBenchmark(0); }
+  }, [benchmarkKey]);
+  useEffect(() => {
+    if (!benchmarkKey) return;
+    localStorage.setItem(benchmarkKey, String(manualBenchmark || 0));
+  }, [benchmarkKey, manualBenchmark]);
 
   /* ============ Top N (all deviations sorted) ============ */
   const topDeviations = useMemo(() => {
@@ -1615,33 +1618,35 @@ export const VarianceAnalysisPage: React.FC = () => {
                 <span className="text-muted-foreground">نسبة التكلفة الفعلية</span>
                 <span className="font-bold text-blue-700 dark:text-blue-300">{fmtPct(actualCost.pct)}</span>
               </div>
-              {benchmarkInfo && benchmarkInfo.avgDirectPct > 0 && (() => {
-                const benchPct = benchmarkInfo.avgDirectPct / 100;
+              <div className="flex justify-between items-center text-xs gap-2">
+                <span className="text-muted-foreground whitespace-nowrap">النسبة المعيارية (يدوي)</span>
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    max={100}
+                    value={manualBenchmark || ""}
+                    onChange={(e) => setManualBenchmark(Number(e.target.value) || 0)}
+                    className="w-20 h-7 px-2 text-xs border rounded bg-background text-right"
+                    placeholder="0.00"
+                  />
+                  <span className="text-purple-700 dark:text-purple-300 font-semibold">%</span>
+                </div>
+              </div>
+              {manualBenchmark > 0 && (() => {
+                const benchPct = manualBenchmark / 100;
                 const diff = actualCost.pct - benchPct;
                 const good = diff <= 0.005;
                 return (
-                  <>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">النسبة المعيارية (تحليل القائمة)</span>
-                      <span className="font-semibold text-purple-700 dark:text-purple-300">{fmtPct(benchPct)}</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">الفرق (فعلي − معياري)</span>
-                      <span className={cn("font-bold", good ? "text-emerald-600" : "text-red-600")}>
-                        {diff >= 0 ? "+" : ""}{fmtPct(diff)}
-                      </span>
-                    </div>
-                    {benchmarkInfo.periodName && (
-                      <div className="text-[10px] text-muted-foreground text-left">مصدر: {benchmarkInfo.periodName}</div>
-                    )}
-                  </>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">الفرق (فعلي − معياري)</span>
+                    <span className={cn("font-bold", good ? "text-emerald-600" : "text-red-600")}>
+                      {diff >= 0 ? "+" : ""}{fmtPct(diff)}
+                    </span>
+                  </div>
                 );
               })()}
-              {!benchmarkInfo && (
-                <div className="text-[10px] text-muted-foreground border-t pt-1">
-                  افتح صفحة تحليل القائمة أولاً لجلب النسبة المعيارية تلقائياً
-                </div>
-              )}
             </div>
           )}
           {prevRange && (

@@ -215,6 +215,15 @@ export const VarianceAnalysisPage: React.FC = () => {
 
   const [selectedActivity, setSelectedActivity] = useState<string>(defaultFilters.selectedActivity);
 
+  // Scope for "Actual Consumed Cost %" — kitchen + packaging (default) or kitchen only
+  const [costScopeMode, setCostScopeMode] = useState<"kitchen_packaging" | "kitchen_only">(() => {
+    try {
+      const v = localStorage.getItem("variance-cost-scope-mode");
+      return v === "kitchen_only" ? "kitchen_only" : "kitchen_packaging";
+    } catch { return "kitchen_packaging"; }
+  });
+  useEffect(() => { localStorage.setItem("variance-cost-scope-mode", costScopeMode); }, [costScopeMode]);
+
   // Load saved filters once on mount
   useEffect(() => {
     if (!filtersStorageKey) return;
@@ -936,11 +945,53 @@ export const VarianceAnalysisPage: React.FC = () => {
   }, [current, previous]);
 
   /* ============ Actual Consumed Cost vs Menu Analysis benchmark ============ */
+  // Scope: كوّن قائمة الأقسام المسموح دخولها في الحسبة (المطبخ + جنرال مطبخ باكينج، أو المطبخ فقط)
+  const deptInScope = useMemo(() => {
+    const map = new Map<string, boolean>();
+    (departments || []).forEach((d: any) => {
+      const n = (d.name || "").toLowerCase();
+      const hasKitchen = n.includes("مطبخ") || n.includes("kitchen");
+      const hasPackaging = n.includes("باكينج") || n.includes("packing") || n.includes("packaging") || n.includes("تغليف");
+      const hasGeneral = n.includes("جنرال") || n.includes("general") || n.includes("عام");
+      let ok = false;
+      if (costScopeMode === "kitchen_only") {
+        // فقط قسم المطبخ (بدون جنرال وبدون باكينج)
+        ok = hasKitchen && !hasGeneral && !hasPackaging;
+      } else {
+        // المطبخ + قسم جنرال مطبخ الباكينج فقط (استبعاد مجموعة الجنرال العادية وجنرال المطبخ بدون باكينج)
+        ok = (hasKitchen && !hasGeneral && !hasPackaging) || (hasPackaging && (hasKitchen || hasGeneral));
+      }
+      map.set(d.id, ok);
+    });
+    return map;
+  }, [departments, costScopeMode]);
+
   const actualCost = useMemo(() => {
-    const totalVal = Array.from(current.values()).reduce((s, i) => s + (i.actualConsumedVal || 0), 0);
+    const catById = new Map<string, any>();
+    (categories || []).forEach((c: any) => catById.set(c.id, c));
+    const primaryDept = new Map<string, string | null>();
+    (stockItems || []).forEach((si: any) => primaryDept.set(si.id, si.department_id ?? null));
+    const itemDeptIds = (itemId: string): string[] => {
+      const set = new Set<string>();
+      const cats = itemCats.get(itemId);
+      if (cats) for (const cid of cats) {
+        const did = catById.get(cid)?.department_id;
+        if (did) set.add(did);
+      }
+      if (set.size === 0) {
+        const p = primaryDept.get(itemId);
+        if (p) set.add(p);
+      }
+      return Array.from(set);
+    };
+    let totalVal = 0;
+    for (const i of current.values()) {
+      const dids = itemDeptIds(i.id);
+      if (dids.some(d => deptInScope.get(d))) totalVal += (i.actualConsumedVal || 0);
+    }
     const pct = netSales > 0 ? totalVal / netSales : 0;
     return { totalVal, pct };
-  }, [current, netSales]);
+  }, [current, netSales, categories, itemCats, stockItems, deptInScope]);
 
   const [benchmarkInfo, setBenchmarkInfo] = useState<{ avgDirectPct: number; periodName: string; updatedAt: string } | null>(null);
   useEffect(() => {
@@ -1541,6 +1592,21 @@ export const VarianceAnalysisPage: React.FC = () => {
           })()}
           {hasPeriod && netSales > 0 && (
             <div className="border-t pt-2 space-y-1">
+              <div className="flex items-center justify-between gap-2 pb-1">
+                <span className="text-[11px] text-muted-foreground">نطاق حساب التكلفة</span>
+                <div className="flex items-center gap-1 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => setCostScopeMode("kitchen_packaging")}
+                    className={cn("px-2 py-0.5 rounded border", costScopeMode === "kitchen_packaging" ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted")}
+                  >مطبخ + باكينج</button>
+                  <button
+                    type="button"
+                    onClick={() => setCostScopeMode("kitchen_only")}
+                    className={cn("px-2 py-0.5 rounded border", costScopeMode === "kitchen_only" ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted")}
+                  >مطبخ فقط</button>
+                </div>
+              </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">التكلفة الفعلية المستهلكة</span>
                 <span className="font-bold">{fmt(actualCost.totalVal)} ج.م</span>

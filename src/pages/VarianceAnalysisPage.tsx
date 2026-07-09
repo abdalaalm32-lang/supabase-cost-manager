@@ -945,11 +945,48 @@ export const VarianceAnalysisPage: React.FC = () => {
   }, [current, previous]);
 
   /* ============ Actual Consumed Cost vs Menu Analysis benchmark ============ */
+  // Scope: كوّن قائمة الأقسام المسموح دخولها في الحسبة (المطبخ + جنرال مطبخ باكينج، أو المطبخ فقط)
+  const deptInScope = useMemo(() => {
+    const map = new Map<string, boolean>();
+    (departments || []).forEach((d: any) => {
+      const n = (d.name || "").toLowerCase();
+      const hasKitchen = n.includes("مطبخ") || n.includes("kitchen");
+      const hasPackaging = n.includes("باكينج") || n.includes("packing") || n.includes("packaging") || n.includes("تغليف");
+      const hasGeneral = n.includes("جنرال") || n.includes("general") || n.includes("عام");
+      let ok = false;
+      if (costScopeMode === "kitchen_only") {
+        // فقط قسم المطبخ (بدون جنرال وبدون باكينج)
+        ok = hasKitchen && !hasGeneral && !hasPackaging;
+      } else {
+        // المطبخ + قسم جنرال مطبخ الباكينج فقط (استبعاد مجموعة الجنرال العادية وجنرال المطبخ بدون باكينج)
+        ok = (hasKitchen && !hasGeneral && !hasPackaging) || (hasPackaging && (hasKitchen || hasGeneral));
+      }
+      map.set(d.id, ok);
+    });
+    return map;
+  }, [departments, costScopeMode]);
+
   const actualCost = useMemo(() => {
-    const totalVal = Array.from(current.values()).reduce((s, i) => s + (i.actualConsumedVal || 0), 0);
+    const catById = new Map<string, any>();
+    (categories || []).forEach((c: any) => catById.set(c.id, c));
+    const itemDeptIds = (i: any): string[] => {
+      const set = new Set<string>();
+      const cats = itemCats.get(i.id);
+      if (cats) for (const cid of cats) {
+        const did = catById.get(cid)?.department_id;
+        if (did) set.add(did);
+      }
+      if (set.size === 0 && i.departmentId) set.add(i.departmentId);
+      return Array.from(set);
+    };
+    let totalVal = 0;
+    for (const i of current.values()) {
+      const dids = itemDeptIds(i);
+      if (dids.some(d => deptInScope.get(d))) totalVal += (i.actualConsumedVal || 0);
+    }
     const pct = netSales > 0 ? totalVal / netSales : 0;
     return { totalVal, pct };
-  }, [current, netSales]);
+  }, [current, netSales, categories, itemCats, deptInScope]);
 
   const [benchmarkInfo, setBenchmarkInfo] = useState<{ avgDirectPct: number; periodName: string; updatedAt: string } | null>(null);
   useEffect(() => {

@@ -945,7 +945,7 @@ export const VarianceAnalysisPage: React.FC = () => {
   }, [current, previous]);
 
   /* ============ Actual Consumed Cost vs Menu Analysis benchmark ============ */
-  // Scope: كوّن قائمة الأقسام المسموح دخولها في الحسبة (المطبخ + جنرال مطبخ باكينج، أو المطبخ فقط)
+  // Scope: قسم المطبخ فقط دائمًا على مستوى الأقسام. الباكينج بيتم تعريفه على مستوى المجموعة (Category) لأنه غالبًا داخل قسم "جنرال مطبخ".
   const deptInScope = useMemo(() => {
     const map = new Map<string, boolean>();
     (departments || []).forEach((d: any) => {
@@ -953,18 +953,23 @@ export const VarianceAnalysisPage: React.FC = () => {
       const hasKitchen = n.includes("مطبخ") || n.includes("kitchen");
       const hasPackaging = n.includes("باكينج") || n.includes("packing") || n.includes("packaging") || n.includes("تغليف");
       const hasGeneral = n.includes("جنرال") || n.includes("general") || n.includes("عام");
-      let ok = false;
-      if (costScopeMode === "kitchen_only") {
-        // فقط قسم المطبخ (بدون جنرال وبدون باكينج)
-        ok = hasKitchen && !hasGeneral && !hasPackaging;
-      } else {
-        // المطبخ + قسم جنرال مطبخ الباكينج فقط (استبعاد مجموعة الجنرال العادية وجنرال المطبخ بدون باكينج)
-        ok = (hasKitchen && !hasGeneral && !hasPackaging) || (hasPackaging && (hasKitchen || hasGeneral));
-      }
+      const ok = hasKitchen && !hasGeneral && !hasPackaging;
       map.set(d.id, ok);
     });
     return map;
-  }, [departments, costScopeMode]);
+  }, [departments]);
+
+  // مجموعات (Categories) اسمها فيه "باكينج/packaging" — تُضاف فقط في وضع "مطبخ + باكينج"
+  const packagingCatIds = useMemo(() => {
+    const set = new Set<string>();
+    (categories || []).forEach((c: any) => {
+      const n = (c.name || "").toLowerCase();
+      if (n.includes("باكينج") || n.includes("packing") || n.includes("packaging") || n.includes("تغليف")) {
+        set.add(c.id);
+      }
+    });
+    return set;
+  }, [categories]);
 
   const actualCost = useMemo(() => {
     const catById = new Map<string, any>();
@@ -984,14 +989,22 @@ export const VarianceAnalysisPage: React.FC = () => {
       }
       return Array.from(set);
     };
+    const itemInPackagingCat = (itemId: string): boolean => {
+      const cats = itemCats.get(itemId);
+      if (!cats) return false;
+      for (const cid of cats) if (packagingCatIds.has(cid)) return true;
+      return false;
+    };
     let totalVal = 0;
     for (const i of current.values()) {
       const dids = itemDeptIds(i.id);
-      if (dids.some(d => deptInScope.get(d))) totalVal += (i.actualConsumedVal || 0);
+      const inKitchen = dids.some(d => deptInScope.get(d));
+      const inPackaging = costScopeMode === "kitchen_packaging" && itemInPackagingCat(i.id);
+      if (inKitchen || inPackaging) totalVal += (i.actualConsumedVal || 0);
     }
     const pct = netSales > 0 ? totalVal / netSales : 0;
     return { totalVal, pct };
-  }, [current, netSales, categories, itemCats, stockItems, deptInScope]);
+  }, [current, netSales, categories, itemCats, stockItems, deptInScope, costScopeMode, packagingCatIds]);
 
   // Manual standard-ratio (percentage number, e.g. 59.6 means 59.60%) — persisted per company
   const benchmarkKey = companyId ? `variance-manual-benchmark-${companyId}` : null;

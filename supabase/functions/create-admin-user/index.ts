@@ -198,6 +198,15 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Set avatar_url on the created profile if provided (handle_new_user trigger doesn't set it)
+    if (userData?.user?.id && typeof avatar_url === "string" && avatar_url.length > 0) {
+      await supabaseAdmin
+        .from("profiles")
+        .update({ avatar_url })
+        .eq("user_id", userData.user.id);
+    }
+
+
     return new Response(
       JSON.stringify({
         message: "تم إنشاء المستخدم بنجاح",

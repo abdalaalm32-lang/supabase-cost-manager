@@ -233,15 +233,16 @@ export const EditPurchaseInvoicePage: React.FC = () => {
       //  so editing a purchase doesn't double-count its quantity)
       const { data: oldPurchaseItems } = await supabase
         .from("purchase_items")
-        .select("stock_item_id, quantity")
+        .select("stock_item_id, quantity, unit_cost")
         .eq("purchase_order_id", id!);
       const oldQtyMap = new Map<string, number>();
+      const oldCostValueMap = new Map<string, number>(); // sum(qty * unit_cost)
       for (const oi of oldPurchaseItems || []) {
         if (oi.stock_item_id) {
-          oldQtyMap.set(
-            oi.stock_item_id,
-            (oldQtyMap.get(oi.stock_item_id) || 0) + (Number(oi.quantity) || 0),
-          );
+          const q = Number(oi.quantity) || 0;
+          const u = Number(oi.unit_cost) || 0;
+          oldQtyMap.set(oi.stock_item_id, (oldQtyMap.get(oi.stock_item_id) || 0) + q);
+          oldCostValueMap.set(oi.stock_item_id, (oldCostValueMap.get(oi.stock_item_id) || 0) + q * u);
         }
       }
       const { data: oldOrder } = await supabase
@@ -276,77 +277,89 @@ export const EditPurchaseInvoicePage: React.FC = () => {
         if (itemsErr) throw itemsErr;
       }
 
-      // Update avg_cost and current_stock for each item when status is مكتمل
+      // Update avg_cost and current_stock — REVERSE old purchase's contribution first,
+      // then apply the new one, so editing a wrong invoice restores the correct WAC.
       if (status === "مكتمل") {
         const receivingBranchId = destinationType === "branch" ? destinationId : null;
 
-        for (const item of items) {
-          if (item.stock_item_id) {
-            const { data: currentItem } = await supabase
-              .from("stock_items")
-              .select("current_stock, avg_cost")
-              .eq("id", item.stock_item_id)
-              .single();
-            
-            if (currentItem) {
-              // Get ACTUAL global stock using DB function (accurate across all movements)
-              const { data: actualStockResult } = await supabase.rpc("get_actual_global_stock", {
-                p_stock_item_id: item.stock_item_id,
-              });
-              // Subtract current purchase qty since it's already included in the completed order
-              const rawStock = Number(actualStockResult) || 0;
-              const newQty = Number(item.quantity) || 0;
-              const oldStock = Math.max(rawStock - newQty, 0);
-              const oldAvgCost = Number(currentItem.avg_cost) || 0;
-              const newUnitCost = Number(item.unit_cost) || 0;
-              
-              // GLOBAL avg cost (kept as fallback)
-              const totalStock = oldStock + newQty;
-              const newAvgCost = oldStock === 0
+        // Union of items that were on the old invoice AND are on the new one
+        const allItemIds = new Set<string>([
+          ...Array.from(oldQtyMap.keys()),
+          ...items.map((i) => i.stock_item_id).filter(Boolean) as string[],
+        ]);
+
+        for (const stockItemId of allItemIds) {
+          const newLine = items.find((i) => i.stock_item_id === stockItemId);
+          const newQty = newLine ? Number(newLine.quantity) || 0 : 0;
+          const newUnitCost = newLine ? Number(newLine.unit_cost) || 0 : 0;
+          const oldQty = oldQtyMap.get(stockItemId) || 0;
+          const oldCostValue = oldCostValueMap.get(stockItemId) || 0;
+
+          const { data: currentItem } = await supabase
+            .from("stock_items")
+            .select("current_stock, avg_cost")
+            .eq("id", stockItemId)
+            .single();
+          if (!currentItem) continue;
+
+          const curStock = Number(currentItem.current_stock) || 0;
+          const curAvg = Number(currentItem.avg_cost) || 0;
+
+          // Reverse OLD contribution (only if the old invoice was completed)
+          const prevStock = wasCompleted ? Math.max(curStock - oldQty, 0) : curStock;
+          const prevTotalValue = wasCompleted
+            ? Math.max(curStock * curAvg - oldCostValue, 0)
+            : curStock * curAvg;
+          const prevAvg = prevStock > 0 ? prevTotalValue / prevStock : 0;
+
+          // Apply NEW contribution
+          const finalStock = prevStock + newQty;
+          const finalAvg =
+            finalStock <= 0
+              ? prevAvg || newUnitCost
+              : prevStock <= 0
                 ? newUnitCost
-                : ((oldStock * oldAvgCost) + (newQty * newUnitCost)) / totalStock;
-              
-              await supabase.from("stock_items").update({
-                current_stock: (Number(currentItem.current_stock) || 0) + newQty,
-                avg_cost: newAvgCost,
-              }).eq("id", item.stock_item_id);
+                : (prevTotalValue + newQty * newUnitCost) / finalStock;
 
-              // PER-BRANCH avg cost
-              // FIRST: reverse the OLD purchase quantity from the previous branch row
-              // so the recomputed WAC below uses the pre-edit branch state.
-              if (wasCompleted && oldBranchId) {
-                const oldQty = oldQtyMap.get(item.stock_item_id) || 0;
-                if (oldQty > 0) {
-                  const { data: existingRow } = await supabase
-                    .from("stock_item_branch_costs")
-                    .select("id, current_stock")
-                    .eq("stock_item_id", item.stock_item_id)
-                    .eq("branch_id", oldBranchId)
-                    .maybeSingle();
-                  if (existingRow) {
-                    const newStock = Math.max((Number(existingRow.current_stock) || 0) - oldQty, 0);
-                    await supabase
-                      .from("stock_item_branch_costs")
-                      .update({ current_stock: newStock })
-                      .eq("id", existingRow.id);
-                  }
-                }
-              }
+          await supabase.from("stock_items").update({
+            current_stock: finalStock,
+            avg_cost: finalAvg,
+          }).eq("id", stockItemId);
 
-              // THEN: apply the NEW purchase contribution to the (possibly different) branch
-              if (receivingBranchId) {
-                try {
-                  await applyBranchCostIn({
-                    companyId: companyId!,
-                    stockItemId: item.stock_item_id,
-                    branchId: receivingBranchId,
-                    incomingQty: newQty,
-                    incomingUnitCost: newUnitCost,
-                  });
-                } catch (e) {
-                  console.error("Failed to update per-branch cost (purchases edit)", e);
-                }
-              }
+          // ---------- PER-BRANCH ----------
+          // Reverse OLD branch contribution
+          if (wasCompleted && oldBranchId && oldQty > 0) {
+            const { data: oldBranchRow } = await supabase
+              .from("stock_item_branch_costs")
+              .select("id, current_stock, avg_cost")
+              .eq("stock_item_id", stockItemId)
+              .eq("branch_id", oldBranchId)
+              .maybeSingle();
+            if (oldBranchRow) {
+              const bStock = Number(oldBranchRow.current_stock) || 0;
+              const bAvg = Number(oldBranchRow.avg_cost) || 0;
+              const bPrevStock = Math.max(bStock - oldQty, 0);
+              const bPrevValue = Math.max(bStock * bAvg - oldCostValue, 0);
+              const bPrevAvg = bPrevStock > 0 ? bPrevValue / bPrevStock : 0;
+              await supabase
+                .from("stock_item_branch_costs")
+                .update({ current_stock: bPrevStock, avg_cost: bPrevAvg })
+                .eq("id", oldBranchRow.id);
+            }
+          }
+
+          // Apply NEW branch contribution
+          if (receivingBranchId && newQty > 0) {
+            try {
+              await applyBranchCostIn({
+                companyId: companyId!,
+                stockItemId,
+                branchId: receivingBranchId,
+                incomingQty: newQty,
+                incomingUnitCost: newUnitCost,
+              });
+            } catch (e) {
+              console.error("Failed to update per-branch cost (purchases edit)", e);
             }
           }
         }

@@ -137,6 +137,12 @@ Deno.serve(async (req) => {
       if (typeof updates.full_name === "string") {
         sanitizedUpdates.full_name = updates.full_name.trim();
       }
+      if (Object.prototype.hasOwnProperty.call(updates, "avatar_url")) {
+        const val = updates.avatar_url;
+        if (val === null || typeof val === "string") {
+          sanitizedUpdates.avatar_url = val;
+        }
+      }
       if (Object.prototype.hasOwnProperty.call(updates, "branch_id")) {
         sanitizedUpdates.branch_id = updates.branch_id ?? null;
       }

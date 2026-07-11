@@ -90,6 +90,7 @@ Deno.serve(async (req) => {
       subscription_minutes,
       subscription_start,
       subscription_end,
+      avatar_url,
     } = await req.json();
 
     if (!email || !password || !full_name || !company_id) {

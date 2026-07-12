@@ -23,7 +23,7 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { applyBranchCostIn } from "@/lib/branchCostUtils";
+import { recalculatePurchaseCostsForItems } from "@/lib/branchCostUtils";
 
 interface InvoiceItem {
   stock_item_id: string;
@@ -250,63 +250,15 @@ export const AddPurchaseInvoicePage: React.FC = () => {
         if (itemsErr) throw itemsErr;
       }
 
-      // Update avg_cost and current_stock for each item when status is مكتمل
+      // Rebuild avg_cost and current_stock for each item when status is مكتمل
+      // from the actual completed purchase invoices. This keeps new/edited/
+      // archived invoices consistent for both branches and warehouses.
       if (status === "مكتمل") {
-        // Determine the receiving location. Both branches and warehouses store
-        // per-location WAC in stock_item_branch_costs (branch_id column is used
-        // for either kind of location id), so the inventory balances page can
-        // read the correct cost.
-        const receivingBranchId = destinationId || null;
-
-        for (const item of items) {
-          if (item.stock_item_id) {
-            // Get current avg_cost from stock_items
-            const { data: currentItem } = await supabase
-              .from("stock_items")
-              .select("current_stock, avg_cost")
-              .eq("id", item.stock_item_id)
-              .single();
-            
-            if (currentItem) {
-              // Get ACTUAL global stock using DB function (accurate across all movements)
-              const { data: actualStockResult } = await supabase.rpc("get_actual_global_stock", {
-                p_stock_item_id: item.stock_item_id,
-              });
-              // Subtract current purchase qty since it's already included in the completed order
-              const rawStock = Number(actualStockResult) || 0;
-              const newQty = Number(item.quantity) || 0;
-              const oldStock = Math.max(rawStock - newQty, 0);
-              const oldAvgCost = Number(currentItem.avg_cost) || 0;
-              const newUnitCost = Number(item.unit_cost) || 0;
-              
-              // GLOBAL avg cost (kept as fallback - reports still read this)
-              const totalStock = oldStock + newQty;
-              const newAvgCost = oldStock === 0
-                ? newUnitCost
-                : ((oldStock * oldAvgCost) + (newQty * newUnitCost)) / totalStock;
-              
-              await supabase.from("stock_items").update({
-                current_stock: (Number(currentItem.current_stock) || 0) + newQty,
-                avg_cost: newAvgCost,
-              }).eq("id", item.stock_item_id);
-
-              // PER-BRANCH avg cost (new logic - only when receiving into a branch)
-              if (receivingBranchId) {
-                try {
-                  await applyBranchCostIn({
-                    companyId: companyId!,
-                    stockItemId: item.stock_item_id,
-                    branchId: receivingBranchId,
-                    incomingQty: newQty,
-                    incomingUnitCost: newUnitCost,
-                  });
-                } catch (e) {
-                  console.error("Failed to update per-branch cost (purchases)", e);
-                }
-              }
-            }
-          }
-        }
+        await recalculatePurchaseCostsForItems({
+          companyId: companyId!,
+          stockItemIds: items.map((item) => item.stock_item_id).filter(Boolean),
+          locationIds: [destinationId || null],
+        });
       }
     },
     onSuccess: () => {

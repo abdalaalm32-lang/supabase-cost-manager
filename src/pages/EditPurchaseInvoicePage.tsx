@@ -282,7 +282,7 @@ export const EditPurchaseInvoicePage: React.FC = () => {
       // Update avg_cost and current_stock — REVERSE old purchase's contribution first,
       // then apply the new one, so editing a wrong invoice restores the correct WAC.
       if (status === "مكتمل") {
-        const receivingBranchId = destinationType === "branch" ? destinationId : null;
+        const receivingBranchId = destinationId || null;
 
         // Union of items that were on the old invoice AND are on the new one
         const allItemIds = new Set<string>([

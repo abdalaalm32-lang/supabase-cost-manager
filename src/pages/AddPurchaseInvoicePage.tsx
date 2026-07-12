@@ -263,6 +263,10 @@ export const AddPurchaseInvoicePage: React.FC = () => {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["purchase-orders"] });
+      qc.invalidateQueries({ queryKey: ["stock-items"] });
+      qc.invalidateQueries({ queryKey: ["stock-items-all"] });
+      qc.invalidateQueries({ queryKey: ["branch-costs"] });
+      qc.invalidateQueries({ queryKey: ["loc-stock-purchases"] });
       toast.success("تم حفظ الفاتورة بنجاح");
       navigate("/purchases/invoices");
     },

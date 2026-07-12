@@ -247,10 +247,12 @@ export const EditPurchaseInvoicePage: React.FC = () => {
       }
       const { data: oldOrder } = await supabase
         .from("purchase_orders")
-        .select("branch_id, status")
+        .select("branch_id, warehouse_id, status")
         .eq("id", id!)
         .maybeSingle();
-      const oldBranchId = (oldOrder as any)?.branch_id || null;
+      // Per-location WAC uses stock_item_branch_costs for both branches and
+      // warehouses (the branch_id column stores whichever location id applies).
+      const oldBranchId = (oldOrder as any)?.branch_id || (oldOrder as any)?.warehouse_id || null;
       const wasCompleted = (oldOrder as any)?.status === "مكتمل";
 
       const { error: orderErr } = await supabase.from("purchase_orders").update({
@@ -280,7 +282,7 @@ export const EditPurchaseInvoicePage: React.FC = () => {
       // Update avg_cost and current_stock — REVERSE old purchase's contribution first,
       // then apply the new one, so editing a wrong invoice restores the correct WAC.
       if (status === "مكتمل") {
-        const receivingBranchId = destinationType === "branch" ? destinationId : null;
+        const receivingBranchId = destinationId || null;
 
         // Union of items that were on the old invoice AND are on the new one
         const allItemIds = new Set<string>([

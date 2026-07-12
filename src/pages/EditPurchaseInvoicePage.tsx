@@ -233,13 +233,13 @@ export const EditPurchaseInvoicePage: React.FC = () => {
       //  so editing a purchase doesn't double-count its quantity)
       const { data: oldPurchaseItems } = await supabase
         .from("purchase_items")
-        .select("stock_item_id, quantity, unit_cost")
+        .select("stock_item_id, quantity")
         .eq("purchase_order_id", id!);
       const oldQtyMap = new Map<string, number>();
       for (const oi of oldPurchaseItems || []) {
         if (oi.stock_item_id) {
-          const q = Number(oi.quantity) || 0;
-          oldQtyMap.set(oi.stock_item_id, (oldQtyMap.get(oi.stock_item_id) || 0) + q);
+          const q = Number(oi.quantity ?? 0);
+          oldQtyMap.set(oi.stock_item_id, (oldQtyMap.get(oi.stock_item_id) ?? 0) + q);
         }
       }
       const { data: oldOrder } = await supabase

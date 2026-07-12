@@ -249,7 +249,7 @@ export const EditPurchaseInvoicePage: React.FC = () => {
         .maybeSingle();
       // Per-location WAC uses stock_item_branch_costs for both branches and
       // warehouses (the branch_id column stores whichever location id applies).
-      const oldBranchId = (oldOrder as any)?.branch_id || (oldOrder as any)?.warehouse_id || null;
+      const oldBranchId = (oldOrder as any)?.branch_id ?? (oldOrder as any)?.warehouse_id ?? null;
       const wasCompleted = (oldOrder as any)?.status === "مكتمل";
 
       const { error: orderErr } = await supabase.from("purchase_orders").update({

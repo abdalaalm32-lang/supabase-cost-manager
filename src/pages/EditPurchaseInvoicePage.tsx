@@ -236,13 +236,10 @@ export const EditPurchaseInvoicePage: React.FC = () => {
         .select("stock_item_id, quantity, unit_cost")
         .eq("purchase_order_id", id!);
       const oldQtyMap = new Map<string, number>();
-      const oldCostValueMap = new Map<string, number>(); // sum(qty * unit_cost)
       for (const oi of oldPurchaseItems || []) {
         if (oi.stock_item_id) {
           const q = Number(oi.quantity) || 0;
-          const u = Number(oi.unit_cost) || 0;
           oldQtyMap.set(oi.stock_item_id, (oldQtyMap.get(oi.stock_item_id) || 0) + q);
-          oldCostValueMap.set(oi.stock_item_id, (oldCostValueMap.get(oi.stock_item_id) || 0) + q * u);
         }
       }
       const { data: oldOrder } = await supabase

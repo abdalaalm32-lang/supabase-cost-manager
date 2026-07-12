@@ -203,8 +203,8 @@ function calculateWeightedPurchaseAverage(rows: PurchaseItemCostRow[]): {
   let totalValue = 0;
 
   for (const row of rows) {
-    const qty = Math.max(Number(row.quantity) || 0, 0);
-    const unitCost = Math.max(Number(row.unit_cost) || 0, 0);
+    const qty = Math.max(Number(row.quantity ?? 0), 0);
+    const unitCost = Math.max(Number(row.unit_cost ?? 0), 0);
     if (qty <= 0) continue;
     totalQty += qty;
     totalValue += qty * unitCost;
@@ -261,7 +261,7 @@ export async function recalculateGlobalPurchaseCost(params: {
   const { data: actualStockResult } = await supabase.rpc("get_actual_global_stock", {
     p_stock_item_id: stockItemId,
   });
-  const currentStock = Math.max(Number(actualStockResult) || 0, 0);
+  const currentStock = Math.max(Number(actualStockResult ?? 0), 0);
 
   await supabase
     .from("stock_items")

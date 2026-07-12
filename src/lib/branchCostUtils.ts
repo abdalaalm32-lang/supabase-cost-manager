@@ -157,3 +157,133 @@ export async function setBranchCost(params: {
   const { companyId, stockItemId, branchId, newAvgCost } = params;
   await upsertBranchCost({ companyId, stockItemId, branchId, newAvgCost });
 }
+
+type PurchaseItemCostRow = {
+  quantity: number | string | null;
+  unit_cost: number | string | null;
+  purchase_orders?: {
+    branch_id: string | null;
+    warehouse_id: string | null;
+  } | null;
+};
+
+async function fetchCompletedPurchaseCostRows(params: {
+  companyId: string;
+  stockItemId: string;
+}): Promise<PurchaseItemCostRow[]> {
+  const { companyId, stockItemId } = params;
+  const pageSize = 1000;
+  let from = 0;
+  const rows: PurchaseItemCostRow[] = [];
+
+  while (from < 100000) {
+    const { data, error } = await supabase
+      .from("purchase_items")
+      .select("quantity, unit_cost, purchase_orders!inner(company_id, status, branch_id, warehouse_id)")
+      .eq("stock_item_id", stockItemId)
+      .eq("purchase_orders.company_id", companyId)
+      .eq("purchase_orders.status", "مكتمل")
+      .range(from, from + pageSize - 1);
+
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    rows.push(...(data as any[]));
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+
+  return rows;
+}
+
+function calculateWeightedPurchaseAverage(rows: PurchaseItemCostRow[]): {
+  totalQty: number;
+  avgCost: number;
+} {
+  let totalQty = 0;
+  let totalValue = 0;
+
+  for (const row of rows) {
+    const qty = Math.max(Number(row.quantity ?? 0), 0);
+    const unitCost = Math.max(Number(row.unit_cost ?? 0), 0);
+    if (qty <= 0) continue;
+    totalQty += qty;
+    totalValue += qty * unitCost;
+  }
+
+  return {
+    totalQty,
+    avgCost: totalQty > 0 ? totalValue / totalQty : 0,
+  };
+}
+
+/**
+ * Rebuild a location WAC from the currently completed purchase invoices.
+ * This is used after editing, deleting, or archiving purchases so stale or
+ * previously polluted averages are replaced by the true weighted average.
+ */
+export async function recalculateLocationPurchaseCost(params: {
+  companyId: string;
+  stockItemId: string;
+  locationId: string;
+}): Promise<number> {
+  const { companyId, stockItemId, locationId } = params;
+  const rows = await fetchCompletedPurchaseCostRows({ companyId, stockItemId });
+  const locationRows = rows.filter((row) => {
+    const po = row.purchase_orders;
+    return po?.branch_id === locationId || po?.warehouse_id === locationId;
+  });
+  const { totalQty, avgCost } = calculateWeightedPurchaseAverage(locationRows);
+
+  await upsertBranchCost({
+    companyId,
+    stockItemId,
+    branchId: locationId,
+    newAvgCost: avgCost,
+    newStock: totalQty,
+  });
+
+  return avgCost;
+}
+
+/**
+ * Rebuild the global fallback average from all currently completed purchases
+ * for this stock item, and sync global current_stock from the inventory
+ * movement function when available.
+ */
+export async function recalculateGlobalPurchaseCost(params: {
+  companyId: string;
+  stockItemId: string;
+}): Promise<number> {
+  const { companyId, stockItemId } = params;
+  const rows = await fetchCompletedPurchaseCostRows({ companyId, stockItemId });
+  const { avgCost } = calculateWeightedPurchaseAverage(rows);
+
+  const { data: actualStockResult } = await supabase.rpc("get_actual_global_stock", {
+    p_stock_item_id: stockItemId,
+  });
+  const currentStock = Math.max(Number(actualStockResult ?? 0), 0);
+
+  await supabase
+    .from("stock_items")
+    .update({ avg_cost: avgCost, current_stock: currentStock })
+    .eq("id", stockItemId);
+
+  return avgCost;
+}
+
+export async function recalculatePurchaseCostsForItems(params: {
+  companyId: string;
+  stockItemIds: string[];
+  locationIds?: Array<string | null | undefined>;
+}): Promise<void> {
+  const { companyId, stockItemIds, locationIds = [] } = params;
+  const uniqueItemIds = Array.from(new Set(stockItemIds.filter(Boolean)));
+  const uniqueLocationIds = Array.from(new Set(locationIds.filter(Boolean) as string[]));
+
+  for (const stockItemId of uniqueItemIds) {
+    await recalculateGlobalPurchaseCost({ companyId, stockItemId });
+    for (const locationId of uniqueLocationIds) {
+      await recalculateLocationPurchaseCost({ companyId, stockItemId, locationId });
+    }
+  }
+}

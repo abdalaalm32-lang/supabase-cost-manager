@@ -66,7 +66,7 @@ export const PurchaseInvoicesTab: React.FC = () => {
   const handleDelete = async () => {
     if (!deleteOrder) return;
     try {
-      const locationId = deleteOrder.branch_id || deleteOrder.warehouse_id || null;
+      const locationId = deleteOrder.branch_id ?? deleteOrder.warehouse_id ?? null;
       const { data: items } = await supabase
         .from("purchase_items")
         .select("stock_item_id")
@@ -157,7 +157,7 @@ export const PurchaseInvoicesTab: React.FC = () => {
       const { error } = await supabase.from("purchase_orders").update({ status: newStatus }).eq("id", id);
       if (error) throw error;
 
-      await refreshPurchaseCostState(id, [(order as any)?.branch_id || (order as any)?.warehouse_id || null]);
+      await refreshPurchaseCostState(id, [(order as any)?.branch_id ?? (order as any)?.warehouse_id ?? null]);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["purchase-orders"] });

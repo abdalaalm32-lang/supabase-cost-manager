@@ -25,6 +25,7 @@ import { useNavigate } from "react-router-dom";
 import { DateRange } from "react-day-picker";
 import { format, startOfDay, endOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
+import { recalculatePurchaseCostsForItems } from "@/lib/branchCostUtils";
 
 
 type FilterStatus = "الكل" | "مكتمل" | "مؤرشف" | "معدل";
@@ -42,30 +43,53 @@ export const PurchaseInvoicesTab: React.FC = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteOrder, setDeleteOrder] = useState<any>(null);
 
+  const refreshPurchaseCostState = async (orderId: string, locationIds: Array<string | null | undefined>) => {
+    if (!companyId) return;
+    const { data: items, error } = await supabase
+      .from("purchase_items")
+      .select("stock_item_id")
+      .eq("purchase_order_id", orderId);
+    if (error) throw error;
+
+    const stockItemIds = (items || [])
+      .map((item: any) => item.stock_item_id)
+      .filter(Boolean) as string[];
+
+    if (stockItemIds.length === 0) return;
+    await recalculatePurchaseCostsForItems({
+      companyId,
+      stockItemIds,
+      locationIds,
+    });
+  };
 
   const handleDelete = async () => {
     if (!deleteOrder) return;
     try {
-      if (deleteOrder.status === "مكتمل") {
-        const { data: items } = await supabase.from("purchase_items").select("*").eq("purchase_order_id", deleteOrder.id);
-        if (items) {
-          for (const item of items) {
-            if (item.stock_item_id) {
-              const { data: si } = await supabase.from("stock_items").select("current_stock, avg_cost").eq("id", item.stock_item_id).single();
-              if (si) {
-                const newStock = Math.max(0, Number(si.current_stock) - Number(item.quantity));
-                await supabase.from("stock_items").update({
-                  current_stock: newStock,
-                }).eq("id", item.stock_item_id);
-              }
-            }
-          }
-        }
-      }
+      const locationId = deleteOrder.branch_id || deleteOrder.warehouse_id || null;
+      const { data: items } = await supabase
+        .from("purchase_items")
+        .select("stock_item_id")
+        .eq("purchase_order_id", deleteOrder.id);
+      const stockItemIds = (items || [])
+        .map((item: any) => item.stock_item_id)
+        .filter(Boolean) as string[];
+
       await supabase.from("purchase_items").delete().eq("purchase_order_id", deleteOrder.id);
       await supabase.from("purchase_orders").delete().eq("id", deleteOrder.id);
+
+      if (deleteOrder.status === "مكتمل" && stockItemIds.length > 0 && companyId) {
+        await recalculatePurchaseCostsForItems({
+          companyId,
+          stockItemIds,
+          locationIds: [locationId],
+        });
+      }
+
       qc.invalidateQueries({ queryKey: ["purchase-orders"] });
       qc.invalidateQueries({ queryKey: ["stock-items"] });
+      qc.invalidateQueries({ queryKey: ["branch-costs"] });
+      qc.invalidateQueries({ queryKey: ["loc-stock-purchases"] });
       toast.success("تم حذف الفاتورة بنجاح");
     } catch (err: any) {
       toast.error(err.message);
@@ -122,12 +146,24 @@ export const PurchaseInvoicesTab: React.FC = () => {
 
   const toggleArchiveMutation = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { data: order, error: orderError } = await supabase
+        .from("purchase_orders")
+        .select("branch_id, warehouse_id")
+        .eq("id", id)
+        .maybeSingle();
+      if (orderError) throw orderError;
+
       const newStatus = status === "مؤرشف" ? "مكتمل" : "مؤرشف";
       const { error } = await supabase.from("purchase_orders").update({ status: newStatus }).eq("id", id);
       if (error) throw error;
+
+      await refreshPurchaseCostState(id, [(order as any)?.branch_id || (order as any)?.warehouse_id || null]);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["purchase-orders"] });
+      qc.invalidateQueries({ queryKey: ["stock-items"] });
+      qc.invalidateQueries({ queryKey: ["branch-costs"] });
+      qc.invalidateQueries({ queryKey: ["loc-stock-purchases"] });
       toast.success("تم تحديث الحالة");
     },
     onError: (e: any) => toast.error(e.message),

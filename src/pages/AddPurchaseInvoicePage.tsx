@@ -252,9 +252,11 @@ export const AddPurchaseInvoicePage: React.FC = () => {
 
       // Update avg_cost and current_stock for each item when status is مكتمل
       if (status === "مكتمل") {
-        // Determine the receiving branch (only branches get per-branch costs;
-        // warehouse purchases keep global behavior only)
-        const receivingBranchId = destinationType === "branch" ? destinationId : null;
+        // Determine the receiving location. Both branches and warehouses store
+        // per-location WAC in stock_item_branch_costs (branch_id column is used
+        // for either kind of location id), so the inventory balances page can
+        // read the correct cost.
+        const receivingBranchId = destinationId || null;
 
         for (const item of items) {
           if (item.stock_item_id) {

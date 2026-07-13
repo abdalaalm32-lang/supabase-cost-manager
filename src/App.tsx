@@ -438,7 +438,9 @@ const AppRoutes = () => {
   return (
     <Suspense fallback={<AppLoadingScreen message="جاري فتح الصفحة..." />}>
       <Routes>
-        <Route path="/login" element={auth.session && !allowLoginMessage ? <Navigate to="/" replace /> : <LoginPageWrapper />} />
+        <Route path="/" element={<HomePage />} />
+        <Route path="/login" element={auth.session && !allowLoginMessage ? <Navigate to="/dashboard" replace /> : <LoginPageWrapper />} />
+
         <Route
           path="/*"
           element={

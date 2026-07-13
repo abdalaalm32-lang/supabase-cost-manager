@@ -10,6 +10,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import logo3m from "@/assets/logo-3m.png";
 import loginBg from "@/assets/login-bg.jpg";
 import { LoginPage } from "@/pages/LoginPage";
+import { HomePage } from "@/pages/HomePage";
 
 const DashboardPage = lazy(() => import("@/pages/DashboardPage").then((m) => ({ default: m.DashboardPage })));
 const RecipesPage = lazy(() => import("@/pages/RecipesPage").then((m) => ({ default: m.RecipesPage })));

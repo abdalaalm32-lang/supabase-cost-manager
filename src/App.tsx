@@ -10,6 +10,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import logo3m from "@/assets/logo-3m.png";
 import loginBg from "@/assets/login-bg.jpg";
 import { LoginPage } from "@/pages/LoginPage";
+import { HomePage } from "@/pages/HomePage";
 
 const DashboardPage = lazy(() => import("@/pages/DashboardPage").then((m) => ({ default: m.DashboardPage })));
 const RecipesPage = lazy(() => import("@/pages/RecipesPage").then((m) => ({ default: m.RecipesPage })));
@@ -402,7 +403,7 @@ const PermissionGuard: React.FC<{ permKey: string; children: React.ReactNode }> 
   if (!auth.isReady) return <AppLoadingScreen message="جاري التحقق من الصلاحيات..." />;
   if (!auth.session) return <Navigate to="/login" replace />;
   if (!auth.profile && !auth.isAdmin && !auth.isOwner) return <MissingProfileScreen onLogout={logout} />;
-  if (!hasPermission(permKey)) return <Navigate to="/" replace />;
+  if (!hasPermission(permKey)) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 };
 
@@ -410,7 +411,7 @@ const AdminGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { auth } = useAuth();
   if (!auth.isReady) return <AppLoadingScreen message="جاري التحقق من الحساب..." />;
   if (!auth.session) return <Navigate to="/login" replace />;
-  if (!auth.isAdmin) return <Navigate to="/" replace />;
+  if (!auth.isAdmin) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 };
 
@@ -419,7 +420,7 @@ const OwnerOrAdminGuard: React.FC<{ children: React.ReactNode }> = ({ children }
   if (!auth.isReady) return <AppLoadingScreen message="جاري التحقق من الحساب..." />;
   if (!auth.session) return <Navigate to="/login" replace />;
   if (!auth.profile && !auth.isAdmin && !auth.isOwner) return <MissingProfileScreen onLogout={logout} />;
-  if (!auth.isAdmin && !auth.isOwner && !hasPermission("settings")) return <Navigate to="/" replace />;
+  if (!auth.isAdmin && !auth.isOwner && !hasPermission("settings")) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 };
 
@@ -437,7 +438,9 @@ const AppRoutes = () => {
   return (
     <Suspense fallback={<AppLoadingScreen message="جاري فتح الصفحة..." />}>
       <Routes>
-        <Route path="/login" element={auth.session && !allowLoginMessage ? <Navigate to="/" replace /> : <LoginPageWrapper />} />
+        <Route path="/" element={<HomePage />} />
+        <Route path="/login" element={auth.session && !allowLoginMessage ? <Navigate to="/dashboard" replace /> : <LoginPageWrapper />} />
+
         <Route
           path="/*"
           element={
@@ -448,7 +451,7 @@ const AppRoutes = () => {
                 userName={auth.profile?.full_name || ""}
               >
                 <Routes>
-                  <Route path="/" element={<DashboardPage />} />
+                  <Route path="/dashboard" element={<DashboardPage />} />
                   <Route path="/pos" element={<Navigate to="/pos/screen" replace />} />
                   <Route path="/pos/screen" element={<PermissionGuard permKey="pos"><PosScreenPage /></PermissionGuard>} />
                   <Route path="/sales" element={<Navigate to="/pos/invoices" replace />} />
@@ -525,7 +528,7 @@ const AppRoutes = () => {
                   <Route path="/company-settings/users" element={<OwnerOrAdminGuard><CompanySettingsPage /></OwnerOrAdminGuard>} />
                   <Route path="/company-settings/warehouses" element={<OwnerOrAdminGuard><SettingsWarehousesPage /></OwnerOrAdminGuard>} />
                   <Route path="/company-settings/branches" element={<OwnerOrAdminGuard><SettingsBranchesPage /></OwnerOrAdminGuard>} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
+                  <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Routes>
               </SystemLayout>
             </ProtectedRoute>

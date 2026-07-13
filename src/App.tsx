@@ -451,7 +451,7 @@ const AppRoutes = () => {
                 userName={auth.profile?.full_name || ""}
               >
                 <Routes>
-                  <Route path="/" element={<DashboardPage />} />
+                  <Route path="/dashboard" element={<DashboardPage />} />
                   <Route path="/pos" element={<Navigate to="/pos/screen" replace />} />
                   <Route path="/pos/screen" element={<PermissionGuard permKey="pos"><PosScreenPage /></PermissionGuard>} />
                   <Route path="/sales" element={<Navigate to="/pos/invoices" replace />} />

@@ -403,7 +403,7 @@ const PermissionGuard: React.FC<{ permKey: string; children: React.ReactNode }> 
   if (!auth.isReady) return <AppLoadingScreen message="جاري التحقق من الصلاحيات..." />;
   if (!auth.session) return <Navigate to="/login" replace />;
   if (!auth.profile && !auth.isAdmin && !auth.isOwner) return <MissingProfileScreen onLogout={logout} />;
-  if (!hasPermission(permKey)) return <Navigate to="/" replace />;
+  if (!hasPermission(permKey)) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 };
 
@@ -411,7 +411,7 @@ const AdminGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { auth } = useAuth();
   if (!auth.isReady) return <AppLoadingScreen message="جاري التحقق من الحساب..." />;
   if (!auth.session) return <Navigate to="/login" replace />;
-  if (!auth.isAdmin) return <Navigate to="/" replace />;
+  if (!auth.isAdmin) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 };
 
@@ -420,7 +420,7 @@ const OwnerOrAdminGuard: React.FC<{ children: React.ReactNode }> = ({ children }
   if (!auth.isReady) return <AppLoadingScreen message="جاري التحقق من الحساب..." />;
   if (!auth.session) return <Navigate to="/login" replace />;
   if (!auth.profile && !auth.isAdmin && !auth.isOwner) return <MissingProfileScreen onLogout={logout} />;
-  if (!auth.isAdmin && !auth.isOwner && !hasPermission("settings")) return <Navigate to="/" replace />;
+  if (!auth.isAdmin && !auth.isOwner && !hasPermission("settings")) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 };
 

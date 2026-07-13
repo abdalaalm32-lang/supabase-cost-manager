@@ -32,7 +32,7 @@ interface NavItem {
 }
 
 const mainNavItems: NavItem[] = [
-  { id: "dashboard", path: "/", label: "لوحة التحكم", icon: LayoutDashboard },
+  { id: "dashboard", path: "/dashboard", label: "لوحة التحكم", icon: LayoutDashboard },
   { id: "pos", path: "/pos/screen", label: "نقطة البيع", icon: Monitor },
   {
     id: "sales_management", path: "/sales", label: "إدارة المبيعات", icon: Store,

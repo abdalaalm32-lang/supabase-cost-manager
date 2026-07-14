@@ -15,13 +15,14 @@ import shotPnl from "@/assets/home-shots/pnl.png";
 import shotMenu from "@/assets/home-shots/menu-engineering.png";
 import shotPos from "@/assets/home-shots/pos-analytics.png";
 import shotMaterials from "@/assets/home-shots/inventory-materials.png";
+import introVideoAsset from "@/assets/intro-video.mp4.asset.json";
 
 const BRAND_BLUE = "hsl(220, 70%, 20%)";
 const BRAND_GREEN = "hsl(160, 65%, 40%)";
 const WHATSAPP = "https://wa.me/201061208033";
 const FACEBOOK = "https://www.facebook.com/share/1Ca76ypJkm/";
 const INSTAGRAM = "https://www.instagram.com/3m.cost.management.system?igsh=NzcyanppNWZicnM3";
-const INTRO_VIDEO = "/assets/intro-video.mp4";
+const INTRO_VIDEO = introVideoAsset.url;
 
 const SCREENSHOTS: { src: string; label: string }[] = [
   { src: shotDashboard, label: "لوحة التحكم" },

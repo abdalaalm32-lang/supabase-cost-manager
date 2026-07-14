@@ -1,22 +1,45 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  Package, Factory, TrendingUp, BarChart3, Store, Zap,
+  Factory, BarChart3, Store, Zap,
   Check, X, ChevronLeft, PlayCircle, Calendar, ArrowLeft,
-  Boxes, ClipboardList, LineChart, Utensils, Menu as MenuIcon,
+  Boxes, LineChart, Utensils,
+  Facebook, Instagram, MessageCircle,
 } from "lucide-react";
 import logo3m from "@/assets/logo-3m.png";
-import heroMockup from "@/assets/home-hero-mockup.jpg";
+import shotDashboard from "@/assets/home-shots/dashboard.png";
+import shotCost from "@/assets/home-shots/cost-analysis.png";
+import shotVariance from "@/assets/home-shots/variance-analysis.png";
+import shotBalances from "@/assets/home-shots/inventory-balances.png";
+import shotPnl from "@/assets/home-shots/pnl.png";
+import shotMenu from "@/assets/home-shots/menu-engineering.png";
+import shotPos from "@/assets/home-shots/pos-analytics.png";
+import shotMaterials from "@/assets/home-shots/inventory-materials.png";
 
 const BRAND_BLUE = "hsl(220, 70%, 20%)";
 const BRAND_GREEN = "hsl(160, 65%, 40%)";
+const WHATSAPP = "https://wa.me/201061208033";
+const FACEBOOK = "https://www.facebook.com/share/1Ca76ypJkm/";
+const INSTAGRAM = "https://www.instagram.com/3m.cost.management.system?igsh=NzcyanppNWZicnM3";
+const INTRO_VIDEO = "/assets/intro-video.mp4";
+
+const SCREENSHOTS: { src: string; label: string }[] = [
+  { src: shotDashboard, label: "لوحة التحكم" },
+  { src: shotCost, label: "تحليل التكاليف" },
+  { src: shotVariance, label: "تحليل الانحرافات" },
+  { src: shotBalances, label: "أرصدة المخزون" },
+  { src: shotPnl, label: "قائمة الأرباح والخسائر" },
+  { src: shotMenu, label: "هندسة القائمة" },
+  { src: shotPos, label: "تحليلات المبيعات" },
+  { src: shotMaterials, label: "خامات المخزون" },
+];
 
 const NavBar: React.FC = () => (
   <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200">
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
       <Link to="/" className="flex items-center gap-3">
-        <img src={logo3m} alt="3M GSC" className="h-10 w-10 object-contain" />
-        <span className="font-black text-lg text-slate-900">3M GSC</span>
+        <img src={logo3m} alt="3M CMS" className="h-10 w-10 object-contain" />
+        <span className="font-black text-lg text-slate-900">3M CMS</span>
       </Link>
       <nav className="hidden md:flex items-center gap-8 text-sm font-bold text-slate-700">
         <a href="#features" className="hover:text-emerald-600 transition-colors">المميزات</a>
@@ -35,7 +58,7 @@ const NavBar: React.FC = () => (
   </header>
 );
 
-const Hero: React.FC = () => (
+const Hero: React.FC<{ onWatch: () => void }> = ({ onWatch }) => (
   <section className="relative overflow-hidden bg-gradient-to-b from-slate-50 to-white">
     <div className="absolute inset-0 pointer-events-none opacity-40">
       <div className="absolute -top-20 -right-20 w-96 h-96 rounded-full bg-emerald-200 blur-3xl" />
@@ -50,24 +73,24 @@ const Hero: React.FC = () => (
           تحكم كامل في <span style={{ color: BRAND_GREEN }}>تكاليف مطعمك</span> وزيادة ربحيتك من مكان واحد
         </h1>
         <p className="text-lg text-slate-600 leading-relaxed mb-8 max-w-xl">
-          3M GSC نظام متخصص لإدارة التكاليف والمخزون والإنتاج وتحليل الربحية للمطاعم والكافيهات متعددة الفروع،
+          3M CMS نظام متخصص لإدارة التكاليف والمخزون والإنتاج وتحليل الربحية للمطاعم والكافيهات متعددة الفروع،
           لمساعدتك على اتخاذ قرارات أسرع وأكثر دقة.
         </p>
         <div className="flex flex-wrap gap-3">
           <Link to="/login" className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-white shadow-xl shadow-emerald-500/25 hover:opacity-90 transition" style={{ background: BRAND_GREEN }}>
             <ArrowLeft size={18} /> ابدأ التجربة المجانية
           </Link>
-          <a href="#pricing" className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-white shadow-xl hover:opacity-90 transition" style={{ background: BRAND_BLUE }}>
+          <a href={WHATSAPP} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-white shadow-xl hover:opacity-90 transition" style={{ background: BRAND_BLUE }}>
             <Calendar size={18} /> حجز عرض توضيحي
           </a>
-          <a href="#screenshots" className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-slate-800 bg-white border-2 border-slate-200 hover:border-slate-300 transition">
+          <button onClick={onWatch} className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-slate-800 bg-white border-2 border-slate-200 hover:border-slate-300 transition">
             <PlayCircle size={18} /> شاهد الفيديو التعريفي
-          </a>
+          </button>
         </div>
       </div>
       <div className="relative">
         <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/20 to-blue-500/20 rounded-3xl blur-2xl" />
-        <img src={heroMockup} alt="لوحة تحكم النظام" width={1400} height={1000} className="relative w-full h-auto rounded-3xl shadow-2xl border border-slate-200" />
+        <img src={shotDashboard} alt="لوحة تحكم النظام" className="relative w-full h-auto rounded-3xl shadow-2xl border border-slate-200" />
       </div>
     </div>
   </section>
@@ -131,7 +154,7 @@ const Problems: React.FC = () => {
             </ul>
           </div>
           <div className="rounded-3xl p-8 border-2 text-white" style={{ background: `linear-gradient(135deg, ${BRAND_BLUE}, hsl(220,60%,30%))`, borderColor: "transparent" }}>
-            <h3 className="text-xl font-black mb-6 flex items-center gap-2" style={{ color: "hsl(160,80%,70%)" }}><Check size={22} /> مع 3M GSC</h3>
+            <h3 className="text-xl font-black mb-6 flex items-center gap-2" style={{ color: "hsl(160,80%,70%)" }}><Check size={22} /> مع 3M CMS</h3>
             <ul className="space-y-4">
               {solutions.map((s) => (
                 <li key={s} className="flex items-start gap-3 text-slate-100">
@@ -179,29 +202,26 @@ const Features: React.FC = () => {
   );
 };
 
-const Screenshots: React.FC = () => {
-  const items = ["Dashboard", "POS", "Cost Analysis", "P&L", "Inventory", "Menu Engineering"];
-  return (
-    <section id="screenshots" className="py-20 bg-slate-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-14">
-          <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-4">صور من داخل النظام</h2>
-          <p className="text-slate-600">شاهد أقوى شاشات النظام أثناء العمل</p>
-        </div>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {items.map((label) => (
-            <div key={label} className="group relative aspect-[4/3] rounded-2xl overflow-hidden border border-slate-200 shadow-md hover:shadow-2xl transition">
-              <img src={heroMockup} alt={label} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-              <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-slate-900/80 to-transparent">
-                <div className="text-white font-black">{label}</div>
-              </div>
-            </div>
-          ))}
-        </div>
+const Screenshots: React.FC = () => (
+  <section id="screenshots" className="py-20 bg-slate-50">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="text-center mb-14">
+        <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-4">صور من داخل النظام</h2>
+        <p className="text-slate-600">شاشات حقيقية من داخل 3M CMS أثناء العمل</p>
       </div>
-    </section>
-  );
-};
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {SCREENSHOTS.map((s) => (
+          <div key={s.label} className="group relative aspect-[16/10] rounded-2xl overflow-hidden border border-slate-200 shadow-md hover:shadow-2xl transition bg-slate-900">
+            <img src={s.src} alt={s.label} loading="lazy" className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-500" />
+            <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-slate-900/90 to-transparent">
+              <div className="text-white font-black">{s.label}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+);
 
 const HowItWorks: React.FC = () => {
   const steps = [
@@ -233,18 +253,9 @@ const HowItWorks: React.FC = () => {
 
 const Pricing: React.FC = () => {
   const plans = [
-    {
-      name: "Starter", price: "2,000", period: "جنيه / شهر", featured: false,
-      features: ["فرع مجاني", "مخزن مجاني", "2 مستخدم", "جميع تقارير التكاليف", "دعم فني"],
-    },
-    {
-      name: "Professional", price: "3,500", period: "جنيه / شهر", featured: true,
-      features: ["حتى 5 فروع", "حتى 10 مستخدمين", "تقارير متقدمة", "Dashboard احترافية", "دعم فني بأولوية"],
-    },
-    {
-      name: "Enterprise", price: "تواصل معنا", period: "خطة مخصصة", featured: false,
-      features: ["فروع غير محدودة", "مستخدمون غير محدودين", "تخصيصات خاصة", "API Integration", "مدير حساب مخصص"],
-    },
+    { name: "Starter", price: "2,000", period: "جنيه / شهر", featured: false, features: ["فرع مجاني", "مخزن مجاني", "2 مستخدم", "جميع تقارير التكاليف", "دعم فني"] },
+    { name: "Professional", price: "3,500", period: "جنيه / شهر", featured: true, features: ["حتى 5 فروع", "حتى 10 مستخدمين", "تقارير متقدمة", "Dashboard احترافية", "دعم فني بأولوية"] },
+    { name: "Enterprise", price: "تواصل معنا", period: "خطة مخصصة", featured: false, features: ["فروع غير محدودة", "مستخدمون غير محدودين", "تخصيصات خاصة", "API Integration", "مدير حساب مخصص"] },
   ];
   return (
     <section id="pricing" className="py-20 bg-slate-50">
@@ -256,9 +267,7 @@ const Pricing: React.FC = () => {
         <div className="grid md:grid-cols-3 gap-6">
           {plans.map((p) => (
             <div key={p.name} className={`relative rounded-3xl p-8 border-2 transition ${p.featured ? "shadow-2xl scale-[1.02] text-white" : "bg-white border-slate-200 hover:border-emerald-300"}`} style={p.featured ? { background: `linear-gradient(135deg, ${BRAND_BLUE}, hsl(220,60%,28%))`, borderColor: BRAND_GREEN } : {}}>
-              {p.featured && (
-                <span className="absolute -top-3 right-6 px-3 py-1 rounded-full text-xs font-black text-white shadow" style={{ background: BRAND_GREEN }}>الأكثر شيوعًا</span>
-              )}
+              {p.featured && (<span className="absolute -top-3 right-6 px-3 py-1 rounded-full text-xs font-black text-white shadow" style={{ background: BRAND_GREEN }}>الأكثر شيوعًا</span>)}
               <h3 className={`text-2xl font-black mb-2 ${p.featured ? "text-white" : "text-slate-900"}`}>{p.name}</h3>
               <div className="mb-6">
                 <span className={`text-4xl font-black ${p.featured ? "text-white" : "text-slate-900"}`}>{p.price}</span>
@@ -304,7 +313,7 @@ const Comparison: React.FC = () => {
               <tr className="text-white" style={{ background: BRAND_BLUE }}>
                 <th className="p-4 font-black">العنصر</th>
                 <th className="p-4 font-black">الإدارة التقليدية</th>
-                <th className="p-4 font-black" style={{ background: BRAND_GREEN }}>3M GSC</th>
+                <th className="p-4 font-black" style={{ background: BRAND_GREEN }}>3M CMS</th>
               </tr>
             </thead>
             <tbody>
@@ -350,12 +359,8 @@ const Testimonials: React.FC = () => {
 const CTA: React.FC = () => (
   <section className="py-24" style={{ background: `linear-gradient(135deg, ${BRAND_BLUE}, hsl(220,60%,25%))` }}>
     <div className="max-w-4xl mx-auto text-center px-4">
-      <h2 className="text-4xl md:text-5xl font-black text-white mb-6 leading-tight">
-        جاهز لزيادة ربحية مطعمك؟
-      </h2>
-      <p className="text-slate-200 text-lg mb-8 max-w-2xl mx-auto">
-        انضم إلى عشرات المطاعم اللي بتستخدم 3M GSC لإدارة تكاليفها وزيادة أرباحها
-      </p>
+      <h2 className="text-4xl md:text-5xl font-black text-white mb-6 leading-tight">جاهز لزيادة ربحية مطعمك؟</h2>
+      <p className="text-slate-200 text-lg mb-8 max-w-2xl mx-auto">انضم إلى عشرات المطاعم اللي بتستخدم 3M CMS لإدارة تكاليفها وزيادة أرباحها</p>
       <Link to="/login" className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-lg font-black text-white shadow-2xl hover:opacity-90 transition" style={{ background: BRAND_GREEN }}>
         ابدأ تجربتك المجانية الآن <ArrowLeft size={20} />
       </Link>
@@ -368,12 +373,15 @@ const Footer: React.FC = () => (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-4 gap-8">
       <div>
         <div className="flex items-center gap-3 mb-4">
-          <img src={logo3m} alt="3M GSC" className="h-10 w-10 object-contain" />
-          <span className="font-black text-white text-lg">3M GSC</span>
+          <img src={logo3m} alt="3M CMS" className="h-10 w-10 object-contain" />
+          <span className="font-black text-white text-lg">3M CMS</span>
         </div>
-        <p className="text-sm text-slate-400 leading-relaxed">
-          نظام متكامل لإدارة تكاليف المطاعم والكافيهات متعددة الفروع.
-        </p>
+        <p className="text-sm text-slate-400 leading-relaxed mb-4">نظام متكامل لإدارة تكاليف المطاعم والكافيهات متعددة الفروع.</p>
+        <div className="flex items-center gap-3">
+          <a href={FACEBOOK} target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="w-10 h-10 rounded-full bg-slate-800 hover:bg-blue-600 flex items-center justify-center transition"><Facebook size={18} /></a>
+          <a href={WHATSAPP} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" className="w-10 h-10 rounded-full bg-slate-800 hover:bg-emerald-600 flex items-center justify-center transition"><MessageCircle size={18} /></a>
+          <a href={INSTAGRAM} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="w-10 h-10 rounded-full bg-slate-800 hover:bg-pink-600 flex items-center justify-center transition"><Instagram size={18} /></a>
+        </div>
       </div>
       <div>
         <h4 className="text-white font-black mb-4">النظام</h4>
@@ -386,7 +394,11 @@ const Footer: React.FC = () => (
       <div>
         <h4 className="text-white font-black mb-4">تواصل معنا</h4>
         <ul className="space-y-2 text-sm">
-          <li>الدعم الفني</li>
+          <li>
+            <a href={WHATSAPP} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 hover:text-emerald-400">
+              <MessageCircle size={16} /> الدعم الفني (واتساب)
+            </a>
+          </li>
           <li>سياسة الخصوصية</li>
           <li>الشروط والأحكام</li>
         </ul>
@@ -399,17 +411,34 @@ const Footer: React.FC = () => (
       </div>
     </div>
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10 pt-6 border-t border-slate-800 text-center text-xs text-slate-500">
-      © {new Date().getFullYear()} 3M GSC — Powered by Mohamed Abdel Aal. جميع الحقوق محفوظة.
+      © {new Date().getFullYear()} 3M CMS — Powered by Mohamed Abdel Aal. جميع الحقوق محفوظة.
     </div>
   </footer>
 );
 
+const VideoModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
+      <div className="relative w-full max-w-5xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute top-3 left-3 z-10 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition" aria-label="إغلاق">
+          <X size={18} />
+        </button>
+        <video src={INTRO_VIDEO} controls autoPlay className="w-full h-full object-contain bg-black">
+          المتصفح لا يدعم تشغيل الفيديو.
+        </video>
+      </div>
+    </div>
+  );
+};
+
 export const HomePage: React.FC = () => {
+  const [showVideo, setShowVideo] = useState(false);
   return (
     <div dir="rtl" className="min-h-screen bg-white text-slate-900" style={{ colorScheme: "light" }}>
       <NavBar />
       <main>
-        <Hero />
+        <Hero onWatch={() => setShowVideo(true)} />
         <Stats />
         <Problems />
         <Features />
@@ -421,6 +450,7 @@ export const HomePage: React.FC = () => {
         <CTA />
       </main>
       <Footer />
+      <VideoModal open={showVideo} onClose={() => setShowVideo(false)} />
     </div>
   );
 };

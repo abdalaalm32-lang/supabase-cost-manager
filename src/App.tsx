@@ -570,6 +570,8 @@ const AppRoutes = () => {
                   <Route path="/settings/users" element={<AdminGuard><SettingsUsersPage /></AdminGuard>} />
                   <Route path="/settings/warehouses" element={<AdminGuard><SettingsWarehousesPage /></AdminGuard>} />
                   <Route path="/settings/branches" element={<AdminGuard><SettingsBranchesPage /></AdminGuard>} />
+                  <Route path="/settings/leads" element={<AdminGuard><AdminLeadsPage /></AdminGuard>} />
+                  <Route path="/admin/leads" element={<AdminGuard><AdminLeadsPage /></AdminGuard>} />
                   <Route path="/company-settings" element={<OwnerOrAdminGuard><Navigate to="/company-settings/users" replace /></OwnerOrAdminGuard>} />
                   <Route path="/company-settings/users" element={<OwnerOrAdminGuard><CompanySettingsPage /></OwnerOrAdminGuard>} />
                   <Route path="/company-settings/warehouses" element={<OwnerOrAdminGuard><SettingsWarehousesPage /></OwnerOrAdminGuard>} />

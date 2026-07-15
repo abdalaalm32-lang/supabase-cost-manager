@@ -74,7 +74,7 @@ const Hero: React.FC<{ onWatch: () => void }> = ({ onWatch }) => (
           لمساعدتك على اتخاذ قرارات أسرع وأكثر دقة.
         </p>
         <div className="flex flex-wrap gap-3">
-          <Link to="/login" className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-white shadow-xl shadow-emerald-500/25 hover:opacity-90 transition" style={{ background: BRAND_GREEN }}>
+          <Link to="/trial-signup" className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-white shadow-xl shadow-emerald-500/25 hover:opacity-90 transition" style={{ background: BRAND_GREEN }}>
             <ArrowLeft size={18} /> ابدأ التجربة المجانية
           </Link>
           <a href={WHATSAPP} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-white shadow-xl hover:opacity-90 transition" style={{ background: BRAND_BLUE }}>
@@ -358,7 +358,7 @@ const CTA: React.FC = () => (
     <div className="max-w-4xl mx-auto text-center px-4">
       <h2 className="text-4xl md:text-5xl font-black text-white mb-6 leading-tight">جاهز لزيادة ربحية مطعمك؟</h2>
       <p className="text-slate-200 text-lg mb-8 max-w-2xl mx-auto">انضم إلى عشرات المطاعم اللي بتستخدم 3M CMS لإدارة تكاليفها وزيادة أرباحها</p>
-      <Link to="/login" className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-lg font-black text-white shadow-2xl hover:opacity-90 transition" style={{ background: BRAND_GREEN }}>
+      <Link to="/trial-signup" className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-lg font-black text-white shadow-2xl hover:opacity-90 transition" style={{ background: BRAND_GREEN }}>
         ابدأ تجربتك المجانية الآن <ArrowLeft size={20} />
       </Link>
     </div>

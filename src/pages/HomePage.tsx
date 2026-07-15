@@ -50,10 +50,6 @@ const NavBar: React.FC = () => (
       </nav>
       <div className="flex items-center gap-2">
         <Link to="/login" className="px-4 py-2 text-sm font-bold text-slate-800 rounded-xl hover:bg-slate-100 transition">تسجيل الدخول</Link>
-        <Link to="/login" className="hidden sm:inline-flex items-center gap-2 px-4 py-2 text-sm font-bold text-white rounded-xl shadow-lg shadow-emerald-500/20 transition hover:opacity-90" style={{ background: BRAND_GREEN }}>
-          ابدأ الآن
-          <ChevronLeft size={16} />
-        </Link>
       </div>
     </div>
   </header>

@@ -413,6 +413,16 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   if (!auth.session) return <Navigate to="/login" replace />;
   if (!auth.profile && !auth.isAdmin && !auth.isOwner) return <MissingProfileScreen onLogout={logout} />;
 
+  // Trial expired check
+  const cs: any = companyStatus || {};
+  const trialExpired = !auth.isAdmin && (
+    cs.subscription_status === "expired"
+    || (cs.subscription_status === "trial" && cs.trial_end_date && new Date(cs.trial_end_date) < new Date())
+  );
+  if (trialExpired) {
+    return <TrialExpiredOverlay endDate={cs.trial_end_date} />;
+  }
+
   // Block company-wide access when subscription expired (applies to both owner and users)
   if (companySubscriptionExpired) {
     return <SubscriptionExpiredOverlay type="company" />;

@@ -255,7 +255,10 @@ export type Database = {
           subscription_end: string | null
           subscription_minutes: number | null
           subscription_start: string | null
+          subscription_status: string
           subscription_type: string
+          trial_end_date: string | null
+          trial_start_date: string | null
         }
         Insert: {
           active?: boolean
@@ -270,7 +273,10 @@ export type Database = {
           subscription_end?: string | null
           subscription_minutes?: number | null
           subscription_start?: string | null
+          subscription_status?: string
           subscription_type?: string
+          trial_end_date?: string | null
+          trial_start_date?: string | null
         }
         Update: {
           active?: boolean
@@ -285,9 +291,41 @@ export type Database = {
           subscription_end?: string | null
           subscription_minutes?: number | null
           subscription_start?: string | null
+          subscription_status?: string
           subscription_type?: string
+          trial_end_date?: string | null
+          trial_start_date?: string | null
         }
         Relationships: []
+      }
+      company_activity: {
+        Row: {
+          company_id: string
+          last_login_at: string | null
+          login_count: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          last_login_at?: string | null
+          login_count?: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          last_login_at?: string | null
+          login_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_activity_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       company_subscription_log: {
         Row: {
@@ -3103,6 +3141,74 @@ export type Database = {
           },
         ]
       }
+      trial_leads: {
+        Row: {
+          admin_notes: string | null
+          branches_count: number | null
+          city: string | null
+          company_id: string | null
+          contact_name: string
+          created_at: string
+          current_system: string | null
+          email: string
+          id: string
+          last_contact_at: string | null
+          phone: string
+          restaurant_name: string
+          status: string
+          trial_end_date: string | null
+          trial_start_date: string | null
+          updated_at: string
+          whatsapp: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          branches_count?: number | null
+          city?: string | null
+          company_id?: string | null
+          contact_name: string
+          created_at?: string
+          current_system?: string | null
+          email: string
+          id?: string
+          last_contact_at?: string | null
+          phone: string
+          restaurant_name: string
+          status?: string
+          trial_end_date?: string | null
+          trial_start_date?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          branches_count?: number | null
+          city?: string | null
+          company_id?: string | null
+          contact_name?: string
+          created_at?: string
+          current_system?: string | null
+          email?: string
+          id?: string
+          last_contact_at?: string | null
+          phone?: string
+          restaurant_name?: string
+          status?: string
+          trial_end_date?: string | null
+          trial_start_date?: string | null
+          updated_at?: string
+          whatsapp?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trial_leads_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           company_id: string
@@ -3553,6 +3659,7 @@ export type Database = {
     }
     Functions: {
       current_user_has_pos_password: { Args: never; Returns: boolean }
+      expire_ended_trials: { Args: never; Returns: number }
       generate_branch_code: { Args: { p_company_id: string }; Returns: string }
       generate_category_code:
         | { Args: { p_company_id: string }; Returns: string }
@@ -3673,6 +3780,7 @@ export type Database = {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
       }
+      is_company_expired: { Args: { _company_id: string }; Returns: boolean }
       is_company_owner: {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean

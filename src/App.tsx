@@ -286,16 +286,48 @@ const SubscriptionExpiredOverlay: React.FC<{ type: "company" | "user" }> = ({ ty
   );
 };
 
+const TrialExpiredOverlay: React.FC<{ endDate?: string }> = ({ endDate }) => {
+  const { logout } = useAuth();
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+      <div className="absolute inset-0 bg-background/70 backdrop-blur-xl" />
+      <div className="relative z-10 text-center p-8 max-w-md">
+        <div className="w-20 h-20 rounded-full bg-orange-500/15 flex items-center justify-center mx-auto mb-6">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-orange-500"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+        </div>
+        <h2 className="text-2xl font-black text-foreground mb-3">انتهت الفترة التجريبية</h2>
+        <p className="text-muted-foreground text-sm mb-2">
+          انتهت فترة التجربة المجانية {endDate && `بتاريخ ${new Date(endDate).toLocaleDateString("ar-EG")}`}.
+        </p>
+        <p className="text-muted-foreground text-sm mb-6">يرجى التواصل معنا لتفعيل الاشتراك المدفوع.</p>
+        <div className="flex flex-col gap-3">
+          <a
+            href="https://wa.me/201061208033"
+            target="_blank" rel="noopener noreferrer"
+            className="bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-emerald-700"
+          >
+            تواصل عبر واتساب لتفعيل الاشتراك
+          </a>
+          <button onClick={() => logout()} className="bg-slate-200 text-slate-700 px-6 py-2.5 rounded-xl font-bold text-sm">
+            تسجيل الخروج
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { auth, logout } = useAuth();
   const qc = useQueryClient();
+  useTrackCompanyLogin();
 
   const { data: companyStatus } = useQuery({
     queryKey: ["company-active-status", auth.profile?.company_id],
     queryFn: async () => {
       const { data } = await supabase
         .from("companies")
-        .select("active, subscription_type, subscription_minutes, subscription_start, subscription_end")
+        .select("active, subscription_type, subscription_minutes, subscription_start, subscription_end, subscription_status, trial_end_date")
         .eq("id", auth.profile!.company_id)
         .single();
       return data;

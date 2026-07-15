@@ -1,79 +1,104 @@
-## خطة التنفيذ — تحسينات صفحة "تحليل الانحرافات"
+## نظام Trial + إدارة العملاء + تحديثات الفيديو والصفحة الرئيسية
 
-سأنفذ كل التحسينات على `src/pages/VarianceAnalysisPage.tsx` مع إضافات محدودة (جدول قاعدة بيانات للملاحظات، وتحديث `exportUtils`).
+### 1. قاعدة البيانات (Migration واحدة)
 
-### 1) رسم بياني للانحرافات (Bar + Pie)
-- استخدام `recharts` (موجود في المشروع) لعرض توزيع الخامات على التصنيفات: Good / Normal / Accept / Deviation / Operation error / High deflection / Issue.
-- زر تبديل بين Bar و Pie.
+**تعديل جدول `companies`:**
+- `subscription_status` (trial / active / expired / suspended)
+- `trial_start_date`, `trial_end_date`
+- `activity_score` (محسوب من النشاط)
 
-### 2) Top N أعلى الانحرافات
-- قسم جانبي يعرض كل الخامات مرتبة تنازليًا حسب نسبة الانحراف (أو قيمة التأثير المالي) — قابل للتبديل — بدون حد أقصى (قائمة قابلة للتمرير).
-- تلوين حسب تصنيف الانحراف.
+**جدول جديد `trial_leads`:**
+- بيانات التواصل: `restaurant_name`, `contact_name`, `phone`, `whatsapp`, `email`, `city`, `branches_count`, `current_system`
+- ربط بالشركة: `company_id` (nullable — بيتربط لما الشركة تتنشئ)
+- الحالة: `status` (new_lead / trial_active / contacted / demo_scheduled / converted / lost)
+- التوقيتات: `trial_start_date`, `trial_end_date`, `created_at`, `last_contact_at`
+- ملاحظات المبيعات: `admin_notes`
 
-### 3) بوكس التأثير المالي (Cost Variance)
-- بوكس KPI جديد يعرض:
-  - إجمالي قيمة الفرق (موجب/سالب)
-  - إجمالي قيمة العجز
-  - إجمالي قيمة الفائض
-  - صافي التأثير المالي
+**جدول `company_activity_stats` (View أو Table محسوب):**
+- `company_id`, `last_login_at`, `login_count`, `items_created`, `branches_created`, `reports_viewed`, `days_active`
 
-### 4) مقارنة بالفترة السابقة
-- عمود جديد في الجدول: نسبة الانحراف للفترة السابقة + سهم اتجاه (↑/↓/=).
-- بوكس ملخص: متوسط الانحراف الحالي مقابل السابق مع نسبة التغير.
+**RLS:**
+- `trial_leads`: قراءة/كتابة للـ admin فقط
+- `company_activity_stats`: قراءة للـ admin فقط + قراءة الشركة لبياناتها
 
-### 5) تصدير Excel
-- استخدام `exportToExcel` الموجود مسبقًا (`src/lib/exportUtils.ts`) وإضافة زر "Excel" بجانب زر PDF.
+### 2. Edge Function: `create-trial-company`
 
-### 6) ملاحظات/إجراءات على كل خامة (تخزين في DB)
-- إنشاء جدول جديد `variance_item_notes`:
-  - `id, company_id, stock_item_id, period_from, period_to, branch_id (nullable), note, action_status ('pending'|'reviewed'|'needs_recount'|'settled'), created_at, updated_at, created_by`
-  - RLS + GRANTs عادية.
-- زر في كل صف يفتح Popover لكتابة ملاحظة + اختيار حالة الإجراء.
-- أيقونة ملونة تعكس الحالة.
+- Public (لا يحتاج JWT)
+- يستقبل بيانات نموذج التسجيل
+- ينشئ:
+  - Row في `trial_leads`
+  - `companies` row (status=trial, trial_end = now + 14 days)
+  - `auth.users` (owner)
+  - `profiles` + `user_roles` (owner)
+- يرجع بيانات الدخول
 
-### 7) فلاتر جاهزة (Presets)
-- أزرار سريعة أعلى الجدول:
-  - "الكل"
-  - "المستهلكات فقط"
-  - "أعلى انحراف (Deviation فأعلى)"
-  - "قسم المطبخ فقط" / "قسم البار فقط" (ديناميكي حسب الأقسام)
-  - "بها ملاحظات"
+### 3. صفحة `/trial-signup`
 
-### 8) تحديد عتبة الانحراف يدويًا
-- Dialog إعدادات (يستفيد من زر "Manage Settings" الموجود) بتبويب جديد "عتبات التصنيف":
-  - حقول إدخال لحدود Normal / Accept / Deviation / Operation error / High deflection.
-  - حفظ في `localStorage` per company.
-  - زر "إعادة الافتراضي".
+نموذج كامل احترافي:
+- اسم المطعم / الكافيه *
+- اسم المسؤول *
+- رقم الموبايل *
+- واتساب
+- البريد الإلكتروني *
+- كلمة سر *
+- المدينة
+- عدد الفروع
+- نظام حالي؟ (نعم/لا)
+- زر: "ابدأ التجربة المجانية"
+- بعد النجاح: يعرض بيانات الدخول + يوجهه للـ Login
 
-### 9) تجميع حسب القسم / المجموعة (Subtotals)
-- Toggle "عرض بالإجماليات الفرعية".
-- عند التفعيل: إدراج صف "إجمالي القسم / المجموعة" داخل الجدول قبل الانتقال للقسم التالي مع الإجماليات المالية والكمية.
+### 4. قفل النظام عند انتهاء التجربة
 
-### 10) تحسين طباعة التقرير
-- إعادة كتابة منطق PDF ليعتمد `jspdf-autotable` (كما في exportUtils) بدل `html2canvas`:
-  - صفحة غلاف (اسم الشركة، اسم التقرير، الفترة، الفرع، القسم، تاريخ ومستخدم الطباعة).
-  - ترويسة تتكرر على كل صفحة.
-  - تذييل: رقم الصفحة / إجمالي الصفحات + تاريخ الطباعة + Powered by.
-  - جدول شامل بكل الأعمدة (بما فيها المقارنة مع الفترة السابقة).
+- Hook `useSubscriptionGuard` يفحص `subscription_status` + `trial_end_date`
+- لو `expired`: overlay كامل يمنع الدخول + رسالة "انتهت الفترة التجريبية — يرجى التواصل"
+- زر واتساب مباشر: +201061208033
 
-### تفاصيل تقنية
-- ملف جديد: `supabase/migrations/xxx_variance_notes.sql` — جدول + RLS + GRANT.
-- تعديل: `src/pages/VarianceAnalysisPage.tsx` — كل تغييرات الـ UI والمنطق.
-- تعديل بسيط: `src/lib/exportUtils.ts` إن لزم (متوقع لا).
-- استخدام `recharts` (مثبتة أصلًا) للرسوم.
-- حفظ إعدادات العتبات والفلاتر في `localStorage` تحت مفتاح `variance-analysis-settings-${companyId}`.
+### 5. صفحة الأدمن: `/admin/leads` (إدارة العملاء)
 
-### ترتيب التنفيذ داخل نفس الجلسة
-1. إنشاء migration جدول الملاحظات.
-2. إضافة الحالات (state) والـ helpers الجديدة (thresholds، presets، sorting).
-3. حساب Cost Variance KPIs + Prev period stats.
-4. إضافة الرسم البياني + Top N + KPI boxes.
-5. إضافة عمود الفترة السابقة + subtotals.
-6. Popover الملاحظات + أزرار Presets.
-7. Dialog عتبات مخصصة.
-8. زر Excel + إعادة كتابة PDF بـ autotable.
+**KPI Cards علوية:**
+- إجمالي العملاء المحتملين
+- تجارب نشطة
+- تجارب منتهية
+- تم التحويل لمشترك
 
-### ملاحظات
-- سأحافظ على كل المنطق الحسابي الحالي (المستهلكات، الأسعار البديلة للفرع، إلخ).
-- الرسم والـ KPIs والقوائم الجانبية ستظهر أعلى الجدول بشكل منظم.
-- عند غياب فترة (dateFrom/dateTo) ستُخفى مقارنة الفترة السابقة تلقائيًا.
+**Tab 1: العملاء المحتملون (Leads)**
+جدول بأعمدة:
+- اسم المطعم | المسؤول | الهاتف/واتساب | المدينة | عدد الفروع | الحالة | تاريخ التسجيل | نهاية التجربة | إجراءات
+
+إجراءات: تغيير الحالة، ملاحظة، اتصال واتساب مباشر، تحويل لاشتراك مدفوع
+
+**Tab 2: Dashboard المبيعات (نشاط العملاء)**
+جدول بأعمدة:
+- العميل | الحالة | آخر دخول | عدد الفروع | الأصناف | التقارير المفتوحة | **نسبة النشاط** (شريط ملون) | أولوية التواصل
+
+فلاتر: الكل / نشط عالي / نشط متوسط / منخفض / لم يدخل
+
+**Tab 3: تحويل يدوي (Convert)**
+تفعيل الاشتراك المدفوع لشركة معينة (تحديث `subscription_status = active`)
+
+### 6. الصفحة الرئيسية HomePage
+
+- حذف زر "ابدأ الآن" بجانب "تسجيل الدخول" في الـ Navbar
+- زر "ابدأ الفترة التجريبية مجاناً" → يوجه لـ `/trial-signup` (بدل ما يفتح Dialog تسجيل)
+
+### 7. الفيديو التعريفي
+
+سأعيد إنتاج الفيديو في Remotion:
+- استبدال الصور بالـ 10 صور الجديدة اللي رفعتها (Dashboard / POS / Inventory Materials / Inventory Balances / Cost Analysis / Variance Analysis / Variance Details / Indirect Expenses × 2 / Menu Analysis)
+- حذف شاشة "mgsc.lovable.app" من النهاية
+- زيادة المدة (~30-35 ثانية بدل ~20)
+- ترقية موقع النصوص فوق الصور بحيث تكون في شريط علوي/سفلي واضح مع خلفية Overlay
+- إضافة موسيقى تحفيزية (سأولد track قصير أو أستخدم أحد الروابط الجاهزة)
+
+---
+
+### ترتيب التنفيذ:
+1. Migration (ينتظر موافقتك)
+2. Edge function للتسجيل التلقائي
+3. صفحة `/trial-signup`
+4. صفحة `/admin/leads` بالتابين
+5. Guard الاشتراك + Overlay القفل
+6. تعديلات HomePage
+7. إعادة إنتاج الفيديو ورفعه
+
+هل تعتمد الخطة؟

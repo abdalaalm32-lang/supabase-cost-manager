@@ -77,7 +77,7 @@ const Hero: React.FC<{ onWatch: () => void }> = ({ onWatch }) => (
           <Link to="/trial-signup" className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-white shadow-xl shadow-emerald-500/25 hover:opacity-90 transition" style={{ background: BRAND_GREEN }}>
             <ArrowLeft size={18} /> ابدأ التجربة المجانية
           </Link>
-          <a href={WHATSAPP} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-white shadow-xl hover:opacity-90 transition" style={{ background: BRAND_BLUE }}>
+          <a href={`${WHATSAPP}?text=${encodeURIComponent("مرحباً، أرغب في حجز عرض توضيحي (Demo) لنظام 3M CMS. من فضلكم رشحوا لي ميعاد مناسب.")}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-white shadow-xl hover:opacity-90 transition" style={{ background: BRAND_BLUE }}>
             <Calendar size={18} /> حجز عرض توضيحي
           </a>
           <button onClick={onWatch} className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-slate-800 bg-white border-2 border-slate-200 hover:border-slate-300 transition">

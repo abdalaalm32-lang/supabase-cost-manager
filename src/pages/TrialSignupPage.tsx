@@ -165,7 +165,7 @@ export const TrialSignupPage: React.FC = () => {
                   min={1}
                   value={form.branches_count}
                   onChange={(e) => set("branches_count", Number(e.target.value))}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition"
                 />
               </div>
             </div>
@@ -175,7 +175,7 @@ export const TrialSignupPage: React.FC = () => {
               <select
                 value={form.current_system}
                 onChange={(e) => set("current_system", e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition bg-white"
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition"
               >
                 <option value="no">لا، أول نظام</option>
                 <option value="excel">Excel / يدوي</option>

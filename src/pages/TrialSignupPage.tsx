@@ -219,7 +219,7 @@ const Field: React.FC<{
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className={`w-full px-4 py-2.5 rounded-xl border ${error ? "border-red-400" : "border-slate-300"} focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition`}
+      className={`w-full px-4 py-2.5 rounded-xl border bg-white text-slate-900 placeholder:text-slate-400 ${error ? "border-red-400" : "border-slate-300"} focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition`}
     />
     {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
   </div>

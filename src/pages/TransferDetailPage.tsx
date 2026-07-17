@@ -661,7 +661,7 @@ export const TransferDetailPage: React.FC = () => {
             <ArrowRight size={14} /> رجوع
           </Button>
           {!isNew && items.length > 0 && (
-            <Button variant="outline" size="sm" onClick={handlePrintDetail}>
+            <Button variant="outline" size="sm" onClick={() => setPrintDialogOpen(true)}>
               <Printer size={14} /> طباعة
             </Button>
           )}

@@ -140,6 +140,39 @@ export const AdminLeadsPage: React.FC = () => {
     },
   });
 
+  const deleteLead = useMutation({
+    mutationFn: async (leadId: string) => {
+      const { data, error } = await supabase.functions.invoke("admin-lead-actions", {
+        body: { action: "delete_lead", lead_id: leadId },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-leads"] });
+      qc.invalidateQueries({ queryKey: ["admin-companies-all"] });
+      qc.invalidateQueries({ queryKey: ["admin-activity"] });
+      toast.success("تم حذف السجل بالكامل");
+    },
+    onError: (e: any) => toast.error(e?.message || "فشل الحذف"),
+  });
+
+  const resetPassword = useMutation({
+    mutationFn: async (leadId: string) => {
+      const { data, error } = await supabase.functions.invoke("admin-lead-actions", {
+        body: { action: "reset_password", lead_id: leadId },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      return data as { email: string; password: string };
+    },
+    onSuccess: (data) => {
+      setResetResult({ email: data.email, password: data.password });
+      toast.success("تم إنشاء كلمة سر جديدة");
+    },
+    onError: (e: any) => toast.error(e?.message || "فشل التعيين"),
+  });
+
   return (
     <div dir="rtl" className="p-4 sm:p-6 space-y-6">
       {/* Header */}

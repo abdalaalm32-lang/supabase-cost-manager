@@ -65,6 +65,7 @@ export const TransferDetailPage: React.FC = () => {
   const [transportationCost, setTransportationCost] = useState<number>(0);
   const [loadingCost, setLoadingCost] = useState<number>(0);
   const [feesTouched, setFeesTouched] = useState(false);
+  const [printDialogOpen, setPrintDialogOpen] = useState(false);
 
   // Modal
   const [showAddItems, setShowAddItems] = useState(false);

@@ -12,6 +12,9 @@ const WHATSAPP = "https://wa.me/201061208033";
 export const TrialSignupPage: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [otpSending, setOtpSending] = useState(false);
+  const [step, setStep] = useState<"form" | "otp">("form");
+  const [otpCode, setOtpCode] = useState("");
   const [success, setSuccess] = useState<null | { email: string; trialEnd: string }>(null);
   const [form, setForm] = useState({
     restaurant_name: "",
@@ -28,7 +31,7 @@ export const TrialSignupPage: React.FC = () => {
 
   const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
 
-  const submit = async (e: React.FormEvent) => {
+  const requestOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
     if (!form.restaurant_name || !form.contact_name || !form.phone || !form.email || !form.password) {
@@ -39,11 +42,31 @@ export const TrialSignupPage: React.FC = () => {
       toast.error("كلمة السر لا تقل عن 6 أحرف");
       return;
     }
+    setOtpSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-trial-otp", { body: { email: form.email } });
+      if (error) { toast.error((error as any)?.message || "فشل إرسال الكود"); return; }
+      if ((data as any)?.error) { toast.error((data as any).error); return; }
+      toast.success("تم إرسال كود التحقق إلى بريدك — تحقق أيضاً من مجلد الرسائل غير المرغوبة");
+      setStep("otp");
+    } catch (err: any) {
+      toast.error(err?.message || "خطأ غير متوقع");
+    } finally {
+      setOtpSending(false);
+    }
+  };
 
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors({});
+    if (!otpCode || otpCode.length !== 6) {
+      toast.error("أدخل كود التحقق (6 أرقام)");
+      return;
+    }
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("create-trial-company", {
-        body: form,
+        body: { ...form, otp_code: otpCode },
       });
       if (error) {
         const msg = (error as any)?.message || "فشل إنشاء الحساب";

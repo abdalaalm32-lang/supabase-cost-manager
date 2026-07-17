@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import {
   Users, UserCheck, UserX, TrendingUp, Search, MessageCircle,
   Phone, Edit, CheckCircle2, XCircle, Clock, Sparkles, RefreshCw, Filter,
+  Trash2, Key, Copy,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";

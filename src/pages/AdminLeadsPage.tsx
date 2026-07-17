@@ -228,7 +228,7 @@ export const AdminLeadsPage: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-right border-b border-border text-xs font-black text-muted-foreground">
+                  <tr className="text-center border-b border-border text-xs font-black text-muted-foreground">
                     <th className="p-3">المطعم</th>
                     <th className="p-3">المسؤول</th>
                     <th className="p-3">الاتصال</th>
@@ -251,17 +251,17 @@ export const AdminLeadsPage: React.FC = () => {
                     const daysLeft = daysBetween(l.trial_end_date);
                     const meta = STATUS_META[l.status] || STATUS_META.new_lead;
                     return (
-                      <tr key={l.id} className="border-b border-border/50 hover:bg-muted/30">
+                      <tr key={l.id} className="border-b border-border/50 hover:bg-muted/30 text-center align-middle">
                         <td className="p-3 font-bold">{l.restaurant_name}</td>
                         <td className="p-3">{l.contact_name}</td>
                         <td className="p-3">
-                          <div className="flex flex-col gap-0.5 text-xs">
+                          <div className="flex flex-col gap-0.5 text-xs items-center">
                             <span>{l.phone}</span>
                             <span className="text-muted-foreground">{l.email}</span>
                           </div>
                         </td>
                         <td className="p-3 text-xs">{l.city || "-"}</td>
-                        <td className="p-3 text-center">{l.branches_count || 1}</td>
+                        <td className="p-3">{l.branches_count || 1}</td>
                         <td className="p-3">
                           <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold ${meta.color} ${meta.bg}`}>
                             {meta.label}
@@ -281,7 +281,7 @@ export const AdminLeadsPage: React.FC = () => {
                           )}
                         </td>
                         <td className="p-3">
-                          <div className="flex gap-1">
+                          <div className="flex gap-1 justify-center flex-wrap">
                             <a
                               href={`https://wa.me/${(l.whatsapp || l.phone || "").replace(/\D/g, "")}`}
                               target="_blank"
@@ -305,6 +305,18 @@ export const AdminLeadsPage: React.FC = () => {
                             >
                               <Edit size={14} />
                             </button>
+                            <button
+                              onClick={() => {
+                                if (confirm(`إنشاء كلمة سر جديدة لـ ${l.email}؟`)) {
+                                  resetPassword.mutate(l.id);
+                                }
+                              }}
+                              disabled={resetPassword.isPending}
+                              className="p-1.5 rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 disabled:opacity-50"
+                              title="تعيين كلمة سر جديدة"
+                            >
+                              <Key size={14} />
+                            </button>
                             {l.status !== "converted" && l.company_id && (
                               <button
                                 onClick={() => {
@@ -318,6 +330,18 @@ export const AdminLeadsPage: React.FC = () => {
                                 <CheckCircle2 size={14} />
                               </button>
                             )}
+                            <button
+                              onClick={() => {
+                                if (confirm(`⚠️ حذف نهائي لسجل ${l.restaurant_name} وكل بياناته؟\nلا يمكن التراجع.`)) {
+                                  deleteLead.mutate(l.id);
+                                }
+                              }}
+                              disabled={deleteLead.isPending}
+                              className="p-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50"
+                              title="حذف نهائي"
+                            >
+                              <Trash2 size={14} />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -339,7 +363,7 @@ export const AdminLeadsPage: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-right border-b border-border text-xs font-black text-muted-foreground">
+                  <tr className="text-center border-b border-border text-xs font-black text-muted-foreground">
                     <th className="p-3">العميل</th>
                     <th className="p-3">الحالة</th>
                     <th className="p-3">آخر دخول</th>
@@ -363,7 +387,7 @@ export const AdminLeadsPage: React.FC = () => {
                         none: { label: "لم يدخل", cls: "bg-slate-100 text-slate-500" },
                       }[priority];
                       return (
-                        <tr key={l.id} className="border-b border-border/50 hover:bg-muted/30">
+                        <tr key={l.id} className="border-b border-border/50 hover:bg-muted/30 text-center align-middle">
                           <td className="p-3">
                             <div className="font-bold">{l.restaurant_name}</div>
                             <div className="text-xs text-muted-foreground">{l.contact_name}</div>

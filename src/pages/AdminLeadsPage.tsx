@@ -485,6 +485,45 @@ export const AdminLeadsPage: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Reset password result dialog */}
+      <Dialog open={!!resetResult} onOpenChange={(o) => !o && setResetResult(null)}>
+        <DialogContent dir="rtl" className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-emerald-700">تم تعيين كلمة سر جديدة ✅</DialogTitle>
+          </DialogHeader>
+          {resetResult && (
+            <div className="space-y-3 text-sm">
+              <p className="text-slate-600">شارك هذه البيانات مع العميل عبر الواتساب فوراً. لن تظهر مرة أخرى.</p>
+              <div className="rounded-xl border border-border bg-muted/50 p-3 space-y-2">
+                <div>
+                  <div className="text-xs text-muted-foreground font-bold">البريد الإلكتروني</div>
+                  <div className="font-mono font-bold">{resetResult.email}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground font-bold">كلمة السر الجديدة</div>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 font-mono font-bold text-lg tracking-wider bg-white px-3 py-2 rounded-lg border">{resetResult.password}</code>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(resetResult.password);
+                        toast.success("تم النسخ");
+                      }}
+                      className="p-2 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                      title="نسخ"
+                    >
+                      <Copy size={16} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setResetResult(null)}>تم</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

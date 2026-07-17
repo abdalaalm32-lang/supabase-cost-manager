@@ -460,7 +460,7 @@ export const TransferDetailPage: React.FC = () => {
   <table>
     <thead>
       <tr>
-        <th>م</th><th>الكود</th><th>اسم الصنف</th><th>الوحدة</th><th>الرصيد الحالي</th><th>الكمية المحولة</th><th>متوسط التكلفة</th><th>إجمالي التكلفة</th>
+        <th>م</th><th>الكود</th><th>اسم الصنف</th><th>الوحدة</th>${includeBalance ? "<th>الرصيد الحالي</th>" : ""}<th>الكمية المحولة</th><th>متوسط التكلفة</th><th>إجمالي التكلفة</th>
       </tr>
     </thead>
     <tbody>${itemsHTML}</tbody>

@@ -32,6 +32,7 @@ export const AdminLeadsPage: React.FC = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [editing, setEditing] = useState<any>(null);
+  const [resetResult, setResetResult] = useState<null | { email: string; password: string }>(null);
 
   const { data: leads = [], isLoading } = useQuery({
     queryKey: ["admin-leads"],

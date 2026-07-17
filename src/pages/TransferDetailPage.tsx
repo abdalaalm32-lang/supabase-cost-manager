@@ -1032,6 +1032,21 @@ export const TransferDetailPage: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={printDialogOpen} onOpenChange={setPrintDialogOpen}>
+        <DialogContent dir="rtl" className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>خيارات الطباعة</DialogTitle>
+          </DialogHeader>
+          <div className="text-sm text-muted-foreground py-2">
+            هل تريد إظهار خانة "الرصيد الحالي" في ورقة الطباعة؟
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => handlePrintDetail(false)}>بدون الرصيد</Button>
+            <Button onClick={() => handlePrintDetail(true)}>مع الرصيد الحالي</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

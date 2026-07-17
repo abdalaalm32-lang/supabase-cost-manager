@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import {
   Users, UserCheck, UserX, TrendingUp, Search, MessageCircle,
   Phone, Edit, CheckCircle2, XCircle, Clock, Sparkles, RefreshCw, Filter,
+  Trash2, Key, Copy,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -31,6 +32,7 @@ export const AdminLeadsPage: React.FC = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [editing, setEditing] = useState<any>(null);
+  const [resetResult, setResetResult] = useState<null | { email: string; password: string }>(null);
 
   const { data: leads = [], isLoading } = useQuery({
     queryKey: ["admin-leads"],
@@ -138,6 +140,39 @@ export const AdminLeadsPage: React.FC = () => {
     },
   });
 
+  const deleteLead = useMutation({
+    mutationFn: async (leadId: string) => {
+      const { data, error } = await supabase.functions.invoke("admin-lead-actions", {
+        body: { action: "delete_lead", lead_id: leadId },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-leads"] });
+      qc.invalidateQueries({ queryKey: ["admin-companies-all"] });
+      qc.invalidateQueries({ queryKey: ["admin-activity"] });
+      toast.success("تم حذف السجل بالكامل");
+    },
+    onError: (e: any) => toast.error(e?.message || "فشل الحذف"),
+  });
+
+  const resetPassword = useMutation({
+    mutationFn: async (leadId: string) => {
+      const { data, error } = await supabase.functions.invoke("admin-lead-actions", {
+        body: { action: "reset_password", lead_id: leadId },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      return data as { email: string; password: string };
+    },
+    onSuccess: (data) => {
+      setResetResult({ email: data.email, password: data.password });
+      toast.success("تم إنشاء كلمة سر جديدة");
+    },
+    onError: (e: any) => toast.error(e?.message || "فشل التعيين"),
+  });
+
   return (
     <div dir="rtl" className="p-4 sm:p-6 space-y-6">
       {/* Header */}
@@ -193,7 +228,7 @@ export const AdminLeadsPage: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-right border-b border-border text-xs font-black text-muted-foreground">
+                  <tr className="text-center border-b border-border text-xs font-black text-muted-foreground">
                     <th className="p-3">المطعم</th>
                     <th className="p-3">المسؤول</th>
                     <th className="p-3">الاتصال</th>
@@ -216,17 +251,17 @@ export const AdminLeadsPage: React.FC = () => {
                     const daysLeft = daysBetween(l.trial_end_date);
                     const meta = STATUS_META[l.status] || STATUS_META.new_lead;
                     return (
-                      <tr key={l.id} className="border-b border-border/50 hover:bg-muted/30">
+                      <tr key={l.id} className="border-b border-border/50 hover:bg-muted/30 text-center align-middle">
                         <td className="p-3 font-bold">{l.restaurant_name}</td>
                         <td className="p-3">{l.contact_name}</td>
                         <td className="p-3">
-                          <div className="flex flex-col gap-0.5 text-xs">
+                          <div className="flex flex-col gap-0.5 text-xs items-center">
                             <span>{l.phone}</span>
                             <span className="text-muted-foreground">{l.email}</span>
                           </div>
                         </td>
                         <td className="p-3 text-xs">{l.city || "-"}</td>
-                        <td className="p-3 text-center">{l.branches_count || 1}</td>
+                        <td className="p-3">{l.branches_count || 1}</td>
                         <td className="p-3">
                           <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold ${meta.color} ${meta.bg}`}>
                             {meta.label}
@@ -246,7 +281,7 @@ export const AdminLeadsPage: React.FC = () => {
                           )}
                         </td>
                         <td className="p-3">
-                          <div className="flex gap-1">
+                          <div className="flex gap-1 justify-center flex-wrap">
                             <a
                               href={`https://wa.me/${(l.whatsapp || l.phone || "").replace(/\D/g, "")}`}
                               target="_blank"
@@ -270,6 +305,18 @@ export const AdminLeadsPage: React.FC = () => {
                             >
                               <Edit size={14} />
                             </button>
+                            <button
+                              onClick={() => {
+                                if (confirm(`إنشاء كلمة سر جديدة لـ ${l.email}؟`)) {
+                                  resetPassword.mutate(l.id);
+                                }
+                              }}
+                              disabled={resetPassword.isPending}
+                              className="p-1.5 rounded-lg bg-amber-100 text-amber-700 hover:bg-amber-200 disabled:opacity-50"
+                              title="تعيين كلمة سر جديدة"
+                            >
+                              <Key size={14} />
+                            </button>
                             {l.status !== "converted" && l.company_id && (
                               <button
                                 onClick={() => {
@@ -283,6 +330,18 @@ export const AdminLeadsPage: React.FC = () => {
                                 <CheckCircle2 size={14} />
                               </button>
                             )}
+                            <button
+                              onClick={() => {
+                                if (confirm(`⚠️ حذف نهائي لسجل ${l.restaurant_name} وكل بياناته؟\nلا يمكن التراجع.`)) {
+                                  deleteLead.mutate(l.id);
+                                }
+                              }}
+                              disabled={deleteLead.isPending}
+                              className="p-1.5 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50"
+                              title="حذف نهائي"
+                            >
+                              <Trash2 size={14} />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -304,7 +363,7 @@ export const AdminLeadsPage: React.FC = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-right border-b border-border text-xs font-black text-muted-foreground">
+                  <tr className="text-center border-b border-border text-xs font-black text-muted-foreground">
                     <th className="p-3">العميل</th>
                     <th className="p-3">الحالة</th>
                     <th className="p-3">آخر دخول</th>
@@ -328,7 +387,7 @@ export const AdminLeadsPage: React.FC = () => {
                         none: { label: "لم يدخل", cls: "bg-slate-100 text-slate-500" },
                       }[priority];
                       return (
-                        <tr key={l.id} className="border-b border-border/50 hover:bg-muted/30">
+                        <tr key={l.id} className="border-b border-border/50 hover:bg-muted/30 text-center align-middle">
                           <td className="p-3">
                             <div className="font-bold">{l.restaurant_name}</div>
                             <div className="text-xs text-muted-foreground">{l.contact_name}</div>
@@ -423,6 +482,45 @@ export const AdminLeadsPage: React.FC = () => {
             >
               حفظ
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset password result dialog */}
+      <Dialog open={!!resetResult} onOpenChange={(o) => !o && setResetResult(null)}>
+        <DialogContent dir="rtl" className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-emerald-700">تم تعيين كلمة سر جديدة ✅</DialogTitle>
+          </DialogHeader>
+          {resetResult && (
+            <div className="space-y-3 text-sm">
+              <p className="text-slate-600">شارك هذه البيانات مع العميل عبر الواتساب فوراً. لن تظهر مرة أخرى.</p>
+              <div className="rounded-xl border border-border bg-muted/50 p-3 space-y-2">
+                <div>
+                  <div className="text-xs text-muted-foreground font-bold">البريد الإلكتروني</div>
+                  <div className="font-mono font-bold">{resetResult.email}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground font-bold">كلمة السر الجديدة</div>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 font-mono font-bold text-lg tracking-wider bg-white px-3 py-2 rounded-lg border">{resetResult.password}</code>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(resetResult.password);
+                        toast.success("تم النسخ");
+                      }}
+                      className="p-2 rounded-lg bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                      title="نسخ"
+                    >
+                      <Copy size={16} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setResetResult(null)}>تم</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

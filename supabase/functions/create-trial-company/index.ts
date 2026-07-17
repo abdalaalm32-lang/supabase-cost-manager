@@ -27,6 +27,7 @@ Deno.serve(async (req) => {
       city,
       branches_count,
       current_system,
+      otp_code,
     } = body ?? {};
 
     // Basic validation
@@ -36,6 +37,7 @@ Deno.serve(async (req) => {
     if (!phone || String(phone).trim().length < 6) errors.phone = "رقم الهاتف مطلوب";
     if (!email || !/^\S+@\S+\.\S+$/.test(email)) errors.email = "البريد الإلكتروني غير صحيح";
     if (!password || String(password).length < 6) errors.password = "كلمة السر لا تقل عن 6 أحرف";
+    if (!otp_code || !/^\d{6}$/.test(String(otp_code))) errors.otp_code = "كود التحقق مطلوب (6 أرقام)";
 
     if (Object.keys(errors).length > 0) {
       return new Response(JSON.stringify({ error: "بيانات غير صحيحة", fields: errors }), {
@@ -43,6 +45,27 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // Verify OTP
+    const { data: otpRow } = await supabaseAdmin
+      .from("otp_codes")
+      .select("*")
+      .eq("admin_email", email)
+      .eq("code", String(otp_code))
+      .eq("used", false)
+      .maybeSingle();
+
+    if (!otpRow) {
+      return new Response(JSON.stringify({ error: "كود التحقق غير صحيح", fields: { otp_code: "كود غير صحيح" } }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (new Date(otpRow.expires_at) < new Date()) {
+      return new Response(JSON.stringify({ error: "انتهت صلاحية الكود. أعد الإرسال.", fields: { otp_code: "منتهي" } }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    await supabaseAdmin.from("otp_codes").update({ used: true }).eq("id", otpRow.id);
 
     // Prevent duplicate trial per email
     const { data: existingLead } = await supabaseAdmin

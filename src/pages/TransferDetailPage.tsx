@@ -65,6 +65,7 @@ export const TransferDetailPage: React.FC = () => {
   const [transportationCost, setTransportationCost] = useState<number>(0);
   const [loadingCost, setLoadingCost] = useState<number>(0);
   const [feesTouched, setFeesTouched] = useState(false);
+  const [printDialogOpen, setPrintDialogOpen] = useState(false);
 
   // Modal
   const [showAddItems, setShowAddItems] = useState(false);
@@ -377,7 +378,8 @@ export const TransferDetailPage: React.FC = () => {
 
   const isLocked = !isNew && status !== "مؤرشف" && !isEditMode;
 
-  const handlePrintDetail = () => {
+  const handlePrintDetail = (includeBalance: boolean = true) => {
+    setPrintDialogOpen(false);
     const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
     const logoSrc = `${window.location.origin}/logo.png`;
     const sourceLoc = allLocations.find(l => l.id === sourceId);
@@ -398,14 +400,14 @@ export const TransferDetailPage: React.FC = () => {
         <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${item.code || "—"}</td>
         <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:right;">${item.name || "—"}</td>
         <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${item.unit || "—"}</td>
-        <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${Number(item.current_stock || 0).toFixed(2)}</td>
+        ${includeBalance ? `<td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${Number(item.current_stock || 0).toFixed(2)}</td>` : ""}
         <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${Number(item.quantity || 0).toFixed(2)}</td>
         <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${Number(item.avg_cost || 0).toFixed(2)}</td>
         <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${tc.toFixed(2)}</td>
       </tr>`;
     });
     itemsHTML += `<tr style="font-weight:bold;background:#f5f5f5;">
-      <td colspan="5" style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">الإجمالي</td>
+      <td colspan="${includeBalance ? 5 : 4}" style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">الإجمالي</td>
       <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${totalQty.toFixed(2)}</td>
       <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">—</td>
       <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${totalCostSum.toFixed(2)}</td>
@@ -459,7 +461,7 @@ export const TransferDetailPage: React.FC = () => {
   <table>
     <thead>
       <tr>
-        <th>م</th><th>الكود</th><th>اسم الصنف</th><th>الوحدة</th><th>الرصيد الحالي</th><th>الكمية المحولة</th><th>متوسط التكلفة</th><th>إجمالي التكلفة</th>
+        <th>م</th><th>الكود</th><th>اسم الصنف</th><th>الوحدة</th>${includeBalance ? "<th>الرصيد الحالي</th>" : ""}<th>الكمية المحولة</th><th>متوسط التكلفة</th><th>إجمالي التكلفة</th>
       </tr>
     </thead>
     <tbody>${itemsHTML}</tbody>
@@ -660,7 +662,7 @@ export const TransferDetailPage: React.FC = () => {
             <ArrowRight size={14} /> رجوع
           </Button>
           {!isNew && items.length > 0 && (
-            <Button variant="outline" size="sm" onClick={handlePrintDetail}>
+            <Button variant="outline" size="sm" onClick={() => setPrintDialogOpen(true)}>
               <Printer size={14} /> طباعة
             </Button>
           )}
@@ -1027,6 +1029,21 @@ export const TransferDetailPage: React.FC = () => {
             <Button size="sm" onClick={handleAddItems} disabled={selectedItemIds.size === 0}>
               إضافة ({selectedItemIds.size})
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={printDialogOpen} onOpenChange={setPrintDialogOpen}>
+        <DialogContent dir="rtl" className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>خيارات الطباعة</DialogTitle>
+          </DialogHeader>
+          <div className="text-sm text-muted-foreground py-2">
+            هل تريد إظهار خانة "الرصيد الحالي" في ورقة الطباعة؟
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => handlePrintDetail(false)}>بدون الرصيد</Button>
+            <Button onClick={() => handlePrintDetail(true)}>مع الرصيد الحالي</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

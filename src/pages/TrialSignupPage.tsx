@@ -12,6 +12,9 @@ const WHATSAPP = "https://wa.me/201061208033";
 export const TrialSignupPage: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [otpSending, setOtpSending] = useState(false);
+  const [step, setStep] = useState<"form" | "otp">("form");
+  const [otpCode, setOtpCode] = useState("");
   const [success, setSuccess] = useState<null | { email: string; trialEnd: string }>(null);
   const [form, setForm] = useState({
     restaurant_name: "",
@@ -28,7 +31,7 @@ export const TrialSignupPage: React.FC = () => {
 
   const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
 
-  const submit = async (e: React.FormEvent) => {
+  const requestOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
     if (!form.restaurant_name || !form.contact_name || !form.phone || !form.email || !form.password) {
@@ -39,11 +42,31 @@ export const TrialSignupPage: React.FC = () => {
       toast.error("كلمة السر لا تقل عن 6 أحرف");
       return;
     }
+    setOtpSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-trial-otp", { body: { email: form.email } });
+      if (error) { toast.error((error as any)?.message || "فشل إرسال الكود"); return; }
+      if ((data as any)?.error) { toast.error((data as any).error); return; }
+      toast.success("تم إرسال كود التحقق إلى بريدك — تحقق أيضاً من مجلد الرسائل غير المرغوبة");
+      setStep("otp");
+    } catch (err: any) {
+      toast.error(err?.message || "خطأ غير متوقع");
+    } finally {
+      setOtpSending(false);
+    }
+  };
 
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors({});
+    if (!otpCode || otpCode.length !== 6) {
+      toast.error("أدخل كود التحقق (6 أرقام)");
+      return;
+    }
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("create-trial-company", {
-        body: form,
+        body: { ...form, otp_code: otpCode },
       });
       if (error) {
         const msg = (error as any)?.message || "فشل إنشاء الحساب";
@@ -146,58 +169,89 @@ export const TrialSignupPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Right side: form */}
+        {/* Right side: form / OTP */}
         <div className="bg-white rounded-3xl shadow-xl border border-slate-200 p-6 lg:p-8">
-          <h2 className="text-xl font-black text-slate-900 mb-6">بيانات التسجيل</h2>
-          <form onSubmit={submit} className="space-y-4">
-            <div className="grid sm:grid-cols-2 gap-4">
-              <Field label="اسم المطعم / الكافيه *" value={form.restaurant_name} onChange={(v) => set("restaurant_name", v)} error={errors.restaurant_name} />
-              <Field label="اسم المسؤول *" value={form.contact_name} onChange={(v) => set("contact_name", v)} error={errors.contact_name} />
-              <Field label="رقم الموبايل *" value={form.phone} onChange={(v) => set("phone", v)} error={errors.phone} placeholder="01xxxxxxxxx" />
-              <Field label="واتساب (لو مختلف)" value={form.whatsapp} onChange={(v) => set("whatsapp", v)} placeholder="01xxxxxxxxx" />
-              <Field label="البريد الإلكتروني *" value={form.email} onChange={(v) => set("email", v)} error={errors.email} type="email" placeholder="you@example.com" />
-              <Field label="كلمة السر *" value={form.password} onChange={(v) => set("password", v)} error={errors.password} type="password" placeholder="6 أحرف على الأقل" />
-              <Field label="المدينة" value={form.city} onChange={(v) => set("city", v)} placeholder="القاهرة / طنطا / ..." />
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-1.5">عدد الفروع</label>
-                <input
-                  type="number"
-                  min={1}
-                  value={form.branches_count}
-                  onChange={(e) => set("branches_count", Number(e.target.value))}
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition"
-                />
-              </div>
-            </div>
+          {step === "form" ? (
+            <>
+              <h2 className="text-xl font-black text-slate-900 mb-6">بيانات التسجيل</h2>
+              <form onSubmit={requestOtp} className="space-y-4">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <Field label="اسم المطعم / الكافيه *" value={form.restaurant_name} onChange={(v) => set("restaurant_name", v)} error={errors.restaurant_name} />
+                  <Field label="اسم المسؤول *" value={form.contact_name} onChange={(v) => set("contact_name", v)} error={errors.contact_name} />
+                  <Field label="رقم الموبايل *" value={form.phone} onChange={(v) => set("phone", v)} error={errors.phone} placeholder="01xxxxxxxxx" />
+                  <Field label="واتساب (لو مختلف)" value={form.whatsapp} onChange={(v) => set("whatsapp", v)} placeholder="01xxxxxxxxx" />
+                  <Field label="البريد الإلكتروني *" value={form.email} onChange={(v) => set("email", v)} error={errors.email} type="email" placeholder="you@example.com" />
+                  <Field label="كلمة السر *" value={form.password} onChange={(v) => set("password", v)} error={errors.password} type="password" placeholder="6 أحرف على الأقل" />
+                  <Field label="المدينة" value={form.city} onChange={(v) => set("city", v)} placeholder="القاهرة / طنطا / ..." />
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1.5">عدد الفروع</label>
+                    <input type="number" min={1} value={form.branches_count} onChange={(e) => set("branches_count", Number(e.target.value))}
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition" />
+                  </div>
+                </div>
 
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-1.5">هل تستخدم نظام إدارة حالياً؟</label>
-              <select
-                value={form.current_system}
-                onChange={(e) => set("current_system", e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition"
-              >
-                <option value="no">لا، أول نظام</option>
-                <option value="excel">Excel / يدوي</option>
-                <option value="pos_only">نظام POS فقط</option>
-                <option value="erp">نظام ERP آخر</option>
-              </select>
-            </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5">هل تستخدم نظام إدارة حالياً؟</label>
+                  <select value={form.current_system} onChange={(e) => set("current_system", e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition">
+                    <option value="no">لا، أول نظام</option>
+                    <option value="excel">Excel / يدوي</option>
+                    <option value="pos_only">نظام POS فقط</option>
+                    <option value="erp">نظام ERP آخر</option>
+                  </select>
+                </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3.5 rounded-2xl font-black text-white text-lg shadow-xl shadow-emerald-500/25 hover:opacity-90 transition disabled:opacity-60 flex items-center justify-center gap-2"
-              style={{ background: BRAND_GREEN }}
-            >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowLeft size={18} />}
-              {loading ? "جاري إنشاء التجربة..." : "ابدأ التجربة المجانية"}
-            </button>
+                <button type="submit" disabled={otpSending}
+                  className="w-full py-3.5 rounded-2xl font-black text-white text-lg shadow-xl shadow-emerald-500/25 hover:opacity-90 transition disabled:opacity-60 flex items-center justify-center gap-2"
+                  style={{ background: BRAND_GREEN }}>
+                  {otpSending ? <Loader2 className="w-5 h-5 animate-spin" /> : <ArrowLeft size={18} />}
+                  {otpSending ? "جاري إرسال كود التحقق..." : "إرسال كود التحقق إلى الإيميل"}
+                </button>
 
-            <p className="text-xs text-slate-500 text-center leading-relaxed">
-              بالضغط على الزر، أنت توافق على تلقي تواصل من فريق المبيعات عبر الواتساب أو الهاتف بخصوص تجربتك.
-            </p>
-          </form>
+                <p className="text-xs text-slate-500 text-center leading-relaxed">
+                  سيتم إرسال كود مكوّن من 6 أرقام إلى بريدك لتأكيد ملكيته قبل تفعيل التجربة.
+                </p>
+              </form>
+            </>
+          ) : (
+            <>
+              <h2 className="text-xl font-black text-slate-900 mb-2">تأكيد البريد الإلكتروني</h2>
+              <p className="text-sm text-slate-600 mb-6">
+                تم إرسال كود مكوّن من 6 أرقام إلى <span className="font-bold text-emerald-700">{form.email}</span>. أدخله لإتمام إنشاء التجربة.
+              </p>
+              <form onSubmit={submit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-1.5">كود التحقق *</label>
+                  <input
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    className={`w-full px-4 py-3 rounded-xl border bg-white text-slate-900 text-center text-2xl font-black tracking-[8px] ${errors.otp_code ? "border-red-400" : "border-slate-300"} focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none`}
+                    placeholder="------"
+                  />
+                  {errors.otp_code && <p className="text-xs text-red-600 mt-1">{errors.otp_code}</p>}
+                </div>
+
+                <button type="submit" disabled={loading}
+                  className="w-full py-3.5 rounded-2xl font-black text-white text-lg shadow-xl shadow-emerald-500/25 hover:opacity-90 transition disabled:opacity-60 flex items-center justify-center gap-2"
+                  style={{ background: BRAND_GREEN }}>
+                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 size={18} />}
+                  {loading ? "جاري التفعيل..." : "تفعيل التجربة المجانية"}
+                </button>
+
+                <div className="flex items-center justify-between text-sm">
+                  <button type="button" onClick={() => setStep("form")} className="text-slate-600 hover:text-slate-900 font-bold">
+                    ← تعديل البيانات
+                  </button>
+                  <button type="button" onClick={requestOtp as any} disabled={otpSending}
+                    className="text-emerald-700 hover:text-emerald-800 font-bold disabled:opacity-60">
+                    {otpSending ? "جاري الإرسال..." : "إعادة إرسال الكود"}
+                  </button>
+                </div>
+              </form>
+            </>
+          )}
         </div>
       </main>
     </div>

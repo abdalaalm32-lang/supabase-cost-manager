@@ -14,6 +14,7 @@ import { HomePage } from "@/pages/HomePage";
 import { TrialSignupPage } from "@/pages/TrialSignupPage";
 import { useTrackCompanyLogin } from "@/hooks/useTrackCompanyLogin";
 const AdminLeadsPage = lazy(() => import("@/pages/AdminLeadsPage").then((m) => ({ default: m.AdminLeadsPage })));
+const AdminTestimonialsPage = lazy(() => import("@/pages/AdminTestimonialsPage").then((m) => ({ default: m.AdminTestimonialsPage })));
 
 const DashboardPage = lazy(() => import("@/pages/DashboardPage").then((m) => ({ default: m.DashboardPage })));
 const RecipesPage = lazy(() => import("@/pages/RecipesPage").then((m) => ({ default: m.RecipesPage })));

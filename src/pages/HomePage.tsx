@@ -1,11 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   Factory, BarChart3, Store, Zap,
   Check, X, ChevronLeft, PlayCircle, Calendar, ArrowLeft,
-  Boxes, LineChart, Utensils,
+  Boxes, LineChart, Utensils, Headphones,
   Facebook, Instagram, MessageCircle,
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import logo3m from "@/assets/logo-3m.png";
 import shotDashboard from "@/assets/home-shots/dashboard.png";
 import shotCost from "@/assets/home-shots/cost-analysis.png";

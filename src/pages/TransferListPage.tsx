@@ -132,7 +132,7 @@ export const TransferListPage: React.FC = () => {
         <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${item.code || "—"}</td>
         <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:right;">${item.name || "—"}</td>
         <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${item.unit || "—"}</td>
-        <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${Number(item.current_stock || 0).toFixed(2)}</td>
+        ${includeBalance ? `<td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${Number(item.current_stock || 0).toFixed(2)}</td>` : ""}
         <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${Number(item.quantity || 0).toFixed(2)}</td>
         <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${Number(item.avg_cost || 0).toFixed(2)}</td>
         <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${tc.toFixed(2)}</td>
@@ -141,7 +141,7 @@ export const TransferListPage: React.FC = () => {
 
     // Totals row
     itemsHTML += `<tr style="font-weight:bold;background:#f5f5f5;">
-      <td colspan="5" style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">الإجمالي</td>
+      <td colspan="${includeBalance ? 5 : 4}" style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">الإجمالي</td>
       <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${totalQty.toFixed(2)}</td>
       <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">—</td>
       <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${totalCostSum.toFixed(2)}</td>

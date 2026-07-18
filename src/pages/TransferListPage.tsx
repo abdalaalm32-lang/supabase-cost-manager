@@ -381,6 +381,21 @@ export const TransferListPage: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={printOptionsOpen} onOpenChange={setPrintOptionsOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>خيارات الطباعة</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            هل تريد إظهار خانة "الرصيد الحالي" في ورقة الطباعة؟
+          </p>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => printRecord && handlePrintTransfer(printRecord, false)}>بدون الرصيد</Button>
+            <Button size="sm" onClick={() => printRecord && handlePrintTransfer(printRecord, true)}>مع الرصيد الحالي</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

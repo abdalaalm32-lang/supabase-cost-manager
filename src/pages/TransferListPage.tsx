@@ -32,6 +32,8 @@ export const TransferListPage: React.FC = () => {
   const [confirmAction, setConfirmAction] = useState<{ id: string; newStatus: string } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [printOptionsOpen, setPrintOptionsOpen] = useState(false);
+  const [printRecord, setPrintRecord] = useState<any>(null);
 
   const { data: records = [], isLoading } = useQuery({
     queryKey: ["transfers", companyId],

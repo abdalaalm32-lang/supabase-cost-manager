@@ -108,7 +108,8 @@ export const TransferListPage: React.FC = () => {
     setDeleteId(null);
   };
 
-  const handlePrintTransfer = async (record: any) => {
+  const handlePrintTransfer = async (record: any, includeBalance: boolean = true) => {
+    setPrintOptionsOpen(false);
     // Fetch transfer items
     const { data: items } = await supabase
       .from("transfer_items")

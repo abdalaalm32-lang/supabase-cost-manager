@@ -339,7 +339,7 @@ export const TransferListPage: React.FC = () => {
                           <ToggleRight size={14} />
                         </Button>
                       ) : null}
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handlePrintTransfer(r)}>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setPrintRecord(r); setPrintOptionsOpen(true); }}>
                         <Printer size={14} />
                       </Button>
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => { setDeleteId(r.id); setShowDeleteConfirm(true); }}>

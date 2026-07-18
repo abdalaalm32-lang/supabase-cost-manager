@@ -96,7 +96,7 @@ const Hero: React.FC<{ onWatch: () => void }> = ({ onWatch }) => (
 
 const Stats: React.FC = () => {
   const stats = [
-    { value: "+10", label: "مطاعم تستخدم النظام" },
+    { value: "24/7", label: "دعم فني على مدار الساعة" },
     { value: "∞", label: "إدارة غير محدودة للفروع والمخازن" },
     { value: "لحظية", label: "تقارير في الوقت الفعلي" },
     { value: "%15+", label: "تقليل الهدر وفاقد الإنتاج" },

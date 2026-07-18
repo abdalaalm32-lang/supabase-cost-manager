@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import {
   Factory, BarChart3, Store, Zap,
   Check, X, ChevronLeft, PlayCircle, Calendar, ArrowLeft,
-  Boxes, LineChart, Utensils, Headphones,
+  Boxes, LineChart, Utensils,
   Facebook, Instagram, MessageCircle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";

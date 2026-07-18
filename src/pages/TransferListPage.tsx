@@ -197,7 +197,7 @@ export const TransferListPage: React.FC = () => {
         <th>الكود</th>
         <th>اسم الصنف</th>
         <th>الوحدة</th>
-        <th>الرصيد الحالي</th>
+        ${includeBalance ? "<th>الرصيد الحالي</th>" : ""}
         <th>الكمية المحولة</th>
         <th>متوسط التكلفة</th>
         <th>إجمالي التكلفة</th>

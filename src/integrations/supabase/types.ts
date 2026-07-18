@@ -691,6 +691,39 @@ export type Database = {
           },
         ]
       }
+      home_testimonials: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          logo_url: string | null
+          order_index: number
+          quote: string
+          restaurant_name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          order_index?: number
+          quote: string
+          restaurant_name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          order_index?: number
+          quote?: string
+          restaurant_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       inventory_categories: {
         Row: {
           active: boolean

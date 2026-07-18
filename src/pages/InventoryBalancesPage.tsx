@@ -460,10 +460,10 @@ export const InventoryBalancesPage: React.FC = () => {
                             {getLocationNames(item.id)}
                           </TableCell>
                           <TableCell className={cn(
-                            "ring-2 rounded font-bold",
+                            "font-bold",
                             isNegative
-                              ? "ring-destructive/40 bg-destructive/10 text-destructive"
-                              : "ring-primary/40 bg-primary/5 text-primary"
+                              ? "text-destructive"
+                              : "text-primary"
                           )}>
                             {stock.toFixed(2)}
                           </TableCell>

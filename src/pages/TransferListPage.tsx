@@ -32,6 +32,8 @@ export const TransferListPage: React.FC = () => {
   const [confirmAction, setConfirmAction] = useState<{ id: string; newStatus: string } | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [printOptionsOpen, setPrintOptionsOpen] = useState(false);
+  const [printRecord, setPrintRecord] = useState<any>(null);
 
   const { data: records = [], isLoading } = useQuery({
     queryKey: ["transfers", companyId],
@@ -106,7 +108,8 @@ export const TransferListPage: React.FC = () => {
     setDeleteId(null);
   };
 
-  const handlePrintTransfer = async (record: any) => {
+  const handlePrintTransfer = async (record: any, includeBalance: boolean = true) => {
+    setPrintOptionsOpen(false);
     // Fetch transfer items
     const { data: items } = await supabase
       .from("transfer_items")
@@ -129,7 +132,7 @@ export const TransferListPage: React.FC = () => {
         <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${item.code || "—"}</td>
         <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:right;">${item.name || "—"}</td>
         <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${item.unit || "—"}</td>
-        <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${Number(item.current_stock || 0).toFixed(2)}</td>
+        ${includeBalance ? `<td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${Number(item.current_stock || 0).toFixed(2)}</td>` : ""}
         <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${Number(item.quantity || 0).toFixed(2)}</td>
         <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${Number(item.avg_cost || 0).toFixed(2)}</td>
         <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${tc.toFixed(2)}</td>
@@ -138,7 +141,7 @@ export const TransferListPage: React.FC = () => {
 
     // Totals row
     itemsHTML += `<tr style="font-weight:bold;background:#f5f5f5;">
-      <td colspan="5" style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">الإجمالي</td>
+      <td colspan="${includeBalance ? 5 : 4}" style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">الإجمالي</td>
       <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${totalQty.toFixed(2)}</td>
       <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">—</td>
       <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${totalCostSum.toFixed(2)}</td>
@@ -194,7 +197,7 @@ export const TransferListPage: React.FC = () => {
         <th>الكود</th>
         <th>اسم الصنف</th>
         <th>الوحدة</th>
-        <th>الرصيد الحالي</th>
+        ${includeBalance ? "<th>الرصيد الحالي</th>" : ""}
         <th>الكمية المحولة</th>
         <th>متوسط التكلفة</th>
         <th>إجمالي التكلفة</th>
@@ -336,7 +339,7 @@ export const TransferListPage: React.FC = () => {
                           <ToggleRight size={14} />
                         </Button>
                       ) : null}
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handlePrintTransfer(r)}>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setPrintRecord(r); setPrintOptionsOpen(true); }}>
                         <Printer size={14} />
                       </Button>
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => { setDeleteId(r.id); setShowDeleteConfirm(true); }}>
@@ -375,6 +378,21 @@ export const TransferListPage: React.FC = () => {
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setShowDeleteConfirm(false)}>إلغاء</Button>
             <Button variant="destructive" size="sm" onClick={handleDelete}>حذف</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={printOptionsOpen} onOpenChange={setPrintOptionsOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>خيارات الطباعة</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            هل تريد إظهار خانة "الرصيد الحالي" في ورقة الطباعة؟
+          </p>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => printRecord && handlePrintTransfer(printRecord, false)}>بدون الرصيد</Button>
+            <Button size="sm" onClick={() => printRecord && handlePrintTransfer(printRecord, true)}>مع الرصيد الحالي</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -134,6 +134,7 @@ const adminSettingsItem: NavItem = {
   children: [
     { id: "settings-companies", path: "/settings/companies", label: "إدارة الشركات", icon: Building2 },
     { id: "settings-leads", path: "/admin/leads", label: "إدارة العملاء", icon: Phone },
+    { id: "settings-testimonials", path: "/admin/testimonials", label: "آراء عملائنا", icon: MessageSquareQuote },
     { id: "settings-subscription-log", path: "/settings/subscription-log", label: "سجلات الشركات", icon: Shield },
     { id: "settings-messages", path: "/settings/messages", label: "رسائل العملاء", icon: MessageSquare },
     { id: "settings-warehouses", path: "/settings/warehouses", label: "المخازن", icon: Settings },

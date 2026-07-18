@@ -330,22 +330,44 @@ const Comparison: React.FC = () => {
   );
 };
 
+type TestimonialRow = { id: string; restaurant_name: string; quote: string; logo_url: string | null };
+
 const Testimonials: React.FC = () => {
-  const t = [
-    { quote: "استطعنا تقليل الهدر بنسبة 15% خلال أول شهر.", name: "مطعم عائلي — القاهرة" },
-    { quote: "أصبحنا نعرف تكلفة وربحية كل صنف بدقة.", name: "سلسلة كافيهات — الإسكندرية" },
-  ];
+  const [rows, setRows] = useState<TestimonialRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from("home_testimonials")
+        .select("id,restaurant_name,quote,logo_url,order_index,active")
+        .eq("active", true)
+        .order("order_index", { ascending: true });
+      setRows((data as TestimonialRow[]) || []);
+      setLoading(false);
+    })();
+  }, []);
+
+  if (loading || rows.length === 0) return null;
+
   return (
     <section className="py-20 bg-slate-50">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-14">
           <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-4">آراء عملائنا</h2>
+          <p className="text-slate-600">تجارب حقيقية من مطاعم وكافيهات تستخدم النظام</p>
         </div>
-        <div className="grid md:grid-cols-2 gap-6">
-          {t.map((x) => (
-            <div key={x.name} className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
-              <p className="text-lg text-slate-800 leading-relaxed mb-4">"{x.quote}"</p>
-              <div className="text-sm font-bold" style={{ color: BRAND_GREEN }}>— {x.name}</div>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {rows.map((x) => (
+            <div key={x.id} className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm flex flex-col items-center text-center hover:shadow-md transition">
+              {x.logo_url ? (
+                <img src={x.logo_url} alt={x.restaurant_name} className="h-20 w-20 object-contain rounded-2xl bg-slate-50 p-2 border border-slate-100 mb-4" />
+              ) : (
+                <div className="h-20 w-20 rounded-2xl bg-slate-100 mb-4 flex items-center justify-center text-slate-400 font-bold text-2xl">
+                  {x.restaurant_name.charAt(0)}
+                </div>
+              )}
+              <p className="text-slate-800 leading-relaxed mb-4 text-[15px]">"{x.quote}"</p>
+              <div className="mt-auto pt-3 border-t border-slate-100 w-full text-sm font-bold" style={{ color: BRAND_GREEN }}>— {x.restaurant_name}</div>
             </div>
           ))}
         </div>

@@ -13,7 +13,7 @@ import {
   Store, ArrowRightLeft, ClipboardCheck, Trash2,
   Layers, PieChart, BarChart3, ShieldBan, Factory,
   ChevronDown, Monitor, Receipt, BrainCircuit, FolderOpen, UtensilsCrossed, MessageSquare, Tags,
-  Shield, Building2, Sun, Moon, Phone, Clock, GitBranch, Truck, MessageSquareQuote
+  Shield, Building2, Sun, Moon, Phone, Clock, GitBranch, Truck, MessageSquareQuote, FileSpreadsheet
 } from "lucide-react";
 
 interface SystemLayoutProps {

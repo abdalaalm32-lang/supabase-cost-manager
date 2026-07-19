@@ -508,6 +508,7 @@ const AppRoutes = () => {
                   <Route path="/pos/analytics" element={<PermissionGuard permKey="sales_management"><PosAnalyticsPage /></PermissionGuard>} />
                   <Route path="/pos/groups" element={<PermissionGuard permKey="sales_management"><PosGroupsPage /></PermissionGuard>} />
                   <Route path="/pos/items" element={<PermissionGuard permKey="sales_management"><PosItemsPage /></PermissionGuard>} />
+                  <Route path="/integrations/pos-import" element={<PermissionGuard permKey="sales_management"><PosImportPage /></PermissionGuard>} />
                   <Route path="/call-center" element={<PermissionGuard permKey="call_center"><CallCenterPage /></PermissionGuard>} />
                   <Route path="/sales/driver-settlement" element={<PermissionGuard permKey="sales_management"><DriverSettlementPage /></PermissionGuard>} />
                   <Route path="/sales/delivery-companies" element={<PermissionGuard permKey="sales_management"><DeliveryCompaniesPage /></PermissionGuard>} />

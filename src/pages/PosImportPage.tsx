@@ -89,7 +89,7 @@ function parseExcelDate(v: any): Date | null {
 
 export function PosImportPage() {
   const { auth } = useAuth();
-  const companyId = auth?.company_id;
+  const companyId = auth?.profile?.company_id;
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 

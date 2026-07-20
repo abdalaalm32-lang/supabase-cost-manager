@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.delete-company]
 verify_jwt = false
+
+[functions.pos-api]
+verify_jwt = false

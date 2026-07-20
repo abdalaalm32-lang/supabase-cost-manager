@@ -13,7 +13,7 @@ import {
   Store, ArrowRightLeft, ClipboardCheck, Trash2,
   Layers, PieChart, BarChart3, ShieldBan, Factory,
   ChevronDown, Monitor, Receipt, BrainCircuit, FolderOpen, UtensilsCrossed, MessageSquare, Tags,
-  Shield, Building2, Sun, Moon, Phone, Clock, GitBranch, Truck, MessageSquareQuote, FileSpreadsheet
+  Shield, Building2, Sun, Moon, Phone, Clock, GitBranch, Truck, MessageSquareQuote, FileSpreadsheet, Code2
 } from "lucide-react";
 
 interface SystemLayoutProps {
@@ -47,6 +47,7 @@ const mainNavItems: NavItem[] = [
       { id: "sales-shifts", path: "/sales/shifts", label: "سجل الشيفتات", icon: Clock },
       { id: "sales-shift-reports", path: "/sales/shift-reports", label: "تقارير الشيفتات", icon: FileText },
       { id: "sales-pos-import", path: "/integrations/pos-import", label: "استيراد مبيعات POS", icon: FileSpreadsheet },
+      { id: "sales-pos-api", path: "/integrations/pos-api", label: "ربط API لنقاط البيع", icon: Code2 },
     ],
   },
   {

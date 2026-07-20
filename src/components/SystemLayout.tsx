@@ -47,6 +47,7 @@ const mainNavItems: NavItem[] = [
       { id: "sales-shifts", path: "/sales/shifts", label: "سجل الشيفتات", icon: Clock },
       { id: "sales-shift-reports", path: "/sales/shift-reports", label: "تقارير الشيفتات", icon: FileText },
       { id: "sales-pos-import", path: "/integrations/pos-import", label: "استيراد مبيعات POS", icon: FileSpreadsheet },
+      { id: "sales-pos-api", path: "/integrations/pos-api", label: "ربط API لنقاط البيع", icon: Code2 },
     ],
   },
   {

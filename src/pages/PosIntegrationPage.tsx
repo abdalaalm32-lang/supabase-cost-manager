@@ -102,19 +102,21 @@ function DatabaseSyncTab() {
   });
 
   // Hydrate form from existing config
-  useState(() => {
+  useEffect(() => {
     if (existing && !configId) {
       setConfigId(existing.id);
-      setDbType(existing.db_type);
+      setDbType(existing.db_type as DbType);
       setServerHost(existing.server_host);
       setDatabaseName(existing.database_name);
       setUsername(existing.db_username);
       setPort(existing.port);
       setSyncInterval(existing.sync_interval_seconds);
-      setSelectedTables(Array.isArray(existing.selected_tables) ? existing.selected_tables : []);
+      const tbls = Array.isArray(existing.selected_tables) ? existing.selected_tables : [];
+      setSelectedTables(tbls.map((t) => String(t)));
       setActive(existing.active);
     }
-  });
+  }, [existing, configId]);
+
 
   const handleDbTypeChange = (t: DbType) => { setDbType(t); setPort(DEFAULT_PORTS[t]); };
 

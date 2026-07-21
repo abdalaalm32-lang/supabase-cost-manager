@@ -171,6 +171,12 @@ async function handleItemsUpsert(req: Request, companyId: string) {
       results.push({ code, ok: !error, id: data?.id, action: "created", error: error?.message });
     }
   }
+  const okCount = results.filter((r) => r.ok).length;
+  const errCount = results.length - okCount;
+  await supabase.from("pos_sync_logs").insert({
+    company_id: companyId, source: "api", event: `Items sync (${okCount} ok, ${errCount} failed)`,
+    status: errCount > 0 ? "warning" : "success", records_count: okCount, error_count: errCount,
+  });
   return json({ success: true, results });
 }
 

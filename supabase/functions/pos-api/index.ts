@@ -139,8 +139,14 @@ async function handleSales(req: Request, companyId: string, defaultBranchId: str
     return json({ error: "Failed to create sale items", details: itemsErr.message }, 500);
   }
 
+  await supabase.from("pos_sync_logs").insert({
+    company_id: companyId, source: "api", event: `Sale recorded (${invNum})`,
+    status: "success", records_count: 1, error_count: 0,
+    metadata: { sale_id: sale.id, items: resolvedItems.length },
+  });
   return json({ success: true, sale_id: sale.id, invoice_number: invNum });
 }
+
 
 async function handleItemsUpsert(req: Request, companyId: string) {
   const body = await req.json().catch(() => null);

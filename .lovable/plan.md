@@ -1,104 +1,70 @@
-## نظام Trial + إدارة العملاء + تحديثات الفيديو والصفحة الرئيسية
 
-### 1. قاعدة البيانات (Migration واحدة)
+## الفكرة العامة
 
-**تعديل جدول `companies`:**
-- `subscription_status` (trial / active / expired / suspended)
-- `trial_start_date`, `trial_end_date`
-- `activity_score` (محسوب من النشاط)
+نعمل صفحة موحدة اسمها **"التكامل مع أنظمة نقاط البيع"** فيها 3 تبويبات كبيرة، وتحل محل الصفحة الحالية `/integrations/pos-api`:
 
-**جدول جديد `trial_leads`:**
-- بيانات التواصل: `restaurant_name`, `contact_name`, `phone`, `whatsapp`, `email`, `city`, `branches_count`, `current_system`
-- ربط بالشركة: `company_id` (nullable — بيتربط لما الشركة تتنشئ)
-- الحالة: `status` (new_lead / trial_active / contacted / demo_scheduled / converted / lost)
-- التوقيتات: `trial_start_date`, `trial_end_date`, `created_at`, `last_contact_at`
-- ملاحظات المبيعات: `admin_notes`
+1. **API Integration** — الصفحة الحالية بحالها (مفاتيح + دليل الربط + خطوات).
+2. **Database Sync** — إعدادات ربط قواعد بيانات الأنظمة القديمة (SQL Server / MySQL / PostgreSQL / Oracle) عن طريق **3M Sync Agent**.
+3. **Synchronization Logs** — سجل موحد لكل عمليات المزامنة (سواء API أو DB Sync) مع نجاح/فشل/عدد السجلات.
 
-**جدول `company_activity_stats` (View أو Table محسوب):**
-- `company_id`, `last_login_at`, `login_count`, `items_created`, `branches_created`, `reports_viewed`, `days_active`
+## المعمارية المقترحة
 
-**RLS:**
-- `trial_leads`: قراءة/كتابة للـ admin فقط
-- `company_activity_stats`: قراءة للـ admin فقط + قراءة الشركة لبياناتها
+```text
+   Phoenix / أي POS قديم
+           │  SQL
+           ▼
+   3M Sync Agent  (برنامج Windows/Linux صغير يتثبت عند العميل)
+           │  HTTPS + API Key
+           ▼
+   pos-api Edge Function  (نفس الـ endpoints الحالية)
+           │
+           ▼
+   pos_sales / stock_items / pos_items
+           │
+           ▼
+   sync_logs   (جدول جديد لتسجيل كل عملية)
+```
 
-### 2. Edge Function: `create-trial-company`
+**الأهم:** السيستم السحابي **لا يتصل مباشرة** بقاعدة بيانات العميل. الـ Sync Agent هو اللي بيعمل الاتصال المحلي وبيبعت للـ API الحالي — ده أأمن وأسهل صيانة.
 
-- Public (لا يحتاج JWT)
-- يستقبل بيانات نموذج التسجيل
-- ينشئ:
-  - Row في `trial_leads`
-  - `companies` row (status=trial, trial_end = now + 14 days)
-  - `auth.users` (owner)
-  - `profiles` + `user_roles` (owner)
-- يرجع بيانات الدخول
+## التنفيذ (Frontend + Backend)
 
-### 3. صفحة `/trial-signup`
+### 1. قاعدة البيانات
+- جدول `pos_sync_configs`: إعدادات كل عميل (نوع الـ DB, server, database name, username, port, sync_interval, selected_tables). **الباسورد يتخزن مشفّر ولا يظهر في الـ frontend بعد الحفظ**.
+- جدول `pos_sync_logs`: `id, company_id, source ('api'|'db_sync'), event, records_count, error_count, error_message, created_at`.
+- تعديل `pos-api/index.ts`: كل عملية بيع/مزامنة أصناف تكتب سطر في `pos_sync_logs`.
 
-نموذج كامل احترافي:
-- اسم المطعم / الكافيه *
-- اسم المسؤول *
-- رقم الموبايل *
-- واتساب
-- البريد الإلكتروني *
-- كلمة سر *
-- المدينة
-- عدد الفروع
-- نظام حالي؟ (نعم/لا)
-- زر: "ابدأ التجربة المجانية"
-- بعد النجاح: يعرض بيانات الدخول + يوجهه للـ Login
+### 2. صفحة `PosIntegrationPage.tsx` (بديلة لـ `PosApiPage.tsx`)
+تبويبات:
+- **API Integration**: نقل محتوى الصفحة الحالية كما هو.
+- **Database Sync**:
+  - Card 1: اختيار نوع DB (radio: SQL Server / MySQL / PostgreSQL / Oracle).
+  - Card 2: بيانات الاتصال (Server / DB Name / Username / Password / Port).
+  - Card 3: زر **Test Connection** (بيبعت لـ edge function `test-db-connection` بيرجع نجح/فشل — للـ MVP هيكون stub بيتحقق من صيغة البيانات فقط، الاتصال الفعلي هيكون من الـ Agent نفسه).
+  - Card 4: إعدادات المزامنة (Sync Every: 10s/30s/1m/5m + checkboxes للجداول: Invoices, Sales Details, Items, Customers, Branches).
+  - Card 5: حالة آخر مزامنة (Last Sync, Records Imported, Errors) — بتقرأ من `pos_sync_logs`.
+  - Card 6: **تحميل 3M Sync Agent** + دليل التثبيت (سنعرض placeholder للتحميل + تعليمات نصية للـ MVP).
+- **Synchronization Logs**: جدول موحد بكل السجلات، فلتر بالمصدر (API / DB Sync)، بالتاريخ، بالحالة.
 
-### 4. قفل النظام عند انتهاء التجربة
+### 3. تحديث المسار
+- استبدال `/integrations/pos-api` بـ `/integrations/pos` في `App.tsx` والـ Sidebar.
+- الاسم الجديد: "التكامل مع نقاط البيع".
 
-- Hook `useSubscriptionGuard` يفحص `subscription_status` + `trial_end_date`
-- لو `expired`: overlay كامل يمنع الدخول + رسالة "انتهت الفترة التجريبية — يرجى التواصل"
-- زر واتساب مباشر: +201061208033
+## نطاق الـ MVP دلوقتي vs مستقبلاً
 
-### 5. صفحة الأدمن: `/admin/leads` (إدارة العملاء)
+**دلوقتي (MVP):**
+- الجدولين + الصفحة الكاملة بـ 3 تبويبات.
+- حفظ إعدادات الـ DB Sync + عرض السجلات من `pos_sync_logs`.
+- تسجيل كل استدعاء للـ `pos-api` في `pos_sync_logs` تلقائيًا (يخلي التبويب الثالث شغّال فورًا).
+- Test Connection = تحقق شكلي فقط (صيغة IP، Port valid).
+- شاشة تعليمات + placeholder لتحميل الـ Agent.
 
-**KPI Cards علوية:**
-- إجمالي العملاء المحتملين
-- تجارب نشطة
-- تجارب منتهية
-- تم التحويل لمشترك
+**لاحقًا (خارج نطاق دلوقتي):**
+- بناء برنامج **3M Sync Agent** الفعلي (Electron/Go/.NET) — ده مشروع منفصل خارج Lovable.
+- Test Connection حقيقي (يحتاج الـ Agent مثبت عند العميل).
 
-**Tab 1: العملاء المحتملون (Leads)**
-جدول بأعمدة:
-- اسم المطعم | المسؤول | الهاتف/واتساب | المدينة | عدد الفروع | الحالة | تاريخ التسجيل | نهاية التجربة | إجراءات
+## سؤال قبل ما أبدأ التنفيذ
 
-إجراءات: تغيير الحالة، ملاحظة، اتصال واتساب مباشر، تحويل لاشتراك مدفوع
-
-**Tab 2: Dashboard المبيعات (نشاط العملاء)**
-جدول بأعمدة:
-- العميل | الحالة | آخر دخول | عدد الفروع | الأصناف | التقارير المفتوحة | **نسبة النشاط** (شريط ملون) | أولوية التواصل
-
-فلاتر: الكل / نشط عالي / نشط متوسط / منخفض / لم يدخل
-
-**Tab 3: تحويل يدوي (Convert)**
-تفعيل الاشتراك المدفوع لشركة معينة (تحديث `subscription_status = active`)
-
-### 6. الصفحة الرئيسية HomePage
-
-- حذف زر "ابدأ الآن" بجانب "تسجيل الدخول" في الـ Navbar
-- زر "ابدأ الفترة التجريبية مجاناً" → يوجه لـ `/trial-signup` (بدل ما يفتح Dialog تسجيل)
-
-### 7. الفيديو التعريفي
-
-سأعيد إنتاج الفيديو في Remotion:
-- استبدال الصور بالـ 10 صور الجديدة اللي رفعتها (Dashboard / POS / Inventory Materials / Inventory Balances / Cost Analysis / Variance Analysis / Variance Details / Indirect Expenses × 2 / Menu Analysis)
-- حذف شاشة "mgsc.lovable.app" من النهاية
-- زيادة المدة (~30-35 ثانية بدل ~20)
-- ترقية موقع النصوص فوق الصور بحيث تكون في شريط علوي/سفلي واضح مع خلفية Overlay
-- إضافة موسيقى تحفيزية (سأولد track قصير أو أستخدم أحد الروابط الجاهزة)
-
----
-
-### ترتيب التنفيذ:
-1. Migration (ينتظر موافقتك)
-2. Edge function للتسجيل التلقائي
-3. صفحة `/trial-signup`
-4. صفحة `/admin/leads` بالتابين
-5. Guard الاشتراك + Overlay القفل
-6. تعديلات HomePage
-7. إعادة إنتاج الفيديو ورفعه
-
-هل تعتمد الخطة؟
+هل تمام كده أم عايز نضيف/نغير حاجة قبل ما نبدأ؟ خصوصًا:
+1. **تبويبات منفصلة** (3 تابس) ولا صفحة واحدة طويلة؟ (الاقتراح: تابس عشان أنظف).
+2. جدول `pos_sync_configs` يكون **واحد لكل شركة** ولا **متعدد** (يعني ممكن العميل يربط أكتر من DB لأكتر من فرع)؟

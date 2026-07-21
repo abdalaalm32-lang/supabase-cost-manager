@@ -139,8 +139,14 @@ async function handleSales(req: Request, companyId: string, defaultBranchId: str
     return json({ error: "Failed to create sale items", details: itemsErr.message }, 500);
   }
 
+  await supabase.from("pos_sync_logs").insert({
+    company_id: companyId, source: "api", event: `Sale recorded (${invNum})`,
+    status: "success", records_count: 1, error_count: 0,
+    metadata: { sale_id: sale.id, items: resolvedItems.length },
+  });
   return json({ success: true, sale_id: sale.id, invoice_number: invNum });
 }
+
 
 async function handleItemsUpsert(req: Request, companyId: string) {
   const body = await req.json().catch(() => null);
@@ -165,6 +171,12 @@ async function handleItemsUpsert(req: Request, companyId: string) {
       results.push({ code, ok: !error, id: data?.id, action: "created", error: error?.message });
     }
   }
+  const okCount = results.filter((r) => r.ok).length;
+  const errCount = results.length - okCount;
+  await supabase.from("pos_sync_logs").insert({
+    company_id: companyId, source: "api", event: `Items sync (${okCount} ok, ${errCount} failed)`,
+    status: errCount > 0 ? "warning" : "success", records_count: okCount, error_count: errCount,
+  });
   return json({ success: true, results });
 }
 
@@ -210,6 +222,20 @@ Deno.serve(async (req) => {
     if (path === "sales" && req.method === "POST") return handleSales(req, companyId, default_branch_id);
     if (path === "items" && req.method === "POST") return handleItemsUpsert(req, companyId);
     if (path === "stock" && req.method === "GET") return handleStock(url, companyId);
+    if (path === "sync-log" && req.method === "POST") {
+      const body = await req.json().catch(() => ({}));
+      await supabase.from("pos_sync_logs").insert({
+        company_id: companyId,
+        source: "db_sync",
+        event: String(body.event || "Sync event"),
+        status: body.status || "success",
+        records_count: Number(body.records_count || 0),
+        error_count: Number(body.error_count || 0),
+        error_message: body.error_message || null,
+        metadata: body.metadata || null,
+      });
+      return json({ success: true });
+    }
 
     return json({ error: "Not found", path, method: req.method }, 404);
   } catch (e) {

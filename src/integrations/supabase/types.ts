@@ -1785,6 +1785,131 @@ export type Database = {
           },
         ]
       }
+      pos_sync_configs: {
+        Row: {
+          active: boolean
+          api_key_id: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          database_name: string
+          db_password_encrypted: string
+          db_type: string
+          db_username: string
+          id: string
+          last_sync_at: string | null
+          last_sync_status: string | null
+          name: string
+          port: number
+          selected_tables: Json
+          server_host: string
+          sync_interval_seconds: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          api_key_id?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          database_name: string
+          db_password_encrypted?: string
+          db_type: string
+          db_username: string
+          id?: string
+          last_sync_at?: string | null
+          last_sync_status?: string | null
+          name?: string
+          port?: number
+          selected_tables?: Json
+          server_host: string
+          sync_interval_seconds?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          api_key_id?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          database_name?: string
+          db_password_encrypted?: string
+          db_type?: string
+          db_username?: string
+          id?: string
+          last_sync_at?: string | null
+          last_sync_status?: string | null
+          name?: string
+          port?: number
+          selected_tables?: Json
+          server_host?: string
+          sync_interval_seconds?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_sync_configs_api_key_id_fkey"
+            columns: ["api_key_id"]
+            isOneToOne: false
+            referencedRelation: "pos_api_keys"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_sync_configs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pos_sync_logs: {
+        Row: {
+          company_id: string
+          created_at: string
+          error_count: number
+          error_message: string | null
+          event: string
+          id: string
+          metadata: Json | null
+          records_count: number
+          source: string
+          status: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          error_count?: number
+          error_message?: string | null
+          event: string
+          id?: string
+          metadata?: Json | null
+          records_count?: number
+          source: string
+          status?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          error_count?: number
+          error_message?: string | null
+          event?: string
+          id?: string
+          metadata?: Json | null
+          records_count?: number
+          source?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_sync_logs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       production_edit_history: {
         Row: {
           changes: Json

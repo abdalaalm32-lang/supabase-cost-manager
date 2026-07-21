@@ -222,6 +222,20 @@ Deno.serve(async (req) => {
     if (path === "sales" && req.method === "POST") return handleSales(req, companyId, default_branch_id);
     if (path === "items" && req.method === "POST") return handleItemsUpsert(req, companyId);
     if (path === "stock" && req.method === "GET") return handleStock(url, companyId);
+    if (path === "sync-log" && req.method === "POST") {
+      const body = await req.json().catch(() => ({}));
+      await supabase.from("pos_sync_logs").insert({
+        company_id: companyId,
+        source: "db_sync",
+        event: String(body.event || "Sync event"),
+        status: body.status || "success",
+        records_count: Number(body.records_count || 0),
+        error_count: Number(body.error_count || 0),
+        error_message: body.error_message || null,
+        metadata: body.metadata || null,
+      });
+      return json({ success: true });
+    }
 
     return json({ error: "Not found", path, method: req.method }, 404);
   } catch (e) {

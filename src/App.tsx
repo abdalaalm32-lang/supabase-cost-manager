@@ -22,6 +22,7 @@ const PosGroupsPage = lazy(() => import("@/pages/PosGroupsPage").then((m) => ({ 
 const PosItemsPage = lazy(() => import("@/pages/PosItemsPage").then((m) => ({ default: m.PosItemsPage })));
 const PosImportPage = lazy(() => import("@/pages/PosImportPage").then((m) => ({ default: m.PosImportPage })));
 const PosApiPage = lazy(() => import("@/pages/PosApiPage").then((m) => ({ default: m.PosApiPage })));
+const PosIntegrationPage = lazy(() => import("@/pages/PosIntegrationPage").then((m) => ({ default: m.PosIntegrationPage })));
 const PosScreenPage = lazy(() => import("@/pages/PosScreenPage").then((m) => ({ default: m.PosScreenPage })));
 const PosInvoicesPage = lazy(() => import("@/pages/PosInvoicesPage").then((m) => ({ default: m.PosInvoicesPage })));
 const PosItemSalesPage = lazy(() => import("@/pages/PosItemSalesPage").then((m) => ({ default: m.PosItemSalesPage })));

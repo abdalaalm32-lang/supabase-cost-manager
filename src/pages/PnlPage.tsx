@@ -1360,9 +1360,10 @@ import { ConsolidatedPnlTab } from "@/components/pnl/ConsolidatedPnlTab";
 
 export const PnlPage: React.FC = () => {
   return (
-    <div className="p-4 md:p-6" dir="rtl">
+    <div dir="rtl">
       <Tabs defaultValue="branch" className="w-full">
-        <TabsList className="mb-4">
+        <TabsList className="mx-4 mt-4 md:mx-6 md:mt-6">
+
           <TabsTrigger value="branch" className="gap-2"><Building2 className="h-4 w-4" /> P&L الفروع</TabsTrigger>
           <TabsTrigger value="warehouse" className="gap-2"><WarehouseIcon2 className="h-4 w-4" /> P&L المخزن</TabsTrigger>
           <TabsTrigger value="consolidated" className="gap-2"><LayersIcon className="h-4 w-4" /> P&L المجمّع</TabsTrigger>

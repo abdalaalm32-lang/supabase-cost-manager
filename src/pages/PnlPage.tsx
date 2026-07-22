@@ -124,7 +124,7 @@ const CompareVariancesLoader: React.FC<{
 };
 
 
-export const PnlPage: React.FC = () => {
+const BranchPnlView: React.FC = () => {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;
 

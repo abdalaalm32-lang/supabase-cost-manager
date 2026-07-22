@@ -1352,3 +1352,26 @@ const BranchPnlView: React.FC = () => {
     </div>
   );
 };
+
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Building2, Warehouse as WarehouseIcon2, Layers as LayersIcon } from "lucide-react";
+import { WarehousePnlTab } from "@/components/pnl/WarehousePnlTab";
+import { ConsolidatedPnlTab } from "@/components/pnl/ConsolidatedPnlTab";
+
+export const PnlPage: React.FC = () => {
+  return (
+    <div className="p-4 md:p-6" dir="rtl">
+      <Tabs defaultValue="branch" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="branch" className="gap-2"><Building2 className="h-4 w-4" /> P&L الفروع</TabsTrigger>
+          <TabsTrigger value="warehouse" className="gap-2"><WarehouseIcon2 className="h-4 w-4" /> P&L المخزن</TabsTrigger>
+          <TabsTrigger value="consolidated" className="gap-2"><LayersIcon className="h-4 w-4" /> P&L المجمّع</TabsTrigger>
+        </TabsList>
+        <TabsContent value="branch"><BranchPnlView /></TabsContent>
+        <TabsContent value="warehouse"><WarehousePnlTab /></TabsContent>
+        <TabsContent value="consolidated"><ConsolidatedPnlTab /></TabsContent>
+      </Tabs>
+    </div>
+  );
+};
+

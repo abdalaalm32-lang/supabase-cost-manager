@@ -65,6 +65,11 @@ const DELIVERY_STATUSES = [
 export const PosScreenPage: React.FC = () => {
   const { auth, hasPermission } = useAuth();
   const companyId = auth.profile?.company_id;
+  // Cashiers cannot delete items from the invoice (Admins/Owners always can)
+  const roleStr = String(auth.profile?.role || "").toLowerCase();
+  const isCashier = roleStr.includes("cashier") || roleStr.includes("كاشير");
+  const isAdminOrOwner = roleStr.includes("admin") || roleStr.includes("owner") || roleStr.includes("مدير") || roleStr.includes("مالك");
+  const canDeleteCartItem = isAdminOrOwner || !isCashier;
   const queryClient = useQueryClient();
   const location = useLocation();
   const navigate = useNavigate();
@@ -1058,7 +1063,9 @@ export const PosScreenPage: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-1.5">
                           <span className="font-bold text-primary text-xs whitespace-nowrap">{(item.unit_price * item.quantity).toFixed(2)}</span>
-                          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => removeFromCart(item.id)}><Trash2 className="h-3 w-3" /></Button>
+                          {canDeleteCartItem && (
+                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => removeFromCart(item.id)}><Trash2 className="h-3 w-3" /></Button>
+                          )}
                         </div>
                       </div>
                       <Input

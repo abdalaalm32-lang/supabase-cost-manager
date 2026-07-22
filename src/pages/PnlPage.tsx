@@ -124,7 +124,7 @@ const CompareVariancesLoader: React.FC<{
 };
 
 
-export const PnlPage: React.FC = () => {
+const BranchPnlView: React.FC = () => {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;
 
@@ -1352,3 +1352,27 @@ export const PnlPage: React.FC = () => {
     </div>
   );
 };
+
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Warehouse as WarehouseIcon2, Layers as LayersIcon } from "lucide-react";
+import { WarehousePnlTab } from "@/components/pnl/WarehousePnlTab";
+import { ConsolidatedPnlTab } from "@/components/pnl/ConsolidatedPnlTab";
+
+export const PnlPage: React.FC = () => {
+  return (
+    <div dir="rtl">
+      <Tabs defaultValue="branch" className="w-full">
+        <TabsList className="mx-4 mt-4 md:mx-6 md:mt-6">
+
+          <TabsTrigger value="branch" className="gap-2"><Building2 className="h-4 w-4" /> P&L الفروع</TabsTrigger>
+          <TabsTrigger value="warehouse" className="gap-2"><WarehouseIcon2 className="h-4 w-4" /> P&L المخزن</TabsTrigger>
+          <TabsTrigger value="consolidated" className="gap-2"><LayersIcon className="h-4 w-4" /> P&L المجمّع</TabsTrigger>
+        </TabsList>
+        <TabsContent value="branch"><BranchPnlView /></TabsContent>
+        <TabsContent value="warehouse"><WarehousePnlTab /></TabsContent>
+        <TabsContent value="consolidated"><ConsolidatedPnlTab /></TabsContent>
+      </Tabs>
+    </div>
+  );
+};
+

@@ -1354,7 +1354,7 @@ const BranchPnlView: React.FC = () => {
 };
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Warehouse as WarehouseIcon2, Layers as LayersIcon } from "lucide-react";
+import { Warehouse as WarehouseIcon2, Layers as LayersIcon } from "lucide-react";
 import { WarehousePnlTab } from "@/components/pnl/WarehousePnlTab";
 import { ConsolidatedPnlTab } from "@/components/pnl/ConsolidatedPnlTab";
 

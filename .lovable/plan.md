@@ -1,70 +1,128 @@
+## الهدف
+1. إضافة **Warehouse P&L** و **Consolidated P&L** بجانب Branch P&L الحالي في صفحة P&L.
+2. إضافة صلاحية جديدة `delete_pos_item` تخفي زر الحذف/سلة المهملات في شاشة POS، مع تحقق في الـ Backend وسجل Audit للحذف.
 
-## الفكرة العامة
+---
 
-نعمل صفحة موحدة اسمها **"التكامل مع أنظمة نقاط البيع"** فيها 3 تبويبات كبيرة، وتحل محل الصفحة الحالية `/integrations/pos-api`:
+## القسم الأول: P&L للمخزن
 
-1. **API Integration** — الصفحة الحالية بحالها (مفاتيح + دليل الربط + خطوات).
-2. **Database Sync** — إعدادات ربط قواعد بيانات الأنظمة القديمة (SQL Server / MySQL / PostgreSQL / Oracle) عن طريق **3M Sync Agent**.
-3. **Synchronization Logs** — سجل موحد لكل عمليات المزامنة (سواء API أو DB Sync) مع نجاح/فشل/عدد السجلات.
+### 1.1 تعديل قاعدة البيانات
+- التحقق من جدول `transfer_pricing_breakdown` الحالي والتأكد إنه بيحفظ Snapshot كامل عند إنشاء التحويل. لو ناقص أعمدة (زي `cost_price_at_transfer`, `markup_percent`, `supply_price_at_transfer`, `total_cost`, `total_supply`, `profit_amount`, `warehouse_id`, `transfer_date`) — يتم إضافتها بـ migration.
+- التأكد إن الأسعار محفوظة وقت التحويل (Snapshot) ومش بتتغير بعد كده.
 
-## المعمارية المقترحة
+### 1.2 مصادر البيانات لتقرير المخزن
+| البند | المصدر |
+|---|---|
+| Internal Sales | `SUM(transfer_pricing_breakdown.total_supply)` للتحويلات المكتملة من مخزن معين خلال الفترة |
+| Internal Sales by Branch | نفس المصدر مجمّع حسب `destination_branch_id` |
+| Purchases | `purchase_orders` المرتبطة بالمخزن (status = مكتمل) |
+| Opening/Closing Inventory | آخر stocktake قبل/داخل الفترة (نفس منطق الـ Periodic COGS الحالي) |
+| Production Cost | `production_records.total_cost` |
+| Operating Expenses | `warehouse_overhead_expenses` + إمكانية إضافة يدوية |
+| Waste | `waste_records.total_cost` للمخزن |
 
-```text
-   Phoenix / أي POS قديم
-           │  SQL
-           ▼
-   3M Sync Agent  (برنامج Windows/Linux صغير يتثبت عند العميل)
-           │  HTTPS + API Key
-           ▼
-   pos-api Edge Function  (نفس الـ endpoints الحالية)
-           │
-           ▼
-   pos_sales / stock_items / pos_items
-           │
-           ▼
-   sync_logs   (جدول جديد لتسجيل كل عملية)
+### 1.3 هيكل صفحة P&L بعد التعديل
+تبويبات (Tabs) داخل نفس الصفحة:
+```
+P&L
+├── Branch P&L      (الصفحة الحالية)
+├── Warehouse P&L   (جديد)
+└── Consolidated    (جديد)
 ```
 
-**الأهم:** السيستم السحابي **لا يتصل مباشرة** بقاعدة بيانات العميل. الـ Sync Agent هو اللي بيعمل الاتصال المحلي وبيبعت للـ API الحالي — ده أأمن وأسهل صيانة.
+### 1.4 محتوى Warehouse P&L
+```
+P&L - Central Warehouse [اسم المخزن]
+الفترة: من - إلى
 
-## التنفيذ (Frontend + Backend)
+Internal Sales
+  Branch A ................. 150,000
+  Branch B ................. 120,000
+  Branch C ................. 180,000
+  Total Internal Sales ..... 450,000
 
-### 1. قاعدة البيانات
-- جدول `pos_sync_configs`: إعدادات كل عميل (نوع الـ DB, server, database name, username, port, sync_interval, selected_tables). **الباسورد يتخزن مشفّر ولا يظهر في الـ frontend بعد الحفظ**.
-- جدول `pos_sync_logs`: `id, company_id, source ('api'|'db_sync'), event, records_count, error_count, error_message, created_at`.
-- تعديل `pos-api/index.ts`: كل عملية بيع/مزامنة أصناف تكتب سطر في `pos_sync_logs`.
+Cost of Goods Sold
+  Opening Inventory ......... 50,000
+  Purchases ................ 300,000
+  Production Cost ........... 20,000
+  Closing Inventory ........ (60,000)
+  Total COGS ............... 310,000
 
-### 2. صفحة `PosIntegrationPage.tsx` (بديلة لـ `PosApiPage.tsx`)
-تبويبات:
-- **API Integration**: نقل محتوى الصفحة الحالية كما هو.
-- **Database Sync**:
-  - Card 1: اختيار نوع DB (radio: SQL Server / MySQL / PostgreSQL / Oracle).
-  - Card 2: بيانات الاتصال (Server / DB Name / Username / Password / Port).
-  - Card 3: زر **Test Connection** (بيبعت لـ edge function `test-db-connection` بيرجع نجح/فشل — للـ MVP هيكون stub بيتحقق من صيغة البيانات فقط، الاتصال الفعلي هيكون من الـ Agent نفسه).
-  - Card 4: إعدادات المزامنة (Sync Every: 10s/30s/1m/5m + checkboxes للجداول: Invoices, Sales Details, Items, Customers, Branches).
-  - Card 5: حالة آخر مزامنة (Last Sync, Records Imported, Errors) — بتقرأ من `pos_sync_logs`.
-  - Card 6: **تحميل 3M Sync Agent** + دليل التثبيت (سنعرض placeholder للتحميل + تعليمات نصية للـ MVP).
-- **Synchronization Logs**: جدول موحد بكل السجلات، فلتر بالمصدر (API / DB Sync)، بالتاريخ، بالحالة.
+Gross Profit ............... 140,000  (31.1%)
 
-### 3. تحديث المسار
-- استبدال `/integrations/pos-api` بـ `/integrations/pos` في `App.tsx` والـ Sidebar.
-- الاسم الجديد: "التكامل مع نقاط البيع".
+Operating Expenses
+  [من warehouse_overhead_expenses + يدوي]
+  Total .................... 80,000
 
-## نطاق الـ MVP دلوقتي vs مستقبلاً
+Net Profit ................. 60,000   (13.3%)
+```
++ KPIs cards علوية:
+- إجمالي المبيعات الداخلية
+- هامش الربح الداخلي %
+- تكلفة الإنتاج
+- تكلفة الفاقد
+- قيمة المخزون أول/آخر المدة
+- صافي ربح المخزن
 
-**دلوقتي (MVP):**
-- الجدولين + الصفحة الكاملة بـ 3 تبويبات.
-- حفظ إعدادات الـ DB Sync + عرض السجلات من `pos_sync_logs`.
-- تسجيل كل استدعاء للـ `pos-api` في `pos_sync_logs` تلقائيًا (يخلي التبويب الثالث شغّال فورًا).
-- Test Connection = تحقق شكلي فقط (صيغة IP، Port valid).
-- شاشة تعليمات + placeholder لتحميل الـ Agent.
+### 1.5 محتوى Consolidated P&L
+```
+Consolidated P&L (الشركة كاملة)
 
-**لاحقًا (خارج نطاق دلوقتي):**
-- بناء برنامج **3M Sync Agent** الفعلي (Electron/Go/.NET) — ده مشروع منفصل خارج Lovable.
-- Test Connection حقيقي (يحتاج الـ Agent مثبت عند العميل).
+Real Sales (POS) ......................... X
+(-) Internal Sales ................ (تُلغى)
+(-) Internal Purchases at branches  (تُلغى)
 
-## سؤال قبل ما أبدأ التنفيذ
+COGS (original raw materials only) ....... Y
+Gross Profit ............................. X-Y
+Operating Expenses (كل الفروع + المخزن) . Z
+Net Profit ............................... X-Y-Z
+```
+مع pill يوضح قيمة الـ Elimination.
 
-هل تمام كده أم عايز نضيف/نغير حاجة قبل ما نبدأ؟ خصوصًا:
-1. **تبويبات منفصلة** (3 تابس) ولا صفحة واحدة طويلة؟ (الاقتراح: تابس عشان أنظف).
-2. جدول `pos_sync_configs` يكون **واحد لكل شركة** ولا **متعدد** (يعني ممكن العميل يربط أكتر من DB لأكتر من فرع)؟
+### 1.6 الملفات المتأثرة
+- `src/pages/PnlPage.tsx` — تحويلها لـ Tabs.
+- `src/components/pnl/BranchPnlTab.tsx` (استخراج المحتوى الحالي).
+- `src/components/pnl/WarehousePnlTab.tsx` (جديد).
+- `src/components/pnl/ConsolidatedPnlTab.tsx` (جديد).
+- `src/hooks/useWarehousePnlData.ts` (جديد).
+- `src/hooks/useConsolidatedPnlData.ts` (جديد).
+- Migration لو `transfer_pricing_breakdown` محتاج أعمدة إضافية.
+
+---
+
+## القسم الثاني: صلاحية حذف صنف من الفاتورة
+
+### 2.1 إضافة Permission جديدة
+- إضافة `pos_delete_item` لقائمة الصلاحيات في صفحة المستخدمين (`SettingsUsersPage.tsx`).
+- الصلاحية بتتخزن في `profiles.permissions[]` (النظام الحالي).
+
+### 2.2 Frontend
+- في `PosScreenPage.tsx`: قراءة الـ permissions من `useAuth()`، وإخفاء زر سلة المهملات لو المستخدم مالوش الصلاحية دي.
+- **Admin/Owner دايماً مسموح لهم** حتى بدون الصلاحية.
+
+### 2.3 Audit Log (اختياري - جدول جديد بسيط)
+جدول `pos_item_delete_log`:
+- `user_id`, `sale_id (nullable لو draft)`, `pos_item_id`, `item_name`, `quantity`, `reason (nullable)`, `created_at`
+- كل عملية حذف تُسجل هنا.
+
+### 2.4 الملفات المتأثرة
+- `src/pages/SettingsUsersPage.tsx` — إضافة الصلاحية الجديدة للقائمة.
+- `src/pages/PosScreenPage.tsx` — التحقق قبل عرض زر الحذف + تسجيل الـ log.
+- Migration لجدول `pos_item_delete_log` (لو المستخدم موافق).
+
+---
+
+## ملاحظات تقنية
+- كل التقارير الجديدة تدعم فلتر التاريخ + فلتر المخزن.
+- Print/Export PDF لكل تبويبة.
+- الأسعار في `transfer_pricing_breakdown` **Snapshot ثابت** — مفيش إعادة حساب.
+- التحويلات المُلغاة (`ملغي`) تُستبعد من التقرير.
+
+---
+
+## ترتيب التنفيذ
+1. Migration للـ `transfer_pricing_breakdown` (لو محتاج) + جدول Audit.
+2. Hooks جديدة (Warehouse + Consolidated).
+3. تحويل PnlPage لـ Tabs.
+4. صفحات المخزن والمجمّع.
+5. صلاحية POS + إخفاء الزر + Audit log.

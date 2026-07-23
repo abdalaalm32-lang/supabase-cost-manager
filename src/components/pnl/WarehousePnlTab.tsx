@@ -352,10 +352,10 @@ export const WarehousePnlTab: React.FC = () => {
   }, [result]);
 
   const exportCols = [
-    { key: "section", header: "القسم" },
-    { key: "item", header: "البند" },
-    { key: "amount", header: "المبلغ", format: "number" as const },
-    { key: "pct", header: "النسبة" },
+    { key: "section", label: "القسم" },
+    { key: "item", label: "البند" },
+    { key: "amount", label: "المبلغ" },
+    { key: "pct", label: "النسبة" },
   ];
 
   // Compare component (small row under KPI value)

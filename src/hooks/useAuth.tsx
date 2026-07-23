@@ -11,7 +11,7 @@ interface Profile {
   phone: string | null;
   role: string;
   job_role_id?: string | null;
-  job_roles?: { name?: string | null } | null;
+  job_roles?: { name?: string | null } | { name?: string | null }[] | null;
   permissions: string[];
   status: string;
   avatar_url?: string | null;

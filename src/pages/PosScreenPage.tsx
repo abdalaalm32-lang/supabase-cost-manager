@@ -66,10 +66,13 @@ export const PosScreenPage: React.FC = () => {
   const { auth, hasPermission } = useAuth();
   const companyId = auth.profile?.company_id;
   // Cashiers cannot delete items from the invoice (Admins/Owners always can)
-  const roleStr = String(auth.profile?.role || "").toLowerCase();
-  const isCashier = roleStr.includes("cashier") || roleStr.includes("كاشير");
-  const isAdminOrOwner = roleStr.includes("admin") || roleStr.includes("owner") || roleStr.includes("مدير") || roleStr.includes("مالك");
-  const canDeleteCartItem = isAdminOrOwner || !isCashier;
+  const profileJobRole = auth.profile?.job_roles as { name?: string | null } | null | undefined;
+  const roleText = [auth.profile?.role, profileJobRole?.name, ...auth.roles]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  const isCashier = roleText.includes("cashier") || roleText.includes("كاشير");
+  const canDeleteCartItem = auth.isAdmin || auth.isOwner || !isCashier;
   const queryClient = useQueryClient();
   const location = useLocation();
   const navigate = useNavigate();

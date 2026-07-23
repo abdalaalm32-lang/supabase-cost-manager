@@ -10,6 +10,8 @@ interface Profile {
   email: string;
   phone: string | null;
   role: string;
+  job_role_id?: string | null;
+  job_roles?: { name?: string | null } | { name?: string | null }[] | null;
   permissions: string[];
   status: string;
   avatar_url?: string | null;
@@ -70,7 +72,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select("*")
+        .select("*, job_roles:job_role_id(name)")
         .eq("user_id", userId)
         .maybeSingle();
       if (error) {

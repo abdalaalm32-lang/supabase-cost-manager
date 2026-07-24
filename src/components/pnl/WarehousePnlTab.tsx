@@ -570,7 +570,7 @@ export const WarehousePnlTab: React.FC = () => {
             <Button variant="outline" size="sm" className="h-8" onClick={() => setAnalysisOpen(true)}>
               <Activity className="h-3.5 w-3.5 ml-1" /> تحليل
             </Button>
-            <Button variant="outline" size="sm" className="h-8" onClick={() => window.print()}>
+            <Button variant="outline" size="sm" className="h-8" onClick={handlePrint}>
               <Printer className="h-3.5 w-3.5 ml-1" /> طباعة
             </Button>
             <ExportButtons

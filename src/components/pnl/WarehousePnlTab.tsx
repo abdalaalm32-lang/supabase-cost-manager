@@ -156,10 +156,11 @@ function computeResult(d: ReturnType<typeof useWarehouseData>, extraExpenses: Ma
   const priceByItem = new Map<string, number>();
   (d.pricing || []).forEach((p: any) => priceByItem.set(p.transfer_item_id, Number(p.final_unit_price) || 0));
 
-  const salesByBranch = new Map<string, { name: string; total: number }>();
+  const salesByBranch = new Map<string, { name: string; total: number; cost: number }>();
   const salesByItem = new Map<string, { name: string; total: number; qty: number }>();
   const salesByMonth = new Map<string, number>();
   let totalInternalSales = 0;
+  let costOfTransfers = 0;
 
   const itemsByTransfer = new Map<string, any[]>();
   (d.transferItems || []).forEach((ti: any) => {
@@ -170,22 +171,27 @@ function computeResult(d: ReturnType<typeof useWarehouseData>, extraExpenses: Ma
   (d.transfers || []).forEach((tr: any) => {
     const items = itemsByTransfer.get(tr.id) || [];
     let trSales = 0;
+    let trCost = 0;
     items.forEach((it: any) => {
       const up = priceByItem.get(it.id) ?? 0;
       const qty = Number(it.quantity) || 0;
       const val = up * qty;
       trSales += val;
+      trCost += Number(it.total_cost) || 0;
       const iname = it.item_name || "—";
       const ex = salesByItem.get(iname);
       if (ex) { ex.total += val; ex.qty += qty; }
       else salesByItem.set(iname, { name: iname, total: val, qty });
     });
-    if (trSales === 0) trSales = Number(tr.total_cost) || 0;
+    const trTotalCost = Number(tr.total_cost) || trCost;
+    if (trSales === 0) trSales = trTotalCost;
     totalInternalSales += trSales;
+    costOfTransfers += trTotalCost;
     const bkey = tr.destination_id || "__none__";
     const bname = tr.destination_name || "بدون فرع";
     const bex = salesByBranch.get(bkey);
-    if (bex) bex.total += trSales; else salesByBranch.set(bkey, { name: bname, total: trSales });
+    if (bex) { bex.total += trSales; bex.cost += trTotalCost; }
+    else salesByBranch.set(bkey, { name: bname, total: trSales, cost: trTotalCost });
     const m = String(tr.date || "").slice(0, 7);
     if (m) salesByMonth.set(m, (salesByMonth.get(m) || 0) + trSales);
   });
@@ -216,9 +222,14 @@ function computeResult(d: ReturnType<typeof useWarehouseData>, extraExpenses: Ma
     wasteByWh.set(k, (wasteByWh.get(k) || 0) + Number(w.total_cost || 0));
   });
 
-  const totalCogs = openingStock + purchasesTotal + productionCost - closingStock;
+  // Perpetual model: COGS = cost of internal transfers to branches
+  const totalCogs = costOfTransfers;
   const grossProfit = totalInternalSales - totalCogs;
   const grossProfitPct = totalInternalSales > 0 ? (grossProfit / totalInternalSales) * 100 : 0;
+
+  // Reference (periodic) valuation — not used in Gross Profit
+  const goodsAvailable = openingStock + purchasesTotal + productionCost;
+  const periodicCogs = goodsAvailable - closingStock;
 
   const allExpenses = [...autoExpenses, ...extraExpenses];
   const totalExpenses = allExpenses.reduce((s, e) => s + e.amount, 0);
@@ -230,8 +241,9 @@ function computeResult(d: ReturnType<typeof useWarehouseData>, extraExpenses: Ma
     salesByItem: Array.from(salesByItem.values()).sort((a, b) => b.total - a.total),
     salesByMonth: Array.from(salesByMonth.entries()).sort(([a], [b]) => a.localeCompare(b)),
     transfersCount: (d.transfers || []).length,
-    totalInternalSales, openingStock, closingStock,
+    totalInternalSales, costOfTransfers, openingStock, closingStock,
     purchasesTotal, productionCost, productionQty, costPerKg,
+    goodsAvailable, periodicCogs,
     totalCogs, grossProfit, grossProfitPct,
     allExpenses, totalExpenses, wasteCost, wasteByWh,
     netProfit, netProfitPct,
@@ -337,19 +349,24 @@ export const WarehousePnlTab: React.FC = () => {
   // Export data (flat rows of the statement)
   const exportRows = useMemo(() => {
     const rows: Record<string, any>[] = [];
-    rows.push({ section: "الإيرادات", item: "المبيعات الداخلية", amount: result.totalInternalSales, pct: "100%" });
+    rows.push({ section: "الإيرادات", item: "المبيعات الداخلية للفروع", amount: result.totalInternalSales, pct: "100%" });
     result.salesByBranch.forEach((b) => rows.push({ section: "  فرع", item: b.name, amount: b.total, pct: pct(b.total, result.totalInternalSales) }));
-    rows.push({ section: "COGS", item: "جرد أول", amount: result.openingStock, pct: "" });
-    rows.push({ section: "COGS", item: "المشتريات", amount: result.purchasesTotal, pct: "" });
-    rows.push({ section: "COGS", item: "تكلفة الإنتاج", amount: result.productionCost, pct: "" });
-    rows.push({ section: "COGS", item: "(-) جرد آخر", amount: -result.closingStock, pct: "" });
-    rows.push({ section: "COGS", item: "إجمالي COGS", amount: result.totalCogs, pct: pct(result.totalCogs, result.totalInternalSales) });
+    rows.push({ section: "COGS", item: "تكلفة التحويلات للفروع", amount: result.costOfTransfers, pct: pct(result.costOfTransfers, result.totalInternalSales) });
+    result.salesByBranch.forEach((b) => rows.push({ section: "  تكلفة تحويلات", item: b.name, amount: b.cost, pct: pct(b.cost, result.totalInternalSales) }));
     rows.push({ section: "الأرباح", item: "مجمل الربح", amount: result.grossProfit, pct: result.grossProfitPct.toFixed(2) + "%" });
     result.allExpenses.forEach((e) => rows.push({ section: "مصروفات", item: e.name, amount: e.amount, pct: pct(e.amount, result.totalInternalSales) }));
     if (result.wasteCost > 0) rows.push({ section: "مصروفات", item: "الفاقد", amount: result.wasteCost, pct: pct(result.wasteCost, result.totalInternalSales) });
     rows.push({ section: "الأرباح", item: "صافي الربح", amount: result.netProfit, pct: result.netProfitPct.toFixed(2) + "%" });
+    // Reference block
+    rows.push({ section: "مرجع - جرد", item: "جرد أول المدة", amount: result.openingStock, pct: "" });
+    rows.push({ section: "مرجع - جرد", item: "(+) المشتريات", amount: result.purchasesTotal, pct: "" });
+    rows.push({ section: "مرجع - جرد", item: "(+) تكلفة الإنتاج", amount: result.productionCost, pct: "" });
+    rows.push({ section: "مرجع - جرد", item: "البضاعة المتاحة", amount: result.goodsAvailable, pct: "" });
+    rows.push({ section: "مرجع - جرد", item: "(-) جرد آخر المدة", amount: -result.closingStock, pct: "" });
+    rows.push({ section: "مرجع - جرد", item: "COGS (Periodic)", amount: result.periodicCogs, pct: "" });
     return rows;
   }, [result]);
+
 
   const exportCols = [
     { key: "section", label: "القسم" },
@@ -380,6 +397,128 @@ export const WarehousePnlTab: React.FC = () => {
   const topWasteWh = Array.from(result.wasteByWh.entries())
     .map(([id, v]) => ({ name: whNameById.get(id) || "—", value: v }))
     .sort((a, b) => b.value - a.value).slice(0, 5);
+
+  const handlePrint = () => {
+    const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
+    const logoSrc = `${window.location.origin}/logo.png`;
+    const periodStr = `${format(dateFrom, "yyyy/MM/dd")} — ${format(dateTo, "yyyy/MM/dd")}`;
+    const whName = warehouseId === "all" ? "جميع المخازن" : (whNameById.get(warehouseId) || "-");
+
+    const row = (label: string, amount: number | string, pctVal: string, opts: { bold?: boolean; indent?: boolean; bg?: string; color?: string } = {}) => {
+      const bg = opts.bg ? `background:${opts.bg};` : "";
+      const fw = opts.bold ? "font-weight:bold;" : "";
+      const pl = opts.indent ? "padding-right:30px;" : "";
+      const color = opts.color ? `color:${opts.color};` : "";
+      const amt = typeof amount === "number" ? fmt(amount) : amount;
+      return `<tr style="${bg}">
+        <td style="border:1px solid #ddd;padding:6px 10px;text-align:right;${fw}${pl}${color}font-size:11px;">${label}</td>
+        <td style="border:1px solid #ddd;padding:6px 10px;text-align:left;${fw}${color}font-size:11px;font-variant-numeric:tabular-nums;">${amt}</td>
+        <td style="border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:10px;color:#666;">${pctVal}</td>
+      </tr>`;
+    };
+    const sep = `<tr><td colspan="3" style="height:4px;background:#eee;"></td></tr>`;
+
+    let tableRows = "";
+    tableRows += row("الإيرادات — المبيعات الداخلية للفروع", result.totalInternalSales, "100%", { bold: true, bg: "#eff6ff", color: "#1d4ed8" });
+    result.salesByBranch.forEach((b) => {
+      tableRows += row(b.name, b.total, pct(b.total, result.totalInternalSales), { indent: true });
+    });
+    tableRows += sep;
+    tableRows += row("تكلفة التحويلات للفروع (COGS)", result.costOfTransfers, pct(result.costOfTransfers, result.totalInternalSales), { bold: true, bg: "#fff7ed", color: "#c2410c" });
+    result.salesByBranch.forEach((b) => {
+      tableRows += row(b.name, b.cost, pct(b.cost, result.totalInternalSales), { indent: true });
+    });
+    tableRows += sep;
+    tableRows += row("مجمل الربح (Gross Profit)", result.grossProfit, result.grossProfitPct.toFixed(2) + "%", { bold: true, bg: "#ecfdf5", color: result.grossProfit < 0 ? "#dc2626" : "#047857" });
+    tableRows += sep;
+    tableRows += row("المصروفات التشغيلية", result.totalExpenses + result.wasteCost, pct(result.totalExpenses + result.wasteCost, result.totalInternalSales), { bold: true, bg: "#fff7ed", color: "#c2410c" });
+    result.allExpenses.forEach((e) => {
+      tableRows += row(e.name, e.amount, pct(e.amount, result.totalInternalSales), { indent: true });
+    });
+    if (result.wasteCost > 0) tableRows += row("الفاقد والإهلاك", result.wasteCost, pct(result.wasteCost, result.totalInternalSales), { indent: true });
+    tableRows += sep;
+    tableRows += row("صافي الربح (Net Profit)", result.netProfit, result.netProfitPct.toFixed(2) + "%", { bold: true, bg: result.netProfit >= 0 ? "#d1fae5" : "#fee2e2", color: result.netProfit < 0 ? "#dc2626" : "#047857" });
+
+    // Reference inventory closing block
+    const refRows = `
+      ${row("جرد أول المدة", result.openingStock, "")}
+      ${row("(+) المشتريات", result.purchasesTotal, "")}
+      ${row("(+) تكلفة الإنتاج", result.productionCost, "")}
+      ${row("البضاعة المتاحة", result.goodsAvailable, "", { bold: true, bg: "#fafafa" })}
+      ${row("(-) جرد آخر المدة", `(${fmt(result.closingStock)})`, "")}
+      ${row("COGS (Periodic - محاسبي)", result.periodicCogs, "", { bold: true, bg: "#f5f5f5" })}
+    `;
+
+    const printHTML = `<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>P&L — المخزن المركزي</title>
+  <style>
+    @font-face { font-family:'CairoLocal'; src:url('${window.location.origin}/fonts/Cairo-Regular.ttf') format('truetype'); }
+    @font-face { font-family:'AmiriLocal'; src:url('${window.location.origin}/fonts/Amiri-Regular.ttf') format('truetype'); }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'CairoLocal','AmiriLocal',sans-serif; direction:rtl; padding:20px; color:#000; background:#fff; }
+    @media print { @page { size:auto; margin:10mm; } body { padding:0; } }
+    .header { text-align:center; margin-bottom:15px; border-bottom:1px solid #000; padding-bottom:10px; display:flex; align-items:center; justify-content:center; gap:10px; }
+    .logo { width:80px; height:80px; object-fit:contain; }
+    .header h1 { font-size:18px; font-weight:bold; margin-bottom:2px; }
+    .header p { font-size:11px; }
+    table { width:100%; border-collapse:collapse; }
+    .kpi-row { display:flex; justify-content:space-around; margin-bottom:15px; gap:10px; }
+    .kpi-box { border:1px solid #ddd; border-radius:8px; padding:10px 15px; text-align:center; flex:1; }
+    .kpi-box .title { font-size:10px; color:#666; margin-bottom:4px; }
+    .kpi-box .value { font-size:16px; font-weight:bold; }
+    h2 { font-size:14px; font-weight:bold; margin:20px 0 8px; border-bottom:1px solid #000; padding-bottom:4px; }
+    .note { font-size:10px; color:#666; margin-top:6px; }
+    .footer { text-align:center; margin-top:15px; font-size:9px; border-top:1px solid #000; padding-top:8px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="${logoSrc}" alt="Logo" class="logo" />
+    <div>
+      <h1>قائمة الأرباح والخسائر — المخزن المركزي</h1>
+      <p style="font-size:13px;font-weight:bold;color:#000;margin-top:4px;">المخزن: ${whName}</p>
+      <p>${periodStr} • ${dateStr}</p>
+    </div>
+  </div>
+  <div class="kpi-row">
+    <div class="kpi-box"><div class="title">المبيعات الداخلية</div><div class="value">${fmt(result.totalInternalSales)}</div></div>
+    <div class="kpi-box"><div class="title">تكلفة التحويلات</div><div class="value">${fmt(result.costOfTransfers)}</div></div>
+    <div class="kpi-box"><div class="title">مجمل الربح</div><div class="value">${fmt(result.grossProfit)} (${result.grossProfitPct.toFixed(2)}%)</div></div>
+    <div class="kpi-box"><div class="title">صافي الربح</div><div class="value">${fmt(result.netProfit)} (${result.netProfitPct.toFixed(2)}%)</div></div>
+  </div>
+  <table>
+    <thead><tr style="background:#f0f0f0;">
+      <th style="border:1px solid #ddd;padding:6px 10px;text-align:right;font-size:11px;">البند</th>
+      <th style="border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:11px;">المبلغ (ج.م)</th>
+      <th style="border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:11px;">النسبة</th>
+    </tr></thead>
+    <tbody>${tableRows}</tbody>
+  </table>
+  <p class="note">* COGS يمثل تكلفة التحويلات الفعلية للفروع (نموذج Perpetual). المخزن المركزي مركز توريد داخلي وليس نقطة بيع نهائية.</p>
+
+  <h2>مرجع محاسبي — تقفيل المخزون (Periodic)</h2>
+  <table>
+    <thead><tr style="background:#f0f0f0;">
+      <th style="border:1px solid #ddd;padding:6px 10px;text-align:right;font-size:11px;">البند</th>
+      <th style="border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:11px;">المبلغ (ج.م)</th>
+      <th style="border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:11px;"></th>
+    </tr></thead>
+    <tbody>${refRows}</tbody>
+  </table>
+  <p class="note">* هذا القسم لأغراض المراجعة المحاسبية فقط ولا يؤثر على مجمل الربح أعلاه.</p>
+
+  <div class="footer">Powered by Mohamed Abdel Aal</div>
+  <script>
+    (async function(){try{if(document.fonts&&document.fonts.ready)await document.fonts.ready;}catch(e){}window.print();window.onafterprint=function(){window.close();};})();
+  </script>
+</body>
+</html>`;
+    const w = window.open("", "_blank");
+    if (w) { w.document.write(printHTML); w.document.close(); }
+  };
 
   return (
     <div className="space-y-4" dir="rtl">
@@ -431,7 +570,7 @@ export const WarehousePnlTab: React.FC = () => {
             <Button variant="outline" size="sm" className="h-8" onClick={() => setAnalysisOpen(true)}>
               <Activity className="h-3.5 w-3.5 ml-1" /> تحليل
             </Button>
-            <Button variant="outline" size="sm" className="h-8" onClick={() => window.print()}>
+            <Button variant="outline" size="sm" className="h-8" onClick={handlePrint}>
               <Printer className="h-3.5 w-3.5 ml-1" /> طباعة
             </Button>
             <ExportButtons
@@ -497,24 +636,23 @@ export const WarehousePnlTab: React.FC = () => {
 
                 <tr><td colSpan={3} className="h-1 bg-muted/30"></td></tr>
 
-                {/* COGS */}
+                {/* COGS — Cost of internal transfers (Perpetual) */}
                 <tr className="bg-orange-500/10 font-semibold text-orange-700 dark:text-orange-400 border-b cursor-pointer print:cursor-auto"
                     onClick={() => setOpenSections((s) => ({ ...s, cogs: !s.cogs }))}>
                   <td className="p-2.5 flex items-center gap-1">
                     <span className="print:hidden">{openSections.cogs ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}</span>
-                    تكلفة البضاعة المباعة (COGS)
+                    تكلفة التحويلات للفروع (COGS)
                   </td>
-                  <td className="p-2.5 text-left tabular-nums">{fmt(result.totalCogs)}</td>
-                  <td className="p-2.5 text-left text-xs">{pct(result.totalCogs, result.totalInternalSales)}</td>
+                  <td className="p-2.5 text-left tabular-nums">{fmt(result.costOfTransfers)}</td>
+                  <td className="p-2.5 text-left text-xs">{pct(result.costOfTransfers, result.totalInternalSales)}</td>
                 </tr>
-                {openSections.cogs && (
-                  <>
-                    <tr className="border-b hover:bg-muted/20"><td className="p-2 pr-8 text-muted-foreground">جرد أول المدة</td><td className="p-2 text-left tabular-nums">{fmt(result.openingStock)}</td><td className="p-2 text-left text-xs">{pct(result.openingStock, result.totalInternalSales)}</td></tr>
-                    <tr className="border-b hover:bg-muted/20"><td className="p-2 pr-8 text-muted-foreground">(+) المشتريات</td><td className="p-2 text-left tabular-nums">{fmt(result.purchasesTotal)}</td><td className="p-2 text-left text-xs">{pct(result.purchasesTotal, result.totalInternalSales)}</td></tr>
-                    <tr className="border-b hover:bg-muted/20"><td className="p-2 pr-8 text-muted-foreground">(+) تكلفة الإنتاج</td><td className="p-2 text-left tabular-nums">{fmt(result.productionCost)}</td><td className="p-2 text-left text-xs">{pct(result.productionCost, result.totalInternalSales)}</td></tr>
-                    <tr className="border-b hover:bg-muted/20"><td className="p-2 pr-8 text-muted-foreground">(-) جرد آخر المدة</td><td className="p-2 text-left tabular-nums">({fmt(result.closingStock)})</td><td className="p-2"></td></tr>
-                  </>
-                )}
+                {openSections.cogs && result.salesByBranch.map((b, i) => (
+                  <tr key={i} className="border-b hover:bg-muted/20">
+                    <td className="p-2 pr-8 text-muted-foreground">{b.name}</td>
+                    <td className="p-2 text-left tabular-nums">{fmt(b.cost)}</td>
+                    <td className="p-2 text-left text-xs text-muted-foreground">{pct(b.cost, result.totalInternalSales)}</td>
+                  </tr>
+                ))}
 
                 <tr><td colSpan={3} className="h-1 bg-muted/30"></td></tr>
 
@@ -565,6 +703,29 @@ export const WarehousePnlTab: React.FC = () => {
               </tbody>
             </table>
           </div>
+
+          {/* Reference: Periodic Inventory Closing (not part of P&L) */}
+          <div className="border-t bg-muted/10">
+            <div className="p-3 border-b flex items-center justify-between">
+              <h3 className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
+                <BarChart3 className="h-3.5 w-3.5" />
+                مرجع محاسبي — تقفيل المخزون (Periodic) — لا يؤثر على الأرباح أعلاه
+              </h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <tbody>
+                  <tr className="border-b"><td className="p-2 pr-4 text-muted-foreground">جرد أول المدة</td><td className="p-2 text-left tabular-nums">{fmt(result.openingStock)}</td></tr>
+                  <tr className="border-b"><td className="p-2 pr-4 text-muted-foreground">(+) المشتريات</td><td className="p-2 text-left tabular-nums">{fmt(result.purchasesTotal)}</td></tr>
+                  <tr className="border-b"><td className="p-2 pr-4 text-muted-foreground">(+) تكلفة الإنتاج</td><td className="p-2 text-left tabular-nums">{fmt(result.productionCost)}</td></tr>
+                  <tr className="border-b bg-muted/30 font-medium"><td className="p-2 pr-4">البضاعة المتاحة</td><td className="p-2 text-left tabular-nums">{fmt(result.goodsAvailable)}</td></tr>
+                  <tr className="border-b"><td className="p-2 pr-4 text-muted-foreground">(-) جرد آخر المدة</td><td className="p-2 text-left tabular-nums">({fmt(result.closingStock)})</td></tr>
+                  <tr className="bg-muted/40 font-semibold"><td className="p-2 pr-4">COGS (Periodic - محاسبي)</td><td className="p-2 text-left tabular-nums">{fmt(result.periodicCogs)}</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
 
           {/* Manual expenses controls */}
           <div className="p-3 border-t print:hidden">

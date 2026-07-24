@@ -398,6 +398,128 @@ export const WarehousePnlTab: React.FC = () => {
     .map(([id, v]) => ({ name: whNameById.get(id) || "—", value: v }))
     .sort((a, b) => b.value - a.value).slice(0, 5);
 
+  const handlePrint = () => {
+    const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
+    const logoSrc = `${window.location.origin}/logo.png`;
+    const periodStr = `${format(dateFrom, "yyyy/MM/dd")} — ${format(dateTo, "yyyy/MM/dd")}`;
+    const whName = warehouseId === "all" ? "جميع المخازن" : (whNameById.get(warehouseId) || "-");
+
+    const row = (label: string, amount: number | string, pctVal: string, opts: { bold?: boolean; indent?: boolean; bg?: string; color?: string } = {}) => {
+      const bg = opts.bg ? `background:${opts.bg};` : "";
+      const fw = opts.bold ? "font-weight:bold;" : "";
+      const pl = opts.indent ? "padding-right:30px;" : "";
+      const color = opts.color ? `color:${opts.color};` : "";
+      const amt = typeof amount === "number" ? fmt(amount) : amount;
+      return `<tr style="${bg}">
+        <td style="border:1px solid #ddd;padding:6px 10px;text-align:right;${fw}${pl}${color}font-size:11px;">${label}</td>
+        <td style="border:1px solid #ddd;padding:6px 10px;text-align:left;${fw}${color}font-size:11px;font-variant-numeric:tabular-nums;">${amt}</td>
+        <td style="border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:10px;color:#666;">${pctVal}</td>
+      </tr>`;
+    };
+    const sep = `<tr><td colspan="3" style="height:4px;background:#eee;"></td></tr>`;
+
+    let tableRows = "";
+    tableRows += row("الإيرادات — المبيعات الداخلية للفروع", result.totalInternalSales, "100%", { bold: true, bg: "#eff6ff", color: "#1d4ed8" });
+    result.salesByBranch.forEach((b) => {
+      tableRows += row(b.name, b.total, pct(b.total, result.totalInternalSales), { indent: true });
+    });
+    tableRows += sep;
+    tableRows += row("تكلفة التحويلات للفروع (COGS)", result.costOfTransfers, pct(result.costOfTransfers, result.totalInternalSales), { bold: true, bg: "#fff7ed", color: "#c2410c" });
+    result.salesByBranch.forEach((b) => {
+      tableRows += row(b.name, b.cost, pct(b.cost, result.totalInternalSales), { indent: true });
+    });
+    tableRows += sep;
+    tableRows += row("مجمل الربح (Gross Profit)", result.grossProfit, result.grossProfitPct.toFixed(2) + "%", { bold: true, bg: "#ecfdf5", color: result.grossProfit < 0 ? "#dc2626" : "#047857" });
+    tableRows += sep;
+    tableRows += row("المصروفات التشغيلية", result.totalExpenses + result.wasteCost, pct(result.totalExpenses + result.wasteCost, result.totalInternalSales), { bold: true, bg: "#fff7ed", color: "#c2410c" });
+    result.allExpenses.forEach((e) => {
+      tableRows += row(e.name, e.amount, pct(e.amount, result.totalInternalSales), { indent: true });
+    });
+    if (result.wasteCost > 0) tableRows += row("الفاقد والإهلاك", result.wasteCost, pct(result.wasteCost, result.totalInternalSales), { indent: true });
+    tableRows += sep;
+    tableRows += row("صافي الربح (Net Profit)", result.netProfit, result.netProfitPct.toFixed(2) + "%", { bold: true, bg: result.netProfit >= 0 ? "#d1fae5" : "#fee2e2", color: result.netProfit < 0 ? "#dc2626" : "#047857" });
+
+    // Reference inventory closing block
+    const refRows = `
+      ${row("جرد أول المدة", result.openingStock, "")}
+      ${row("(+) المشتريات", result.purchasesTotal, "")}
+      ${row("(+) تكلفة الإنتاج", result.productionCost, "")}
+      ${row("البضاعة المتاحة", result.goodsAvailable, "", { bold: true, bg: "#fafafa" })}
+      ${row("(-) جرد آخر المدة", `(${fmt(result.closingStock)})`, "")}
+      ${row("COGS (Periodic - محاسبي)", result.periodicCogs, "", { bold: true, bg: "#f5f5f5" })}
+    `;
+
+    const printHTML = `<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>P&L — المخزن المركزي</title>
+  <style>
+    @font-face { font-family:'CairoLocal'; src:url('${window.location.origin}/fonts/Cairo-Regular.ttf') format('truetype'); }
+    @font-face { font-family:'AmiriLocal'; src:url('${window.location.origin}/fonts/Amiri-Regular.ttf') format('truetype'); }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'CairoLocal','AmiriLocal',sans-serif; direction:rtl; padding:20px; color:#000; background:#fff; }
+    @media print { @page { size:auto; margin:10mm; } body { padding:0; } }
+    .header { text-align:center; margin-bottom:15px; border-bottom:1px solid #000; padding-bottom:10px; display:flex; align-items:center; justify-content:center; gap:10px; }
+    .logo { width:80px; height:80px; object-fit:contain; }
+    .header h1 { font-size:18px; font-weight:bold; margin-bottom:2px; }
+    .header p { font-size:11px; }
+    table { width:100%; border-collapse:collapse; }
+    .kpi-row { display:flex; justify-content:space-around; margin-bottom:15px; gap:10px; }
+    .kpi-box { border:1px solid #ddd; border-radius:8px; padding:10px 15px; text-align:center; flex:1; }
+    .kpi-box .title { font-size:10px; color:#666; margin-bottom:4px; }
+    .kpi-box .value { font-size:16px; font-weight:bold; }
+    h2 { font-size:14px; font-weight:bold; margin:20px 0 8px; border-bottom:1px solid #000; padding-bottom:4px; }
+    .note { font-size:10px; color:#666; margin-top:6px; }
+    .footer { text-align:center; margin-top:15px; font-size:9px; border-top:1px solid #000; padding-top:8px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="${logoSrc}" alt="Logo" class="logo" />
+    <div>
+      <h1>قائمة الأرباح والخسائر — المخزن المركزي</h1>
+      <p style="font-size:13px;font-weight:bold;color:#000;margin-top:4px;">المخزن: ${whName}</p>
+      <p>${periodStr} • ${dateStr}</p>
+    </div>
+  </div>
+  <div class="kpi-row">
+    <div class="kpi-box"><div class="title">المبيعات الداخلية</div><div class="value">${fmt(result.totalInternalSales)}</div></div>
+    <div class="kpi-box"><div class="title">تكلفة التحويلات</div><div class="value">${fmt(result.costOfTransfers)}</div></div>
+    <div class="kpi-box"><div class="title">مجمل الربح</div><div class="value">${fmt(result.grossProfit)} (${result.grossProfitPct.toFixed(2)}%)</div></div>
+    <div class="kpi-box"><div class="title">صافي الربح</div><div class="value">${fmt(result.netProfit)} (${result.netProfitPct.toFixed(2)}%)</div></div>
+  </div>
+  <table>
+    <thead><tr style="background:#f0f0f0;">
+      <th style="border:1px solid #ddd;padding:6px 10px;text-align:right;font-size:11px;">البند</th>
+      <th style="border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:11px;">المبلغ (ج.م)</th>
+      <th style="border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:11px;">النسبة</th>
+    </tr></thead>
+    <tbody>${tableRows}</tbody>
+  </table>
+  <p class="note">* COGS يمثل تكلفة التحويلات الفعلية للفروع (نموذج Perpetual). المخزن المركزي مركز توريد داخلي وليس نقطة بيع نهائية.</p>
+
+  <h2>مرجع محاسبي — تقفيل المخزون (Periodic)</h2>
+  <table>
+    <thead><tr style="background:#f0f0f0;">
+      <th style="border:1px solid #ddd;padding:6px 10px;text-align:right;font-size:11px;">البند</th>
+      <th style="border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:11px;">المبلغ (ج.م)</th>
+      <th style="border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:11px;"></th>
+    </tr></thead>
+    <tbody>${refRows}</tbody>
+  </table>
+  <p class="note">* هذا القسم لأغراض المراجعة المحاسبية فقط ولا يؤثر على مجمل الربح أعلاه.</p>
+
+  <div class="footer">Powered by Mohamed Abdel Aal</div>
+  <script>
+    (async function(){try{if(document.fonts&&document.fonts.ready)await document.fonts.ready;}catch(e){}window.print();window.onafterprint=function(){window.close();};})();
+  </script>
+</body>
+</html>`;
+    const w = window.open("", "_blank");
+    if (w) { w.document.write(printHTML); w.document.close(); }
+  };
+
   return (
     <div className="space-y-4" dir="rtl">
       {/* Filters */}

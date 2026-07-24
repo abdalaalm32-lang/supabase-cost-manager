@@ -636,24 +636,23 @@ export const WarehousePnlTab: React.FC = () => {
 
                 <tr><td colSpan={3} className="h-1 bg-muted/30"></td></tr>
 
-                {/* COGS */}
+                {/* COGS — Cost of internal transfers (Perpetual) */}
                 <tr className="bg-orange-500/10 font-semibold text-orange-700 dark:text-orange-400 border-b cursor-pointer print:cursor-auto"
                     onClick={() => setOpenSections((s) => ({ ...s, cogs: !s.cogs }))}>
                   <td className="p-2.5 flex items-center gap-1">
                     <span className="print:hidden">{openSections.cogs ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}</span>
-                    تكلفة البضاعة المباعة (COGS)
+                    تكلفة التحويلات للفروع (COGS)
                   </td>
-                  <td className="p-2.5 text-left tabular-nums">{fmt(result.totalCogs)}</td>
-                  <td className="p-2.5 text-left text-xs">{pct(result.totalCogs, result.totalInternalSales)}</td>
+                  <td className="p-2.5 text-left tabular-nums">{fmt(result.costOfTransfers)}</td>
+                  <td className="p-2.5 text-left text-xs">{pct(result.costOfTransfers, result.totalInternalSales)}</td>
                 </tr>
-                {openSections.cogs && (
-                  <>
-                    <tr className="border-b hover:bg-muted/20"><td className="p-2 pr-8 text-muted-foreground">جرد أول المدة</td><td className="p-2 text-left tabular-nums">{fmt(result.openingStock)}</td><td className="p-2 text-left text-xs">{pct(result.openingStock, result.totalInternalSales)}</td></tr>
-                    <tr className="border-b hover:bg-muted/20"><td className="p-2 pr-8 text-muted-foreground">(+) المشتريات</td><td className="p-2 text-left tabular-nums">{fmt(result.purchasesTotal)}</td><td className="p-2 text-left text-xs">{pct(result.purchasesTotal, result.totalInternalSales)}</td></tr>
-                    <tr className="border-b hover:bg-muted/20"><td className="p-2 pr-8 text-muted-foreground">(+) تكلفة الإنتاج</td><td className="p-2 text-left tabular-nums">{fmt(result.productionCost)}</td><td className="p-2 text-left text-xs">{pct(result.productionCost, result.totalInternalSales)}</td></tr>
-                    <tr className="border-b hover:bg-muted/20"><td className="p-2 pr-8 text-muted-foreground">(-) جرد آخر المدة</td><td className="p-2 text-left tabular-nums">({fmt(result.closingStock)})</td><td className="p-2"></td></tr>
-                  </>
-                )}
+                {openSections.cogs && result.salesByBranch.map((b, i) => (
+                  <tr key={i} className="border-b hover:bg-muted/20">
+                    <td className="p-2 pr-8 text-muted-foreground">{b.name}</td>
+                    <td className="p-2 text-left tabular-nums">{fmt(b.cost)}</td>
+                    <td className="p-2 text-left text-xs text-muted-foreground">{pct(b.cost, result.totalInternalSales)}</td>
+                  </tr>
+                ))}
 
                 <tr><td colSpan={3} className="h-1 bg-muted/30"></td></tr>
 

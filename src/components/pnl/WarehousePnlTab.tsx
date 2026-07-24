@@ -704,6 +704,29 @@ export const WarehousePnlTab: React.FC = () => {
             </table>
           </div>
 
+          {/* Reference: Periodic Inventory Closing (not part of P&L) */}
+          <div className="border-t bg-muted/10">
+            <div className="p-3 border-b flex items-center justify-between">
+              <h3 className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
+                <BarChart3 className="h-3.5 w-3.5" />
+                مرجع محاسبي — تقفيل المخزون (Periodic) — لا يؤثر على الأرباح أعلاه
+              </h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <tbody>
+                  <tr className="border-b"><td className="p-2 pr-4 text-muted-foreground">جرد أول المدة</td><td className="p-2 text-left tabular-nums">{fmt(result.openingStock)}</td></tr>
+                  <tr className="border-b"><td className="p-2 pr-4 text-muted-foreground">(+) المشتريات</td><td className="p-2 text-left tabular-nums">{fmt(result.purchasesTotal)}</td></tr>
+                  <tr className="border-b"><td className="p-2 pr-4 text-muted-foreground">(+) تكلفة الإنتاج</td><td className="p-2 text-left tabular-nums">{fmt(result.productionCost)}</td></tr>
+                  <tr className="border-b bg-muted/30 font-medium"><td className="p-2 pr-4">البضاعة المتاحة</td><td className="p-2 text-left tabular-nums">{fmt(result.goodsAvailable)}</td></tr>
+                  <tr className="border-b"><td className="p-2 pr-4 text-muted-foreground">(-) جرد آخر المدة</td><td className="p-2 text-left tabular-nums">({fmt(result.closingStock)})</td></tr>
+                  <tr className="bg-muted/40 font-semibold"><td className="p-2 pr-4">COGS (Periodic - محاسبي)</td><td className="p-2 text-left tabular-nums">{fmt(result.periodicCogs)}</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+
           {/* Manual expenses controls */}
           <div className="p-3 border-t print:hidden">
             <div className="flex items-center gap-2 flex-wrap">

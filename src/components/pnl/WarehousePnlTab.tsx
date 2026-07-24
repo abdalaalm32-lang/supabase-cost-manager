@@ -349,19 +349,24 @@ export const WarehousePnlTab: React.FC = () => {
   // Export data (flat rows of the statement)
   const exportRows = useMemo(() => {
     const rows: Record<string, any>[] = [];
-    rows.push({ section: "الإيرادات", item: "المبيعات الداخلية", amount: result.totalInternalSales, pct: "100%" });
+    rows.push({ section: "الإيرادات", item: "المبيعات الداخلية للفروع", amount: result.totalInternalSales, pct: "100%" });
     result.salesByBranch.forEach((b) => rows.push({ section: "  فرع", item: b.name, amount: b.total, pct: pct(b.total, result.totalInternalSales) }));
-    rows.push({ section: "COGS", item: "جرد أول", amount: result.openingStock, pct: "" });
-    rows.push({ section: "COGS", item: "المشتريات", amount: result.purchasesTotal, pct: "" });
-    rows.push({ section: "COGS", item: "تكلفة الإنتاج", amount: result.productionCost, pct: "" });
-    rows.push({ section: "COGS", item: "(-) جرد آخر", amount: -result.closingStock, pct: "" });
-    rows.push({ section: "COGS", item: "إجمالي COGS", amount: result.totalCogs, pct: pct(result.totalCogs, result.totalInternalSales) });
+    rows.push({ section: "COGS", item: "تكلفة التحويلات للفروع", amount: result.costOfTransfers, pct: pct(result.costOfTransfers, result.totalInternalSales) });
+    result.salesByBranch.forEach((b) => rows.push({ section: "  تكلفة تحويلات", item: b.name, amount: b.cost, pct: pct(b.cost, result.totalInternalSales) }));
     rows.push({ section: "الأرباح", item: "مجمل الربح", amount: result.grossProfit, pct: result.grossProfitPct.toFixed(2) + "%" });
     result.allExpenses.forEach((e) => rows.push({ section: "مصروفات", item: e.name, amount: e.amount, pct: pct(e.amount, result.totalInternalSales) }));
     if (result.wasteCost > 0) rows.push({ section: "مصروفات", item: "الفاقد", amount: result.wasteCost, pct: pct(result.wasteCost, result.totalInternalSales) });
     rows.push({ section: "الأرباح", item: "صافي الربح", amount: result.netProfit, pct: result.netProfitPct.toFixed(2) + "%" });
+    // Reference block
+    rows.push({ section: "مرجع - جرد", item: "جرد أول المدة", amount: result.openingStock, pct: "" });
+    rows.push({ section: "مرجع - جرد", item: "(+) المشتريات", amount: result.purchasesTotal, pct: "" });
+    rows.push({ section: "مرجع - جرد", item: "(+) تكلفة الإنتاج", amount: result.productionCost, pct: "" });
+    rows.push({ section: "مرجع - جرد", item: "البضاعة المتاحة", amount: result.goodsAvailable, pct: "" });
+    rows.push({ section: "مرجع - جرد", item: "(-) جرد آخر المدة", amount: -result.closingStock, pct: "" });
+    rows.push({ section: "مرجع - جرد", item: "COGS (Periodic)", amount: result.periodicCogs, pct: "" });
     return rows;
   }, [result]);
+
 
   const exportCols = [
     { key: "section", label: "القسم" },

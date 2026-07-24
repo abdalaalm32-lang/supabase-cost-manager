@@ -156,10 +156,11 @@ function computeResult(d: ReturnType<typeof useWarehouseData>, extraExpenses: Ma
   const priceByItem = new Map<string, number>();
   (d.pricing || []).forEach((p: any) => priceByItem.set(p.transfer_item_id, Number(p.final_unit_price) || 0));
 
-  const salesByBranch = new Map<string, { name: string; total: number }>();
+  const salesByBranch = new Map<string, { name: string; total: number; cost: number }>();
   const salesByItem = new Map<string, { name: string; total: number; qty: number }>();
   const salesByMonth = new Map<string, number>();
   let totalInternalSales = 0;
+  let costOfTransfers = 0;
 
   const itemsByTransfer = new Map<string, any[]>();
   (d.transferItems || []).forEach((ti: any) => {
@@ -170,22 +171,27 @@ function computeResult(d: ReturnType<typeof useWarehouseData>, extraExpenses: Ma
   (d.transfers || []).forEach((tr: any) => {
     const items = itemsByTransfer.get(tr.id) || [];
     let trSales = 0;
+    let trCost = 0;
     items.forEach((it: any) => {
       const up = priceByItem.get(it.id) ?? 0;
       const qty = Number(it.quantity) || 0;
       const val = up * qty;
       trSales += val;
+      trCost += Number(it.total_cost) || 0;
       const iname = it.item_name || "—";
       const ex = salesByItem.get(iname);
       if (ex) { ex.total += val; ex.qty += qty; }
       else salesByItem.set(iname, { name: iname, total: val, qty });
     });
-    if (trSales === 0) trSales = Number(tr.total_cost) || 0;
+    const trTotalCost = Number(tr.total_cost) || trCost;
+    if (trSales === 0) trSales = trTotalCost;
     totalInternalSales += trSales;
+    costOfTransfers += trTotalCost;
     const bkey = tr.destination_id || "__none__";
     const bname = tr.destination_name || "بدون فرع";
     const bex = salesByBranch.get(bkey);
-    if (bex) bex.total += trSales; else salesByBranch.set(bkey, { name: bname, total: trSales });
+    if (bex) { bex.total += trSales; bex.cost += trTotalCost; }
+    else salesByBranch.set(bkey, { name: bname, total: trSales, cost: trTotalCost });
     const m = String(tr.date || "").slice(0, 7);
     if (m) salesByMonth.set(m, (salesByMonth.get(m) || 0) + trSales);
   });
@@ -216,9 +222,14 @@ function computeResult(d: ReturnType<typeof useWarehouseData>, extraExpenses: Ma
     wasteByWh.set(k, (wasteByWh.get(k) || 0) + Number(w.total_cost || 0));
   });
 
-  const totalCogs = openingStock + purchasesTotal + productionCost - closingStock;
+  // Perpetual model: COGS = cost of internal transfers to branches
+  const totalCogs = costOfTransfers;
   const grossProfit = totalInternalSales - totalCogs;
   const grossProfitPct = totalInternalSales > 0 ? (grossProfit / totalInternalSales) * 100 : 0;
+
+  // Reference (periodic) valuation — not used in Gross Profit
+  const goodsAvailable = openingStock + purchasesTotal + productionCost;
+  const periodicCogs = goodsAvailable - closingStock;
 
   const allExpenses = [...autoExpenses, ...extraExpenses];
   const totalExpenses = allExpenses.reduce((s, e) => s + e.amount, 0);
@@ -230,8 +241,9 @@ function computeResult(d: ReturnType<typeof useWarehouseData>, extraExpenses: Ma
     salesByItem: Array.from(salesByItem.values()).sort((a, b) => b.total - a.total),
     salesByMonth: Array.from(salesByMonth.entries()).sort(([a], [b]) => a.localeCompare(b)),
     transfersCount: (d.transfers || []).length,
-    totalInternalSales, openingStock, closingStock,
+    totalInternalSales, costOfTransfers, openingStock, closingStock,
     purchasesTotal, productionCost, productionQty, costPerKg,
+    goodsAvailable, periodicCogs,
     totalCogs, grossProfit, grossProfitPct,
     allExpenses, totalExpenses, wasteCost, wasteByWh,
     netProfit, netProfitPct,

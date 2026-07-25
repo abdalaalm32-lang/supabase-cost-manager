@@ -688,30 +688,37 @@ export const WarehousePnlTab: React.FC = () => {
                 {openSections.sales && result.salesByBranch.map((b, i) => (
                   <tr key={i} className="border-b hover:bg-muted/20">
                     <td className="p-2 pr-8 text-muted-foreground">{b.name}</td>
-                    <td className="p-2 text-left tabular-nums">{fmt(b.total)}</td>
-                    <td className="p-2 text-left text-xs text-muted-foreground">{pct(b.total, result.totalInternalSales)}</td>
+                    <td className="p-2 text-left tabular-nums">{fmt(b.supply)}</td>
+                    <td className="p-2 text-left text-xs text-muted-foreground">{pct(b.supply, result.totalInternalSales)}</td>
                   </tr>
                 ))}
 
                 <tr><td colSpan={3} className="h-1 bg-muted/30"></td></tr>
 
-                {/* COGS — Cost of internal transfers (Perpetual) */}
+                {/* COGS — Raw + Applied Overhead (Perpetual, no double-counting) */}
                 <tr className="bg-orange-500/10 font-semibold text-orange-700 dark:text-orange-400 border-b cursor-pointer print:cursor-auto"
                     onClick={() => setOpenSections((s) => ({ ...s, cogs: !s.cogs }))}>
                   <td className="p-2.5 flex items-center gap-1">
                     <span className="print:hidden">{openSections.cogs ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}</span>
-                    تكلفة التحويلات للفروع (COGS)
+                    تكلفة المبيعات (COGS)
                   </td>
-                  <td className="p-2.5 text-left tabular-nums">{fmt(result.costOfTransfers)}</td>
-                  <td className="p-2.5 text-left text-xs">{pct(result.costOfTransfers, result.totalInternalSales)}</td>
+                  <td className="p-2.5 text-left tabular-nums">{fmt(result.totalCogs)}</td>
+                  <td className="p-2.5 text-left text-xs">{pct(result.totalCogs, result.totalInternalSales)}</td>
                 </tr>
-                {openSections.cogs && result.salesByBranch.map((b, i) => (
-                  <tr key={i} className="border-b hover:bg-muted/20">
-                    <td className="p-2 pr-8 text-muted-foreground">{b.name}</td>
-                    <td className="p-2 text-left tabular-nums">{fmt(b.cost)}</td>
-                    <td className="p-2 text-left text-xs text-muted-foreground">{pct(b.cost, result.totalInternalSales)}</td>
-                  </tr>
-                ))}
+                {openSections.cogs && (
+                  <>
+                    <tr className="border-b hover:bg-muted/20">
+                      <td className="p-2 pr-8 text-muted-foreground">تكلفة الخامات (Raw Materials)</td>
+                      <td className="p-2 text-left tabular-nums">{fmt(result.rawMaterialsCost)}</td>
+                      <td className="p-2 text-left text-xs text-muted-foreground">{pct(result.rawMaterialsCost, result.totalInternalSales)}</td>
+                    </tr>
+                    <tr className="border-b hover:bg-muted/20">
+                      <td className="p-2 pr-8 text-muted-foreground">التحميل غير المباشر (Applied Overhead)</td>
+                      <td className="p-2 text-left tabular-nums">{fmt(result.appliedOverhead)}</td>
+                      <td className="p-2 text-left text-xs text-muted-foreground">{pct(result.appliedOverhead, result.totalInternalSales)}</td>
+                    </tr>
+                  </>
+                )}
 
                 <tr><td colSpan={3} className="h-1 bg-muted/30"></td></tr>
 
@@ -723,25 +730,18 @@ export const WarehousePnlTab: React.FC = () => {
 
                 <tr><td colSpan={3} className="h-1 bg-muted/30"></td></tr>
 
-                {/* Expenses */}
+                {/* Unallocated expenses only (overhead already loaded into COGS) */}
                 <tr className="bg-orange-500/10 font-semibold text-orange-700 dark:text-orange-400 border-b cursor-pointer print:cursor-auto"
                     onClick={() => setOpenSections((s) => ({ ...s, expenses: !s.expenses }))}>
                   <td className="p-2.5 flex items-center gap-1">
                     <span className="print:hidden">{openSections.expenses ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}</span>
-                    المصروفات التشغيلية
+                    مصروفات غير محملة على المنتج
                   </td>
-                  <td className="p-2.5 text-left tabular-nums">{fmt(result.totalExpenses + result.wasteCost)}</td>
-                  <td className="p-2.5 text-left text-xs">{pct(result.totalExpenses + result.wasteCost, result.totalInternalSales)}</td>
+                  <td className="p-2.5 text-left tabular-nums">{fmt(result.totalUnallocated + result.wasteCost)}</td>
+                  <td className="p-2.5 text-left text-xs">{pct(result.totalUnallocated + result.wasteCost, result.totalInternalSales)}</td>
                 </tr>
                 {openSections.expenses && (
                   <>
-                    {result.allExpenses.map((e, i) => (
-                      <tr key={i} className="border-b hover:bg-muted/20">
-                        <td className="p-2 pr-8 text-muted-foreground">{e.name}</td>
-                        <td className="p-2 text-left tabular-nums">{fmt(e.amount)}</td>
-                        <td className="p-2 text-left text-xs text-muted-foreground">{pct(e.amount, result.totalInternalSales)}</td>
-                      </tr>
-                    ))}
                     {result.wasteCost > 0 && (
                       <tr className="border-b hover:bg-muted/20">
                         <td className="p-2 pr-8 text-muted-foreground">الفاقد والإهلاك</td>
@@ -749,6 +749,18 @@ export const WarehousePnlTab: React.FC = () => {
                         <td className="p-2 text-left text-xs text-muted-foreground">{pct(result.wasteCost, result.totalInternalSales)}</td>
                       </tr>
                     )}
+                    {result.unallocatedExpenses.map((e, i) => (
+                      <tr key={i} className="border-b hover:bg-muted/20">
+                        <td className="p-2 pr-8 text-muted-foreground">{e.name}</td>
+                        <td className="p-2 text-left tabular-nums">{fmt(e.amount)}</td>
+                        <td className="p-2 text-left text-xs text-muted-foreground">{pct(e.amount, result.totalInternalSales)}</td>
+                      </tr>
+                    ))}
+                    <tr className="border-b">
+                      <td colSpan={3} className="p-2 pr-8 text-[10px] text-muted-foreground italic">
+                        * المرتبات والإيجار والفواتير محمّلة داخل COGS عبر معدّل التحميل غير المباشر — لا تُخصم مرة أخرى هنا لتفادي التحميل المزدوج.
+                      </td>
+                    </tr>
                   </>
                 )}
 

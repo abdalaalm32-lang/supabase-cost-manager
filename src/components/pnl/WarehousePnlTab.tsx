@@ -775,6 +775,41 @@ export const WarehousePnlTab: React.FC = () => {
             </table>
           </div>
 
+
+          {/* Overhead Variance — Over/Under Applied (Cost accountant report) */}
+          <div className="border-t bg-amber-50/40 dark:bg-amber-950/10">
+            <div className="p-3 border-b flex items-center justify-between">
+              <h3 className="text-xs font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-2">
+                <Activity className="h-3.5 w-3.5" />
+                تحليل التحميل — Over / Under Applied Overhead (تقرير محاسب التكاليف)
+              </h3>
+              <Badge variant="outline" className="text-[10px]">لا يؤثر على صافي الربح</Badge>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <tbody>
+                  <tr className="border-b">
+                    <td className="p-2 pr-4 text-muted-foreground">Applied Overhead — محمّل داخل التحويلات</td>
+                    <td className="p-2 text-left tabular-nums">{fmt(result.appliedOverhead)}</td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="p-2 pr-4 text-muted-foreground">Actual Overhead — فعلي من مصروفات المخزن</td>
+                    <td className="p-2 text-left tabular-nums">{fmt(result.actualOverhead)}</td>
+                  </tr>
+                  <tr className={`font-semibold ${result.overheadVariance >= 0 ? "bg-rose-500/10 text-rose-700 dark:text-rose-400" : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"}`}>
+                    <td className="p-2 pr-4">
+                      {result.overheadVariance >= 0 ? "نقص تحميل (Under Applied)" : "زيادة تحميل (Over Applied)"}
+                    </td>
+                    <td className="p-2 text-left tabular-nums">{fmt(Math.abs(result.overheadVariance))}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <p className="p-3 text-[10px] text-muted-foreground italic">
+                * الفرق بين المصروفات الفعلية والمبلغ المحمّل على المنتجات يُستخدم في نهاية الفترة لتسوية حساب التكلفة فقط، ولا يُخصم من صافي الربح أعلاه.
+              </p>
+            </div>
+          </div>
+
           {/* Reference: Periodic Inventory Closing (not part of P&L) */}
           <div className="border-t bg-muted/10">
             <div className="p-3 border-b flex items-center justify-between">

@@ -545,7 +545,18 @@ export const WarehousePnlTab: React.FC = () => {
     </tr></thead>
     <tbody>${tableRows}</tbody>
   </table>
-  <p class="note">* COGS يمثل تكلفة التحويلات الفعلية للفروع (نموذج Perpetual). المخزن المركزي مركز توريد داخلي وليس نقطة بيع نهائية.</p>
+  <p class="note">* المصروفات الفعلية (مرتبات، إيجار، فواتير…) محمّلة داخل COGS عبر معدل التحميل غير المباشر — ولذلك لا تظهر أسفل مجمل الربح لتجنّب التحميل مرّتين.</p>
+
+  <h2>تحليل التحميل — Over/Under Applied Overhead (للمحاسب فقط)</h2>
+  <table>
+    <thead><tr style="background:#f0f0f0;">
+      <th style="border:1px solid #ddd;padding:6px 10px;text-align:right;font-size:11px;">البند</th>
+      <th style="border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:11px;">المبلغ (ج.م)</th>
+      <th style="border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:11px;"></th>
+    </tr></thead>
+    <tbody>${varianceRows}</tbody>
+  </table>
+  <p class="note">* الفرق بين المصروفات الفعلية والمحمّلة يُستخدم للتسوية المحاسبية آخر الفترة فقط، ولا يؤثر على صافي الربح أعلاه.</p>
 
   <h2>مرجع محاسبي — تقفيل المخزون (Periodic)</h2>
   <table>

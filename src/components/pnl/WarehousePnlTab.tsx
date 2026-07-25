@@ -51,7 +51,7 @@ function useWarehouseData(companyId: string | undefined, warehouseIds: string[],
     queryKey: [`whp-tr-${key}`, companyId, dateFromStr, dateToStr, idsKey],
     queryFn: async () => fetchAllRows<any>((from, to) =>
       supabase.from("transfers")
-        .select("id, date, source_id, source_name, destination_id, destination_name, total_cost")
+        .select("id, date, source_id, source_name, destination_id, destination_name, total_cost, overhead_amount, transportation_cost, loading_cost")
         .eq("company_id", companyId!).eq("status", "مكتمل").in("source_id", warehouseIds)
         .gte("date", dateFromStr).lte("date", dateToStr).order("date").range(from, to)
     ),
@@ -87,7 +87,7 @@ function useWarehouseData(companyId: string | undefined, warehouseIds: string[],
         const slice = tiIds.slice(i, i + 100);
         const rows = await fetchAllRows<any>((from, to) =>
           supabase.from("transfer_pricing_breakdown")
-            .select("transfer_item_id, final_unit_price")
+            .select("transfer_item_id, final_unit_price, profit_amount")
             .in("transfer_item_id", slice).order("transfer_item_id").range(from, to)
         );
         all.push(...rows);
@@ -152,15 +152,21 @@ function useWarehouseData(companyId: string | undefined, warehouseIds: string[],
   return { transfers, transferItems, pricing, purchases, production, wasteRecs, openingStk, closingStk };
 }
 
-function computeResult(d: ReturnType<typeof useWarehouseData>, extraExpenses: ManualExp[], autoExpenses: ManualExp[]) {
-  const priceByItem = new Map<string, number>();
-  (d.pricing || []).forEach((p: any) => priceByItem.set(p.transfer_item_id, Number(p.final_unit_price) || 0));
+function computeResult(d: ReturnType<typeof useWarehouseData>, extraExpenses: ManualExp[], actualOverheadExpenses: ManualExp[]) {
+  const priceByItem = new Map<string, { final: number; profit: number }>();
+  (d.pricing || []).forEach((p: any) => priceByItem.set(p.transfer_item_id, {
+    final: Number(p.final_unit_price) || 0,
+    profit: Number(p.profit_amount) || 0,
+  }));
 
-  const salesByBranch = new Map<string, { name: string; total: number; cost: number }>();
+  const salesByBranch = new Map<string, { name: string; supply: number; raw: number; overhead: number; profit: number }>();
   const salesByItem = new Map<string, { name: string; total: number; qty: number }>();
   const salesByMonth = new Map<string, number>();
-  let totalInternalSales = 0;
-  let costOfTransfers = 0;
+
+  let rawMaterialsCost = 0;   // Sum of transfer_items.total_cost (base cost)
+  let appliedOverhead = 0;    // Sum of transfers.overhead + transportation + loading
+  let profitLoaded = 0;       // Markup added on top of raw + overhead
+  let totalInternalSales = 0; // = raw + overhead + profit
 
   const itemsByTransfer = new Map<string, any[]>();
   (d.transferItems || []).forEach((ti: any) => {
@@ -170,30 +176,42 @@ function computeResult(d: ReturnType<typeof useWarehouseData>, extraExpenses: Ma
 
   (d.transfers || []).forEach((tr: any) => {
     const items = itemsByTransfer.get(tr.id) || [];
-    let trSales = 0;
-    let trCost = 0;
+    const trRaw = items.reduce((s: number, it: any) => s + (Number(it.total_cost) || 0), 0);
+    const trOverhead =
+      (Number(tr.overhead_amount) || 0) +
+      (Number(tr.transportation_cost) || 0) +
+      (Number(tr.loading_cost) || 0);
+
+    let trProfit = 0;
     items.forEach((it: any) => {
-      const up = priceByItem.get(it.id) ?? 0;
+      const p = priceByItem.get(it.id);
       const qty = Number(it.quantity) || 0;
-      const val = up * qty;
-      trSales += val;
-      trCost += Number(it.total_cost) || 0;
+      if (p) trProfit += p.profit * qty;
+      // Per-item supply value (for salesByItem breakdown):
+      const itemBase = Number(it.total_cost) || 0;
+      const itemOverheadShare = trRaw > 0 ? trOverhead * (itemBase / trRaw) : 0;
+      const itemProfitPart = p ? p.profit * qty : 0;
+      const itemSupply = itemBase + itemOverheadShare + itemProfitPart;
       const iname = it.item_name || "—";
       const ex = salesByItem.get(iname);
-      if (ex) { ex.total += val; ex.qty += qty; }
-      else salesByItem.set(iname, { name: iname, total: val, qty });
+      if (ex) { ex.total += itemSupply; ex.qty += qty; }
+      else salesByItem.set(iname, { name: iname, total: itemSupply, qty });
     });
-    const trTotalCost = Number(tr.total_cost) || trCost;
-    if (trSales === 0) trSales = trTotalCost;
-    totalInternalSales += trSales;
-    costOfTransfers += trTotalCost;
+
+    const trSupply = trRaw + trOverhead + trProfit;
+    rawMaterialsCost += trRaw;
+    appliedOverhead += trOverhead;
+    profitLoaded += trProfit;
+    totalInternalSales += trSupply;
+
     const bkey = tr.destination_id || "__none__";
     const bname = tr.destination_name || "بدون فرع";
     const bex = salesByBranch.get(bkey);
-    if (bex) { bex.total += trSales; bex.cost += trTotalCost; }
-    else salesByBranch.set(bkey, { name: bname, total: trSales, cost: trTotalCost });
+    if (bex) { bex.supply += trSupply; bex.raw += trRaw; bex.overhead += trOverhead; bex.profit += trProfit; }
+    else salesByBranch.set(bkey, { name: bname, supply: trSupply, raw: trRaw, overhead: trOverhead, profit: trProfit });
+
     const m = String(tr.date || "").slice(0, 7);
-    if (m) salesByMonth.set(m, (salesByMonth.get(m) || 0) + trSales);
+    if (m) salesByMonth.set(m, (salesByMonth.get(m) || 0) + trSupply);
   });
 
   const pickLatestByWh = (rows: any[]) => {
@@ -215,37 +233,52 @@ function computeResult(d: ReturnType<typeof useWarehouseData>, extraExpenses: Ma
   const costPerKg = productionQty > 0 ? productionCost / productionQty : 0;
   const wasteCost = (d.wasteRecs || []).reduce((s: number, r: any) => s + Number(r.total_cost || 0), 0);
 
-  // waste by warehouse
   const wasteByWh = new Map<string, number>();
   (d.wasteRecs || []).forEach((w: any) => {
     const k = w.warehouse_id || "__none__";
     wasteByWh.set(k, (wasteByWh.get(k) || 0) + Number(w.total_cost || 0));
   });
 
-  // Perpetual model: COGS = cost of internal transfers to branches
-  const totalCogs = costOfTransfers;
-  const grossProfit = totalInternalSales - totalCogs;
+  // ── Correct COGS (Perpetual, no double-count of overhead) ─────────────────
+  // Applied overhead is loaded into the transfer price via markup, so it belongs
+  // inside COGS. Actual overhead expenses do NOT appear below Gross Profit —
+  // they are reported separately as Overhead Variance for the cost accountant.
+  const totalCogs = rawMaterialsCost + appliedOverhead;
+  const grossProfit = totalInternalSales - totalCogs; // = profitLoaded
   const grossProfitPct = totalInternalSales > 0 ? (grossProfit / totalInternalSales) * 100 : 0;
 
-  // Reference (periodic) valuation — not used in Gross Profit
+  // Reference (periodic) valuation — audit only
   const goodsAvailable = openingStock + purchasesTotal + productionCost;
   const periodicCogs = goodsAvailable - closingStock;
 
-  const allExpenses = [...autoExpenses, ...extraExpenses];
-  const totalExpenses = allExpenses.reduce((s, e) => s + e.amount, 0);
-  const netProfit = grossProfit - totalExpenses - wasteCost;
+  // Below-the-line: only truly unallocated expenses + waste
+  const unallocatedExpenses = [...extraExpenses];
+  const totalUnallocated = unallocatedExpenses.reduce((s, e) => s + e.amount, 0);
+  const netProfit = grossProfit - totalUnallocated - wasteCost;
   const netProfitPct = totalInternalSales > 0 ? (netProfit / totalInternalSales) * 100 : 0;
 
+  // Overhead variance (Over/Under Applied) — separate report
+  const actualOverhead = actualOverheadExpenses.reduce((s, e) => s + e.amount, 0);
+  const overheadVariance = actualOverhead - appliedOverhead; // + => under-applied, - => over-applied
+
   return {
-    salesByBranch: Array.from(salesByBranch.values()).sort((a, b) => b.total - a.total),
+    salesByBranch: Array.from(salesByBranch.values()).sort((a, b) => b.supply - a.supply),
     salesByItem: Array.from(salesByItem.values()).sort((a, b) => b.total - a.total),
     salesByMonth: Array.from(salesByMonth.entries()).sort(([a], [b]) => a.localeCompare(b)),
     transfersCount: (d.transfers || []).length,
-    totalInternalSales, costOfTransfers, openingStock, closingStock,
+    totalInternalSales,
+    rawMaterialsCost, appliedOverhead, profitLoaded,
+    costOfTransfers: rawMaterialsCost, // legacy alias
+    openingStock, closingStock,
     purchasesTotal, productionCost, productionQty, costPerKg,
     goodsAvailable, periodicCogs,
     totalCogs, grossProfit, grossProfitPct,
-    allExpenses, totalExpenses, wasteCost, wasteByWh,
+    unallocatedExpenses, totalUnallocated,
+    actualOverheadExpenses, actualOverhead, overheadVariance,
+    // Legacy fields kept for KPI cards below
+    allExpenses: unallocatedExpenses,
+    totalExpenses: totalUnallocated,
+    wasteCost, wasteByWh,
     netProfit, netProfitPct,
   };
 }
@@ -338,7 +371,8 @@ export const WarehousePnlTab: React.FC = () => {
     { title: "COGS", value: fmt(result.totalCogs), prev: resultPrev.totalCogs, curr: result.totalCogs, icon: BarChart3, ...KPI_COLORS.cost },
     { title: "مجمل الربح", value: fmt(result.grossProfit), prev: resultPrev.grossProfit, curr: result.grossProfit, icon: TrendingUp, ...KPI_COLORS.profit },
     { title: "هامش الربح %", value: result.grossProfitPct.toFixed(2) + "%", prev: resultPrev.grossProfitPct, curr: result.grossProfitPct, icon: Percent, ...KPI_COLORS.pctCol },
-    { title: "المصروفات", value: fmt(result.totalExpenses), prev: resultPrev.totalExpenses, curr: result.totalExpenses, icon: BarChart3, ...KPI_COLORS.cost },
+    { title: "التحميل غير المباشر", value: fmt(result.appliedOverhead), prev: resultPrev.appliedOverhead, curr: result.appliedOverhead, icon: BarChart3, ...KPI_COLORS.cost },
+    { title: "مصروفات غير محملة", value: fmt(result.totalUnallocated), prev: resultPrev.totalUnallocated, curr: result.totalUnallocated, icon: BarChart3, ...KPI_COLORS.cost },
     { title: "صافي الربح", value: fmt(result.netProfit), prev: resultPrev.netProfit, curr: result.netProfit, icon: result.netProfit >= 0 ? TrendingUp : TrendingDown, ...(result.netProfit >= 0 ? KPI_COLORS.profit : { g: "from-red-500/20 to-red-600/10 border-red-500/30", t: "text-red-600" }) },
     { title: "تكلفة الإنتاج", value: fmt(result.productionCost), prev: resultPrev.productionCost, curr: result.productionCost, icon: BarChart3, ...KPI_COLORS.cost },
     { title: "تكلفة الفاقد", value: fmt(result.wasteCost), prev: resultPrev.wasteCost, curr: result.wasteCost, icon: TrendingDown, ...KPI_COLORS.waste },
@@ -350,13 +384,18 @@ export const WarehousePnlTab: React.FC = () => {
   const exportRows = useMemo(() => {
     const rows: Record<string, any>[] = [];
     rows.push({ section: "الإيرادات", item: "المبيعات الداخلية للفروع", amount: result.totalInternalSales, pct: "100%" });
-    result.salesByBranch.forEach((b) => rows.push({ section: "  فرع", item: b.name, amount: b.total, pct: pct(b.total, result.totalInternalSales) }));
-    rows.push({ section: "COGS", item: "تكلفة التحويلات للفروع", amount: result.costOfTransfers, pct: pct(result.costOfTransfers, result.totalInternalSales) });
-    result.salesByBranch.forEach((b) => rows.push({ section: "  تكلفة تحويلات", item: b.name, amount: b.cost, pct: pct(b.cost, result.totalInternalSales) }));
+    result.salesByBranch.forEach((b) => rows.push({ section: "  فرع", item: b.name, amount: b.supply, pct: pct(b.supply, result.totalInternalSales) }));
+    rows.push({ section: "COGS", item: "تكلفة الخامات (Raw Materials)", amount: result.rawMaterialsCost, pct: pct(result.rawMaterialsCost, result.totalInternalSales) });
+    rows.push({ section: "COGS", item: "التحميل غير المباشر (Applied Overhead)", amount: result.appliedOverhead, pct: pct(result.appliedOverhead, result.totalInternalSales) });
+    rows.push({ section: "COGS", item: "إجمالي COGS", amount: result.totalCogs, pct: pct(result.totalCogs, result.totalInternalSales) });
     rows.push({ section: "الأرباح", item: "مجمل الربح", amount: result.grossProfit, pct: result.grossProfitPct.toFixed(2) + "%" });
-    result.allExpenses.forEach((e) => rows.push({ section: "مصروفات", item: e.name, amount: e.amount, pct: pct(e.amount, result.totalInternalSales) }));
     if (result.wasteCost > 0) rows.push({ section: "مصروفات", item: "الفاقد", amount: result.wasteCost, pct: pct(result.wasteCost, result.totalInternalSales) });
+    result.unallocatedExpenses.forEach((e) => rows.push({ section: "مصروفات غير محملة", item: e.name, amount: e.amount, pct: pct(e.amount, result.totalInternalSales) }));
     rows.push({ section: "الأرباح", item: "صافي الربح", amount: result.netProfit, pct: result.netProfitPct.toFixed(2) + "%" });
+    // Overhead variance report
+    rows.push({ section: "تحليل التحميل", item: "Applied Overhead (محمّل داخل التحويلات)", amount: result.appliedOverhead, pct: "" });
+    rows.push({ section: "تحليل التحميل", item: "Actual Overhead (فعلي من مصروفات المخزن)", amount: result.actualOverhead, pct: "" });
+    rows.push({ section: "تحليل التحميل", item: (result.overheadVariance >= 0 ? "Under Applied (نقص تحميل)" : "Over Applied (زيادة تحميل)"), amount: result.overheadVariance, pct: "" });
     // Reference block
     rows.push({ section: "مرجع - جرد", item: "جرد أول المدة", amount: result.openingStock, pct: "" });
     rows.push({ section: "مرجع - جرد", item: "(+) المشتريات", amount: result.purchasesTotal, pct: "" });
@@ -421,23 +460,33 @@ export const WarehousePnlTab: React.FC = () => {
     let tableRows = "";
     tableRows += row("الإيرادات — المبيعات الداخلية للفروع", result.totalInternalSales, "100%", { bold: true, bg: "#eff6ff", color: "#1d4ed8" });
     result.salesByBranch.forEach((b) => {
-      tableRows += row(b.name, b.total, pct(b.total, result.totalInternalSales), { indent: true });
+      tableRows += row(b.name, b.supply, pct(b.supply, result.totalInternalSales), { indent: true });
     });
     tableRows += sep;
-    tableRows += row("تكلفة التحويلات للفروع (COGS)", result.costOfTransfers, pct(result.costOfTransfers, result.totalInternalSales), { bold: true, bg: "#fff7ed", color: "#c2410c" });
-    result.salesByBranch.forEach((b) => {
-      tableRows += row(b.name, b.cost, pct(b.cost, result.totalInternalSales), { indent: true });
-    });
+    tableRows += row("تكلفة المبيعات (COGS)", result.totalCogs, pct(result.totalCogs, result.totalInternalSales), { bold: true, bg: "#fff7ed", color: "#c2410c" });
+    tableRows += row("تكلفة الخامات (Raw Materials)", result.rawMaterialsCost, pct(result.rawMaterialsCost, result.totalInternalSales), { indent: true });
+    tableRows += row("التحميل غير المباشر (Applied Overhead)", result.appliedOverhead, pct(result.appliedOverhead, result.totalInternalSales), { indent: true });
     tableRows += sep;
     tableRows += row("مجمل الربح (Gross Profit)", result.grossProfit, result.grossProfitPct.toFixed(2) + "%", { bold: true, bg: "#ecfdf5", color: result.grossProfit < 0 ? "#dc2626" : "#047857" });
     tableRows += sep;
-    tableRows += row("المصروفات التشغيلية", result.totalExpenses + result.wasteCost, pct(result.totalExpenses + result.wasteCost, result.totalInternalSales), { bold: true, bg: "#fff7ed", color: "#c2410c" });
-    result.allExpenses.forEach((e) => {
-      tableRows += row(e.name, e.amount, pct(e.amount, result.totalInternalSales), { indent: true });
-    });
-    if (result.wasteCost > 0) tableRows += row("الفاقد والإهلاك", result.wasteCost, pct(result.wasteCost, result.totalInternalSales), { indent: true });
-    tableRows += sep;
+    if (result.wasteCost > 0 || result.unallocatedExpenses.length > 0) {
+      tableRows += row("مصروفات غير محملة على المنتج", result.totalUnallocated + result.wasteCost, pct(result.totalUnallocated + result.wasteCost, result.totalInternalSales), { bold: true, bg: "#fff7ed", color: "#c2410c" });
+      if (result.wasteCost > 0) tableRows += row("الفاقد والإهلاك", result.wasteCost, pct(result.wasteCost, result.totalInternalSales), { indent: true });
+      result.unallocatedExpenses.forEach((e) => {
+        tableRows += row(e.name, e.amount, pct(e.amount, result.totalInternalSales), { indent: true });
+      });
+      tableRows += sep;
+    }
     tableRows += row("صافي الربح (Net Profit)", result.netProfit, result.netProfitPct.toFixed(2) + "%", { bold: true, bg: result.netProfit >= 0 ? "#d1fae5" : "#fee2e2", color: result.netProfit < 0 ? "#dc2626" : "#047857" });
+
+    // Overhead variance rows
+    const varStatus = result.overheadVariance >= 0 ? "نقص تحميل (Under Applied)" : "زيادة تحميل (Over Applied)";
+    const varColor = result.overheadVariance >= 0 ? "#dc2626" : "#047857";
+    const varianceRows = `
+      ${row("Applied Overhead — محمّل داخل التحويلات", result.appliedOverhead, "")}
+      ${row("Actual Overhead — فعلي من مصروفات المخزن", result.actualOverhead, "")}
+      ${row(varStatus, result.overheadVariance, "", { bold: true, bg: "#fef3c7", color: varColor })}
+    `;
 
     // Reference inventory closing block
     const refRows = `
@@ -497,7 +546,18 @@ export const WarehousePnlTab: React.FC = () => {
     </tr></thead>
     <tbody>${tableRows}</tbody>
   </table>
-  <p class="note">* COGS يمثل تكلفة التحويلات الفعلية للفروع (نموذج Perpetual). المخزن المركزي مركز توريد داخلي وليس نقطة بيع نهائية.</p>
+  <p class="note">* المصروفات الفعلية (مرتبات، إيجار، فواتير…) محمّلة داخل COGS عبر معدل التحميل غير المباشر — ولذلك لا تظهر أسفل مجمل الربح لتجنّب التحميل مرّتين.</p>
+
+  <h2>تحليل التحميل — Over/Under Applied Overhead (للمحاسب فقط)</h2>
+  <table>
+    <thead><tr style="background:#f0f0f0;">
+      <th style="border:1px solid #ddd;padding:6px 10px;text-align:right;font-size:11px;">البند</th>
+      <th style="border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:11px;">المبلغ (ج.م)</th>
+      <th style="border:1px solid #ddd;padding:6px 10px;text-align:left;font-size:11px;"></th>
+    </tr></thead>
+    <tbody>${varianceRows}</tbody>
+  </table>
+  <p class="note">* الفرق بين المصروفات الفعلية والمحمّلة يُستخدم للتسوية المحاسبية آخر الفترة فقط، ولا يؤثر على صافي الربح أعلاه.</p>
 
   <h2>مرجع محاسبي — تقفيل المخزون (Periodic)</h2>
   <table>
@@ -629,30 +689,37 @@ export const WarehousePnlTab: React.FC = () => {
                 {openSections.sales && result.salesByBranch.map((b, i) => (
                   <tr key={i} className="border-b hover:bg-muted/20">
                     <td className="p-2 pr-8 text-muted-foreground">{b.name}</td>
-                    <td className="p-2 text-left tabular-nums">{fmt(b.total)}</td>
-                    <td className="p-2 text-left text-xs text-muted-foreground">{pct(b.total, result.totalInternalSales)}</td>
+                    <td className="p-2 text-left tabular-nums">{fmt(b.supply)}</td>
+                    <td className="p-2 text-left text-xs text-muted-foreground">{pct(b.supply, result.totalInternalSales)}</td>
                   </tr>
                 ))}
 
                 <tr><td colSpan={3} className="h-1 bg-muted/30"></td></tr>
 
-                {/* COGS — Cost of internal transfers (Perpetual) */}
+                {/* COGS — Raw + Applied Overhead (Perpetual, no double-counting) */}
                 <tr className="bg-orange-500/10 font-semibold text-orange-700 dark:text-orange-400 border-b cursor-pointer print:cursor-auto"
                     onClick={() => setOpenSections((s) => ({ ...s, cogs: !s.cogs }))}>
                   <td className="p-2.5 flex items-center gap-1">
                     <span className="print:hidden">{openSections.cogs ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}</span>
-                    تكلفة التحويلات للفروع (COGS)
+                    تكلفة المبيعات (COGS)
                   </td>
-                  <td className="p-2.5 text-left tabular-nums">{fmt(result.costOfTransfers)}</td>
-                  <td className="p-2.5 text-left text-xs">{pct(result.costOfTransfers, result.totalInternalSales)}</td>
+                  <td className="p-2.5 text-left tabular-nums">{fmt(result.totalCogs)}</td>
+                  <td className="p-2.5 text-left text-xs">{pct(result.totalCogs, result.totalInternalSales)}</td>
                 </tr>
-                {openSections.cogs && result.salesByBranch.map((b, i) => (
-                  <tr key={i} className="border-b hover:bg-muted/20">
-                    <td className="p-2 pr-8 text-muted-foreground">{b.name}</td>
-                    <td className="p-2 text-left tabular-nums">{fmt(b.cost)}</td>
-                    <td className="p-2 text-left text-xs text-muted-foreground">{pct(b.cost, result.totalInternalSales)}</td>
-                  </tr>
-                ))}
+                {openSections.cogs && (
+                  <>
+                    <tr className="border-b hover:bg-muted/20">
+                      <td className="p-2 pr-8 text-muted-foreground">تكلفة الخامات (Raw Materials)</td>
+                      <td className="p-2 text-left tabular-nums">{fmt(result.rawMaterialsCost)}</td>
+                      <td className="p-2 text-left text-xs text-muted-foreground">{pct(result.rawMaterialsCost, result.totalInternalSales)}</td>
+                    </tr>
+                    <tr className="border-b hover:bg-muted/20">
+                      <td className="p-2 pr-8 text-muted-foreground">التحميل غير المباشر (Applied Overhead)</td>
+                      <td className="p-2 text-left tabular-nums">{fmt(result.appliedOverhead)}</td>
+                      <td className="p-2 text-left text-xs text-muted-foreground">{pct(result.appliedOverhead, result.totalInternalSales)}</td>
+                    </tr>
+                  </>
+                )}
 
                 <tr><td colSpan={3} className="h-1 bg-muted/30"></td></tr>
 
@@ -664,25 +731,18 @@ export const WarehousePnlTab: React.FC = () => {
 
                 <tr><td colSpan={3} className="h-1 bg-muted/30"></td></tr>
 
-                {/* Expenses */}
+                {/* Unallocated expenses only (overhead already loaded into COGS) */}
                 <tr className="bg-orange-500/10 font-semibold text-orange-700 dark:text-orange-400 border-b cursor-pointer print:cursor-auto"
                     onClick={() => setOpenSections((s) => ({ ...s, expenses: !s.expenses }))}>
                   <td className="p-2.5 flex items-center gap-1">
                     <span className="print:hidden">{openSections.expenses ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}</span>
-                    المصروفات التشغيلية
+                    مصروفات غير محملة على المنتج
                   </td>
-                  <td className="p-2.5 text-left tabular-nums">{fmt(result.totalExpenses + result.wasteCost)}</td>
-                  <td className="p-2.5 text-left text-xs">{pct(result.totalExpenses + result.wasteCost, result.totalInternalSales)}</td>
+                  <td className="p-2.5 text-left tabular-nums">{fmt(result.totalUnallocated + result.wasteCost)}</td>
+                  <td className="p-2.5 text-left text-xs">{pct(result.totalUnallocated + result.wasteCost, result.totalInternalSales)}</td>
                 </tr>
                 {openSections.expenses && (
                   <>
-                    {result.allExpenses.map((e, i) => (
-                      <tr key={i} className="border-b hover:bg-muted/20">
-                        <td className="p-2 pr-8 text-muted-foreground">{e.name}</td>
-                        <td className="p-2 text-left tabular-nums">{fmt(e.amount)}</td>
-                        <td className="p-2 text-left text-xs text-muted-foreground">{pct(e.amount, result.totalInternalSales)}</td>
-                      </tr>
-                    ))}
                     {result.wasteCost > 0 && (
                       <tr className="border-b hover:bg-muted/20">
                         <td className="p-2 pr-8 text-muted-foreground">الفاقد والإهلاك</td>
@@ -690,6 +750,18 @@ export const WarehousePnlTab: React.FC = () => {
                         <td className="p-2 text-left text-xs text-muted-foreground">{pct(result.wasteCost, result.totalInternalSales)}</td>
                       </tr>
                     )}
+                    {result.unallocatedExpenses.map((e, i) => (
+                      <tr key={i} className="border-b hover:bg-muted/20">
+                        <td className="p-2 pr-8 text-muted-foreground">{e.name}</td>
+                        <td className="p-2 text-left tabular-nums">{fmt(e.amount)}</td>
+                        <td className="p-2 text-left text-xs text-muted-foreground">{pct(e.amount, result.totalInternalSales)}</td>
+                      </tr>
+                    ))}
+                    <tr className="border-b">
+                      <td colSpan={3} className="p-2 pr-8 text-[10px] text-muted-foreground italic">
+                        * المرتبات والإيجار والفواتير محمّلة داخل COGS عبر معدّل التحميل غير المباشر — لا تُخصم مرة أخرى هنا لتفادي التحميل المزدوج.
+                      </td>
+                    </tr>
                   </>
                 )}
 
@@ -702,6 +774,41 @@ export const WarehousePnlTab: React.FC = () => {
                 </tr>
               </tbody>
             </table>
+          </div>
+
+
+          {/* Overhead Variance — Over/Under Applied (Cost accountant report) */}
+          <div className="border-t bg-amber-50/40 dark:bg-amber-950/10">
+            <div className="p-3 border-b flex items-center justify-between">
+              <h3 className="text-xs font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-2">
+                <Activity className="h-3.5 w-3.5" />
+                تحليل التحميل — Over / Under Applied Overhead (تقرير محاسب التكاليف)
+              </h3>
+              <Badge variant="outline" className="text-[10px]">لا يؤثر على صافي الربح</Badge>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <tbody>
+                  <tr className="border-b">
+                    <td className="p-2 pr-4 text-muted-foreground">Applied Overhead — محمّل داخل التحويلات</td>
+                    <td className="p-2 text-left tabular-nums">{fmt(result.appliedOverhead)}</td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="p-2 pr-4 text-muted-foreground">Actual Overhead — فعلي من مصروفات المخزن</td>
+                    <td className="p-2 text-left tabular-nums">{fmt(result.actualOverhead)}</td>
+                  </tr>
+                  <tr className={`font-semibold ${result.overheadVariance >= 0 ? "bg-rose-500/10 text-rose-700 dark:text-rose-400" : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"}`}>
+                    <td className="p-2 pr-4">
+                      {result.overheadVariance >= 0 ? "نقص تحميل (Under Applied)" : "زيادة تحميل (Over Applied)"}
+                    </td>
+                    <td className="p-2 text-left tabular-nums">{fmt(Math.abs(result.overheadVariance))}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <p className="p-3 text-[10px] text-muted-foreground italic">
+                * الفرق بين المصروفات الفعلية والمبلغ المحمّل على المنتجات يُستخدم في نهاية الفترة لتسوية حساب التكلفة فقط، ولا يُخصم من صافي الربح أعلاه.
+              </p>
+            </div>
           </div>
 
           {/* Reference: Periodic Inventory Closing (not part of P&L) */}

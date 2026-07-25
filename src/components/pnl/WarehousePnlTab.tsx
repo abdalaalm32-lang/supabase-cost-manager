@@ -152,15 +152,21 @@ function useWarehouseData(companyId: string | undefined, warehouseIds: string[],
   return { transfers, transferItems, pricing, purchases, production, wasteRecs, openingStk, closingStk };
 }
 
-function computeResult(d: ReturnType<typeof useWarehouseData>, extraExpenses: ManualExp[], autoExpenses: ManualExp[]) {
-  const priceByItem = new Map<string, number>();
-  (d.pricing || []).forEach((p: any) => priceByItem.set(p.transfer_item_id, Number(p.final_unit_price) || 0));
+function computeResult(d: ReturnType<typeof useWarehouseData>, extraExpenses: ManualExp[], actualOverheadExpenses: ManualExp[]) {
+  const priceByItem = new Map<string, { final: number; profit: number }>();
+  (d.pricing || []).forEach((p: any) => priceByItem.set(p.transfer_item_id, {
+    final: Number(p.final_unit_price) || 0,
+    profit: Number(p.profit_amount) || 0,
+  }));
 
-  const salesByBranch = new Map<string, { name: string; total: number; cost: number }>();
+  const salesByBranch = new Map<string, { name: string; supply: number; raw: number; overhead: number; profit: number }>();
   const salesByItem = new Map<string, { name: string; total: number; qty: number }>();
   const salesByMonth = new Map<string, number>();
-  let totalInternalSales = 0;
-  let costOfTransfers = 0;
+
+  let rawMaterialsCost = 0;   // Sum of transfer_items.total_cost (base cost)
+  let appliedOverhead = 0;    // Sum of transfers.overhead + transportation + loading
+  let profitLoaded = 0;       // Markup added on top of raw + overhead
+  let totalInternalSales = 0; // = raw + overhead + profit
 
   const itemsByTransfer = new Map<string, any[]>();
   (d.transferItems || []).forEach((ti: any) => {
@@ -170,30 +176,42 @@ function computeResult(d: ReturnType<typeof useWarehouseData>, extraExpenses: Ma
 
   (d.transfers || []).forEach((tr: any) => {
     const items = itemsByTransfer.get(tr.id) || [];
-    let trSales = 0;
-    let trCost = 0;
+    const trRaw = items.reduce((s: number, it: any) => s + (Number(it.total_cost) || 0), 0);
+    const trOverhead =
+      (Number(tr.overhead_amount) || 0) +
+      (Number(tr.transportation_cost) || 0) +
+      (Number(tr.loading_cost) || 0);
+
+    let trProfit = 0;
     items.forEach((it: any) => {
-      const up = priceByItem.get(it.id) ?? 0;
+      const p = priceByItem.get(it.id);
       const qty = Number(it.quantity) || 0;
-      const val = up * qty;
-      trSales += val;
-      trCost += Number(it.total_cost) || 0;
+      if (p) trProfit += p.profit * qty;
+      // Per-item supply value (for salesByItem breakdown):
+      const itemBase = Number(it.total_cost) || 0;
+      const itemOverheadShare = trRaw > 0 ? trOverhead * (itemBase / trRaw) : 0;
+      const itemProfitPart = p ? p.profit * qty : 0;
+      const itemSupply = itemBase + itemOverheadShare + itemProfitPart;
       const iname = it.item_name || "—";
       const ex = salesByItem.get(iname);
-      if (ex) { ex.total += val; ex.qty += qty; }
-      else salesByItem.set(iname, { name: iname, total: val, qty });
+      if (ex) { ex.total += itemSupply; ex.qty += qty; }
+      else salesByItem.set(iname, { name: iname, total: itemSupply, qty });
     });
-    const trTotalCost = Number(tr.total_cost) || trCost;
-    if (trSales === 0) trSales = trTotalCost;
-    totalInternalSales += trSales;
-    costOfTransfers += trTotalCost;
+
+    const trSupply = trRaw + trOverhead + trProfit;
+    rawMaterialsCost += trRaw;
+    appliedOverhead += trOverhead;
+    profitLoaded += trProfit;
+    totalInternalSales += trSupply;
+
     const bkey = tr.destination_id || "__none__";
     const bname = tr.destination_name || "بدون فرع";
     const bex = salesByBranch.get(bkey);
-    if (bex) { bex.total += trSales; bex.cost += trTotalCost; }
-    else salesByBranch.set(bkey, { name: bname, total: trSales, cost: trTotalCost });
+    if (bex) { bex.supply += trSupply; bex.raw += trRaw; bex.overhead += trOverhead; bex.profit += trProfit; }
+    else salesByBranch.set(bkey, { name: bname, supply: trSupply, raw: trRaw, overhead: trOverhead, profit: trProfit });
+
     const m = String(tr.date || "").slice(0, 7);
-    if (m) salesByMonth.set(m, (salesByMonth.get(m) || 0) + trSales);
+    if (m) salesByMonth.set(m, (salesByMonth.get(m) || 0) + trSupply);
   });
 
   const pickLatestByWh = (rows: any[]) => {
@@ -215,37 +233,52 @@ function computeResult(d: ReturnType<typeof useWarehouseData>, extraExpenses: Ma
   const costPerKg = productionQty > 0 ? productionCost / productionQty : 0;
   const wasteCost = (d.wasteRecs || []).reduce((s: number, r: any) => s + Number(r.total_cost || 0), 0);
 
-  // waste by warehouse
   const wasteByWh = new Map<string, number>();
   (d.wasteRecs || []).forEach((w: any) => {
     const k = w.warehouse_id || "__none__";
     wasteByWh.set(k, (wasteByWh.get(k) || 0) + Number(w.total_cost || 0));
   });
 
-  // Perpetual model: COGS = cost of internal transfers to branches
-  const totalCogs = costOfTransfers;
-  const grossProfit = totalInternalSales - totalCogs;
+  // ── Correct COGS (Perpetual, no double-count of overhead) ─────────────────
+  // Applied overhead is loaded into the transfer price via markup, so it belongs
+  // inside COGS. Actual overhead expenses do NOT appear below Gross Profit —
+  // they are reported separately as Overhead Variance for the cost accountant.
+  const totalCogs = rawMaterialsCost + appliedOverhead;
+  const grossProfit = totalInternalSales - totalCogs; // = profitLoaded
   const grossProfitPct = totalInternalSales > 0 ? (grossProfit / totalInternalSales) * 100 : 0;
 
-  // Reference (periodic) valuation — not used in Gross Profit
+  // Reference (periodic) valuation — audit only
   const goodsAvailable = openingStock + purchasesTotal + productionCost;
   const periodicCogs = goodsAvailable - closingStock;
 
-  const allExpenses = [...autoExpenses, ...extraExpenses];
-  const totalExpenses = allExpenses.reduce((s, e) => s + e.amount, 0);
-  const netProfit = grossProfit - totalExpenses - wasteCost;
+  // Below-the-line: only truly unallocated expenses + waste
+  const unallocatedExpenses = [...extraExpenses];
+  const totalUnallocated = unallocatedExpenses.reduce((s, e) => s + e.amount, 0);
+  const netProfit = grossProfit - totalUnallocated - wasteCost;
   const netProfitPct = totalInternalSales > 0 ? (netProfit / totalInternalSales) * 100 : 0;
 
+  // Overhead variance (Over/Under Applied) — separate report
+  const actualOverhead = actualOverheadExpenses.reduce((s, e) => s + e.amount, 0);
+  const overheadVariance = actualOverhead - appliedOverhead; // + => under-applied, - => over-applied
+
   return {
-    salesByBranch: Array.from(salesByBranch.values()).sort((a, b) => b.total - a.total),
+    salesByBranch: Array.from(salesByBranch.values()).sort((a, b) => b.supply - a.supply),
     salesByItem: Array.from(salesByItem.values()).sort((a, b) => b.total - a.total),
     salesByMonth: Array.from(salesByMonth.entries()).sort(([a], [b]) => a.localeCompare(b)),
     transfersCount: (d.transfers || []).length,
-    totalInternalSales, costOfTransfers, openingStock, closingStock,
+    totalInternalSales,
+    rawMaterialsCost, appliedOverhead, profitLoaded,
+    costOfTransfers: rawMaterialsCost, // legacy alias
+    openingStock, closingStock,
     purchasesTotal, productionCost, productionQty, costPerKg,
     goodsAvailable, periodicCogs,
     totalCogs, grossProfit, grossProfitPct,
-    allExpenses, totalExpenses, wasteCost, wasteByWh,
+    unallocatedExpenses, totalUnallocated,
+    actualOverheadExpenses, actualOverhead, overheadVariance,
+    // Legacy fields kept for KPI cards below
+    allExpenses: unallocatedExpenses,
+    totalExpenses: totalUnallocated,
+    wasteCost, wasteByWh,
     netProfit, netProfitPct,
   };
 }

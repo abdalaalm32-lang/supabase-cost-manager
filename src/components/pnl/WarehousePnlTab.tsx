@@ -459,23 +459,33 @@ export const WarehousePnlTab: React.FC = () => {
     let tableRows = "";
     tableRows += row("الإيرادات — المبيعات الداخلية للفروع", result.totalInternalSales, "100%", { bold: true, bg: "#eff6ff", color: "#1d4ed8" });
     result.salesByBranch.forEach((b) => {
-      tableRows += row(b.name, b.total, pct(b.total, result.totalInternalSales), { indent: true });
+      tableRows += row(b.name, b.supply, pct(b.supply, result.totalInternalSales), { indent: true });
     });
     tableRows += sep;
-    tableRows += row("تكلفة التحويلات للفروع (COGS)", result.costOfTransfers, pct(result.costOfTransfers, result.totalInternalSales), { bold: true, bg: "#fff7ed", color: "#c2410c" });
-    result.salesByBranch.forEach((b) => {
-      tableRows += row(b.name, b.cost, pct(b.cost, result.totalInternalSales), { indent: true });
-    });
+    tableRows += row("تكلفة المبيعات (COGS)", result.totalCogs, pct(result.totalCogs, result.totalInternalSales), { bold: true, bg: "#fff7ed", color: "#c2410c" });
+    tableRows += row("تكلفة الخامات (Raw Materials)", result.rawMaterialsCost, pct(result.rawMaterialsCost, result.totalInternalSales), { indent: true });
+    tableRows += row("التحميل غير المباشر (Applied Overhead)", result.appliedOverhead, pct(result.appliedOverhead, result.totalInternalSales), { indent: true });
     tableRows += sep;
     tableRows += row("مجمل الربح (Gross Profit)", result.grossProfit, result.grossProfitPct.toFixed(2) + "%", { bold: true, bg: "#ecfdf5", color: result.grossProfit < 0 ? "#dc2626" : "#047857" });
     tableRows += sep;
-    tableRows += row("المصروفات التشغيلية", result.totalExpenses + result.wasteCost, pct(result.totalExpenses + result.wasteCost, result.totalInternalSales), { bold: true, bg: "#fff7ed", color: "#c2410c" });
-    result.allExpenses.forEach((e) => {
-      tableRows += row(e.name, e.amount, pct(e.amount, result.totalInternalSales), { indent: true });
-    });
-    if (result.wasteCost > 0) tableRows += row("الفاقد والإهلاك", result.wasteCost, pct(result.wasteCost, result.totalInternalSales), { indent: true });
-    tableRows += sep;
+    if (result.wasteCost > 0 || result.unallocatedExpenses.length > 0) {
+      tableRows += row("مصروفات غير محملة على المنتج", result.totalUnallocated + result.wasteCost, pct(result.totalUnallocated + result.wasteCost, result.totalInternalSales), { bold: true, bg: "#fff7ed", color: "#c2410c" });
+      if (result.wasteCost > 0) tableRows += row("الفاقد والإهلاك", result.wasteCost, pct(result.wasteCost, result.totalInternalSales), { indent: true });
+      result.unallocatedExpenses.forEach((e) => {
+        tableRows += row(e.name, e.amount, pct(e.amount, result.totalInternalSales), { indent: true });
+      });
+      tableRows += sep;
+    }
     tableRows += row("صافي الربح (Net Profit)", result.netProfit, result.netProfitPct.toFixed(2) + "%", { bold: true, bg: result.netProfit >= 0 ? "#d1fae5" : "#fee2e2", color: result.netProfit < 0 ? "#dc2626" : "#047857" });
+
+    // Overhead variance rows
+    const varStatus = result.overheadVariance >= 0 ? "نقص تحميل (Under Applied)" : "زيادة تحميل (Over Applied)";
+    const varColor = result.overheadVariance >= 0 ? "#dc2626" : "#047857";
+    const varianceRows = `
+      ${row("Applied Overhead — محمّل داخل التحويلات", result.appliedOverhead, "")}
+      ${row("Actual Overhead — فعلي من مصروفات المخزن", result.actualOverhead, "")}
+      ${row(varStatus, result.overheadVariance, "", { bold: true, bg: "#fef3c7", color: varColor })}
+    `;
 
     // Reference inventory closing block
     const refRows = `

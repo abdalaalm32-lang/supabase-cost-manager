@@ -383,13 +383,18 @@ export const WarehousePnlTab: React.FC = () => {
   const exportRows = useMemo(() => {
     const rows: Record<string, any>[] = [];
     rows.push({ section: "الإيرادات", item: "المبيعات الداخلية للفروع", amount: result.totalInternalSales, pct: "100%" });
-    result.salesByBranch.forEach((b) => rows.push({ section: "  فرع", item: b.name, amount: b.total, pct: pct(b.total, result.totalInternalSales) }));
-    rows.push({ section: "COGS", item: "تكلفة التحويلات للفروع", amount: result.costOfTransfers, pct: pct(result.costOfTransfers, result.totalInternalSales) });
-    result.salesByBranch.forEach((b) => rows.push({ section: "  تكلفة تحويلات", item: b.name, amount: b.cost, pct: pct(b.cost, result.totalInternalSales) }));
+    result.salesByBranch.forEach((b) => rows.push({ section: "  فرع", item: b.name, amount: b.supply, pct: pct(b.supply, result.totalInternalSales) }));
+    rows.push({ section: "COGS", item: "تكلفة الخامات (Raw Materials)", amount: result.rawMaterialsCost, pct: pct(result.rawMaterialsCost, result.totalInternalSales) });
+    rows.push({ section: "COGS", item: "التحميل غير المباشر (Applied Overhead)", amount: result.appliedOverhead, pct: pct(result.appliedOverhead, result.totalInternalSales) });
+    rows.push({ section: "COGS", item: "إجمالي COGS", amount: result.totalCogs, pct: pct(result.totalCogs, result.totalInternalSales) });
     rows.push({ section: "الأرباح", item: "مجمل الربح", amount: result.grossProfit, pct: result.grossProfitPct.toFixed(2) + "%" });
-    result.allExpenses.forEach((e) => rows.push({ section: "مصروفات", item: e.name, amount: e.amount, pct: pct(e.amount, result.totalInternalSales) }));
     if (result.wasteCost > 0) rows.push({ section: "مصروفات", item: "الفاقد", amount: result.wasteCost, pct: pct(result.wasteCost, result.totalInternalSales) });
+    result.unallocatedExpenses.forEach((e) => rows.push({ section: "مصروفات غير محملة", item: e.name, amount: e.amount, pct: pct(e.amount, result.totalInternalSales) }));
     rows.push({ section: "الأرباح", item: "صافي الربح", amount: result.netProfit, pct: result.netProfitPct.toFixed(2) + "%" });
+    // Overhead variance report
+    rows.push({ section: "تحليل التحميل", item: "Applied Overhead (محمّل داخل التحويلات)", amount: result.appliedOverhead, pct: "" });
+    rows.push({ section: "تحليل التحميل", item: "Actual Overhead (فعلي من مصروفات المخزن)", amount: result.actualOverhead, pct: "" });
+    rows.push({ section: "تحليل التحميل", item: (result.overheadVariance >= 0 ? "Under Applied (نقص تحميل)" : "Over Applied (زيادة تحميل)"), amount: result.overheadVariance, pct: "" });
     // Reference block
     rows.push({ section: "مرجع - جرد", item: "جرد أول المدة", amount: result.openingStock, pct: "" });
     rows.push({ section: "مرجع - جرد", item: "(+) المشتريات", amount: result.purchasesTotal, pct: "" });

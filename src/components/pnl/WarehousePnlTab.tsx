@@ -51,7 +51,7 @@ function useWarehouseData(companyId: string | undefined, warehouseIds: string[],
     queryKey: [`whp-tr-${key}`, companyId, dateFromStr, dateToStr, idsKey],
     queryFn: async () => fetchAllRows<any>((from, to) =>
       supabase.from("transfers")
-        .select("id, date, source_id, source_name, destination_id, destination_name, total_cost")
+        .select("id, date, source_id, source_name, destination_id, destination_name, total_cost, overhead_amount, transportation_cost, loading_cost")
         .eq("company_id", companyId!).eq("status", "مكتمل").in("source_id", warehouseIds)
         .gte("date", dateFromStr).lte("date", dateToStr).order("date").range(from, to)
     ),
@@ -87,7 +87,7 @@ function useWarehouseData(companyId: string | undefined, warehouseIds: string[],
         const slice = tiIds.slice(i, i + 100);
         const rows = await fetchAllRows<any>((from, to) =>
           supabase.from("transfer_pricing_breakdown")
-            .select("transfer_item_id, final_unit_price")
+            .select("transfer_item_id, final_unit_price, profit_amount")
             .in("transfer_item_id", slice).order("transfer_item_id").range(from, to)
         );
         all.push(...rows);

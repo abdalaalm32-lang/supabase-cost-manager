@@ -207,7 +207,7 @@ function computeResult(
       const p = priceByItem.get(it.id);
       const qty = Number(it.quantity) || 0;
       const itemSales = p?.final ? p.final * qty : (Number(it.total_cost) || (Number(it.avg_cost) || 0) * qty);
-      const snapshotLoadedUnit = p?.final ? Math.max(p.final - p.profit - p.transport - p.loading, 0) : 0;
+      const snapshotLoadedUnit = p?.final ? Math.max(p.final - p.profit, 0) : 0;
       const inferredLoaded = profitPct > 0 ? itemSales / (1 + profitPct / 100) : itemSales;
       const itemLoadedCost = snapshotLoadedUnit > 0 ? snapshotLoadedUnit * qty : inferredLoaded;
       const snapshotBaseUnit = p ? p.base + p.manufacturing + p.packaging : 0;

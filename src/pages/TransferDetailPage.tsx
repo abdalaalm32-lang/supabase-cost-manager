@@ -534,7 +534,7 @@ export const TransferDetailPage: React.FC = () => {
   // Save
   const handleSave = async (saveAsArchived: boolean = false) => {
     if (!companyId) return;
-    const transferId = isNew ? null : id;
+    const transferId = !isNew && id ? id : "";
     if (!isNew && !transferId) return;
     if (!sourceId || !destinationId) {
       toast({ title: "خطأ", description: "اختر الموقع المصدر والمستلم", variant: "destructive" });

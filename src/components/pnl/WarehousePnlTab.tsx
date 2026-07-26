@@ -386,10 +386,11 @@ export const WarehousePnlTab: React.FC = () => {
   const { data: branchPolicies = [] } = useQuery({
     queryKey: ["wh-pnl-branch-policies", companyId],
     queryFn: async () => {
+      if (!companyId) return [];
       const { data } = await supabase
         .from("branch_supply_policies")
         .select("branch_id, profit_percentage, is_active")
-        .eq("company_id", companyId!);
+        .eq("company_id", companyId);
       return data || [];
     },
     enabled: !!companyId,
@@ -513,9 +514,7 @@ export const WarehousePnlTab: React.FC = () => {
       tableRows += row(b.name, b.supply, pct(b.supply, result.totalInternalSales), { indent: true });
     });
     tableRows += sep;
-    tableRows += row("تكلفة المبيعات (COGS)", result.totalCogs, pct(result.totalCogs, result.totalInternalSales), { bold: true, bg: "#fff7ed", color: "#c2410c" });
-    tableRows += row("تكلفة الخامات (Raw Materials)", result.rawMaterialsCost, pct(result.rawMaterialsCost, result.totalInternalSales), { indent: true });
-    tableRows += row("التحميل غير المباشر (Applied Overhead)", result.appliedOverhead, pct(result.appliedOverhead, result.totalInternalSales), { indent: true });
+    tableRows += row("تكلفة التحويلات للفروع (Loaded Cost)", result.totalCogs, pct(result.totalCogs, result.totalInternalSales), { bold: true, bg: "#fff7ed", color: "#c2410c" });
     tableRows += sep;
     tableRows += row("مجمل الربح (Gross Profit)", result.grossProfit, result.grossProfitPct.toFixed(2) + "%", { bold: true, bg: "#ecfdf5", color: result.grossProfit < 0 ? "#dc2626" : "#047857" });
     tableRows += sep;

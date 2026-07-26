@@ -534,6 +534,8 @@ export const TransferDetailPage: React.FC = () => {
   // Save
   const handleSave = async (saveAsArchived: boolean = false) => {
     if (!companyId) return;
+    const transferId = isNew ? null : id;
+    if (!isNew && !transferId) return;
     if (!sourceId || !destinationId) {
       toast({ title: "خطأ", description: "اختر الموقع المصدر والمستلم", variant: "destructive" });
       return;
@@ -626,7 +628,7 @@ export const TransferDetailPage: React.FC = () => {
                 sourceUnitCost = await getBranchCost(item.stock_item_id, sourceId);
               }
               await applyBranchCostIn({
-                companyId: companyId!,
+                companyId,
                 stockItemId: item.stock_item_id,
                 branchId: destinationId,
                 incomingQty: Number(item.quantity),
@@ -651,22 +653,24 @@ export const TransferDetailPage: React.FC = () => {
           source_department_id: (sourceDepartmentId && sourceDepartmentId !== "none") ? sourceDepartmentId : null,
           destination_department_id: (destinationDepartmentId && destinationDepartmentId !== "none") ? destinationDepartmentId : null,
           total_cost: totalCost,
+          overhead_rate_applied: overheadRateApplied,
+          overhead_amount: overheadAmount,
           transportation_cost: isSupplyContext ? Number(transportationCost) || 0 : 0,
           loading_cost: isSupplyContext ? Number(loadingCost) || 0 : 0,
           notes: notes || null,
         };
 
-        const { error } = await supabase.from("transfers").update(updateData).eq("id", id!);
+        const { error } = await supabase.from("transfers").update(updateData).eq("id", transferId);
         if (error) throw error;
 
-        const { data: oldItems } = await supabase.from("transfer_items").select("id").eq("transfer_id", id!);
+        const { data: oldItems } = await supabase.from("transfer_items").select("id").eq("transfer_id", transferId);
         const oldItemIds = (oldItems || []).map((item: any) => item.id).filter(Boolean);
         if (oldItemIds.length > 0) {
           await (supabase as any).from("transfer_pricing_breakdown").delete().in("transfer_item_id", oldItemIds);
         }
-        await supabase.from("transfer_items").delete().eq("transfer_id", id!);
+        await supabase.from("transfer_items").delete().eq("transfer_id", transferId);
         if (items.length > 0) {
-          const rows = buildTransferItemRows(id!);
+          const rows = buildTransferItemRows(transferId);
           const { data: insertedItems, error: itemError } = await supabase
             .from("transfer_items")
             .insert(rows)

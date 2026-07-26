@@ -376,6 +376,51 @@ export const TransferDetailPage: React.FC = () => {
     return items.reduce((sum, item) => sum + item.quantity * item.avg_cost, 0);
   }, [items]);
 
+  const buildTransferItemRows = (transferId: string) => items.map(item => ({
+    transfer_id: transferId,
+    stock_item_id: item.stock_item_id,
+    name: item.name,
+    code: item.code,
+    unit: item.unit,
+    quantity: item.quantity,
+    avg_cost: item.avg_cost,
+    current_stock: item.current_stock,
+    total_cost: item.quantity * item.avg_cost,
+  }));
+
+  const buildPricingBreakdownRows = (insertedItems: any[], appliedRate: number) => {
+    if (!companyId || !isSupplyContext) return [];
+    return insertedItems.map((insertedItem, idx) => {
+      const item = items[idx];
+      if (!item) return null;
+      const pricing = pricingMap[item.stock_item_id];
+      const baseWac = Number(item.wac ?? item.avg_cost) || 0;
+      const quantity = Math.max(Number(item.quantity) || 1, 1);
+      const calc = computeSupplyPrice({
+        wac: baseWac,
+        pricing,
+        policy: destPolicy,
+        quantity,
+        overheadRate: appliedRate,
+        transportPerUnitOverride: 0,
+        loadingPerUnitOverride: 0,
+      });
+      const finalUnitPrice = Number(insertedItem.avg_cost) || calc.finalUnitPrice;
+      const loadedUnitCost = calc.withOverhead;
+      return {
+        company_id: companyId,
+        transfer_item_id: insertedItem.id,
+        base_cost: baseWac,
+        manufacturing_cost: 0,
+        packaging_cost: Number(pricing?.packaging_cost ?? 0),
+        transport_cost: 0,
+        loading_cost: 0,
+        profit_amount: Math.max(finalUnitPrice - loadedUnitCost, 0),
+        final_unit_price: finalUnitPrice,
+      };
+    }).filter(Boolean);
+  };
+
   const isLocked = !isNew && status !== "مؤرشف" && !isEditMode;
 
   const handlePrintDetail = (includeBalance: boolean = true) => {
@@ -489,6 +534,8 @@ export const TransferDetailPage: React.FC = () => {
   // Save
   const handleSave = async (saveAsArchived: boolean = false) => {
     if (!companyId) return;
+    const transferId = !isNew && id ? id : "";
+    if (!isNew && !transferId) return;
     if (!sourceId || !destinationId) {
       toast({ title: "خطأ", description: "اختر الموقع المصدر والمستلم", variant: "destructive" });
       return;
@@ -553,19 +600,17 @@ export const TransferDetailPage: React.FC = () => {
         if (error) throw error;
 
         if (items.length > 0) {
-          const rows = items.map(item => ({
-            transfer_id: newRecord.id,
-            stock_item_id: item.stock_item_id,
-            name: item.name,
-            code: item.code,
-            unit: item.unit,
-            quantity: item.quantity,
-            avg_cost: item.avg_cost,
-            current_stock: item.current_stock,
-            total_cost: item.quantity * item.avg_cost,
-          }));
-          const { error: itemError } = await supabase.from("transfer_items").insert(rows);
+          const rows = buildTransferItemRows(newRecord.id);
+          const { data: insertedItems, error: itemError } = await supabase
+            .from("transfer_items")
+            .insert(rows)
+            .select("id, avg_cost");
           if (itemError) throw itemError;
+          const breakdownRows = buildPricingBreakdownRows(insertedItems || [], overheadRateApplied);
+          if (breakdownRows.length > 0) {
+            const { error: pricingError } = await (supabase as any).from("transfer_pricing_breakdown").insert(breakdownRows);
+            if (pricingError) throw pricingError;
+          }
         }
 
         // Note: Transfers move stock between locations but don't change global current_stock
@@ -583,7 +628,7 @@ export const TransferDetailPage: React.FC = () => {
                 sourceUnitCost = await getBranchCost(item.stock_item_id, sourceId);
               }
               await applyBranchCostIn({
-                companyId: companyId!,
+                companyId,
                 stockItemId: item.stock_item_id,
                 branchId: destinationId,
                 incomingQty: Number(item.quantity),
@@ -608,28 +653,34 @@ export const TransferDetailPage: React.FC = () => {
           source_department_id: (sourceDepartmentId && sourceDepartmentId !== "none") ? sourceDepartmentId : null,
           destination_department_id: (destinationDepartmentId && destinationDepartmentId !== "none") ? destinationDepartmentId : null,
           total_cost: totalCost,
+          overhead_rate_applied: overheadRateApplied,
+          overhead_amount: overheadAmount,
           transportation_cost: isSupplyContext ? Number(transportationCost) || 0 : 0,
           loading_cost: isSupplyContext ? Number(loadingCost) || 0 : 0,
           notes: notes || null,
         };
 
-        const { error } = await supabase.from("transfers").update(updateData).eq("id", id!);
+        const { error } = await supabase.from("transfers").update(updateData).eq("id", transferId);
         if (error) throw error;
 
-        await supabase.from("transfer_items").delete().eq("transfer_id", id!);
+        const { data: oldItems } = await supabase.from("transfer_items").select("id").eq("transfer_id", transferId);
+        const oldItemIds = (oldItems || []).map((item: any) => item.id).filter(Boolean);
+        if (oldItemIds.length > 0) {
+          await (supabase as any).from("transfer_pricing_breakdown").delete().in("transfer_item_id", oldItemIds);
+        }
+        await supabase.from("transfer_items").delete().eq("transfer_id", transferId);
         if (items.length > 0) {
-          const rows = items.map(item => ({
-            transfer_id: id!,
-            stock_item_id: item.stock_item_id,
-            name: item.name,
-            code: item.code,
-            unit: item.unit,
-            quantity: item.quantity,
-            avg_cost: item.avg_cost,
-            current_stock: item.current_stock,
-            total_cost: item.quantity * item.avg_cost,
-          }));
-          await supabase.from("transfer_items").insert(rows);
+          const rows = buildTransferItemRows(transferId);
+          const { data: insertedItems, error: itemError } = await supabase
+            .from("transfer_items")
+            .insert(rows)
+            .select("id, avg_cost");
+          if (itemError) throw itemError;
+          const breakdownRows = buildPricingBreakdownRows(insertedItems || [], overheadRateApplied);
+          if (breakdownRows.length > 0) {
+            const { error: pricingError } = await (supabase as any).from("transfer_pricing_breakdown").insert(breakdownRows);
+            if (pricingError) throw pricingError;
+          }
         }
 
         toast({ title: "تم تحديث إذن التحويل" });

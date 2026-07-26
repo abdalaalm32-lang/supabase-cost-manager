@@ -745,12 +745,12 @@ export const WarehousePnlTab: React.FC = () => {
 
                 <tr><td colSpan={3} className="h-1 bg-muted/30"></td></tr>
 
-                {/* COGS — Raw + Applied Overhead (Perpetual, no double-counting) */}
+                {/* COGS — Loaded Cost at transfer time (Perpetual) */}
                 <tr className="bg-orange-500/10 font-semibold text-orange-700 dark:text-orange-400 border-b cursor-pointer print:cursor-auto"
                     onClick={() => setOpenSections((s) => ({ ...s, cogs: !s.cogs }))}>
                   <td className="p-2.5 flex items-center gap-1">
                     <span className="print:hidden">{openSections.cogs ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}</span>
-                    تكلفة المبيعات (COGS)
+                    تكلفة التحويلات للفروع (Loaded Cost)
                   </td>
                   <td className="p-2.5 text-left tabular-nums">{fmt(result.totalCogs)}</td>
                   <td className="p-2.5 text-left text-xs">{pct(result.totalCogs, result.totalInternalSales)}</td>
@@ -758,7 +758,7 @@ export const WarehousePnlTab: React.FC = () => {
                 {openSections.cogs && (
                   <>
                     <tr className="border-b hover:bg-muted/20">
-                      <td className="p-2 pr-8 text-muted-foreground">تكلفة الخامات (Raw Materials)</td>
+                      <td className="p-2 pr-8 text-muted-foreground">تكلفة الصنف الأساسية — تشمل الإنتاج المرحّل</td>
                       <td className="p-2 text-left tabular-nums">{fmt(result.rawMaterialsCost)}</td>
                       <td className="p-2 text-left text-xs text-muted-foreground">{pct(result.rawMaterialsCost, result.totalInternalSales)}</td>
                     </tr>

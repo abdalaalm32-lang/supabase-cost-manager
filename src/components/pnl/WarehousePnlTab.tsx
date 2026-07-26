@@ -171,7 +171,7 @@ function computeResult(
 
   const policyByBranch = new Map<string, number>();
   (branchPolicies || []).forEach((p: any) => {
-    if (p.branch_id && p.is_active !== false) {
+    if (p.branch_id) {
       policyByBranch.set(p.branch_id, Number(p.profit_percentage) || 0);
     }
   });
@@ -223,7 +223,7 @@ function computeResult(
       trProfit += itemProfitPart;
       totalTransferQty += qty;
 
-      const iname = it.item_name || "—";
+      const iname = it.name || it.item_name || "—";
       const ex = salesByItem.get(iname);
       if (ex) { ex.total += itemSales; ex.qty += qty; }
       else salesByItem.set(iname, { name: iname, total: itemSales, qty });

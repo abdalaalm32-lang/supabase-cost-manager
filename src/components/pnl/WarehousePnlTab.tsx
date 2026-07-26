@@ -383,6 +383,18 @@ export const WarehousePnlTab: React.FC = () => {
     enabled: !!companyId && warehouseIds.length > 0,
   });
 
+  const { data: branchPolicies = [] } = useQuery({
+    queryKey: ["wh-pnl-branch-policies", companyId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("branch_supply_policies")
+        .select("branch_id, profit_percentage, is_active")
+        .eq("company_id", companyId!);
+      return data || [];
+    },
+    enabled: !!companyId,
+  });
+
   const monthsInRange = Math.max(1,
     (dateTo.getFullYear() - dateFrom.getFullYear()) * 12 + (dateTo.getMonth() - dateFrom.getMonth()) + 1
   );
@@ -393,10 +405,10 @@ export const WarehousePnlTab: React.FC = () => {
   const curr = useWarehouseData(companyId, warehouseIds, dateFromStr, dateToStr, "curr");
   const prev = useWarehouseData(companyId, compareOn ? warehouseIds : [], prevFromStr, prevToStr, "prev");
 
-  const result = useMemo(() => computeResult(curr, manualExpenses, autoExpenses),
-    [curr, manualExpenses, autoExpenses]);
-  const resultPrev = useMemo(() => computeResult(prev, manualExpenses, autoExpenses),
-    [prev, manualExpenses, autoExpenses]);
+  const result = useMemo(() => computeResult(curr, manualExpenses, autoExpenses, branchPolicies),
+    [curr, manualExpenses, autoExpenses, branchPolicies]);
+  const resultPrev = useMemo(() => computeResult(prev, manualExpenses, autoExpenses, branchPolicies),
+    [prev, manualExpenses, autoExpenses, branchPolicies]);
 
   const addExpense = () => {
     if (!newName.trim() || !Number(newAmount)) return;
@@ -407,13 +419,12 @@ export const WarehousePnlTab: React.FC = () => {
   // KPIs in P&L reading order
   const kpiCards = [
     { title: "المبيعات الداخلية", value: fmt(result.totalInternalSales), prev: resultPrev.totalInternalSales, curr: result.totalInternalSales, icon: DollarSign, ...KPI_COLORS.revenue },
-    { title: "COGS", value: fmt(result.totalCogs), prev: resultPrev.totalCogs, curr: result.totalCogs, icon: BarChart3, ...KPI_COLORS.cost },
+    { title: "تكلفة التحويلات", value: fmt(result.totalCogs), prev: resultPrev.totalCogs, curr: result.totalCogs, icon: BarChart3, ...KPI_COLORS.cost },
     { title: "مجمل الربح", value: fmt(result.grossProfit), prev: resultPrev.grossProfit, curr: result.grossProfit, icon: TrendingUp, ...KPI_COLORS.profit },
     { title: "هامش الربح %", value: result.grossProfitPct.toFixed(2) + "%", prev: resultPrev.grossProfitPct, curr: result.grossProfitPct, icon: Percent, ...KPI_COLORS.pctCol },
     { title: "التحميل غير المباشر", value: fmt(result.appliedOverhead), prev: resultPrev.appliedOverhead, curr: result.appliedOverhead, icon: BarChart3, ...KPI_COLORS.cost },
     { title: "مصروفات غير محملة", value: fmt(result.totalUnallocated), prev: resultPrev.totalUnallocated, curr: result.totalUnallocated, icon: BarChart3, ...KPI_COLORS.cost },
     { title: "صافي الربح", value: fmt(result.netProfit), prev: resultPrev.netProfit, curr: result.netProfit, icon: result.netProfit >= 0 ? TrendingUp : TrendingDown, ...(result.netProfit >= 0 ? KPI_COLORS.profit : { g: "from-red-500/20 to-red-600/10 border-red-500/30", t: "text-red-600" }) },
-    { title: "تكلفة الإنتاج", value: fmt(result.productionCost), prev: resultPrev.productionCost, curr: result.productionCost, icon: BarChart3, ...KPI_COLORS.cost },
     { title: "تكلفة الفاقد", value: fmt(result.wasteCost), prev: resultPrev.wasteCost, curr: result.wasteCost, icon: TrendingDown, ...KPI_COLORS.waste },
     { title: "متوسط تكلفة الوحدة", value: fmt(result.costPerKg), prev: resultPrev.costPerKg, curr: result.costPerKg, icon: Weight, ...KPI_COLORS.neutral },
     { title: "عدد التحويلات", value: String(result.transfersCount), prev: resultPrev.transfersCount, curr: result.transfersCount, icon: Repeat, ...KPI_COLORS.neutral },
@@ -424,9 +435,9 @@ export const WarehousePnlTab: React.FC = () => {
     const rows: Record<string, any>[] = [];
     rows.push({ section: "الإيرادات", item: "المبيعات الداخلية للفروع", amount: result.totalInternalSales, pct: "100%" });
     result.salesByBranch.forEach((b) => rows.push({ section: "  فرع", item: b.name, amount: b.supply, pct: pct(b.supply, result.totalInternalSales) }));
-    rows.push({ section: "COGS", item: "تكلفة الخامات (Raw Materials)", amount: result.rawMaterialsCost, pct: pct(result.rawMaterialsCost, result.totalInternalSales) });
-    rows.push({ section: "COGS", item: "التحميل غير المباشر (Applied Overhead)", amount: result.appliedOverhead, pct: pct(result.appliedOverhead, result.totalInternalSales) });
-    rows.push({ section: "COGS", item: "إجمالي COGS", amount: result.totalCogs, pct: pct(result.totalCogs, result.totalInternalSales) });
+    rows.push({ section: "تكلفة التحويلات", item: "Loaded Cost — تكلفة الأصناف المحولة", amount: result.totalCogs, pct: pct(result.totalCogs, result.totalInternalSales) });
+    rows.push({ section: "تفاصيل تكلفة التحويلات", item: "تكلفة الصنف الأساسية — تشمل الإنتاج المرحّل", amount: result.rawMaterialsCost, pct: pct(result.rawMaterialsCost, result.totalInternalSales) });
+    rows.push({ section: "تفاصيل تكلفة التحويلات", item: "التحميل غير المباشر (Applied Overhead)", amount: result.appliedOverhead, pct: pct(result.appliedOverhead, result.totalInternalSales) });
     rows.push({ section: "الأرباح", item: "مجمل الربح", amount: result.grossProfit, pct: result.grossProfitPct.toFixed(2) + "%" });
     if (result.wasteCost > 0) rows.push({ section: "مصروفات", item: "الفاقد", amount: result.wasteCost, pct: pct(result.wasteCost, result.totalInternalSales) });
     result.unallocatedExpenses.forEach((e) => rows.push({ section: "مصروفات غير محملة", item: e.name, amount: e.amount, pct: pct(e.amount, result.totalInternalSales) }));

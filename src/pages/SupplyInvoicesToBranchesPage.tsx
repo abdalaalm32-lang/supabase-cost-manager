@@ -349,18 +349,26 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
         <KpiCard icon={<Receipt size={20} className="text-primary"/>} tone="bg-primary/10"
           label="عدد الفواتير" value={String(kpis.count)} />
         <KpiCard icon={<DollarSign size={20} className="text-emerald-500"/>} tone="bg-emerald-500/10"
           label="إجمالي التوريدات" value={`${fmt(kpis.total)} ج.م`}
           hint="قيمة الخامات + النقل + التحميل" />
+        <KpiCard icon={<Layers size={20} className="text-cyan-500"/>} tone="bg-cyan-500/10"
+          label="تكلفة الخامات" value={`${fmt(kpis.rawCost)} ج.م`}
+          hint="قبل الباكينج والمصاريف" />
+        <KpiCard icon={<Package size={20} className="text-purple-500"/>} tone="bg-purple-500/10"
+          label="تكلفة الباكينج" value={`${fmt(kpis.packingCost)} ج.م`} />
+        <KpiCard icon={<Building2 size={20} className="text-amber-500"/>} tone="bg-amber-500/10"
+          label="المصاريف الغير المباشرة المحملة" value={`${fmt(kpis.overheadCost)} ج.م`} />
         <KpiCard icon={<Truck size={20} className="text-orange-500"/>} tone="bg-orange-500/10"
-          label="إجمالي النقل والتحميل" value={`${fmt(kpis.surcharge)} ج.م`} />
+          label="النقل والتحميل" value={`${fmt(kpis.surcharge)} ج.م`} />
         <KpiCard icon={<TrendingUp size={20} className="text-blue-500"/>} tone="bg-blue-500/10"
           label="أعلى فاتورة" value={kpis.top ? `${fmt(kpis.top.grand)} ج.م` : "—"}
           hint={kpis.top ? `${kpis.top.record_number} • ${kpis.top.destination_name}` : ""} />
       </div>
+
 
       {/* Filters */}
       <Card className="glass-card">

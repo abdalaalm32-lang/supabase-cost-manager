@@ -16,8 +16,9 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Receipt, Search, Eye, Truck, Building2, TrendingUp, DollarSign, Warehouse, Download, FileText, FileSpreadsheet, Loader2,
+  Receipt, Search, Eye, Truck, Building2, TrendingUp, DollarSign, Warehouse, Download, FileText, FileSpreadsheet, Loader2, Package, Layers,
 } from "lucide-react";
+
 import { ExportButtons } from "@/components/ExportButtons";
 import { PrintButton } from "@/components/PrintButton";
 import { Badge } from "@/components/ui/badge";

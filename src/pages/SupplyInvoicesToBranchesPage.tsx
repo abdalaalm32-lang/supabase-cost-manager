@@ -80,30 +80,40 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
     },
   });
 
+  const transferIds = useMemo(
+    () => (transfers as any[]).map((t: any) => t.id).filter(Boolean),
+    [transfers]
+  );
+
   const { data: transferItems = [] } = useQuery({
-    queryKey: ["supply-transfer-items", companyId],
-    enabled: !!companyId,
+    queryKey: ["supply-transfer-items", companyId, transferIds.length, transferIds[0]],
+    enabled: !!companyId && transferIds.length > 0,
     queryFn: async () => {
       const { data } = await supabase
         .from("transfer_items")
         .select("id, transfer_id, quantity")
-        .in("transfer_id", (transfers as any[]).map((t: any) => t.id).filter(Boolean));
+        .in("transfer_id", transferIds);
       return data ?? [];
     },
   });
 
+  const transferItemIds = useMemo(
+    () => (transferItems as any[]).map((i: any) => i.id),
+    [transferItems]
+  );
+
   const { data: pricingRows = [] } = useQuery({
-    queryKey: ["supply-pricing-breakdown", companyId, (transferItems as any[]).length],
-    enabled: !!companyId && (transferItems as any[]).length > 0,
+    queryKey: ["supply-pricing-breakdown", companyId, transferItemIds.length, transferItemIds[0]],
+    enabled: !!companyId && transferItemIds.length > 0,
     queryFn: async () => {
-      const ids = (transferItems as any[]).map((i: any) => i.id);
       const { data } = await (supabase as any)
         .from("transfer_pricing_breakdown")
         .select("transfer_item_id, base_cost, manufacturing_cost, packaging_cost, transport_cost, loading_cost, profit_amount, final_unit_price")
-        .in("transfer_item_id", ids);
+        .in("transfer_item_id", transferItemIds);
       return data ?? [];
     },
   });
+
 
   const warehouseIds = useMemo(() => new Set(warehouses.map((w: any) => w.id)), [warehouses]);
   const branchIds = useMemo(() => new Set(branches.map((b: any) => b.id)), [branches]);
@@ -117,28 +127,31 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
   const perTransferCosts = useMemo(() => {
     const priceByItem = new Map<string, any>();
     (pricingRows as any[]).forEach((p: any) => priceByItem.set(p.transfer_item_id, p));
-    const map = new Map<string, { raw: number; packing: number; overhead: number }>();
+    const map = new Map<string, { raw: number; packing: number; overhead: number; hasBreakdown: boolean }>();
     (transferItems as any[]).forEach((it: any) => {
       const p = priceByItem.get(it.id);
       const qty = Number(it.quantity) || 0;
-      const base = Number(p?.base_cost ?? 0) * qty;
-      const manuf = Number(p?.manufacturing_cost ?? 0) * qty;
-      const pack = Number(p?.packaging_cost ?? 0) * qty;
-      const final = Number(p?.final_unit_price ?? 0) * qty;
-      const profit = Number(p?.profit_amount ?? 0) * qty;
-      const transport = Number(p?.transport_cost ?? 0) * qty;
-      const loading = Number(p?.loading_cost ?? 0) * qty;
-      // Loaded cost = final - profit - transport - loading = base+manuf+pack + overhead
-      const loaded = Math.max(final - profit - transport - loading, 0);
-      const overhead = Math.max(loaded - base - manuf - pack, 0);
-      const cur = map.get(it.transfer_id) || { raw: 0, packing: 0, overhead: 0 };
-      cur.raw += base;
-      cur.packing += pack;
-      cur.overhead += overhead;
+      const cur = map.get(it.transfer_id) || { raw: 0, packing: 0, overhead: 0, hasBreakdown: false };
+      if (p) {
+        const base = Number(p.base_cost ?? 0) * qty;
+        const manuf = Number(p.manufacturing_cost ?? 0) * qty;
+        const pack = Number(p.packaging_cost ?? 0) * qty;
+        const final = Number(p.final_unit_price ?? 0) * qty;
+        const profit = Number(p.profit_amount ?? 0) * qty;
+        const transport = Number(p.transport_cost ?? 0) * qty;
+        const loading = Number(p.loading_cost ?? 0) * qty;
+        const loaded = Math.max(final - profit - transport - loading, 0);
+        const overhead = Math.max(loaded - base - manuf - pack, 0);
+        cur.raw += base;
+        cur.packing += pack;
+        cur.overhead += overhead;
+        cur.hasBreakdown = true;
+      }
       map.set(it.transfer_id, cur);
     });
     return map;
   }, [pricingRows, transferItems]);
+
 
 
   // supply invoices = warehouse → branch transfers
@@ -187,7 +200,12 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
     let rawCost = 0, packingCost = 0, overheadCost = 0;
     filtered.forEach((t) => {
       const c = perTransferCosts.get(t.id);
-      if (c) { rawCost += c.raw; packingCost += c.packing; overheadCost += c.overhead; }
+      if (c && c.hasBreakdown) {
+        rawCost += c.raw; packingCost += c.packing; overheadCost += c.overhead;
+      } else {
+        // Fallback for transfers without pricing breakdown: use items cost as raw
+        rawCost += Number(t.itemsCost) || 0;
+      }
     });
     return { count, total, surcharge, top, rawCost, packingCost, overheadCost };
   }, [filtered, perTransferCosts]);

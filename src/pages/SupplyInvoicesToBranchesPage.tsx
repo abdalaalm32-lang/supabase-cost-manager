@@ -127,28 +127,31 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
   const perTransferCosts = useMemo(() => {
     const priceByItem = new Map<string, any>();
     (pricingRows as any[]).forEach((p: any) => priceByItem.set(p.transfer_item_id, p));
-    const map = new Map<string, { raw: number; packing: number; overhead: number }>();
+    const map = new Map<string, { raw: number; packing: number; overhead: number; hasBreakdown: boolean }>();
     (transferItems as any[]).forEach((it: any) => {
       const p = priceByItem.get(it.id);
       const qty = Number(it.quantity) || 0;
-      const base = Number(p?.base_cost ?? 0) * qty;
-      const manuf = Number(p?.manufacturing_cost ?? 0) * qty;
-      const pack = Number(p?.packaging_cost ?? 0) * qty;
-      const final = Number(p?.final_unit_price ?? 0) * qty;
-      const profit = Number(p?.profit_amount ?? 0) * qty;
-      const transport = Number(p?.transport_cost ?? 0) * qty;
-      const loading = Number(p?.loading_cost ?? 0) * qty;
-      // Loaded cost = final - profit - transport - loading = base+manuf+pack + overhead
-      const loaded = Math.max(final - profit - transport - loading, 0);
-      const overhead = Math.max(loaded - base - manuf - pack, 0);
-      const cur = map.get(it.transfer_id) || { raw: 0, packing: 0, overhead: 0 };
-      cur.raw += base;
-      cur.packing += pack;
-      cur.overhead += overhead;
+      const cur = map.get(it.transfer_id) || { raw: 0, packing: 0, overhead: 0, hasBreakdown: false };
+      if (p) {
+        const base = Number(p.base_cost ?? 0) * qty;
+        const manuf = Number(p.manufacturing_cost ?? 0) * qty;
+        const pack = Number(p.packaging_cost ?? 0) * qty;
+        const final = Number(p.final_unit_price ?? 0) * qty;
+        const profit = Number(p.profit_amount ?? 0) * qty;
+        const transport = Number(p.transport_cost ?? 0) * qty;
+        const loading = Number(p.loading_cost ?? 0) * qty;
+        const loaded = Math.max(final - profit - transport - loading, 0);
+        const overhead = Math.max(loaded - base - manuf - pack, 0);
+        cur.raw += base;
+        cur.packing += pack;
+        cur.overhead += overhead;
+        cur.hasBreakdown = true;
+      }
       map.set(it.transfer_id, cur);
     });
     return map;
   }, [pricingRows, transferItems]);
+
 
 
   // supply invoices = warehouse → branch transfers

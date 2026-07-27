@@ -200,7 +200,12 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
     let rawCost = 0, packingCost = 0, overheadCost = 0;
     filtered.forEach((t) => {
       const c = perTransferCosts.get(t.id);
-      if (c) { rawCost += c.raw; packingCost += c.packing; overheadCost += c.overhead; }
+      if (c && c.hasBreakdown) {
+        rawCost += c.raw; packingCost += c.packing; overheadCost += c.overhead;
+      } else {
+        // Fallback for transfers without pricing breakdown: use items cost as raw
+        rawCost += Number(t.itemsCost) || 0;
+      }
     });
     return { count, total, surcharge, top, rawCost, packingCost, overheadCost };
   }, [filtered, perTransferCosts]);

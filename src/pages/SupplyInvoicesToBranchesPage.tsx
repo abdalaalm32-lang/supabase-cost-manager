@@ -80,30 +80,40 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
     },
   });
 
+  const transferIds = useMemo(
+    () => (transfers as any[]).map((t: any) => t.id).filter(Boolean),
+    [transfers]
+  );
+
   const { data: transferItems = [] } = useQuery({
-    queryKey: ["supply-transfer-items", companyId],
-    enabled: !!companyId,
+    queryKey: ["supply-transfer-items", companyId, transferIds.length, transferIds[0]],
+    enabled: !!companyId && transferIds.length > 0,
     queryFn: async () => {
       const { data } = await supabase
         .from("transfer_items")
         .select("id, transfer_id, quantity")
-        .in("transfer_id", (transfers as any[]).map((t: any) => t.id).filter(Boolean));
+        .in("transfer_id", transferIds);
       return data ?? [];
     },
   });
 
+  const transferItemIds = useMemo(
+    () => (transferItems as any[]).map((i: any) => i.id),
+    [transferItems]
+  );
+
   const { data: pricingRows = [] } = useQuery({
-    queryKey: ["supply-pricing-breakdown", companyId, (transferItems as any[]).length],
-    enabled: !!companyId && (transferItems as any[]).length > 0,
+    queryKey: ["supply-pricing-breakdown", companyId, transferItemIds.length, transferItemIds[0]],
+    enabled: !!companyId && transferItemIds.length > 0,
     queryFn: async () => {
-      const ids = (transferItems as any[]).map((i: any) => i.id);
       const { data } = await (supabase as any)
         .from("transfer_pricing_breakdown")
         .select("transfer_item_id, base_cost, manufacturing_cost, packaging_cost, transport_cost, loading_cost, profit_amount, final_unit_price")
-        .in("transfer_item_id", ids);
+        .in("transfer_item_id", transferItemIds);
       return data ?? [];
     },
   });
+
 
   const warehouseIds = useMemo(() => new Set(warehouses.map((w: any) => w.id)), [warehouses]);
   const branchIds = useMemo(() => new Set(branches.map((b: any) => b.id)), [branches]);

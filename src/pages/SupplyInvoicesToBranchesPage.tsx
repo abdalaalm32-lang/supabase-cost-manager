@@ -184,8 +184,14 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
     const total = filtered.reduce((s, t) => s + t.grand, 0);
     const surcharge = filtered.reduce((s, t) => s + t.transport + t.loading, 0);
     const top = filtered.reduce<any>((best, t) => (!best || t.grand > best.grand ? t : best), null);
-    return { count, total, surcharge, top };
-  }, [filtered]);
+    let rawCost = 0, packingCost = 0, overheadCost = 0;
+    filtered.forEach((t) => {
+      const c = perTransferCosts.get(t.id);
+      if (c) { rawCost += c.raw; packingCost += c.packing; overheadCost += c.overhead; }
+    });
+    return { count, total, surcharge, top, rawCost, packingCost, overheadCost };
+  }, [filtered, perTransferCosts]);
+
 
   const branchName = branchFilter === "all"
     ? "الكل"

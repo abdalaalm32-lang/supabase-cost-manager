@@ -16,8 +16,9 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Receipt, Search, Eye, Truck, Building2, TrendingUp, DollarSign, Warehouse, Download, FileText, FileSpreadsheet, Loader2,
+  Receipt, Search, Eye, Truck, Building2, TrendingUp, DollarSign, Warehouse, Download, FileText, FileSpreadsheet, Loader2, Package, Layers,
 } from "lucide-react";
+
 import { ExportButtons } from "@/components/ExportButtons";
 import { PrintButton } from "@/components/PrintButton";
 import { Badge } from "@/components/ui/badge";
@@ -79,6 +80,31 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
     },
   });
 
+  const { data: transferItems = [] } = useQuery({
+    queryKey: ["supply-transfer-items", companyId],
+    enabled: !!companyId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("transfer_items")
+        .select("id, transfer_id, quantity")
+        .in("transfer_id", (transfers as any[]).map((t: any) => t.id).filter(Boolean));
+      return data ?? [];
+    },
+  });
+
+  const { data: pricingRows = [] } = useQuery({
+    queryKey: ["supply-pricing-breakdown", companyId, (transferItems as any[]).length],
+    enabled: !!companyId && (transferItems as any[]).length > 0,
+    queryFn: async () => {
+      const ids = (transferItems as any[]).map((i: any) => i.id);
+      const { data } = await (supabase as any)
+        .from("transfer_pricing_breakdown")
+        .select("transfer_item_id, base_cost, manufacturing_cost, packaging_cost, transport_cost, loading_cost, profit_amount, final_unit_price")
+        .in("transfer_item_id", ids);
+      return data ?? [];
+    },
+  });
+
   const warehouseIds = useMemo(() => new Set(warehouses.map((w: any) => w.id)), [warehouses]);
   const branchIds = useMemo(() => new Set(branches.map((b: any) => b.id)), [branches]);
   const policyByBranch = useMemo(() => {
@@ -86,6 +112,34 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
     policies.forEach((p: any) => (m[p.branch_id] = p));
     return m;
   }, [policies]);
+
+  // Per-transfer aggregates: raw (base), packing, applied overhead
+  const perTransferCosts = useMemo(() => {
+    const priceByItem = new Map<string, any>();
+    (pricingRows as any[]).forEach((p: any) => priceByItem.set(p.transfer_item_id, p));
+    const map = new Map<string, { raw: number; packing: number; overhead: number }>();
+    (transferItems as any[]).forEach((it: any) => {
+      const p = priceByItem.get(it.id);
+      const qty = Number(it.quantity) || 0;
+      const base = Number(p?.base_cost ?? 0) * qty;
+      const manuf = Number(p?.manufacturing_cost ?? 0) * qty;
+      const pack = Number(p?.packaging_cost ?? 0) * qty;
+      const final = Number(p?.final_unit_price ?? 0) * qty;
+      const profit = Number(p?.profit_amount ?? 0) * qty;
+      const transport = Number(p?.transport_cost ?? 0) * qty;
+      const loading = Number(p?.loading_cost ?? 0) * qty;
+      // Loaded cost = final - profit - transport - loading = base+manuf+pack + overhead
+      const loaded = Math.max(final - profit - transport - loading, 0);
+      const overhead = Math.max(loaded - base - manuf - pack, 0);
+      const cur = map.get(it.transfer_id) || { raw: 0, packing: 0, overhead: 0 };
+      cur.raw += base;
+      cur.packing += pack;
+      cur.overhead += overhead;
+      map.set(it.transfer_id, cur);
+    });
+    return map;
+  }, [pricingRows, transferItems]);
+
 
   // supply invoices = warehouse → branch transfers
   const supplyInvoices = useMemo(() => {
@@ -130,8 +184,14 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
     const total = filtered.reduce((s, t) => s + t.grand, 0);
     const surcharge = filtered.reduce((s, t) => s + t.transport + t.loading, 0);
     const top = filtered.reduce<any>((best, t) => (!best || t.grand > best.grand ? t : best), null);
-    return { count, total, surcharge, top };
-  }, [filtered]);
+    let rawCost = 0, packingCost = 0, overheadCost = 0;
+    filtered.forEach((t) => {
+      const c = perTransferCosts.get(t.id);
+      if (c) { rawCost += c.raw; packingCost += c.packing; overheadCost += c.overhead; }
+    });
+    return { count, total, surcharge, top, rawCost, packingCost, overheadCost };
+  }, [filtered, perTransferCosts]);
+
 
   const branchName = branchFilter === "all"
     ? "الكل"
@@ -289,18 +349,26 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
         <KpiCard icon={<Receipt size={20} className="text-primary"/>} tone="bg-primary/10"
           label="عدد الفواتير" value={String(kpis.count)} />
         <KpiCard icon={<DollarSign size={20} className="text-emerald-500"/>} tone="bg-emerald-500/10"
           label="إجمالي التوريدات" value={`${fmt(kpis.total)} ج.م`}
           hint="قيمة الخامات + النقل + التحميل" />
+        <KpiCard icon={<Layers size={20} className="text-cyan-500"/>} tone="bg-cyan-500/10"
+          label="تكلفة الخامات" value={`${fmt(kpis.rawCost)} ج.م`}
+          hint="قبل الباكينج والمصاريف" />
+        <KpiCard icon={<Package size={20} className="text-purple-500"/>} tone="bg-purple-500/10"
+          label="تكلفة الباكينج" value={`${fmt(kpis.packingCost)} ج.م`} />
+        <KpiCard icon={<Building2 size={20} className="text-amber-500"/>} tone="bg-amber-500/10"
+          label="المصاريف الغير المباشرة المحملة" value={`${fmt(kpis.overheadCost)} ج.م`} />
         <KpiCard icon={<Truck size={20} className="text-orange-500"/>} tone="bg-orange-500/10"
-          label="إجمالي النقل والتحميل" value={`${fmt(kpis.surcharge)} ج.م`} />
+          label="النقل والتحميل" value={`${fmt(kpis.surcharge)} ج.م`} />
         <KpiCard icon={<TrendingUp size={20} className="text-blue-500"/>} tone="bg-blue-500/10"
           label="أعلى فاتورة" value={kpis.top ? `${fmt(kpis.top.grand)} ج.م` : "—"}
           hint={kpis.top ? `${kpis.top.record_number} • ${kpis.top.destination_name}` : ""} />
       </div>
+
 
       {/* Filters */}
       <Card className="glass-card">

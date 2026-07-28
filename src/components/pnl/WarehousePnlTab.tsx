@@ -315,7 +315,7 @@ function computeResult(
     salesByMonth: Array.from(salesByMonth.entries()).sort(([a], [b]) => a.localeCompare(b)),
     transfersCount: (d.transfers || []).length,
     totalInternalSales,
-    rawMaterialsCost: baseLoadedCost, appliedOverhead, profitLoaded,
+    rawMaterialsCost: baseLoadedCost, packagingLoaded, appliedOverhead, profitLoaded,
     baseLoadedCost, loadedTransferCost,
     costOfTransfers: loadedTransferCost,
     openingStock, closingStock,

@@ -61,7 +61,7 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("branch_supply_policies")
-        .select("branch_id, transportation_cost, loading_cost, is_active")
+        .select("branch_id, transportation_cost, loading_cost, profit_percentage, is_active")
         .eq("company_id", companyId);
       return data ?? [];
     },

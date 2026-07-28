@@ -180,7 +180,8 @@ function computeResult(
   const salesByItem = new Map<string, { name: string; total: number; qty: number }>();
   const salesByMonth = new Map<string, number>();
 
-  let baseLoadedCost = 0;     // Stock item loaded cost before overhead, includes production already capitalized in WAC
+  let baseLoadedCost = 0;     // Raw material cost (base + production capitalized in WAC) — EXCLUDES packing
+  let packagingLoaded = 0;    // Packing cost loaded into transfer
   let appliedOverhead = 0;    // Estimated overhead loaded into transfer cost
   let profitLoaded = 0;       // Markup added on top of loaded cost
   let totalInternalSales = 0; // Final supply value charged to branches
@@ -200,6 +201,7 @@ function computeResult(
     let trSales = 0;
     let trLoadedCost = 0;
     let trBaseCost = 0;
+    let trPacking = 0;
     let trOverhead = 0;
     let trProfit = 0;
 
@@ -210,15 +212,21 @@ function computeResult(
       const snapshotLoadedUnit = p?.final ? Math.max(p.final - p.profit - p.transport - p.loading, 0) : 0;
       const inferredLoaded = profitPct > 0 ? itemSales / (1 + profitPct / 100) : itemSales;
       const itemLoadedCost = snapshotLoadedUnit > 0 ? snapshotLoadedUnit * qty : inferredLoaded;
-      const snapshotBaseUnit = p ? p.base + p.manufacturing + p.packaging : 0;
-      const inferredBase = overheadRate > 0 ? itemLoadedCost / (1 + overheadRate / 100) : itemLoadedCost;
-      const itemBaseCost = snapshotBaseUnit > 0 ? snapshotBaseUnit * qty : inferredBase;
-      const itemOverhead = Math.max(itemLoadedCost - itemBaseCost, 0);
+      // Raw = base + production (WAC already capitalizes production). Packing is separate.
+      const snapshotRawUnit = p ? p.base + p.manufacturing : 0;
+      const snapshotPackUnit = p ? p.packaging : 0;
+      const inferredRawPlusPack = overheadRate > 0 ? itemLoadedCost / (1 + overheadRate / 100) : itemLoadedCost;
+      const itemPackCost = snapshotPackUnit * qty;
+      const itemRawCost = snapshotRawUnit > 0
+        ? snapshotRawUnit * qty
+        : Math.max(inferredRawPlusPack - itemPackCost, 0);
+      const itemOverhead = Math.max(itemLoadedCost - itemRawCost - itemPackCost, 0);
       const itemProfitPart = Math.max(itemSales - itemLoadedCost, 0);
 
       trSales += itemSales;
       trLoadedCost += itemLoadedCost;
-      trBaseCost += itemBaseCost;
+      trBaseCost += itemRawCost;
+      trPacking += itemPackCost;
       trOverhead += itemOverhead;
       trProfit += itemProfitPart;
       totalTransferQty += qty;
@@ -233,11 +241,13 @@ function computeResult(
       trSales = Number(tr.total_cost) || 0;
       trLoadedCost = profitPct > 0 ? trSales / (1 + profitPct / 100) : trSales;
       trBaseCost = overheadRate > 0 ? trLoadedCost / (1 + overheadRate / 100) : trLoadedCost;
-      trOverhead = Math.max(trLoadedCost - trBaseCost, 0);
+      trPacking = 0;
+      trOverhead = Math.max(trLoadedCost - trBaseCost - trPacking, 0);
       trProfit = Math.max(trSales - trLoadedCost, 0);
     }
 
     baseLoadedCost += trBaseCost;
+    packagingLoaded += trPacking;
     appliedOverhead += trOverhead;
     profitLoaded += trProfit;
     loadedTransferCost += trLoadedCost;
@@ -305,7 +315,7 @@ function computeResult(
     salesByMonth: Array.from(salesByMonth.entries()).sort(([a], [b]) => a.localeCompare(b)),
     transfersCount: (d.transfers || []).length,
     totalInternalSales,
-    rawMaterialsCost: baseLoadedCost, appliedOverhead, profitLoaded,
+    rawMaterialsCost: baseLoadedCost, packagingLoaded, appliedOverhead, profitLoaded,
     baseLoadedCost, loadedTransferCost,
     costOfTransfers: loadedTransferCost,
     openingStock, closingStock,
@@ -437,7 +447,8 @@ export const WarehousePnlTab: React.FC = () => {
     rows.push({ section: "الإيرادات", item: "المبيعات الداخلية للفروع", amount: result.totalInternalSales, pct: "100%" });
     result.salesByBranch.forEach((b) => rows.push({ section: "  فرع", item: b.name, amount: b.supply, pct: pct(b.supply, result.totalInternalSales) }));
     rows.push({ section: "تكلفة التحويلات", item: "Loaded Cost — تكلفة الأصناف المحولة", amount: result.totalCogs, pct: pct(result.totalCogs, result.totalInternalSales) });
-    rows.push({ section: "تفاصيل تكلفة التحويلات", item: "تكلفة الصنف الأساسية — تشمل الإنتاج المرحّل", amount: result.rawMaterialsCost, pct: pct(result.rawMaterialsCost, result.totalInternalSales) });
+    rows.push({ section: "تفاصيل تكلفة التحويلات", item: "تكلفة الخامات (تشمل الإنتاج المرحّل، بدون الباكينج)", amount: result.rawMaterialsCost, pct: pct(result.rawMaterialsCost, result.totalInternalSales) });
+    rows.push({ section: "تفاصيل تكلفة التحويلات", item: "تكلفة الباكينج", amount: result.packagingLoaded, pct: pct(result.packagingLoaded, result.totalInternalSales) });
     rows.push({ section: "تفاصيل تكلفة التحويلات", item: "التحميل غير المباشر (Applied Overhead)", amount: result.appliedOverhead, pct: pct(result.appliedOverhead, result.totalInternalSales) });
     rows.push({ section: "الأرباح", item: "مجمل الربح", amount: result.grossProfit, pct: result.grossProfitPct.toFixed(2) + "%" });
     if (result.wasteCost > 0) rows.push({ section: "مصروفات", item: "الفاقد", amount: result.wasteCost, pct: pct(result.wasteCost, result.totalInternalSales) });
@@ -515,6 +526,9 @@ export const WarehousePnlTab: React.FC = () => {
     });
     tableRows += sep;
     tableRows += row("تكلفة التحويلات للفروع (Loaded Cost)", result.totalCogs, pct(result.totalCogs, result.totalInternalSales), { bold: true, bg: "#fff7ed", color: "#c2410c" });
+    tableRows += row("تكلفة الخامات (تشمل الإنتاج، بدون الباكينج)", result.rawMaterialsCost, pct(result.rawMaterialsCost, result.totalInternalSales), { indent: true });
+    tableRows += row("تكلفة الباكينج", result.packagingLoaded, pct(result.packagingLoaded, result.totalInternalSales), { indent: true });
+    tableRows += row("التحميل غير المباشر (Applied Overhead)", result.appliedOverhead, pct(result.appliedOverhead, result.totalInternalSales), { indent: true });
     tableRows += sep;
     tableRows += row("مجمل الربح (Gross Profit)", result.grossProfit, result.grossProfitPct.toFixed(2) + "%", { bold: true, bg: "#ecfdf5", color: result.grossProfit < 0 ? "#dc2626" : "#047857" });
     tableRows += sep;
@@ -758,9 +772,14 @@ export const WarehousePnlTab: React.FC = () => {
                 {openSections.cogs && (
                   <>
                     <tr className="border-b hover:bg-muted/20">
-                      <td className="p-2 pr-8 text-muted-foreground">تكلفة الصنف الأساسية — تشمل الإنتاج المرحّل</td>
+                      <td className="p-2 pr-8 text-muted-foreground">تكلفة الخامات (تشمل الإنتاج المرحّل، بدون الباكينج)</td>
                       <td className="p-2 text-left tabular-nums">{fmt(result.rawMaterialsCost)}</td>
                       <td className="p-2 text-left text-xs text-muted-foreground">{pct(result.rawMaterialsCost, result.totalInternalSales)}</td>
+                    </tr>
+                    <tr className="border-b hover:bg-muted/20">
+                      <td className="p-2 pr-8 text-muted-foreground">تكلفة الباكينج</td>
+                      <td className="p-2 text-left tabular-nums">{fmt(result.packagingLoaded)}</td>
+                      <td className="p-2 text-left text-xs text-muted-foreground">{pct(result.packagingLoaded, result.totalInternalSales)}</td>
                     </tr>
                     <tr className="border-b hover:bg-muted/20">
                       <td className="p-2 pr-8 text-muted-foreground">التحميل غير المباشر (Applied Overhead)</td>

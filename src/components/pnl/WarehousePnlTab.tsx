@@ -769,9 +769,14 @@ export const WarehousePnlTab: React.FC = () => {
                 {openSections.cogs && (
                   <>
                     <tr className="border-b hover:bg-muted/20">
-                      <td className="p-2 pr-8 text-muted-foreground">تكلفة الصنف الأساسية — تشمل الإنتاج المرحّل</td>
+                      <td className="p-2 pr-8 text-muted-foreground">تكلفة الخامات (تشمل الإنتاج المرحّل، بدون الباكينج)</td>
                       <td className="p-2 text-left tabular-nums">{fmt(result.rawMaterialsCost)}</td>
                       <td className="p-2 text-left text-xs text-muted-foreground">{pct(result.rawMaterialsCost, result.totalInternalSales)}</td>
+                    </tr>
+                    <tr className="border-b hover:bg-muted/20">
+                      <td className="p-2 pr-8 text-muted-foreground">تكلفة الباكينج</td>
+                      <td className="p-2 text-left tabular-nums">{fmt(result.packagingLoaded)}</td>
+                      <td className="p-2 text-left text-xs text-muted-foreground">{pct(result.packagingLoaded, result.totalInternalSales)}</td>
                     </tr>
                     <tr className="border-b hover:bg-muted/20">
                       <td className="p-2 pr-8 text-muted-foreground">التحميل غير المباشر (Applied Overhead)</td>

@@ -205,10 +205,12 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
       if (c && c.hasBreakdown) {
         rawCost += c.raw; packingCost += c.packing; overheadCost += c.overhead;
       } else {
-        // Fallback matches P&L inference: itemsCost here is Loaded Cost (already excludes profit/transport/loading).
-        // Split into raw + overhead using the transfer's applied overhead rate.
-        const loaded = Number(t.itemsCost) || 0;
+        // Fallback matches P&L inference. itemsCost = transfers.total_cost includes profit markup.
+        const sales = Number(t.itemsCost) || 0;
+        const pol = policyByBranch[t.destination_id];
+        const profitPct = Number(pol?.profit_percentage) || 0;
         const overheadRate = Number(t.overhead_rate_applied) || 0;
+        const loaded = profitPct > 0 ? sales / (1 + profitPct / 100) : sales;
         const rawPlusPack = overheadRate > 0 ? loaded / (1 + overheadRate / 100) : loaded;
         rawCost += rawPlusPack;
         overheadCost += Math.max(loaded - rawPlusPack, 0);

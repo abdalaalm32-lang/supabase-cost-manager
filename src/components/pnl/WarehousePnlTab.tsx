@@ -526,6 +526,9 @@ export const WarehousePnlTab: React.FC = () => {
     });
     tableRows += sep;
     tableRows += row("تكلفة التحويلات للفروع (Loaded Cost)", result.totalCogs, pct(result.totalCogs, result.totalInternalSales), { bold: true, bg: "#fff7ed", color: "#c2410c" });
+    tableRows += row("تكلفة الخامات (تشمل الإنتاج، بدون الباكينج)", result.rawMaterialsCost, pct(result.rawMaterialsCost, result.totalInternalSales), { indent: true });
+    tableRows += row("تكلفة الباكينج", result.packagingLoaded, pct(result.packagingLoaded, result.totalInternalSales), { indent: true });
+    tableRows += row("التحميل غير المباشر (Applied Overhead)", result.appliedOverhead, pct(result.appliedOverhead, result.totalInternalSales), { indent: true });
     tableRows += sep;
     tableRows += row("مجمل الربح (Gross Profit)", result.grossProfit, result.grossProfitPct.toFixed(2) + "%", { bold: true, bg: "#ecfdf5", color: result.grossProfit < 0 ? "#dc2626" : "#047857" });
     tableRows += sep;

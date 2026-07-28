@@ -123,15 +123,15 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
     return m;
   }, [policies]);
 
-  // Per-transfer aggregates: raw (base), packing, applied overhead
+  // Per-transfer aggregates: raw (base+production), packing, applied overhead
   const perTransferCosts = useMemo(() => {
     const priceByItem = new Map<string, any>();
     (pricingRows as any[]).forEach((p: any) => priceByItem.set(p.transfer_item_id, p));
-    const map = new Map<string, { raw: number; packing: number; overhead: number; hasBreakdown: boolean }>();
+    const map = new Map<string, { raw: number; packing: number; overhead: number; loaded: number; hasBreakdown: boolean }>();
     (transferItems as any[]).forEach((it: any) => {
       const p = priceByItem.get(it.id);
       const qty = Number(it.quantity) || 0;
-      const cur = map.get(it.transfer_id) || { raw: 0, packing: 0, overhead: 0, hasBreakdown: false };
+      const cur = map.get(it.transfer_id) || { raw: 0, packing: 0, overhead: 0, loaded: 0, hasBreakdown: false };
       if (p) {
         const base = Number(p.base_cost ?? 0) * qty;
         const manuf = Number(p.manufacturing_cost ?? 0) * qty;
@@ -142,9 +142,11 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
         const loading = Number(p.loading_cost ?? 0) * qty;
         const loaded = Math.max(final - profit - transport - loading, 0);
         const overhead = Math.max(loaded - base - manuf - pack, 0);
-        cur.raw += base;
+        // Raw = base + production (both captured in WAC as raw material cost)
+        cur.raw += base + manuf;
         cur.packing += pack;
         cur.overhead += overhead;
+        cur.loaded += loaded;
         cur.hasBreakdown = true;
       }
       map.set(it.transfer_id, cur);
@@ -203,8 +205,13 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
       if (c && c.hasBreakdown) {
         rawCost += c.raw; packingCost += c.packing; overheadCost += c.overhead;
       } else {
-        // Fallback for transfers without pricing breakdown: use items cost as raw
-        rawCost += Number(t.itemsCost) || 0;
+        // Fallback matches P&L inference: itemsCost here is Loaded Cost (already excludes profit/transport/loading).
+        // Split into raw + overhead using the transfer's applied overhead rate.
+        const loaded = Number(t.itemsCost) || 0;
+        const overheadRate = Number(t.overhead_rate_applied) || 0;
+        const rawPlusPack = overheadRate > 0 ? loaded / (1 + overheadRate / 100) : loaded;
+        rawCost += rawPlusPack;
+        overheadCost += Math.max(loaded - rawPlusPack, 0);
       }
     });
     return { count, total, surcharge, top, rawCost, packingCost, overheadCost };

@@ -447,7 +447,8 @@ export const WarehousePnlTab: React.FC = () => {
     rows.push({ section: "الإيرادات", item: "المبيعات الداخلية للفروع", amount: result.totalInternalSales, pct: "100%" });
     result.salesByBranch.forEach((b) => rows.push({ section: "  فرع", item: b.name, amount: b.supply, pct: pct(b.supply, result.totalInternalSales) }));
     rows.push({ section: "تكلفة التحويلات", item: "Loaded Cost — تكلفة الأصناف المحولة", amount: result.totalCogs, pct: pct(result.totalCogs, result.totalInternalSales) });
-    rows.push({ section: "تفاصيل تكلفة التحويلات", item: "تكلفة الصنف الأساسية — تشمل الإنتاج المرحّل", amount: result.rawMaterialsCost, pct: pct(result.rawMaterialsCost, result.totalInternalSales) });
+    rows.push({ section: "تفاصيل تكلفة التحويلات", item: "تكلفة الخامات (تشمل الإنتاج المرحّل، بدون الباكينج)", amount: result.rawMaterialsCost, pct: pct(result.rawMaterialsCost, result.totalInternalSales) });
+    rows.push({ section: "تفاصيل تكلفة التحويلات", item: "تكلفة الباكينج", amount: result.packagingLoaded, pct: pct(result.packagingLoaded, result.totalInternalSales) });
     rows.push({ section: "تفاصيل تكلفة التحويلات", item: "التحميل غير المباشر (Applied Overhead)", amount: result.appliedOverhead, pct: pct(result.appliedOverhead, result.totalInternalSales) });
     rows.push({ section: "الأرباح", item: "مجمل الربح", amount: result.grossProfit, pct: result.grossProfitPct.toFixed(2) + "%" });
     if (result.wasteCost > 0) rows.push({ section: "مصروفات", item: "الفاقد", amount: result.wasteCost, pct: pct(result.wasteCost, result.totalInternalSales) });

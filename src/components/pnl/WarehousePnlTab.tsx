@@ -180,7 +180,8 @@ function computeResult(
   const salesByItem = new Map<string, { name: string; total: number; qty: number }>();
   const salesByMonth = new Map<string, number>();
 
-  let baseLoadedCost = 0;     // Stock item loaded cost before overhead, includes production already capitalized in WAC
+  let baseLoadedCost = 0;     // Raw material cost (base + production capitalized in WAC) — EXCLUDES packing
+  let packagingLoaded = 0;    // Packing cost loaded into transfer
   let appliedOverhead = 0;    // Estimated overhead loaded into transfer cost
   let profitLoaded = 0;       // Markup added on top of loaded cost
   let totalInternalSales = 0; // Final supply value charged to branches
@@ -200,6 +201,7 @@ function computeResult(
     let trSales = 0;
     let trLoadedCost = 0;
     let trBaseCost = 0;
+    let trPacking = 0;
     let trOverhead = 0;
     let trProfit = 0;
 
@@ -210,15 +212,21 @@ function computeResult(
       const snapshotLoadedUnit = p?.final ? Math.max(p.final - p.profit - p.transport - p.loading, 0) : 0;
       const inferredLoaded = profitPct > 0 ? itemSales / (1 + profitPct / 100) : itemSales;
       const itemLoadedCost = snapshotLoadedUnit > 0 ? snapshotLoadedUnit * qty : inferredLoaded;
-      const snapshotBaseUnit = p ? p.base + p.manufacturing + p.packaging : 0;
-      const inferredBase = overheadRate > 0 ? itemLoadedCost / (1 + overheadRate / 100) : itemLoadedCost;
-      const itemBaseCost = snapshotBaseUnit > 0 ? snapshotBaseUnit * qty : inferredBase;
-      const itemOverhead = Math.max(itemLoadedCost - itemBaseCost, 0);
+      // Raw = base + production (WAC already capitalizes production). Packing is separate.
+      const snapshotRawUnit = p ? p.base + p.manufacturing : 0;
+      const snapshotPackUnit = p ? p.packaging : 0;
+      const inferredRawPlusPack = overheadRate > 0 ? itemLoadedCost / (1 + overheadRate / 100) : itemLoadedCost;
+      const itemPackCost = snapshotPackUnit * qty;
+      const itemRawCost = snapshotRawUnit > 0
+        ? snapshotRawUnit * qty
+        : Math.max(inferredRawPlusPack - itemPackCost, 0);
+      const itemOverhead = Math.max(itemLoadedCost - itemRawCost - itemPackCost, 0);
       const itemProfitPart = Math.max(itemSales - itemLoadedCost, 0);
 
       trSales += itemSales;
       trLoadedCost += itemLoadedCost;
-      trBaseCost += itemBaseCost;
+      trBaseCost += itemRawCost;
+      trPacking += itemPackCost;
       trOverhead += itemOverhead;
       trProfit += itemProfitPart;
       totalTransferQty += qty;
@@ -233,11 +241,13 @@ function computeResult(
       trSales = Number(tr.total_cost) || 0;
       trLoadedCost = profitPct > 0 ? trSales / (1 + profitPct / 100) : trSales;
       trBaseCost = overheadRate > 0 ? trLoadedCost / (1 + overheadRate / 100) : trLoadedCost;
-      trOverhead = Math.max(trLoadedCost - trBaseCost, 0);
+      trPacking = 0;
+      trOverhead = Math.max(trLoadedCost - trBaseCost - trPacking, 0);
       trProfit = Math.max(trSales - trLoadedCost, 0);
     }
 
     baseLoadedCost += trBaseCost;
+    packagingLoaded += trPacking;
     appliedOverhead += trOverhead;
     profitLoaded += trProfit;
     loadedTransferCost += trLoadedCost;

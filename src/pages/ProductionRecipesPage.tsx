@@ -61,6 +61,13 @@ export const ProductionRecipesPage: React.FC = () => {
   const [producedQtyStr, setProducedQtyStr] = useState<string>("");
   const producedQty = Number(producedQtyStr) || 0;
 
+  // Waste / break-quantity state
+  const [trackWaste, setTrackWaste] = useState(false);
+  const [wasteMinStr, setWasteMinStr] = useState<string>("");
+  const [wasteMaxStr, setWasteMaxStr] = useState<string>("");
+  const [breakQtyStr, setBreakQtyStr] = useState<string>("");
+  const breakQty = Number(breakQtyStr) || 0;
+
   const [showAddIngredients, setShowAddIngredients] = useState(false);
   const [ingredientSearch, setIngredientSearch] = useState("");
   const [filterDept, setFilterDept] = useState("all");

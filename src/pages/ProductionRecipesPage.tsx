@@ -713,8 +713,8 @@ export const ProductionRecipesPage: React.FC = () => {
               </div>
             ) : (
               <>
-                <div className="glass-card p-4">
-                  <div className="flex items-center justify-between gap-4">
+                <div className="glass-card p-4 space-y-4">
+                  <div className="flex items-start justify-between gap-4 flex-wrap">
                     <div>
                       <h3 className="font-bold text-lg">{selectedProduct.name}</h3>
                       <p className="text-sm text-muted-foreground font-mono">{selectedProduct.code}</p>
@@ -737,6 +737,44 @@ export const ProductionRecipesPage: React.FC = () => {
                       <span className="text-sm text-muted-foreground">{selectedProduct.stock_unit || "كجم"}</span>
                     </div>
                   </div>
+
+                  {/* Break-quantity calculator */}
+                  <div className="rounded-xl bg-primary/5 border border-primary/20 p-3 flex items-center gap-3 flex-wrap">
+                    <Calculator size={16} className="text-primary" />
+                    <label className="text-sm font-medium whitespace-nowrap">كمية الفك المطلوب إنتاجها:</label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.001"
+                      value={breakQtyStr}
+                      onChange={e => setBreakQtyStr(e.target.value)}
+                      className="w-32 h-9 text-sm"
+                      placeholder="0"
+                    />
+                    <span className="text-sm text-muted-foreground">{selectedProduct.stock_unit || "كجم"}</span>
+                    <span className="text-xs text-muted-foreground">
+                      (يتم حساب الكمية المطلوبة من كل خامة تلقائياً)
+                    </span>
+                  </div>
+
+                  {/* Waste settings toggle */}
+                  {!isLocked && (
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <label className="flex items-center gap-2 text-sm cursor-pointer">
+                        <Checkbox checked={trackWaste} onCheckedChange={() => setTrackWaste(v => !v)} />
+                        تفعيل نسبة الفقد والنسبة المقبولة لهذا المنتج
+                      </label>
+                      {trackWaste && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-muted-foreground">النسبة المقبولة من</span>
+                          <Input type="number" min="0" step="0.01" value={wasteMinStr} onChange={e => setWasteMinStr(e.target.value)} className="w-20 h-8 text-sm" placeholder="0" />
+                          <span className="text-sm text-muted-foreground">% إلى</span>
+                          <Input type="number" min="0" step="0.01" value={wasteMaxStr} onChange={e => setWasteMaxStr(e.target.value)} className="w-20 h-8 text-sm" placeholder="0" />
+                          <span className="text-sm text-muted-foreground">%</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {!isLocked && (
@@ -748,37 +786,39 @@ export const ProductionRecipesPage: React.FC = () => {
                   </Button>
                 )}
 
-                <div className="glass-card overflow-hidden">
+                <div className="glass-card overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="text-right">الخامة</TableHead>
-                        <TableHead className="text-right">وحدة الوصفة</TableHead>
-                        <TableHead className="text-right">الكمية</TableHead>
-                        <TableHead className="text-right">م. التكلفة/{"\u200b"}وحدة وصفة</TableHead>
-                        <TableHead className="text-right">الإجمالي</TableHead>
-                        {!isLocked && <TableHead className="text-right w-12">حذف</TableHead>}
+                        <TableHead className="text-right">اسم الخامة</TableHead>
+                        <TableHead className="text-center">الكمية</TableHead>
+                        <TableHead className="text-center">سعر الوحدة</TableHead>
+                        <TableHead className="text-center">الصافي</TableHead>
+                        <TableHead className="text-center">الفك 1 {selectedProduct.stock_unit || "كجم"}</TableHead>
+                        <TableHead className="text-center">الكمية المطلوبة</TableHead>
+                        {trackWaste && <TableHead className="text-center w-16">فقد</TableHead>}
+                        {!isLocked && <TableHead className="text-center w-12">حذف</TableHead>}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {ingredients.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground text-sm">
+                          <TableCell colSpan={8} className="text-center py-8 text-muted-foreground text-sm">
                             لا توجد خامات — أضف مكونات التركيبة
                           </TableCell>
                         </TableRow>
                       ) : ingredients.map((ing, idx) => {
                         const total = getIngredientCost(ing);
+                        const perUnit = getPerUnitQty(ing);
                         return (
                           <TableRow key={idx}>
                             <TableCell>
                               <div>
                                 <span className="font-medium text-sm">{ing.name}</span>
-                                <span className="text-xs text-muted-foreground block font-mono">{ing.code}</span>
+                                <span className="text-xs text-muted-foreground block font-mono">{ing.code} • {ing.recipe_unit}</span>
                               </div>
                             </TableCell>
-                            <TableCell className="text-sm">{ing.recipe_unit}</TableCell>
-                            <TableCell>
+                            <TableCell className="text-center">
                               {isLocked ? (
                                 <span className="text-sm">{ing.qty}</span>
                               ) : (
@@ -788,14 +828,27 @@ export const ProductionRecipesPage: React.FC = () => {
                                   step="0.001"
                                   value={ing.qty || ""}
                                   onChange={e => updateIngredientQty(idx, e.target.value)}
-                                  className="w-24 h-8 text-sm"
+                                  className="w-24 h-8 text-sm text-center"
                                 />
                               )}
                             </TableCell>
-                            <TableCell className="text-sm">{(ing.avg_cost / (ing.conversion_factor || 1)).toFixed(4)} / {ing.recipe_unit}</TableCell>
-                            <TableCell className="text-sm font-semibold">{total.toFixed(4)}</TableCell>
+                            <TableCell className="text-center text-sm">{getUnitPrice(ing).toFixed(2)}</TableCell>
+                            <TableCell className="text-center text-sm font-semibold">{total.toFixed(2)}</TableCell>
+                            <TableCell className="text-center text-sm">{perUnit.toFixed(3)}</TableCell>
+                            <TableCell className="text-center text-sm font-bold text-primary">
+                              {breakQty > 0 ? (perUnit * breakQty).toFixed(3) : "—"}
+                            </TableCell>
+                            {trackWaste && (
+                              <TableCell className="text-center">
+                                <Checkbox
+                                  checked={ing.affects_waste}
+                                  disabled={isLocked}
+                                  onCheckedChange={() => toggleIngredientWaste(idx)}
+                                />
+                              </TableCell>
+                            )}
                             {!isLocked && (
-                              <TableCell>
+                              <TableCell className="text-center">
                                 <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteIngredient(idx)}>
                                   <Trash2 size={14} />
                                 </Button>
@@ -808,22 +861,60 @@ export const ProductionRecipesPage: React.FC = () => {
                   </Table>
                 </div>
 
-                <div className="glass-card p-4">
-                  <div className="flex items-center justify-center gap-8">
-                    <div className="text-center">
-                      <div className="flex items-center justify-center mb-2">
-                        <ShoppingBasket size={18} className="text-primary" />
+                {/* Summary panel */}
+                <div className="glass-card overflow-hidden">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-border/50">
+                    <div className="p-4 space-y-2 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">إجمالي التكلفة من الخام</span>
+                        <span className="font-bold">{totalIngredientsCost.toFixed(2)}</span>
                       </div>
-                      <p className="text-xs text-muted-foreground mb-1">إجمالي تكلفة التركيبة</p>
-                      <p className="font-bold text-lg">{totalIngredientsCost.toFixed(2)} EGP</p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">الكمية المنتجة</span>
+                        <span className="font-bold">{producedQty.toFixed(3)} {selectedProduct.stock_unit || "كجم"}</span>
+                      </div>
+                      {trackWaste && (
+                        <>
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">نسبة الفقد</span>
+                            <span className={cn(
+                              "font-bold",
+                              wasteStatus === "high" && "text-destructive",
+                              wasteStatus === "ok" && "text-green-500",
+                              wasteStatus === "low" && "text-yellow-500",
+                            )}>{wastePct.toFixed(2)}%</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">النسبة المقبولة</span>
+                            <span className="font-bold">
+                              {wasteMinStr || wasteMaxStr ? `${wasteMin.toFixed(0)}% : ${wasteMax.toFixed(0)}%` : "—"}
+                            </span>
+                          </div>
+                        </>
+                      )}
                     </div>
-                    {producedQty > 0 && (
-                      <div className="text-center border-r pr-8">
-                        <p className="text-xs text-muted-foreground mb-1">تكلفة الوحدة</p>
-                        <p className="font-bold text-lg">{unitCost.toFixed(2)} EGP</p>
-                        <p className="text-xs text-muted-foreground">لكل {selectedProduct.stock_unit || "كجم"}</p>
+                    <div className="p-4 space-y-2 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">كمية الفك</span>
+                        <span className="font-bold">{breakQty.toFixed(3)} {selectedProduct.stock_unit || "كجم"}</span>
                       </div>
-                    )}
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">تكلفة كمية الفك</span>
+                        <span className="font-bold">{(unitCost * breakQty).toFixed(2)} EGP</span>
+                      </div>
+                      <div className="flex items-center justify-between border-t pt-2">
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <ShoppingBasket size={14} className="text-primary" /> سعر تكلفة الـ {selectedProduct.stock_unit || "كجم"}
+                        </span>
+                        <span className="font-bold text-lg text-primary">{unitCost.toFixed(2)} EGP</span>
+                      </div>
+                      {trackWaste && wasteStatus === "high" && (
+                        <p className="text-xs text-destructive">⚠ نسبة الفقد أعلى من النسبة المقبولة</p>
+                      )}
+                      {trackWaste && wasteStatus === "ok" && (
+                        <p className="text-xs text-green-500">✔ نسبة الفقد ضمن الحدود المقبولة</p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </>

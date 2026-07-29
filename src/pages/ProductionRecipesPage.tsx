@@ -315,12 +315,22 @@ export const ProductionRecipesPage: React.FC = () => {
     setIngredients(prev => prev.map((ing, i) => i === idx ? { ...ing, qty: Number(val) || 0 } : ing));
   };
 
+  const toggleIngredientWaste = (idx: number) => {
+    setIngredients(prev => prev.map((ing, i) => i === idx ? { ...ing, affects_waste: !ing.affects_waste } : ing));
+  };
+
   // Calculate cost: qty is in recipe_unit. Convert to stock_unit using conversion_factor.
   const getIngredientCost = (ing: LocalIngredient) => {
     const factor = ing.conversion_factor || 1;
     const qtyInStockUnit = ing.qty / factor;
     return qtyInStockUnit * ing.avg_cost;
   };
+
+  // Price per one recipe unit
+  const getUnitPrice = (ing: LocalIngredient) => ing.avg_cost / (ing.conversion_factor || 1);
+
+  // Quantity of this ingredient needed to produce 1 unit of the product
+  const getPerUnitQty = (ing: LocalIngredient) => (producedQty > 0 ? ing.qty / producedQty : 0);
 
   const totalIngredientsCost = useMemo(() => {
     return ingredients.reduce((sum, ing) => sum + getIngredientCost(ing), 0);
@@ -331,6 +341,26 @@ export const ProductionRecipesPage: React.FC = () => {
     if (producedQty > 0) return totalIngredientsCost / producedQty;
     return 0;
   }, [totalIngredientsCost, producedQty]);
+
+  // Waste %: based only on ingredients flagged as affecting waste
+  const wasteInputQty = useMemo(
+    () => ingredients.filter(i => i.affects_waste).reduce((s, i) => s + (Number(i.qty) || 0), 0),
+    [ingredients],
+  );
+  const wastePct = useMemo(() => {
+    if (!trackWaste || wasteInputQty <= 0 || producedQty <= 0) return 0;
+    return ((wasteInputQty - producedQty) / wasteInputQty) * 100;
+  }, [trackWaste, wasteInputQty, producedQty]);
+
+  const wasteMin = Number(wasteMinStr) || 0;
+  const wasteMax = Number(wasteMaxStr) || 0;
+  const wasteStatus: "ok" | "high" | "low" | "none" = useMemo(() => {
+    if (!trackWaste || (!wasteMinStr && !wasteMaxStr)) return "none";
+    if (wasteMaxStr && wastePct > wasteMax) return "high";
+    if (wasteMinStr && wastePct < wasteMin) return "low";
+    return "ok";
+  }, [trackWaste, wastePct, wasteMin, wasteMax, wasteMinStr, wasteMaxStr]);
+
 
   // Global ingredient search across all production recipes
   const globalSearchResults = useMemo(() => {

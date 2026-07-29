@@ -19,7 +19,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Plus, Save, Pencil, Trash2, Search, ChefHat,
+  Plus, Save, Pencil, Trash2, Search, ChefHat, Calculator,
   ShoppingBasket, CheckCircle2, Clock, Edit3
 } from "lucide-react";
 import { cn } from "@/lib/utils";

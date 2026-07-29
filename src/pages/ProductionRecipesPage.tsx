@@ -442,14 +442,9 @@ export const ProductionRecipesPage: React.FC = () => {
       if (!linkedBranches.has(otherRecipe.branch_id)) continue;
       await supabase.from("production_recipe_ingredients").delete().eq("recipe_id", otherRecipe.id);
       if (ingsToPropagate.length > 0) {
-        const rows = ingsToPropagate.map(ing => ({
-          recipe_id: otherRecipe.id,
-          stock_item_id: ing.stock_item_id,
-          qty: ing.qty,
-        }));
-        await supabase.from("production_recipe_ingredients").insert(rows);
+        await supabase.from("production_recipe_ingredients").insert(ingredientRows(otherRecipe.id, ingsToPropagate));
       }
-      await supabase.from("production_recipes").update({ last_updated: new Date().toISOString(), produced_qty: producedQty }).eq("id", otherRecipe.id);
+      await supabase.from("production_recipes").update({ last_updated: new Date().toISOString(), ...recipeSettingsPayload() }).eq("id", otherRecipe.id);
     }
     // Create recipes for linked branches that don't have one yet
     const existingBranchIds = new Set(otherRecipes.map((r: any) => r.branch_id));
@@ -462,16 +457,11 @@ export const ProductionRecipesPage: React.FC = () => {
         company_id: companyId,
         stock_item_id: selectedProductId,
         branch_id: branch.id,
-        produced_qty: producedQty,
+        ...recipeSettingsPayload(),
       }).select().single();
       if (error) continue;
       if (ingsToPropagate.length > 0) {
-        const rows = ingsToPropagate.map(ing => ({
-          recipe_id: newR.id,
-          stock_item_id: ing.stock_item_id,
-          qty: ing.qty,
-        }));
-        await supabase.from("production_recipe_ingredients").insert(rows);
+        await supabase.from("production_recipe_ingredients").insert(ingredientRows(newR.id, ingsToPropagate));
       }
     }
   };

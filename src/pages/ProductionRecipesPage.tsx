@@ -37,6 +37,7 @@ interface LocalIngredient {
   conversion_factor: number;
   qty: number; // in recipe_unit
   avg_cost: number; // per stock_unit (e.g. per kg)
+  affects_waste: boolean;
 }
 
 type RecipeStatus = "ready" | "draft" | "editing";

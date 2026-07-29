@@ -238,16 +238,25 @@ export const ProductionRecipesPage: React.FC = () => {
           conversion_factor: Number(si?.conversion_factor) || 1,
           qty: Number(ri.qty),
           avg_cost: Number(si?.avg_cost || 0),
+          affects_waste: ri.affects_waste ?? true,
         };
       });
       setIngredients(ings);
       setProducedQtyStr(String(Number(recipe.produced_qty) || ""));
+      setTrackWaste(!!recipe.track_waste);
+      setWasteMinStr(recipe.acceptable_waste_min ? String(Number(recipe.acceptable_waste_min)) : "");
+      setWasteMaxStr(recipe.acceptable_waste_max ? String(Number(recipe.acceptable_waste_max)) : "");
+      setBreakQtyStr(recipe.default_break_qty ? String(Number(recipe.default_break_qty)) : "");
     } else {
       setRecipeId(null);
       setRecipeStatus("draft");
       setIsEditing(true);
       setIngredients([]);
       setProducedQtyStr("");
+      setTrackWaste(false);
+      setWasteMinStr("");
+      setWasteMaxStr("");
+      setBreakQtyStr("");
     }
   }, [recipeMap, allStockItems]);
 

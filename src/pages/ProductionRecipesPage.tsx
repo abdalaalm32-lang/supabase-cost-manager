@@ -388,35 +388,41 @@ export const ProductionRecipesPage: React.FC = () => {
     }).filter((item: any) => item.usedInCount > 0);
   }, [globalSearch, allStockItems, recipes, productItems]);
 
+  const recipeSettingsPayload = () => ({
+    produced_qty: producedQty,
+    track_waste: trackWaste,
+    acceptable_waste_min: Number(wasteMinStr) || 0,
+    acceptable_waste_max: Number(wasteMaxStr) || 0,
+    default_break_qty: Number(breakQtyStr) || 0,
+  });
+
+  const ingredientRows = (recipe_id: string, ings: LocalIngredient[]) =>
+    ings.map(ing => ({
+      recipe_id,
+      stock_item_id: ing.stock_item_id,
+      qty: ing.qty,
+      affects_waste: ing.affects_waste,
+    }));
+
   const saveRecipeCore = async (ingredientsToSave: LocalIngredient[]) => {
     if (!selectedProductId || !companyId) return;
     if (recipeId) {
       await supabase.from("production_recipe_ingredients").delete().eq("recipe_id", recipeId);
       if (ingredientsToSave.length > 0) {
-        const rows = ingredientsToSave.map(ing => ({
-          recipe_id: recipeId,
-          stock_item_id: ing.stock_item_id,
-          qty: ing.qty,
-        }));
-        const { error } = await supabase.from("production_recipe_ingredients").insert(rows);
+        const { error } = await supabase.from("production_recipe_ingredients").insert(ingredientRows(recipeId, ingredientsToSave));
         if (error) throw error;
       }
-      await supabase.from("production_recipes").update({ last_updated: new Date().toISOString(), produced_qty: producedQty }).eq("id", recipeId);
+      await supabase.from("production_recipes").update({ last_updated: new Date().toISOString(), ...recipeSettingsPayload() }).eq("id", recipeId);
     } else {
       const { data: newRecipe, error } = await supabase.from("production_recipes").insert({
         company_id: companyId,
         stock_item_id: selectedProductId,
         branch_id: selectedBranchId || null,
-        produced_qty: producedQty,
+        ...recipeSettingsPayload(),
       }).select().single();
       if (error) throw error;
       if (ingredientsToSave.length > 0) {
-        const rows = ingredientsToSave.map(ing => ({
-          recipe_id: newRecipe.id,
-          stock_item_id: ing.stock_item_id,
-          qty: ing.qty,
-        }));
-        await supabase.from("production_recipe_ingredients").insert(rows);
+        await supabase.from("production_recipe_ingredients").insert(ingredientRows(newRecipe.id, ingredientsToSave));
       }
       setRecipeId(newRecipe.id);
     }

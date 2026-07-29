@@ -540,6 +540,10 @@ export const ProductionRecipesPage: React.FC = () => {
     setRecipeStatus("draft");
     setIsEditing(true);
     setProducedQtyStr("");
+    setTrackWaste(false);
+    setWasteMinStr("");
+    setWasteMaxStr("");
+    setBreakQtyStr("");
     queryClient.invalidateQueries({ queryKey: ["production-recipes"] });
     toast({ title: "تم حذف التركيبة" });
   };

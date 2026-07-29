@@ -1992,18 +1992,21 @@ export type Database = {
       }
       production_recipe_ingredients: {
         Row: {
+          affects_waste: boolean
           id: string
           qty: number
           recipe_id: string
           stock_item_id: string
         }
         Insert: {
+          affects_waste?: boolean
           id?: string
           qty?: number
           recipe_id: string
           stock_item_id: string
         }
         Update: {
+          affects_waste?: boolean
           id?: string
           qty?: number
           recipe_id?: string
@@ -2028,28 +2031,40 @@ export type Database = {
       }
       production_recipes: {
         Row: {
+          acceptable_waste_max: number
+          acceptable_waste_min: number
           branch_id: string | null
           company_id: string
+          default_break_qty: number
           id: string
           last_updated: string
           produced_qty: number
           stock_item_id: string
+          track_waste: boolean
         }
         Insert: {
+          acceptable_waste_max?: number
+          acceptable_waste_min?: number
           branch_id?: string | null
           company_id: string
+          default_break_qty?: number
           id?: string
           last_updated?: string
           produced_qty?: number
           stock_item_id: string
+          track_waste?: boolean
         }
         Update: {
+          acceptable_waste_max?: number
+          acceptable_waste_min?: number
           branch_id?: string | null
           company_id?: string
+          default_break_qty?: number
           id?: string
           last_updated?: string
           produced_qty?: number
           stock_item_id?: string
+          track_waste?: boolean
         }
         Relationships: [
           {

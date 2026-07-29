@@ -298,6 +298,7 @@ export const ProductionRecipesPage: React.FC = () => {
         conversion_factor: Number(si.conversion_factor) || 1,
         qty: 0,
         avg_cost: Number(si.avg_cost) || 0,
+        affects_waste: true,
       };
     });
     setIngredients(prev => [...prev, ...newIngs]);

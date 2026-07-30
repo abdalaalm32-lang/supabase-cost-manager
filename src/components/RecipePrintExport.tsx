@@ -42,6 +42,8 @@ interface RecipePrintExportProps {
 }
 
 
+const TD = `border:1px solid #000;padding:4px 6px;font-size:10px;`;
+
 const buildPrintHTML = (
   productName: string,
   productCode: string,
@@ -50,12 +52,67 @@ const buildPrintHTML = (
   withCost: boolean,
   productPrice?: number,
   type?: string,
+  prod?: ProductionMeta,
 ) => {
   const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
   const logoSrc = `${window.location.origin}/logo.png`;
   const title = type === "production" ? "تركيبة إنتاج" : "وصفة منتج";
 
-  let theadHTML = `<tr>
+  let theadHTML = "";
+  let tbodyHTML = "";
+  let summaryHTML = "";
+
+  if (prod) {
+    const unit = prod.stockUnit || "كجم";
+    theadHTML = `<tr>
+      <th>م</th>
+      <th>الكود</th>
+      <th>اسم الخامة</th>
+      <th>الوحدة</th>
+      <th>الكمية</th>` +
+      (withCost ? `<th>سعر الوحدة</th><th>الصافي</th>` : "") +
+      `<th>الفك 1 ${unit}</th>
+      <th>الكمية المطلوبة</th>
+    </tr>`;
+
+    ingredients.forEach((ing, idx) => {
+      const factor = ing.conversion_factor || 1;
+      const cost = (ing.qty / factor) * ing.avg_cost;
+      const perUnit = prod.producedQty > 0 ? ing.qty / prod.producedQty : 0;
+      const required = prod.breakQty > 0 ? perUnit * prod.breakQty : 0;
+      tbodyHTML += `<tr>
+        <td style="${TD}text-align:center;">${idx + 1}</td>
+        <td style="${TD}text-align:center;">${ing.code || "—"}</td>
+        <td style="${TD}text-align:right;">${ing.name}</td>
+        <td style="${TD}text-align:center;">${ing.recipe_unit}</td>
+        <td style="${TD}text-align:center;">${ing.qty}</td>` +
+        (withCost
+          ? `<td style="${TD}text-align:center;">${ing.avg_cost.toFixed(2)}</td>
+             <td style="${TD}text-align:center;">${cost.toFixed(2)}</td>`
+          : "") +
+        `<td style="${TD}text-align:center;">${perUnit.toFixed(3)}</td>
+        <td style="${TD}text-align:center;font-weight:bold;">${prod.breakQty > 0 ? required.toFixed(3) : "—"}</td>
+      </tr>`;
+    });
+
+    const row = (label: string, value: string, color?: string) =>
+      `<tr><td style="${TD}text-align:right;background:#f5f5f5;font-weight:bold;">${label}</td>
+       <td style="${TD}text-align:center;${color ? `color:${color};` : ""}font-weight:bold;">${value}</td></tr>`;
+
+    summaryHTML = `<table style="width:60%;border-collapse:collapse;margin-top:10px;">
+      ${withCost ? row("إجمالي التكلفة من الخام", totalCost.toFixed(2)) : ""}
+      ${row("الكمية المنتجة", `${prod.producedQty.toFixed(3)} ${unit}`)}
+      ${prod.trackWaste ? row("نسبة الفقد", `${prod.wastePct.toFixed(2)}%`, prod.wasteMax > 0 && prod.wastePct > prod.wasteMax ? "red" : "green") : ""}
+      ${prod.trackWaste && (prod.wasteMin || prod.wasteMax) ? row("النسبة المقبولة", `${prod.wasteMin.toFixed(0)}% : ${prod.wasteMax.toFixed(0)}%`) : ""}
+      ${row("كمية الفك", `${prod.breakQty.toFixed(3)} ${unit}`)}
+      ${withCost ? row("تكلفة كمية الفك", `${(prod.unitCost * prod.breakQty).toFixed(2)} EGP`) : ""}
+      ${withCost ? row(`سعر تكلفة الـ ${unit}`, `${prod.unitCost.toFixed(2)} EGP`) : ""}
+    </table>`;
+
+    return wrapHTML(title, productName, productCode, dateStr, logoSrc, theadHTML, tbodyHTML, summaryHTML, withCost, productPrice);
+  }
+
+  theadHTML = `<tr>
     <th>م</th>
     <th>الكود</th>
     <th>اسم الخامة</th>
@@ -66,7 +123,6 @@ const buildPrintHTML = (
   }
   theadHTML += `</tr>`;
 
-  let tbodyHTML = "";
   ingredients.forEach((ing, idx) => {
     const cost = (ing.qty / (ing.conversion_factor || 1)) * ing.avg_cost;
     tbodyHTML += `<tr>
@@ -100,6 +156,7 @@ const buildPrintHTML = (
       </tr>`;
     }
   }
+
 
   return `<!DOCTYPE html>
 <html dir="rtl" lang="ar">

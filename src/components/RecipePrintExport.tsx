@@ -17,6 +17,18 @@ interface Ingredient {
   qty: number;
   avg_cost: number;
   conversion_factor: number;
+  stock_unit?: string;
+}
+
+export interface ProductionMeta {
+  producedQty: number;
+  stockUnit: string;
+  breakQty: number;
+  unitCost: number;
+  trackWaste: boolean;
+  wastePct: number;
+  wasteMin: number;
+  wasteMax: number;
 }
 
 interface RecipePrintExportProps {
@@ -26,7 +38,11 @@ interface RecipePrintExportProps {
   ingredients: Ingredient[];
   totalCost: number;
   type: "pos" | "production"; // pos = ريسيبي المنتجات, production = تركيبة الإنتاج
+  production?: ProductionMeta;
 }
+
+
+const TD = `border:1px solid #000;padding:4px 6px;font-size:10px;`;
 
 const buildPrintHTML = (
   productName: string,
@@ -36,12 +52,67 @@ const buildPrintHTML = (
   withCost: boolean,
   productPrice?: number,
   type?: string,
+  prod?: ProductionMeta,
 ) => {
   const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
   const logoSrc = `${window.location.origin}/logo.png`;
   const title = type === "production" ? "تركيبة إنتاج" : "وصفة منتج";
 
-  let theadHTML = `<tr>
+  let theadHTML = "";
+  let tbodyHTML = "";
+  let summaryHTML = "";
+
+  if (prod) {
+    const unit = prod.stockUnit || "كجم";
+    theadHTML = `<tr>
+      <th>م</th>
+      <th>الكود</th>
+      <th>اسم الخامة</th>
+      <th>الوحدة</th>
+      <th>الكمية</th>` +
+      (withCost ? `<th>سعر الوحدة</th><th>الصافي</th>` : "") +
+      `<th>الفك 1 ${unit}</th>
+      <th>الكمية المطلوبة</th>
+    </tr>`;
+
+    ingredients.forEach((ing, idx) => {
+      const factor = ing.conversion_factor || 1;
+      const cost = (ing.qty / factor) * ing.avg_cost;
+      const perUnit = prod.producedQty > 0 ? ing.qty / prod.producedQty : 0;
+      const required = prod.breakQty > 0 ? perUnit * prod.breakQty : 0;
+      tbodyHTML += `<tr>
+        <td style="${TD}text-align:center;">${idx + 1}</td>
+        <td style="${TD}text-align:center;">${ing.code || "—"}</td>
+        <td style="${TD}text-align:right;">${ing.name}</td>
+        <td style="${TD}text-align:center;">${ing.recipe_unit}</td>
+        <td style="${TD}text-align:center;">${ing.qty}</td>` +
+        (withCost
+          ? `<td style="${TD}text-align:center;">${ing.avg_cost.toFixed(2)}</td>
+             <td style="${TD}text-align:center;">${cost.toFixed(2)}</td>`
+          : "") +
+        `<td style="${TD}text-align:center;">${perUnit.toFixed(3)}</td>
+        <td style="${TD}text-align:center;font-weight:bold;">${prod.breakQty > 0 ? required.toFixed(3) : "—"}</td>
+      </tr>`;
+    });
+
+    const row = (label: string, value: string, color?: string) =>
+      `<tr><td style="${TD}text-align:right;background:#f5f5f5;font-weight:bold;">${label}</td>
+       <td style="${TD}text-align:center;${color ? `color:${color};` : ""}font-weight:bold;">${value}</td></tr>`;
+
+    summaryHTML = `<table style="width:60%;border-collapse:collapse;margin-top:10px;">
+      ${withCost ? row("إجمالي التكلفة من الخام", totalCost.toFixed(2)) : ""}
+      ${row("الكمية المنتجة", `${prod.producedQty.toFixed(3)} ${unit}`)}
+      ${prod.trackWaste ? row("نسبة الفقد", `${prod.wastePct.toFixed(2)}%`, prod.wasteMax > 0 && prod.wastePct > prod.wasteMax ? "red" : "green") : ""}
+      ${prod.trackWaste && (prod.wasteMin || prod.wasteMax) ? row("النسبة المقبولة", `${prod.wasteMin.toFixed(0)}% : ${prod.wasteMax.toFixed(0)}%`) : ""}
+      ${row("كمية الفك", `${prod.breakQty.toFixed(3)} ${unit}`)}
+      ${withCost ? row("تكلفة كمية الفك", `${(prod.unitCost * prod.breakQty).toFixed(2)} EGP`) : ""}
+      ${withCost ? row(`سعر تكلفة الـ ${unit}`, `${prod.unitCost.toFixed(2)} EGP`) : ""}
+    </table>`;
+
+  } else {
+
+  theadHTML = `<tr>
+
     <th>م</th>
     <th>الكود</th>
     <th>اسم الخامة</th>
@@ -52,7 +123,6 @@ const buildPrintHTML = (
   }
   theadHTML += `</tr>`;
 
-  let tbodyHTML = "";
   ingredients.forEach((ing, idx) => {
     const cost = (ing.qty / (ing.conversion_factor || 1)) * ing.avg_cost;
     tbodyHTML += `<tr>
@@ -86,6 +156,10 @@ const buildPrintHTML = (
       </tr>`;
     }
   }
+  }
+
+
+
 
   return `<!DOCTYPE html>
 <html dir="rtl" lang="ar">
@@ -127,7 +201,9 @@ const buildPrintHTML = (
     <thead>${theadHTML}</thead>
     <tbody>${tbodyHTML}</tbody>
   </table>
+  ${summaryHTML}
   <div class="footer">Powered by Mohamed Abdel Aal</div>
+
   <script>
     (async function(){ try { if(document.fonts && document.fonts.ready) await document.fonts.ready; } catch(e){} window.print(); window.onafterprint = function(){ window.close(); }; })();
   </script>
@@ -142,6 +218,7 @@ export const RecipePrintExport: React.FC<RecipePrintExportProps> = ({
   ingredients,
   totalCost,
   type,
+  production,
 }) => {
   const [loadingExcel, setLoadingExcel] = useState(false);
   const [loadingPdf, setLoadingPdf] = useState(false);
@@ -149,14 +226,15 @@ export const RecipePrintExport: React.FC<RecipePrintExportProps> = ({
   if (ingredients.length === 0) return null;
 
   const handlePrint = (withCost: boolean) => {
-    const html = buildPrintHTML(productName, productCode, ingredients, totalCost, withCost, productPrice, type);
+    const html = buildPrintHTML(productName, productCode, ingredients, totalCost, withCost, productPrice, type, production);
     const w = window.open("", "_blank");
     if (w) { w.document.write(html); w.document.close(); }
   };
 
   const getExportData = () => {
-    const rows = ingredients.map((ing) => {
+    const rows: any[] = ingredients.map((ing) => {
       const cost = (ing.qty / (ing.conversion_factor || 1)) * ing.avg_cost;
+      const perUnit = production && production.producedQty > 0 ? ing.qty / production.producedQty : 0;
       return {
         name: ing.name,
         code: ing.code,
@@ -164,6 +242,8 @@ export const RecipePrintExport: React.FC<RecipePrintExportProps> = ({
         qty: ing.qty,
         avg_cost: ing.avg_cost.toFixed(2),
         total: cost.toFixed(2),
+        per_unit: production ? perUnit.toFixed(3) : "",
+        required: production && production.breakQty > 0 ? (perUnit * production.breakQty).toFixed(3) : "",
       };
     });
     // Add total row
@@ -171,11 +251,24 @@ export const RecipePrintExport: React.FC<RecipePrintExportProps> = ({
       name: "إجمالي التكلفة",
       code: "",
       unit: "",
-      qty: "" as any,
+      qty: "",
       avg_cost: "",
       total: totalCost.toFixed(2),
+      per_unit: "",
+      required: "",
       __rowType: "grand-total",
-    } as any);
+    });
+    if (production) {
+      const unit = production.stockUnit || "كجم";
+      const extra = (name: string, total: string) => rows.push({ name, code: "", unit: "", qty: "", avg_cost: "", total, per_unit: "", required: "" });
+      extra("الكمية المنتجة", `${production.producedQty.toFixed(3)} ${unit}`);
+      if (production.trackWaste) {
+        extra("نسبة الفقد", `${production.wastePct.toFixed(2)}%`);
+        extra("النسبة المقبولة", `${production.wasteMin.toFixed(0)}% : ${production.wasteMax.toFixed(0)}%`);
+      }
+      extra("كمية الفك", `${production.breakQty.toFixed(3)} ${unit}`);
+      extra(`سعر تكلفة الـ ${unit}`, production.unitCost.toFixed(2));
+    }
     return rows;
   };
 
@@ -184,9 +277,16 @@ export const RecipePrintExport: React.FC<RecipePrintExportProps> = ({
     { key: "code", label: "الكود" },
     { key: "unit", label: "الوحدة" },
     { key: "qty", label: "الكمية" },
-    { key: "avg_cost", label: "م. التكلفة" },
-    { key: "total", label: "الإجمالي" },
+    { key: "avg_cost", label: production ? "سعر الوحدة" : "م. التكلفة" },
+    { key: "total", label: production ? "الصافي" : "الإجمالي" },
+    ...(production
+      ? [
+          { key: "per_unit", label: `الفك 1 ${production.stockUnit || "كجم"}` } as ExportColumn,
+          { key: "required", label: "الكمية المطلوبة" } as ExportColumn,
+        ]
+      : []),
   ];
+
 
   const titleText = type === "production" ? `تركيبة إنتاج - ${productName}` : `وصفة - ${productName}`;
   const filenameText = type === "production" ? `تركيبة_${productName}` : `وصفة_${productName}`;

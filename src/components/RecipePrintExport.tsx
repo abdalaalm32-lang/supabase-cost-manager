@@ -218,6 +218,7 @@ export const RecipePrintExport: React.FC<RecipePrintExportProps> = ({
   ingredients,
   totalCost,
   type,
+  production,
 }) => {
   const [loadingExcel, setLoadingExcel] = useState(false);
   const [loadingPdf, setLoadingPdf] = useState(false);
@@ -225,14 +226,15 @@ export const RecipePrintExport: React.FC<RecipePrintExportProps> = ({
   if (ingredients.length === 0) return null;
 
   const handlePrint = (withCost: boolean) => {
-    const html = buildPrintHTML(productName, productCode, ingredients, totalCost, withCost, productPrice, type);
+    const html = buildPrintHTML(productName, productCode, ingredients, totalCost, withCost, productPrice, type, production);
     const w = window.open("", "_blank");
     if (w) { w.document.write(html); w.document.close(); }
   };
 
   const getExportData = () => {
-    const rows = ingredients.map((ing) => {
+    const rows: any[] = ingredients.map((ing) => {
       const cost = (ing.qty / (ing.conversion_factor || 1)) * ing.avg_cost;
+      const perUnit = production && production.producedQty > 0 ? ing.qty / production.producedQty : 0;
       return {
         name: ing.name,
         code: ing.code,
@@ -240,6 +242,8 @@ export const RecipePrintExport: React.FC<RecipePrintExportProps> = ({
         qty: ing.qty,
         avg_cost: ing.avg_cost.toFixed(2),
         total: cost.toFixed(2),
+        per_unit: production ? perUnit.toFixed(3) : "",
+        required: production && production.breakQty > 0 ? (perUnit * production.breakQty).toFixed(3) : "",
       };
     });
     // Add total row
@@ -247,11 +251,24 @@ export const RecipePrintExport: React.FC<RecipePrintExportProps> = ({
       name: "إجمالي التكلفة",
       code: "",
       unit: "",
-      qty: "" as any,
+      qty: "",
       avg_cost: "",
       total: totalCost.toFixed(2),
+      per_unit: "",
+      required: "",
       __rowType: "grand-total",
-    } as any);
+    });
+    if (production) {
+      const unit = production.stockUnit || "كجم";
+      const extra = (name: string, total: string) => rows.push({ name, code: "", unit: "", qty: "", avg_cost: "", total, per_unit: "", required: "" });
+      extra("الكمية المنتجة", `${production.producedQty.toFixed(3)} ${unit}`);
+      if (production.trackWaste) {
+        extra("نسبة الفقد", `${production.wastePct.toFixed(2)}%`);
+        extra("النسبة المقبولة", `${production.wasteMin.toFixed(0)}% : ${production.wasteMax.toFixed(0)}%`);
+      }
+      extra("كمية الفك", `${production.breakQty.toFixed(3)} ${unit}`);
+      extra(`سعر تكلفة الـ ${unit}`, production.unitCost.toFixed(2));
+    }
     return rows;
   };
 
@@ -260,9 +277,16 @@ export const RecipePrintExport: React.FC<RecipePrintExportProps> = ({
     { key: "code", label: "الكود" },
     { key: "unit", label: "الوحدة" },
     { key: "qty", label: "الكمية" },
-    { key: "avg_cost", label: "م. التكلفة" },
-    { key: "total", label: "الإجمالي" },
+    { key: "avg_cost", label: production ? "سعر الوحدة" : "م. التكلفة" },
+    { key: "total", label: production ? "الصافي" : "الإجمالي" },
+    ...(production
+      ? [
+          { key: "per_unit", label: `الفك 1 ${production.stockUnit || "كجم"}` } as ExportColumn,
+          { key: "required", label: "الكمية المطلوبة" } as ExportColumn,
+        ]
+      : []),
   ];
+
 
   const titleText = type === "production" ? `تركيبة إنتاج - ${productName}` : `وصفة - ${productName}`;
   const filenameText = type === "production" ? `تركيبة_${productName}` : `وصفة_${productName}`;

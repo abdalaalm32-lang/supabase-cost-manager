@@ -201,7 +201,9 @@ const buildPrintHTML = (
     <thead>${theadHTML}</thead>
     <tbody>${tbodyHTML}</tbody>
   </table>
+  ${summaryHTML}
   <div class="footer">Powered by Mohamed Abdel Aal</div>
+
   <script>
     (async function(){ try { if(document.fonts && document.fonts.ready) await document.fonts.ready; } catch(e){} window.print(); window.onafterprint = function(){ window.close(); }; })();
   </script>

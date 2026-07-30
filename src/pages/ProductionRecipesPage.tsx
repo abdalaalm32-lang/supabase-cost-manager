@@ -831,10 +831,19 @@ export const ProductionRecipesPage: React.FC = () => {
                                   className="w-24 h-8 text-sm text-center"
                                 />
                               )}
+                              {(ing.conversion_factor || 1) !== 1 && (
+                                <span className="block text-[10px] text-muted-foreground mt-0.5">
+                                  = {(ing.qty / (ing.conversion_factor || 1)).toFixed(3)} {ing.stock_unit}
+                                </span>
+                              )}
                             </TableCell>
-                            <TableCell className="text-center text-sm">{getUnitPrice(ing).toFixed(2)}</TableCell>
+                            <TableCell className="text-center text-sm">
+                              {ing.avg_cost.toFixed(2)}
+                              <span className="block text-[10px] text-muted-foreground">/ {ing.stock_unit}</span>
+                            </TableCell>
                             <TableCell className="text-center text-sm font-semibold">{total.toFixed(2)}</TableCell>
                             <TableCell className="text-center text-sm">{perUnit.toFixed(3)}</TableCell>
+
                             <TableCell className="text-center text-sm font-bold text-primary">
                               {breakQty > 0 ? (perUnit * breakQty).toFixed(3) : "—"}
                             </TableCell>

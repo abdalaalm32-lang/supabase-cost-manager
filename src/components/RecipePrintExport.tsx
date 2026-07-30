@@ -109,10 +109,10 @@ const buildPrintHTML = (
       ${withCost ? row(`سعر تكلفة الـ ${unit}`, `${prod.unitCost.toFixed(2)} EGP`) : ""}
     </table>`;
 
-    return wrapHTML(title, productName, productCode, dateStr, logoSrc, theadHTML, tbodyHTML, summaryHTML, withCost, productPrice);
-  }
+  } else {
 
   theadHTML = `<tr>
+
     <th>م</th>
     <th>الكود</th>
     <th>اسم الخامة</th>

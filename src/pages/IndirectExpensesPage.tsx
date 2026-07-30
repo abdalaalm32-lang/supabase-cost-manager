@@ -979,38 +979,58 @@ export const IndirectExpensesPage: React.FC = () => {
         </Dialog>
       </div>
 
-
       {periods.length > 0 && (
-        <div className="flex gap-2 flex-wrap">
-          {periods.map((p) => {
-            const branchName = branches.find(b => b.id === p.branch_id)?.name;
-            return (
-              <Button
-                key={p.id}
-                variant={selectedPeriod?.id === p.id ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedPeriod(p)}
-                className="gap-2"
-              >
-                {p.name}
-                {branchName && <Badge variant="secondary" className="text-[10px] mr-1">{branchName}</Badge>}
-              </Button>
-            );
-          })}
-        </div>
+        <Card className="border-primary/20">
+          <CardContent className="p-3 flex items-center gap-3 flex-wrap">
+            <span className="text-sm font-semibold whitespace-nowrap">فترة التحليل:</span>
+            <Select
+              value={selectedPeriod?.id || ""}
+              onValueChange={(v) => {
+                const p = periods.find((x: any) => x.id === v);
+                if (p) setSelectedPeriod(p);
+              }}
+            >
+              <SelectTrigger className="w-[300px] h-9">
+                <SelectValue placeholder="اختر الفترة" />
+              </SelectTrigger>
+              <SelectContent className="max-h-72">
+                {periods.map((p: any) => {
+                  const branchName = branches.find(b => b.id === p.branch_id)?.name;
+                  return (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}{branchName ? ` — ${branchName}` : ""}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+            {selectedPeriod && (
+              <>
+                <Badge variant="secondary" className="text-[11px]">
+                  {selectedPeriod.start_date} → {selectedPeriod.end_date}
+                </Badge>
+                {(() => {
+                  const bn = branches.find(b => b.id === selectedPeriod.branch_id)?.name;
+                  return bn ? <Badge variant="outline" className="text-[11px]">{bn}</Badge> : null;
+                })()}
+                <span className="text-xs text-muted-foreground">({periods.length} فترة)</span>
+                <div className="flex gap-2 mr-auto">
+                  <Button size="sm" variant="outline" onClick={() => handleEdit(selectedPeriod)} className="gap-1">
+                    <Edit2 size={14} /> تعديل
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => handleDelete(selectedPeriod.id)} className="gap-1 text-destructive hover:text-destructive">
+                    <Trash2 size={14} /> حذف
+                  </Button>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {selectedPeriod && (
         <>
-          {/* Actions */}
-          <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => handleEdit(selectedPeriod)} className="gap-1">
-              <Edit2 size={14} /> تعديل
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => handleDelete(selectedPeriod.id)} className="gap-1 text-destructive hover:text-destructive">
-              <Trash2 size={14} /> حذف
-            </Button>
-          </div>
+
 
           {/* KPI Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

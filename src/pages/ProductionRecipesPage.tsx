@@ -639,8 +639,19 @@ export const ProductionRecipesPage: React.FC = () => {
                   ingredients={ingredients}
                   totalCost={totalIngredientsCost}
                   type="production"
+                  production={{
+                    producedQty,
+                    stockUnit: selectedProduct.stock_unit || "كجم",
+                    breakQty,
+                    unitCost,
+                    trackWaste,
+                    wastePct,
+                    wasteMin,
+                    wasteMax,
+                  }}
                 />
               )}
+
             </>
           )}
         </div>

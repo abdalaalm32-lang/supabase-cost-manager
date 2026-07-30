@@ -156,6 +156,9 @@ const buildPrintHTML = (
       </tr>`;
     }
   }
+  }
+
+
 
 
   return `<!DOCTYPE html>

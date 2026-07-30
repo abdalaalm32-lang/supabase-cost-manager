@@ -17,6 +17,18 @@ interface Ingredient {
   qty: number;
   avg_cost: number;
   conversion_factor: number;
+  stock_unit?: string;
+}
+
+export interface ProductionMeta {
+  producedQty: number;
+  stockUnit: string;
+  breakQty: number;
+  unitCost: number;
+  trackWaste: boolean;
+  wastePct: number;
+  wasteMin: number;
+  wasteMax: number;
 }
 
 interface RecipePrintExportProps {
@@ -26,7 +38,9 @@ interface RecipePrintExportProps {
   ingredients: Ingredient[];
   totalCost: number;
   type: "pos" | "production"; // pos = ريسيبي المنتجات, production = تركيبة الإنتاج
+  production?: ProductionMeta;
 }
+
 
 const buildPrintHTML = (
   productName: string,

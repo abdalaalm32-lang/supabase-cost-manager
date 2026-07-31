@@ -233,8 +233,9 @@ export const RecipePrintExport: React.FC<RecipePrintExportProps> = ({
 
   const getExportData = () => {
     const rows: any[] = ingredients.map((ing) => {
-      const cost = (ing.qty / (ing.conversion_factor || 1)) * ing.avg_cost;
+      const cost = production ? ing.qty * ing.avg_cost : (ing.qty / (ing.conversion_factor || 1)) * ing.avg_cost;
       const perUnit = production && production.producedQty > 0 ? ing.qty / production.producedQty : 0;
+
       return {
         name: ing.name,
         code: ing.code,

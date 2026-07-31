@@ -319,15 +319,12 @@ export const ProductionRecipesPage: React.FC = () => {
     setIngredients(prev => prev.map((ing, i) => i === idx ? { ...ing, affects_waste: !ing.affects_waste } : ing));
   };
 
-  // Calculate cost: qty is in recipe_unit. Convert to stock_unit using conversion_factor.
-  const getIngredientCost = (ing: LocalIngredient) => {
-    const factor = ing.conversion_factor || 1;
-    const qtyInStockUnit = ing.qty / factor;
-    return qtyInStockUnit * ing.avg_cost;
-  };
+  // الصافي = الكمية × سعر الوحدة (سعر الوحدة = متوسط تكلفة الخامة)
+  const getIngredientCost = (ing: LocalIngredient) => (Number(ing.qty) || 0) * (Number(ing.avg_cost) || 0);
 
   // Price per one recipe unit
-  const getUnitPrice = (ing: LocalIngredient) => ing.avg_cost / (ing.conversion_factor || 1);
+  const getUnitPrice = (ing: LocalIngredient) => ing.avg_cost;
+
 
   // Quantity of this ingredient needed to produce 1 unit of the product
   const getPerUnitQty = (ing: LocalIngredient) => (producedQty > 0 ? ing.qty / producedQty : 0);

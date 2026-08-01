@@ -975,7 +975,7 @@ export const TransferDetailPage: React.FC = () => {
                           </div>
                         </TableCell>
                         <TableCell>{item.unit}</TableCell>
-                        <TableCell className={cn(noStock && "text-red-500 font-bold")}>{item.current_stock}</TableCell>
+                        <TableCell className={cn(noStock && "text-red-500 font-bold")}>{fmtQty(item.current_stock)}</TableCell>
                         <TableCell>
                           <div className="flex flex-col">
                             <span className="font-medium">{item.avg_cost.toFixed(2)}</span>

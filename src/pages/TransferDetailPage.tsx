@@ -42,6 +42,12 @@ interface LocalTransferItem {
   price_note?: string | null;
 }
 
+// Format quantities to max 3 decimals, trimming trailing zeros (0.9455555 -> 0.945)
+const fmtQty = (v: any) => {
+  const n = Number(v) || 0;
+  return String(Number(n.toFixed(3)));
+};
+
 export const TransferDetailPage: React.FC = () => {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;
@@ -975,7 +981,7 @@ export const TransferDetailPage: React.FC = () => {
                           </div>
                         </TableCell>
                         <TableCell>{item.unit}</TableCell>
-                        <TableCell className={cn(noStock && "text-red-500 font-bold")}>{item.current_stock}</TableCell>
+                        <TableCell className={cn(noStock && "text-red-500 font-bold")}>{fmtQty(item.current_stock)}</TableCell>
                         <TableCell>
                           <div className="flex flex-col">
                             <span className="font-medium">{item.avg_cost.toFixed(2)}</span>
@@ -1067,7 +1073,7 @@ export const TransferDetailPage: React.FC = () => {
                       <TableCell className="font-mono text-xs">{si.code || "—"}</TableCell>
                       <TableCell>{si.name}</TableCell>
                       <TableCell>{si.stock_unit}</TableCell>
-                      <TableCell>{(sourceId ? getSourceStock(si.id) : Number(si.current_stock) || 0).toFixed(2)}</TableCell>
+                      <TableCell>{fmtQty(sourceId ? getSourceStock(si.id) : Number(si.current_stock) || 0)}</TableCell>
                       <TableCell>{Number(si.avg_cost).toFixed(2)}</TableCell>
                     </TableRow>
                   ))

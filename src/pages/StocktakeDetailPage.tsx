@@ -612,11 +612,11 @@ export const StocktakeDetailPage: React.FC = () => {
         {stocktakeLocationType === "warehouse" && (
           <div className="glass-card p-4 text-center">
             <div className="flex items-center justify-center mb-2">
-              {totals.totalDiffValue >= 0 ? <TrendingUp size={18} className="text-green-600" /> : <TrendingDown size={18} className="text-red-600" />}
+              {Math.abs(totals.totalDiffValue) < 0.005 ? <TrendingUp size={18} className="text-muted-foreground" /> : totals.totalDiffValue > 0 ? <TrendingUp size={18} className="text-green-600" /> : <TrendingDown size={18} className="text-red-600" />}
             </div>
             <p className="text-xs text-muted-foreground mb-1">إجمالي قيمة الفارق</p>
-            <p className={cn("font-semibold text-sm", totals.totalDiffValue >= 0 ? "text-green-600" : "text-red-600")}>
-              {totals.totalDiffValue >= 0 ? `+${totals.totalDiffValue.toFixed(2)}` : totals.totalDiffValue.toFixed(2)}
+            <p className={cn("font-semibold text-sm", Math.abs(totals.totalDiffValue) < 0.005 ? "" : totals.totalDiffValue > 0 ? "text-green-600" : "text-red-600")}>
+              {Math.abs(totals.totalDiffValue) < 0.005 ? "0.00" : totals.totalDiffValue > 0 ? `+${totals.totalDiffValue.toFixed(2)}` : totals.totalDiffValue.toFixed(2)}
             </p>
           </div>
         )}
@@ -768,8 +768,10 @@ export const StocktakeDetailPage: React.FC = () => {
                   const bookQty = Number(item.book_qty);
                   const avgCost = Number(item.avg_cost);
                   const value = countedQty * avgCost;
-                  const diff = countedQty - bookQty;
-                  const diffValue = diff * avgCost;
+                  const rawDiff = countedQty - bookQty;
+                  const diff = Math.abs(rawDiff) < 0.005 ? 0 : rawDiff;
+                  const rawDiffValue = diff * avgCost;
+                  const diffValue = Math.abs(rawDiffValue) < 0.005 ? 0 : rawDiffValue;
 
                   return (
                     <TableRow key={item.id}>
@@ -822,8 +824,8 @@ export const StocktakeDetailPage: React.FC = () => {
                   <TableCell>{totals.totalValue.toFixed(2)}</TableCell>
                   {stocktakeLocationType === "warehouse" && <TableCell>—</TableCell>}
                   {stocktakeLocationType === "warehouse" && (
-                    <TableCell className={cn(totals.totalDiffValue >= 0 ? "text-green-600" : "text-red-600")}>
-                      {totals.totalDiffValue >= 0 ? `+${totals.totalDiffValue.toFixed(2)}` : totals.totalDiffValue.toFixed(2)}
+                    <TableCell className={cn(Math.abs(totals.totalDiffValue) < 0.005 ? "" : totals.totalDiffValue > 0 ? "text-green-600" : "text-red-600")}>
+                      {Math.abs(totals.totalDiffValue) < 0.005 ? "0.00" : totals.totalDiffValue > 0 ? `+${totals.totalDiffValue.toFixed(2)}` : totals.totalDiffValue.toFixed(2)}
                     </TableCell>
                   )}
                   {isEditable && <TableCell />}

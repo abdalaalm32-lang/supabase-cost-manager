@@ -431,7 +431,8 @@ export const ProductionRecipesPage: React.FC = () => {
       const { data: newRecipe, error } = await supabase.from("production_recipes").insert({
         company_id: companyId,
         stock_item_id: selectedProductId,
-        branch_id: selectedLocationId || null,
+        branch_id: locationType === "branch" ? (selectedLocationId || null) : null,
+        warehouse_id: locationType === "warehouse" ? (selectedLocationId || null) : null,
         ...recipeSettingsPayload(),
       }).select().single();
       if (error) throw error;

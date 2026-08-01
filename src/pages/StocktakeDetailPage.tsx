@@ -768,8 +768,10 @@ export const StocktakeDetailPage: React.FC = () => {
                   const bookQty = Number(item.book_qty);
                   const avgCost = Number(item.avg_cost);
                   const value = countedQty * avgCost;
-                  const diff = countedQty - bookQty;
-                  const diffValue = diff * avgCost;
+                  const rawDiff = countedQty - bookQty;
+                  const diff = Math.abs(rawDiff) < 0.005 ? 0 : rawDiff;
+                  const rawDiffValue = diff * avgCost;
+                  const diffValue = Math.abs(rawDiffValue) < 0.005 ? 0 : rawDiffValue;
 
                   return (
                     <TableRow key={item.id}>

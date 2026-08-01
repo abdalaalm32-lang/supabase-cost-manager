@@ -444,7 +444,7 @@ export const ProductionRecipesPage: React.FC = () => {
   };
 
   const propagateToOtherBranches = async (ingsToPropagate: LocalIngredient[]) => {
-    if (!selectedProductId || !companyId) return;
+    if (!selectedProductId || !companyId || locationType !== "branch") return;
     // Get linked branches for this stock item
     const linkedBranches = itemBranchMap.get(selectedProductId) || new Set();
     

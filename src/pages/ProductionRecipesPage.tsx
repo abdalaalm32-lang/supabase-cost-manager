@@ -693,7 +693,7 @@ export const ProductionRecipesPage: React.FC = () => {
 
       {!selectedLocationId && (
         <div className="glass-card p-6 text-center">
-          <p className="text-muted-foreground">يرجى تحديد الفرع أولاً لعرض المنتجات المصنعة المرتبطة به.</p>
+          <p className="text-muted-foreground">يرجى تحديد {locationType === "branch" ? "الفرع" : "المخزن"} أولاً لعرض المنتجات المصنعة المرتبطة به.</p>
         </div>
       )}
 

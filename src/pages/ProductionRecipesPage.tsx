@@ -50,7 +50,7 @@ export const ProductionRecipesPage: React.FC = () => {
 
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [productSearch, setProductSearch] = useState("");
-  const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
+  const [selectedLocationId, setSelectedBranchId] = useState<string | null>(null);
 
   const [ingredients, setIngredients] = useState<LocalIngredient[]>([]);
   const [recipeStatus, setRecipeStatus] = useState<RecipeStatus>("draft");
@@ -168,20 +168,20 @@ export const ProductionRecipesPage: React.FC = () => {
     if (!manufacturingCategory) return [];
     let items = allStockItems.filter((si: any) => si.category_id === manufacturingCategory.id);
     // If a branch is selected, only show items linked to that branch
-    if (selectedBranchId) {
+    if (selectedLocationId) {
       items = items.filter((si: any) => {
         const linkedBranches = itemBranchMap.get(si.id);
-        return linkedBranches && linkedBranches.has(selectedBranchId);
+        return linkedBranches && linkedBranches.has(selectedLocationId);
       });
     }
     return items;
-  }, [allStockItems, manufacturingCategory, selectedBranchId, itemBranchMap]);
+  }, [allStockItems, manufacturingCategory, selectedLocationId, itemBranchMap]);
 
   // Filter recipes by selected branch
   const branchRecipes = useMemo(() => {
-    if (!selectedBranchId) return recipes;
-    return recipes.filter((r: any) => r.branch_id === selectedBranchId);
-  }, [recipes, selectedBranchId]);
+    if (!selectedLocationId) return recipes;
+    return recipes.filter((r: any) => r.branch_id === selectedLocationId);
+  }, [recipes, selectedLocationId]);
 
   const recipeMap = useMemo(() => {
     const map: Record<string, any> = {};
@@ -414,7 +414,7 @@ export const ProductionRecipesPage: React.FC = () => {
       const { data: newRecipe, error } = await supabase.from("production_recipes").insert({
         company_id: companyId,
         stock_item_id: selectedProductId,
-        branch_id: selectedBranchId || null,
+        branch_id: selectedLocationId || null,
         ...recipeSettingsPayload(),
       }).select().single();
       if (error) throw error;
@@ -432,7 +432,7 @@ export const ProductionRecipesPage: React.FC = () => {
     
     // Find other branch recipes for the same stock_item_id
     const otherRecipes = recipes.filter((r: any) =>
-      r.stock_item_id === selectedProductId && r.id !== recipeId && r.branch_id !== selectedBranchId
+      r.stock_item_id === selectedProductId && r.id !== recipeId && r.branch_id !== selectedLocationId
     );
     for (const otherRecipe of otherRecipes) {
       // Only propagate to linked branches
@@ -445,7 +445,7 @@ export const ProductionRecipesPage: React.FC = () => {
     }
     // Create recipes for linked branches that don't have one yet
     const existingBranchIds = new Set(otherRecipes.map((r: any) => r.branch_id));
-    if (selectedBranchId) existingBranchIds.add(selectedBranchId);
+    if (selectedLocationId) existingBranchIds.add(selectedLocationId);
     const missingBranches = branches.filter((b: any) => 
       linkedBranches.has(b.id) && !existingBranchIds.has(b.id)
     );
@@ -472,17 +472,17 @@ export const ProductionRecipesPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ["production-recipes"] });
 
       // Check if there are other linked branches to propagate to
-      if (selectedBranchId) {
+      if (selectedLocationId) {
         const linkedBranches = itemBranchMap.get(selectedProductId) || new Set();
         // Get other linked branches (excluding current)
-        const otherLinkedBranchIds = Array.from(linkedBranches).filter(bid => bid !== selectedBranchId);
+        const otherLinkedBranchIds = Array.from(linkedBranches).filter(bid => bid !== selectedLocationId);
         
         if (otherLinkedBranchIds.length > 0) {
           const otherBranchesWithRecipe = recipes.filter((r: any) =>
-            r.stock_item_id === selectedProductId && r.branch_id !== selectedBranchId && linkedBranches.has(r.branch_id)
+            r.stock_item_id === selectedProductId && r.branch_id !== selectedLocationId && linkedBranches.has(r.branch_id)
           );
           const branchesWithoutRecipe = branches.filter((b: any) => {
-            if (b.id === selectedBranchId) return false;
+            if (b.id === selectedLocationId) return false;
             if (!linkedBranches.has(b.id)) return false;
             return !otherBranchesWithRecipe.some((r: any) => r.branch_id === b.id);
           });
@@ -562,7 +562,7 @@ export const ProductionRecipesPage: React.FC = () => {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {/* Branch Selector - no "all branches" option */}
-          <Select value={selectedBranchId || ""} onValueChange={(v) => {
+          <Select value={selectedLocationId || ""} onValueChange={(v) => {
             setSelectedBranchId(v || null);
             setSelectedProductId(null);
             setIngredients([]);
@@ -657,19 +657,19 @@ export const ProductionRecipesPage: React.FC = () => {
       {/* Click outside to close global results */}
       {showGlobalResults && <div className="fixed inset-0 z-40" onClick={() => setShowGlobalResults(false)} />}
 
-      {!selectedBranchId && (
+      {!selectedLocationId && (
         <div className="glass-card p-6 text-center">
           <p className="text-muted-foreground">يرجى تحديد الفرع أولاً لعرض المنتجات المصنعة المرتبطة به.</p>
         </div>
       )}
 
-      {selectedBranchId && !manufacturingCategory && (
+      {selectedLocationId && !manufacturingCategory && (
         <div className="glass-card p-6 text-center">
           <p className="text-muted-foreground">لا توجد مجموعة "المصنعات" في مواد المخزون. يرجى إنشاء مجموعة باسم "المصنعات" أولاً.</p>
         </div>
       )}
 
-      {selectedBranchId && (
+      {selectedLocationId && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Right Panel - Products */}
           <div className="lg:col-span-1 glass-card p-4 space-y-4 max-h-[calc(100vh-180px)] overflow-auto">

@@ -666,12 +666,14 @@ export const WasteDetailPage: React.FC = () => {
       </div>
 
       {/* Action Buttons */}
-      {isEditable && (
+      {(isEditable || wasteRecord.status === "مكتمل") && (
         <div className="flex items-center gap-3">
-          <Button onClick={handleSaveAndFinish} className="gap-2">
-            <Save size={16} /> ترحيل وإنهاء
-          </Button>
-          {wasteRecord.status === "مسودة" && (
+          {isEditable && (
+            <Button onClick={handleSaveAndFinish} className="gap-2">
+              <Save size={16} /> ترحيل وإنهاء
+            </Button>
+          )}
+          {wasteRecord.status !== "مؤرشف" && (
             <Button variant="outline" onClick={handleArchive} className="gap-2">
               <Archive size={16} /> جعل مؤرشف
             </Button>

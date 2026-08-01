@@ -50,6 +50,7 @@ export const ProductionRecipesPage: React.FC = () => {
 
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [productSearch, setProductSearch] = useState("");
+  const [locationType, setLocationType] = useState<"branch" | "warehouse">("branch");
   const [selectedLocationId, setSelectedBranchId] = useState<string | null>(null);
 
   const [ingredients, setIngredients] = useState<LocalIngredient[]>([]);

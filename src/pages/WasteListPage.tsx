@@ -438,12 +438,12 @@ export const WasteListPage: React.FC = () => {
                         <Pencil size={14} />
                       </Button>
                     )}
-                    {wr.status === "مكتمل" ? (
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleArchive(wr.id)}>
+                    {wr.status === "مكتمل" || wr.status === "مسودة" ? (
+                      <Button variant="ghost" size="icon" className="h-7 w-7" title="أرشفة" onClick={() => handleArchive(wr.id)}>
                         <ToggleLeft size={14} />
                       </Button>
                     ) : wr.status === "مؤرشف" ? (
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleUnarchive(wr.id)}>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" title="إلغاء الأرشفة" onClick={() => handleUnarchive(wr.id)}>
                         <ToggleRight size={14} />
                       </Button>
                     ) : null}

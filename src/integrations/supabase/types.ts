@@ -2041,6 +2041,7 @@ export type Database = {
           produced_qty: number
           stock_item_id: string
           track_waste: boolean
+          warehouse_id: string | null
         }
         Insert: {
           acceptable_waste_max?: number
@@ -2053,6 +2054,7 @@ export type Database = {
           produced_qty?: number
           stock_item_id: string
           track_waste?: boolean
+          warehouse_id?: string | null
         }
         Update: {
           acceptable_waste_max?: number
@@ -2065,6 +2067,7 @@ export type Database = {
           produced_qty?: number
           stock_item_id?: string
           track_waste?: boolean
+          warehouse_id?: string | null
         }
         Relationships: [
           {
@@ -2086,6 +2089,13 @@ export type Database = {
             columns: ["stock_item_id"]
             isOneToOne: false
             referencedRelation: "stock_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_recipes_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
             referencedColumns: ["id"]
           },
         ]

@@ -1,0 +1,2 @@
+ALTER TABLE public.production_recipes ADD COLUMN IF NOT EXISTS warehouse_id uuid REFERENCES public.warehouses(id) ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS idx_production_recipes_warehouse ON public.production_recipes(warehouse_id);

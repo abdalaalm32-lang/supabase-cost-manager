@@ -96,6 +96,18 @@ export const ProductionRecipesPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ["warehouses-active", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("warehouses").select("*").eq("active", true).order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
+
+
   const { data: allStockItems = [] } = useQuery({
     queryKey: ["stock-items-all", companyId],
     queryFn: async () => {

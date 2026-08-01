@@ -152,23 +152,23 @@ export const ProductionRecipesPage: React.FC = () => {
     return categories.find((c: any) => c.name === "المصنعات" || c.name?.includes("مصنع"));
   }, [categories]);
 
-  // Build a map: stock_item_id -> Set of branch_ids it's linked to
+  // Build a map: stock_item_id -> Set of location ids (branches or warehouses)
   const itemBranchMap = useMemo(() => {
     const map = new Map<string, Set<string>>();
     for (const loc of stockItemLocations) {
-      if (loc.branch_id) {
+      const locId = locationType === "branch" ? loc.branch_id : loc.warehouse_id;
+      if (locId) {
         if (!map.has(loc.stock_item_id)) map.set(loc.stock_item_id, new Set());
-        map.get(loc.stock_item_id)!.add(loc.branch_id);
+        map.get(loc.stock_item_id)!.add(locId);
       }
     }
     return map;
-  }, [stockItemLocations]);
+  }, [stockItemLocations, locationType]);
 
-  // Products are stock items under "المصنعات" category, filtered by branch location
+  // Products are stock items under "المصنعات" category, filtered by selected location
   const productItems = useMemo(() => {
     if (!manufacturingCategory) return [];
     let items = allStockItems.filter((si: any) => si.category_id === manufacturingCategory.id);
-    // If a branch is selected, only show items linked to that branch
     if (selectedLocationId) {
       items = items.filter((si: any) => {
         const linkedBranches = itemBranchMap.get(si.id);
@@ -178,11 +178,15 @@ export const ProductionRecipesPage: React.FC = () => {
     return items;
   }, [allStockItems, manufacturingCategory, selectedLocationId, itemBranchMap]);
 
-  // Filter recipes by selected branch
+  // Filter recipes by selected location
   const branchRecipes = useMemo(() => {
     if (!selectedLocationId) return recipes;
-    return recipes.filter((r: any) => r.branch_id === selectedLocationId);
-  }, [recipes, selectedLocationId]);
+    return recipes.filter((r: any) =>
+      locationType === "branch"
+        ? r.branch_id === selectedLocationId
+        : (r as any).warehouse_id === selectedLocationId
+    );
+  }, [recipes, selectedLocationId, locationType]);
 
   const recipeMap = useMemo(() => {
     const map: Record<string, any> = {};

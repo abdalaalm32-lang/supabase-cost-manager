@@ -490,7 +490,7 @@ export const ProductionRecipesPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ["production-recipes"] });
 
       // Check if there are other linked branches to propagate to
-      if (selectedLocationId) {
+      if (locationType === "branch" && selectedLocationId) {
         const linkedBranches = itemBranchMap.get(selectedProductId) || new Set();
         // Get other linked branches (excluding current)
         const otherLinkedBranchIds = Array.from(linkedBranches).filter(bid => bid !== selectedLocationId);

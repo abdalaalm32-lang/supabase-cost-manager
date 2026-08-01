@@ -824,8 +824,8 @@ export const StocktakeDetailPage: React.FC = () => {
                   <TableCell>{totals.totalValue.toFixed(2)}</TableCell>
                   {stocktakeLocationType === "warehouse" && <TableCell>—</TableCell>}
                   {stocktakeLocationType === "warehouse" && (
-                    <TableCell className={cn(totals.totalDiffValue >= 0 ? "text-green-600" : "text-red-600")}>
-                      {totals.totalDiffValue >= 0 ? `+${totals.totalDiffValue.toFixed(2)}` : totals.totalDiffValue.toFixed(2)}
+                    <TableCell className={cn(Math.abs(totals.totalDiffValue) < 0.005 ? "" : totals.totalDiffValue > 0 ? "text-green-600" : "text-red-600")}>
+                      {Math.abs(totals.totalDiffValue) < 0.005 ? "0.00" : totals.totalDiffValue > 0 ? `+${totals.totalDiffValue.toFixed(2)}` : totals.totalDiffValue.toFixed(2)}
                     </TableCell>
                   )}
                   {isEditable && <TableCell />}

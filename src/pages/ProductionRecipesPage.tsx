@@ -579,7 +579,23 @@ export const ProductionRecipesPage: React.FC = () => {
           {selectedProduct && getStatusBadge(recipeStatus === "editing" ? "editing" : recipeStatus)}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Branch Selector - no "all branches" option */}
+          {/* Location type + location selector */}
+          <Select value={locationType} onValueChange={(v: any) => {
+            setLocationType(v);
+            setSelectedBranchId(null);
+            setSelectedProductId(null);
+            setIngredients([]);
+            setRecipeId(null);
+            setRecipeStatus("draft");
+            setIsEditing(false);
+            setProducedQtyStr("");
+          }}>
+            <SelectTrigger className="w-32 h-9 text-sm"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="branch">فرع</SelectItem>
+              <SelectItem value="warehouse">مخزن</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={selectedLocationId || ""} onValueChange={(v) => {
             setSelectedBranchId(v || null);
             setSelectedProductId(null);
@@ -589,9 +605,9 @@ export const ProductionRecipesPage: React.FC = () => {
             setIsEditing(false);
             setProducedQtyStr("");
           }}>
-            <SelectTrigger className="w-48 h-9 text-sm"><SelectValue placeholder="اختر الفرع" /></SelectTrigger>
+            <SelectTrigger className="w-48 h-9 text-sm"><SelectValue placeholder={locationType === "branch" ? "اختر الفرع" : "اختر المخزن"} /></SelectTrigger>
             <SelectContent>
-              {branches.map((b: any) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+              {(locationType === "branch" ? branches : warehouses).map((b: any) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
             </SelectContent>
           </Select>
           {/* Global Ingredient Search */}

@@ -42,6 +42,12 @@ interface LocalTransferItem {
   price_note?: string | null;
 }
 
+// Format quantities to max 3 decimals, trimming trailing zeros (0.9455555 -> 0.945)
+const fmtQty = (v: any) => {
+  const n = Number(v) || 0;
+  return String(Number(n.toFixed(3)));
+};
+
 export const TransferDetailPage: React.FC = () => {
   const { auth } = useAuth();
   const companyId = auth.profile?.company_id;

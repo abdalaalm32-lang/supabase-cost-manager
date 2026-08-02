@@ -764,7 +764,20 @@ export const WarehousePnlTab: React.FC = () => {
               <WarehouseIcon className="h-4 w-4 text-primary" />
               P&L — المخزن المركزي
             </h2>
-            <Badge variant="outline" className="text-[10px]">{result.transfersCount} تحويل</Badge>
+            <div className="flex items-center gap-2">
+              {result.totalItems > 0 && (
+                <Badge
+                  variant="outline"
+                  className={`text-[10px] ${result.inferredItems / result.totalItems > 0.1 ? "border-amber-500 text-amber-700 dark:text-amber-400 bg-amber-500/10" : ""}`}
+                  title="عدد البنود المعتمدة على Snapshot تسعير مقابل البنود المحسوبة من التكلفة"
+                >
+                  تسعير مسجّل: {result.snapshotItems} / {result.totalItems}
+                  {result.inferredItems / result.totalItems > 0.1 ? " ⚠" : ""}
+                </Badge>
+              )}
+              <Badge variant="outline" className="text-[10px]">{result.transfersCount} تحويل</Badge>
+            </div>
+
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

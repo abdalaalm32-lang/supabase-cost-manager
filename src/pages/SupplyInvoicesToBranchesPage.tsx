@@ -91,7 +91,7 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from("transfer_items")
-        .select("id, transfer_id, quantity")
+        .select("id, transfer_id, quantity, avg_cost, total_cost")
         .in("transfer_id", transferIds);
       return data ?? [];
     },

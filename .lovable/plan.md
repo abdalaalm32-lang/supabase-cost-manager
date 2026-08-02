@@ -1,128 +1,61 @@
-## الهدف
-1. إضافة **Warehouse P&L** و **Consolidated P&L** بجانب Branch P&L الحالي في صفحة P&L.
-2. إضافة صلاحية جديدة `delete_pos_item` تخفي زر الحذف/سلة المهملات في شاشة POS، مع تحقق في الـ Backend وسجل Audit للحذف.
+# مراجعة أرقام P&L المخزن (يوليو 2026)
 
----
+تم التحقق من كل رقم مباشرة من قاعدة البيانات لفترة 2026-07-01 → 2026-07-31 (مخزن Black Bear Store).
 
-## القسم الأول: P&L للمخزن
+## 1. الأرقام الحالية ومن أين جاءت
 
-### 1.1 تعديل قاعدة البيانات
-- التحقق من جدول `transfer_pricing_breakdown` الحالي والتأكد إنه بيحفظ Snapshot كامل عند إنشاء التحويل. لو ناقص أعمدة (زي `cost_price_at_transfer`, `markup_percent`, `supply_price_at_transfer`, `total_cost`, `total_supply`, `profit_amount`, `warehouse_id`, `transfer_date`) — يتم إضافتها بـ migration.
-- التأكد إن الأسعار محفوظة وقت التحويل (Snapshot) ومش بتتغير بعد كده.
+| البند | القيمة | المصدر المؤكد |
+|---|---|---|
+| المبيعات الداخلية | 139,561.39 | مجموع بنود التحويلات المكتملة (167 إذن / 302 بند) |
+| Loaded Cost (COGS) | 122,422.27 | ناتج حساب الصفحة — **مطابق للرقم الظاهر** |
+| تكلفة الخامات | 116,509.77 | ناتج حساب الصفحة — **مطابق للرقم الظاهر** |
+| COGS الدوري | 147,007.58 | 50,463.51 (جرد 30/6) + 194,240.03 مشتريات + 37,869.29 إنتاج − 135,565.24 (جرد 31/7) |
+| الهالك | 379.39 | سجلات الهالك المكتملة |
 
-### 1.2 مصادر البيانات لتقرير المخزن
-| البند | المصدر |
-|---|---|
-| Internal Sales | `SUM(transfer_pricing_breakdown.total_supply)` للتحويلات المكتملة من مخزن معين خلال الفترة |
-| Internal Sales by Branch | نفس المصدر مجمّع حسب `destination_branch_id` |
-| Purchases | `purchase_orders` المرتبطة بالمخزن (status = مكتمل) |
-| Opening/Closing Inventory | آخر stocktake قبل/داخل الفترة (نفس منطق الـ Periodic COGS الحالي) |
-| Production Cost | `production_records.total_cost` |
-| Operating Expenses | `warehouse_overhead_expenses` + إمكانية إضافة يدوية |
-| Waste | `waste_records.total_cost` للمخزن |
+## 2. السبب الحقيقي للفرق — مؤكد بالبيانات
 
-### 1.3 هيكل صفحة P&L بعد التعديل
-تبويبات (Tabs) داخل نفس الصفحة:
+**المشكلة الأولى: 221 بند من أصل 302 (73%) ليس لهم Snapshot تسعير.**
+
+جدول `transfer_pricing_breakdown` فيه 81 بند فقط من بنود يوليو. باقي البنود الصفحة بتتعامل معها كالتالي:
+
+- بتاخد `transfer_items.total_cost` وتعتبره **سعر بيع للفرع**، مع إنه فعليًا = `avg_cost × الكمية` أي **تكلفة صافية بدون أي ربح**.
+- بعدين بتقسمه على (1 + 14% ربح الفرع) لتستخرج «التكلفة» → فتنزل التكلفة الحقيقية ~12%.
+- وبعدين بتقسم تاني على (1 + 4.46% تحميل) لتستخرج «الخامات» → تنزل ~4% إضافية.
+
+النتيجة: تكلفة حقيقية 139,561 بتظهر كـ 122,422 (Loaded) و 116,509 (خامات). يعني **الرقم مخفّض بحوالي 17,139 ج**. وكمان المبيعات الداخلية نفسها ناقصة، لأن الـ221 بند دول اتسجّلوا بالتكلفة بدون هامش الـ14%.
+
+بمعنى مباشر: خامة زي عيش البرجر بمتوسط 8.46 — التكلفة الظاهرة في التقرير أقل من 8.46 للوحدة، لأنها اتقسمت على الربح والتحميل بالغلط.
+
+**المشكلة الثانية: تكلفة الإنتاج مضافة مرتين في المعادلة الدورية.**
+
+المعادلة الدورية بتضيف `production_records.total_production_cost` (37,869) فوق المشتريات، مع إن خامات الإنتاج نفسها جاية أصلًا من المشتريات/رصيد أول المدة، والمنتج النهائي متعدّ في جرد آخر المدة. ده بيضخّم الـ147,007.
+
+## 3. الإصلاح المقترح
+
+### أ) تصحيح منطق البنود اللي بدون Snapshot
+- لو البند ملوش صف في `transfer_pricing_breakdown`: نعتبر `transfer_items.total_cost` **تكلفة خام فعلية** (لأنها = avg_cost × qty)، مش سعر بيع.
+- إذن: تكلفة الخامات = total_cost، الباكينج = 0، التحميل = التكلفة × نسبة التحميل، والـ Loaded = خامات + تحميل، وسعر البيع = Loaded × (1 + نسبة ربح الفرع).
+- إلغاء القسمة العكسية بالكامل (`/(1+profitPct)` و `/(1+overheadRate)`) لأنها بتفترض إن الرقم المخزّن سعر بيع.
+
+### ب) توضيح مصدر كل رقم في الواجهة
+- Badge على بند «تكلفة الخامات» يوضح: عدد البنود المعتمدة على Snapshot مقابل البنود المستنتجة (مثال: 81 / 302).
+- تحذير أصفر واضح لو نسبة البنود بدون Snapshot > 10%.
+
+### ج) تصحيح المرجع الدوري وربطه بالتسوية
+- استبعاد تكلفة الإنتاج من `goodsAvailable` (منع الازدواج).
+- إضافة **جدول تسوية (Reconciliation)** يوضح الفجوة سطرًا سطرًا:
+
+```text
+COGS الدوري (جرد أول + مشتريات − جرد آخر)   X
+(−) تكلفة التحويلات للفروع (Perpetual)      (Y)
+(−) الهالك المسجل                            (379.39)
+= فرق غير مفسّر (عجز/زيادة مخزون)            Z
 ```
-P&L
-├── Branch P&L      (الصفحة الحالية)
-├── Warehouse P&L   (جديد)
-└── Consolidated    (جديد)
-```
 
-### 1.4 محتوى Warehouse P&L
-```
-P&L - Central Warehouse [اسم المخزن]
-الفترة: من - إلى
+### د) ملء الـ Snapshot الناقص (اختياري لكن مُوصى به)
+Migration لملء `transfer_pricing_breakdown` للبنود القديمة الناقصة من `transfer_items.avg_cost` + نسبة التحميل + نسبة ربح الفرع وقت التحويل، بحيث كل التقارير التاريخية تبقى متسقة ومفيش استنتاج بعد كده.
 
-Internal Sales
-  Branch A ................. 150,000
-  Branch B ................. 120,000
-  Branch C ................. 180,000
-  Total Internal Sales ..... 450,000
-
-Cost of Goods Sold
-  Opening Inventory ......... 50,000
-  Purchases ................ 300,000
-  Production Cost ........... 20,000
-  Closing Inventory ........ (60,000)
-  Total COGS ............... 310,000
-
-Gross Profit ............... 140,000  (31.1%)
-
-Operating Expenses
-  [من warehouse_overhead_expenses + يدوي]
-  Total .................... 80,000
-
-Net Profit ................. 60,000   (13.3%)
-```
-+ KPIs cards علوية:
-- إجمالي المبيعات الداخلية
-- هامش الربح الداخلي %
-- تكلفة الإنتاج
-- تكلفة الفاقد
-- قيمة المخزون أول/آخر المدة
-- صافي ربح المخزن
-
-### 1.5 محتوى Consolidated P&L
-```
-Consolidated P&L (الشركة كاملة)
-
-Real Sales (POS) ......................... X
-(-) Internal Sales ................ (تُلغى)
-(-) Internal Purchases at branches  (تُلغى)
-
-COGS (original raw materials only) ....... Y
-Gross Profit ............................. X-Y
-Operating Expenses (كل الفروع + المخزن) . Z
-Net Profit ............................... X-Y-Z
-```
-مع pill يوضح قيمة الـ Elimination.
-
-### 1.6 الملفات المتأثرة
-- `src/pages/PnlPage.tsx` — تحويلها لـ Tabs.
-- `src/components/pnl/BranchPnlTab.tsx` (استخراج المحتوى الحالي).
-- `src/components/pnl/WarehousePnlTab.tsx` (جديد).
-- `src/components/pnl/ConsolidatedPnlTab.tsx` (جديد).
-- `src/hooks/useWarehousePnlData.ts` (جديد).
-- `src/hooks/useConsolidatedPnlData.ts` (جديد).
-- Migration لو `transfer_pricing_breakdown` محتاج أعمدة إضافية.
-
----
-
-## القسم الثاني: صلاحية حذف صنف من الفاتورة
-
-### 2.1 إضافة Permission جديدة
-- إضافة `pos_delete_item` لقائمة الصلاحيات في صفحة المستخدمين (`SettingsUsersPage.tsx`).
-- الصلاحية بتتخزن في `profiles.permissions[]` (النظام الحالي).
-
-### 2.2 Frontend
-- في `PosScreenPage.tsx`: قراءة الـ permissions من `useAuth()`، وإخفاء زر سلة المهملات لو المستخدم مالوش الصلاحية دي.
-- **Admin/Owner دايماً مسموح لهم** حتى بدون الصلاحية.
-
-### 2.3 Audit Log (اختياري - جدول جديد بسيط)
-جدول `pos_item_delete_log`:
-- `user_id`, `sale_id (nullable لو draft)`, `pos_item_id`, `item_name`, `quantity`, `reason (nullable)`, `created_at`
-- كل عملية حذف تُسجل هنا.
-
-### 2.4 الملفات المتأثرة
-- `src/pages/SettingsUsersPage.tsx` — إضافة الصلاحية الجديدة للقائمة.
-- `src/pages/PosScreenPage.tsx` — التحقق قبل عرض زر الحذف + تسجيل الـ log.
-- Migration لجدول `pos_item_delete_log` (لو المستخدم موافق).
-
----
-
-## ملاحظات تقنية
-- كل التقارير الجديدة تدعم فلتر التاريخ + فلتر المخزن.
-- Print/Export PDF لكل تبويبة.
-- الأسعار في `transfer_pricing_breakdown` **Snapshot ثابت** — مفيش إعادة حساب.
-- التحويلات المُلغاة (`ملغي`) تُستبعد من التقرير.
-
----
-
-## ترتيب التنفيذ
-1. Migration للـ `transfer_pricing_breakdown` (لو محتاج) + جدول Audit.
-2. Hooks جديدة (Warehouse + Consolidated).
-3. تحويل PnlPage لـ Tabs.
-4. صفحات المخزن والمجمّع.
-5. صلاحية POS + إخفاء الزر + Audit log.
+## الملفات المتأثرة
+- `src/components/pnl/WarehousePnlTab.tsx` — دالة `computeResult` (منطق fallback، معادلة `goodsAvailable`، جدول التسوية، شارة جودة البيانات).
+- `src/pages/SupplyInvoicesToBranchesPage.tsx` — نفس منطق fallback لتظل الأرقام مطابقة بين الصفحتين.
+- Migration اختياري لملء الـ Snapshot التاريخي.

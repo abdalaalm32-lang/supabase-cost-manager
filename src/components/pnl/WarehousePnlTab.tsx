@@ -187,6 +187,9 @@ function computeResult(
   let totalInternalSales = 0; // Final supply value charged to branches
   let loadedTransferCost = 0; // COGS = loaded cost at transfer time, before profit
   let totalTransferQty = 0;
+  let snapshotItems = 0;     // items priced from transfer_pricing_breakdown snapshot
+  let inferredItems = 0;     // items without snapshot (cost-based, forward-built)
+
 
   const itemsByTransfer = new Map<string, any[]>();
   (d.transferItems || []).forEach((ti: any) => {

@@ -585,11 +585,14 @@ export const WarehousePnlTab: React.FC = () => {
     const refRows = `
       ${row("جرد أول المدة", result.openingStock, "")}
       ${row("(+) المشتريات", result.purchasesTotal, "")}
-      ${row("(+) تكلفة الإنتاج", result.productionCost, "")}
       ${row("البضاعة المتاحة", result.goodsAvailable, "", { bold: true, bg: "#fafafa" })}
       ${row("(-) جرد آخر المدة", `(${fmt(result.closingStock)})`, "")}
       ${row("COGS (Periodic - محاسبي)", result.periodicCogs, "", { bold: true, bg: "#f5f5f5" })}
+      ${row("(-) تكلفة التحويلات للفروع (Loaded Cost)", `(${fmt(result.loadedTransferCost)})`, "")}
+      ${row("(-) الفاقد المسجل", `(${fmt(result.wasteCost)})`, "")}
+      ${row("فرق غير مفسّر (عجز / زيادة مخزون)", result.unexplainedVariance, "", { bold: true, bg: "#fef3c7" })}
     `;
+
 
     const printHTML = `<!DOCTYPE html>
 <html dir="rtl" lang="ar">

@@ -922,14 +922,32 @@ export const WarehousePnlTab: React.FC = () => {
                 <tbody>
                   <tr className="border-b"><td className="p-2 pr-4 text-muted-foreground">جرد أول المدة</td><td className="p-2 text-left tabular-nums">{fmt(result.openingStock)}</td></tr>
                   <tr className="border-b"><td className="p-2 pr-4 text-muted-foreground">(+) المشتريات</td><td className="p-2 text-left tabular-nums">{fmt(result.purchasesTotal)}</td></tr>
-                  <tr className="border-b"><td className="p-2 pr-4 text-muted-foreground">(+) تكلفة الإنتاج</td><td className="p-2 text-left tabular-nums">{fmt(result.productionCost)}</td></tr>
                   <tr className="border-b bg-muted/30 font-medium"><td className="p-2 pr-4">البضاعة المتاحة</td><td className="p-2 text-left tabular-nums">{fmt(result.goodsAvailable)}</td></tr>
                   <tr className="border-b"><td className="p-2 pr-4 text-muted-foreground">(-) جرد آخر المدة</td><td className="p-2 text-left tabular-nums">({fmt(result.closingStock)})</td></tr>
                   <tr className="bg-muted/40 font-semibold"><td className="p-2 pr-4">COGS (Periodic - محاسبي)</td><td className="p-2 text-left tabular-nums">{fmt(result.periodicCogs)}</td></tr>
+                  <tr><td colSpan={2} className="p-2 pr-4 text-[10px] text-muted-foreground italic">
+                    * تكلفة الإنتاج ({fmt(result.productionCost)}) غير مضافة هنا لأن خاماتها محتسبة أصلًا ضمن المشتريات/رصيد أول المدة، والمنتج النهائي معدود في جرد آخر المدة.
+                  </td></tr>
+                </tbody>
+              </table>
+            </div>
+            {/* Reconciliation: Periodic vs Perpetual */}
+            <div className="border-t p-3">
+              <h4 className="text-xs font-semibold text-muted-foreground mb-2">تسوية الفرق (Periodic ↔ Perpetual)</h4>
+              <table className="w-full text-sm">
+                <tbody>
+                  <tr className="border-b"><td className="p-2 pr-4 text-muted-foreground">COGS الدوري (جرد أول + مشتريات − جرد آخر)</td><td className="p-2 text-left tabular-nums">{fmt(result.periodicCogs)}</td></tr>
+                  <tr className="border-b"><td className="p-2 pr-4 text-muted-foreground">(-) تكلفة التحويلات للفروع (Loaded Cost)</td><td className="p-2 text-left tabular-nums">({fmt(result.loadedTransferCost)})</td></tr>
+                  <tr className="border-b"><td className="p-2 pr-4 text-muted-foreground">(-) الفاقد المسجل</td><td className="p-2 text-left tabular-nums">({fmt(result.wasteCost)})</td></tr>
+                  <tr className={`font-semibold ${Math.abs(result.unexplainedVariance) > 0.01 ? "bg-amber-500/10 text-amber-700 dark:text-amber-400" : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"}`}>
+                    <td className="p-2 pr-4">فرق غير مفسّر (عجز / زيادة مخزون)</td>
+                    <td className="p-2 text-left tabular-nums">{fmt(result.unexplainedVariance)}</td>
+                  </tr>
                 </tbody>
               </table>
             </div>
           </div>
+
 
 
           {/* Manual expenses controls */}

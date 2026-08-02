@@ -316,9 +316,16 @@ function computeResult(
   const grossProfit = totalInternalSales - totalCogs;
   const grossProfitPct = totalInternalSales > 0 ? (grossProfit / totalInternalSales) * 100 : 0;
 
-  // Reference (periodic) valuation — audit only
-  const goodsAvailable = openingStock + purchasesTotal + productionCost;
+  // Reference (periodic) valuation — audit only.
+  // Production cost is NOT added: production consumes ingredients that already came
+  // from opening stock / purchases, and the finished goods are counted in the closing
+  // stocktake. Adding it again would double-count the same cost.
+  const goodsAvailable = openingStock + purchasesTotal;
   const periodicCogs = goodsAvailable - closingStock;
+
+  // Reconciliation: periodic vs perpetual
+  const unexplainedVariance = periodicCogs - loadedTransferCost - wasteCost;
+
 
   // Below-the-line: only truly unallocated expenses + waste
   const unallocatedExpenses = [...extraExpenses];

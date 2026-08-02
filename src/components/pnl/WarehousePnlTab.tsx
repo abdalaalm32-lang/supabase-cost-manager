@@ -348,7 +348,9 @@ function computeResult(
     costOfTransfers: loadedTransferCost,
     openingStock, closingStock,
     purchasesTotal, productionCost, productionQty, costPerKg,
-    goodsAvailable, periodicCogs,
+    goodsAvailable, periodicCogs, unexplainedVariance,
+    snapshotItems, inferredItems, totalItems: snapshotItems + inferredItems,
+
     totalCogs, grossProfit, grossProfitPct,
     unallocatedExpenses, totalUnallocated,
     actualOverheadExpenses, actualOverhead, overheadVariance,

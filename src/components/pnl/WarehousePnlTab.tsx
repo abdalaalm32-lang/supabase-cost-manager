@@ -208,18 +208,34 @@ function computeResult(
     items.forEach((it: any) => {
       const p = priceByItem.get(it.id);
       const qty = Number(it.quantity) || 0;
-      const itemSales = p?.final ? p.final * qty : (Number(it.total_cost) || (Number(it.avg_cost) || 0) * qty);
-      const snapshotLoadedUnit = p?.final ? Math.max(p.final - p.profit - p.transport - p.loading, 0) : 0;
-      const inferredLoaded = profitPct > 0 ? itemSales / (1 + profitPct / 100) : itemSales;
-      const itemLoadedCost = snapshotLoadedUnit > 0 ? snapshotLoadedUnit * qty : inferredLoaded;
-      // Raw = base + production (WAC already capitalizes production). Packing is separate.
-      const snapshotRawUnit = p ? p.base + p.manufacturing : 0;
-      const snapshotPackUnit = p ? p.packaging : 0;
-      const inferredRawPlusPack = overheadRate > 0 ? itemLoadedCost / (1 + overheadRate / 100) : itemLoadedCost;
-      const itemPackCost = snapshotPackUnit * qty;
-      const itemRawCost = snapshotRawUnit > 0
-        ? snapshotRawUnit * qty
-        : Math.max(inferredRawPlusPack - itemPackCost, 0);
+      const hasSnapshot = !!p && p.final > 0;
+      let itemSales: number;
+      let itemLoadedCost: number;
+      let itemRawCost: number;
+      let itemPackCost: number;
+
+      if (hasSnapshot) {
+        // Snapshot exists → trust the stored supply price breakdown
+        itemSales = p!.final * qty;
+        const snapshotLoadedUnit = Math.max(p!.final - p!.profit - p!.transport - p!.loading, 0);
+        itemLoadedCost = snapshotLoadedUnit * qty;
+        itemPackCost = p!.packaging * qty;
+        const snapshotRawUnit = p!.base + p!.manufacturing;
+        itemRawCost = snapshotRawUnit > 0
+          ? snapshotRawUnit * qty
+          : Math.max(itemLoadedCost - itemPackCost, 0);
+        snapshotItems += 1;
+      } else {
+        // No snapshot → transfer_items.total_cost is the ACTUAL COST (avg_cost × qty),
+        // NOT a supply price. Build the price forward instead of reverse-dividing.
+        itemRawCost = Number(it.total_cost) || (Number(it.avg_cost) || 0) * qty;
+        itemPackCost = 0;
+        const itemOverheadFwd = itemRawCost * (overheadRate / 100);
+        itemLoadedCost = itemRawCost + itemOverheadFwd;
+        itemSales = itemLoadedCost * (1 + profitPct / 100);
+        inferredItems += 1;
+      }
+
       const itemOverhead = Math.max(itemLoadedCost - itemRawCost - itemPackCost, 0);
       const itemProfitPart = Math.max(itemSales - itemLoadedCost, 0);
 
@@ -238,13 +254,15 @@ function computeResult(
     });
 
     if (items.length === 0) {
-      trSales = Number(tr.total_cost) || 0;
-      trLoadedCost = profitPct > 0 ? trSales / (1 + profitPct / 100) : trSales;
-      trBaseCost = overheadRate > 0 ? trLoadedCost / (1 + overheadRate / 100) : trLoadedCost;
+      // Header-only transfer: total_cost is a cost figure → build forward as well
+      trBaseCost = Number(tr.total_cost) || 0;
       trPacking = 0;
-      trOverhead = Math.max(trLoadedCost - trBaseCost - trPacking, 0);
+      trOverhead = trBaseCost * (overheadRate / 100);
+      trLoadedCost = trBaseCost + trOverhead;
+      trSales = trLoadedCost * (1 + profitPct / 100);
       trProfit = Math.max(trSales - trLoadedCost, 0);
     }
+
 
     baseLoadedCost += trBaseCost;
     packagingLoaded += trPacking;

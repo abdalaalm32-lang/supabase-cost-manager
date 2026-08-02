@@ -187,6 +187,9 @@ function computeResult(
   let totalInternalSales = 0; // Final supply value charged to branches
   let loadedTransferCost = 0; // COGS = loaded cost at transfer time, before profit
   let totalTransferQty = 0;
+  let snapshotItems = 0;     // items priced from transfer_pricing_breakdown snapshot
+  let inferredItems = 0;     // items without snapshot (cost-based, forward-built)
+
 
   const itemsByTransfer = new Map<string, any[]>();
   (d.transferItems || []).forEach((ti: any) => {
@@ -208,18 +211,34 @@ function computeResult(
     items.forEach((it: any) => {
       const p = priceByItem.get(it.id);
       const qty = Number(it.quantity) || 0;
-      const itemSales = p?.final ? p.final * qty : (Number(it.total_cost) || (Number(it.avg_cost) || 0) * qty);
-      const snapshotLoadedUnit = p?.final ? Math.max(p.final - p.profit - p.transport - p.loading, 0) : 0;
-      const inferredLoaded = profitPct > 0 ? itemSales / (1 + profitPct / 100) : itemSales;
-      const itemLoadedCost = snapshotLoadedUnit > 0 ? snapshotLoadedUnit * qty : inferredLoaded;
-      // Raw = base + production (WAC already capitalizes production). Packing is separate.
-      const snapshotRawUnit = p ? p.base + p.manufacturing : 0;
-      const snapshotPackUnit = p ? p.packaging : 0;
-      const inferredRawPlusPack = overheadRate > 0 ? itemLoadedCost / (1 + overheadRate / 100) : itemLoadedCost;
-      const itemPackCost = snapshotPackUnit * qty;
-      const itemRawCost = snapshotRawUnit > 0
-        ? snapshotRawUnit * qty
-        : Math.max(inferredRawPlusPack - itemPackCost, 0);
+      const hasSnapshot = !!p && p.final > 0;
+      let itemSales: number;
+      let itemLoadedCost: number;
+      let itemRawCost: number;
+      let itemPackCost: number;
+
+      if (hasSnapshot) {
+        // Snapshot exists → trust the stored supply price breakdown
+        itemSales = p!.final * qty;
+        const snapshotLoadedUnit = Math.max(p!.final - p!.profit - p!.transport - p!.loading, 0);
+        itemLoadedCost = snapshotLoadedUnit * qty;
+        itemPackCost = p!.packaging * qty;
+        const snapshotRawUnit = p!.base + p!.manufacturing;
+        itemRawCost = snapshotRawUnit > 0
+          ? snapshotRawUnit * qty
+          : Math.max(itemLoadedCost - itemPackCost, 0);
+        snapshotItems += 1;
+      } else {
+        // No snapshot → transfer_items.total_cost is the ACTUAL COST (avg_cost × qty),
+        // NOT a supply price. Build the price forward instead of reverse-dividing.
+        itemRawCost = Number(it.total_cost) || (Number(it.avg_cost) || 0) * qty;
+        itemPackCost = 0;
+        const itemOverheadFwd = itemRawCost * (overheadRate / 100);
+        itemLoadedCost = itemRawCost + itemOverheadFwd;
+        itemSales = itemLoadedCost * (1 + profitPct / 100);
+        inferredItems += 1;
+      }
+
       const itemOverhead = Math.max(itemLoadedCost - itemRawCost - itemPackCost, 0);
       const itemProfitPart = Math.max(itemSales - itemLoadedCost, 0);
 
@@ -238,13 +257,15 @@ function computeResult(
     });
 
     if (items.length === 0) {
-      trSales = Number(tr.total_cost) || 0;
-      trLoadedCost = profitPct > 0 ? trSales / (1 + profitPct / 100) : trSales;
-      trBaseCost = overheadRate > 0 ? trLoadedCost / (1 + overheadRate / 100) : trLoadedCost;
+      // Header-only transfer: total_cost is a cost figure → build forward as well
+      trBaseCost = Number(tr.total_cost) || 0;
       trPacking = 0;
-      trOverhead = Math.max(trLoadedCost - trBaseCost - trPacking, 0);
+      trOverhead = trBaseCost * (overheadRate / 100);
+      trLoadedCost = trBaseCost + trOverhead;
+      trSales = trLoadedCost * (1 + profitPct / 100);
       trProfit = Math.max(trSales - trLoadedCost, 0);
     }
+
 
     baseLoadedCost += trBaseCost;
     packagingLoaded += trPacking;
@@ -295,9 +316,16 @@ function computeResult(
   const grossProfit = totalInternalSales - totalCogs;
   const grossProfitPct = totalInternalSales > 0 ? (grossProfit / totalInternalSales) * 100 : 0;
 
-  // Reference (periodic) valuation — audit only
-  const goodsAvailable = openingStock + purchasesTotal + productionCost;
+  // Reference (periodic) valuation — audit only.
+  // Production cost is NOT added: production consumes ingredients that already came
+  // from opening stock / purchases, and the finished goods are counted in the closing
+  // stocktake. Adding it again would double-count the same cost.
+  const goodsAvailable = openingStock + purchasesTotal;
   const periodicCogs = goodsAvailable - closingStock;
+
+  // Reconciliation: periodic vs perpetual
+  const unexplainedVariance = periodicCogs - loadedTransferCost - wasteCost;
+
 
   // Below-the-line: only truly unallocated expenses + waste
   const unallocatedExpenses = [...extraExpenses];
@@ -320,7 +348,9 @@ function computeResult(
     costOfTransfers: loadedTransferCost,
     openingStock, closingStock,
     purchasesTotal, productionCost, productionQty, costPerKg,
-    goodsAvailable, periodicCogs,
+    goodsAvailable, periodicCogs, unexplainedVariance,
+    snapshotItems, inferredItems, totalItems: snapshotItems + inferredItems,
+
     totalCogs, grossProfit, grossProfitPct,
     unallocatedExpenses, totalUnallocated,
     actualOverheadExpenses, actualOverhead, overheadVariance,
@@ -461,10 +491,14 @@ export const WarehousePnlTab: React.FC = () => {
     // Reference block
     rows.push({ section: "مرجع - جرد", item: "جرد أول المدة", amount: result.openingStock, pct: "" });
     rows.push({ section: "مرجع - جرد", item: "(+) المشتريات", amount: result.purchasesTotal, pct: "" });
-    rows.push({ section: "مرجع - جرد", item: "(+) تكلفة الإنتاج", amount: result.productionCost, pct: "" });
     rows.push({ section: "مرجع - جرد", item: "البضاعة المتاحة", amount: result.goodsAvailable, pct: "" });
     rows.push({ section: "مرجع - جرد", item: "(-) جرد آخر المدة", amount: -result.closingStock, pct: "" });
     rows.push({ section: "مرجع - جرد", item: "COGS (Periodic)", amount: result.periodicCogs, pct: "" });
+    rows.push({ section: "تسوية", item: "(-) تكلفة التحويلات (Loaded Cost)", amount: -result.loadedTransferCost, pct: "" });
+    rows.push({ section: "تسوية", item: "(-) الفاقد المسجل", amount: -result.wasteCost, pct: "" });
+    rows.push({ section: "تسوية", item: "فرق غير مفسّر", amount: result.unexplainedVariance, pct: "" });
+    rows.push({ section: "جودة البيانات", item: "بنود بتسعير مسجّل / إجمالي البنود", amount: result.snapshotItems, pct: `${result.totalItems}` });
+
     return rows;
   }, [result]);
 
@@ -555,11 +589,14 @@ export const WarehousePnlTab: React.FC = () => {
     const refRows = `
       ${row("جرد أول المدة", result.openingStock, "")}
       ${row("(+) المشتريات", result.purchasesTotal, "")}
-      ${row("(+) تكلفة الإنتاج", result.productionCost, "")}
       ${row("البضاعة المتاحة", result.goodsAvailable, "", { bold: true, bg: "#fafafa" })}
       ${row("(-) جرد آخر المدة", `(${fmt(result.closingStock)})`, "")}
       ${row("COGS (Periodic - محاسبي)", result.periodicCogs, "", { bold: true, bg: "#f5f5f5" })}
+      ${row("(-) تكلفة التحويلات للفروع (Loaded Cost)", `(${fmt(result.loadedTransferCost)})`, "")}
+      ${row("(-) الفاقد المسجل", `(${fmt(result.wasteCost)})`, "")}
+      ${row("فرق غير مفسّر (عجز / زيادة مخزون)", result.unexplainedVariance, "", { bold: true, bg: "#fef3c7" })}
     `;
+
 
     const printHTML = `<!DOCTYPE html>
 <html dir="rtl" lang="ar">
@@ -734,7 +771,20 @@ export const WarehousePnlTab: React.FC = () => {
               <WarehouseIcon className="h-4 w-4 text-primary" />
               P&L — المخزن المركزي
             </h2>
-            <Badge variant="outline" className="text-[10px]">{result.transfersCount} تحويل</Badge>
+            <div className="flex items-center gap-2">
+              {result.totalItems > 0 && (
+                <Badge
+                  variant="outline"
+                  className={`text-[10px] ${result.inferredItems / result.totalItems > 0.1 ? "border-amber-500 text-amber-700 dark:text-amber-400 bg-amber-500/10" : ""}`}
+                  title="عدد البنود المعتمدة على Snapshot تسعير مقابل البنود المحسوبة من التكلفة"
+                >
+                  تسعير مسجّل: {result.snapshotItems} / {result.totalItems}
+                  {result.inferredItems / result.totalItems > 0.1 ? " ⚠" : ""}
+                </Badge>
+              )}
+              <Badge variant="outline" className="text-[10px]">{result.transfersCount} تحويل</Badge>
+            </div>
+
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -892,14 +942,32 @@ export const WarehousePnlTab: React.FC = () => {
                 <tbody>
                   <tr className="border-b"><td className="p-2 pr-4 text-muted-foreground">جرد أول المدة</td><td className="p-2 text-left tabular-nums">{fmt(result.openingStock)}</td></tr>
                   <tr className="border-b"><td className="p-2 pr-4 text-muted-foreground">(+) المشتريات</td><td className="p-2 text-left tabular-nums">{fmt(result.purchasesTotal)}</td></tr>
-                  <tr className="border-b"><td className="p-2 pr-4 text-muted-foreground">(+) تكلفة الإنتاج</td><td className="p-2 text-left tabular-nums">{fmt(result.productionCost)}</td></tr>
                   <tr className="border-b bg-muted/30 font-medium"><td className="p-2 pr-4">البضاعة المتاحة</td><td className="p-2 text-left tabular-nums">{fmt(result.goodsAvailable)}</td></tr>
                   <tr className="border-b"><td className="p-2 pr-4 text-muted-foreground">(-) جرد آخر المدة</td><td className="p-2 text-left tabular-nums">({fmt(result.closingStock)})</td></tr>
                   <tr className="bg-muted/40 font-semibold"><td className="p-2 pr-4">COGS (Periodic - محاسبي)</td><td className="p-2 text-left tabular-nums">{fmt(result.periodicCogs)}</td></tr>
+                  <tr><td colSpan={2} className="p-2 pr-4 text-[10px] text-muted-foreground italic">
+                    * تكلفة الإنتاج ({fmt(result.productionCost)}) غير مضافة هنا لأن خاماتها محتسبة أصلًا ضمن المشتريات/رصيد أول المدة، والمنتج النهائي معدود في جرد آخر المدة.
+                  </td></tr>
+                </tbody>
+              </table>
+            </div>
+            {/* Reconciliation: Periodic vs Perpetual */}
+            <div className="border-t p-3">
+              <h4 className="text-xs font-semibold text-muted-foreground mb-2">تسوية الفرق (Periodic ↔ Perpetual)</h4>
+              <table className="w-full text-sm">
+                <tbody>
+                  <tr className="border-b"><td className="p-2 pr-4 text-muted-foreground">COGS الدوري (جرد أول + مشتريات − جرد آخر)</td><td className="p-2 text-left tabular-nums">{fmt(result.periodicCogs)}</td></tr>
+                  <tr className="border-b"><td className="p-2 pr-4 text-muted-foreground">(-) تكلفة التحويلات للفروع (Loaded Cost)</td><td className="p-2 text-left tabular-nums">({fmt(result.loadedTransferCost)})</td></tr>
+                  <tr className="border-b"><td className="p-2 pr-4 text-muted-foreground">(-) الفاقد المسجل</td><td className="p-2 text-left tabular-nums">({fmt(result.wasteCost)})</td></tr>
+                  <tr className={`font-semibold ${Math.abs(result.unexplainedVariance) > 0.01 ? "bg-amber-500/10 text-amber-700 dark:text-amber-400" : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"}`}>
+                    <td className="p-2 pr-4">فرق غير مفسّر (عجز / زيادة مخزون)</td>
+                    <td className="p-2 text-left tabular-nums">{fmt(result.unexplainedVariance)}</td>
+                  </tr>
                 </tbody>
               </table>
             </div>
           </div>
+
 
 
           {/* Manual expenses controls */}

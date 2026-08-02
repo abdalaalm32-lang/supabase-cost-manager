@@ -491,10 +491,14 @@ export const WarehousePnlTab: React.FC = () => {
     // Reference block
     rows.push({ section: "مرجع - جرد", item: "جرد أول المدة", amount: result.openingStock, pct: "" });
     rows.push({ section: "مرجع - جرد", item: "(+) المشتريات", amount: result.purchasesTotal, pct: "" });
-    rows.push({ section: "مرجع - جرد", item: "(+) تكلفة الإنتاج", amount: result.productionCost, pct: "" });
     rows.push({ section: "مرجع - جرد", item: "البضاعة المتاحة", amount: result.goodsAvailable, pct: "" });
     rows.push({ section: "مرجع - جرد", item: "(-) جرد آخر المدة", amount: -result.closingStock, pct: "" });
     rows.push({ section: "مرجع - جرد", item: "COGS (Periodic)", amount: result.periodicCogs, pct: "" });
+    rows.push({ section: "تسوية", item: "(-) تكلفة التحويلات (Loaded Cost)", amount: -result.loadedTransferCost, pct: "" });
+    rows.push({ section: "تسوية", item: "(-) الفاقد المسجل", amount: -result.wasteCost, pct: "" });
+    rows.push({ section: "تسوية", item: "فرق غير مفسّر", amount: result.unexplainedVariance, pct: "" });
+    rows.push({ section: "جودة البيانات", item: "بنود بتسعير مسجّل / إجمالي البنود", amount: result.snapshotItems, pct: `${result.totalItems}` });
+
     return rows;
   }, [result]);
 

@@ -102,11 +102,15 @@ export function computeSupplyPrice(opts: {
   pricing?: Partial<SupplyPricingRow> | null;
   policy?: Partial<BranchSupplyPolicy> | null;
   quantity?: number;
+  /** Actual transferred quantity used for the packaging model (may be < 1). */
+  packagingQuantity?: number;
   overheadRate?: number; // percentage
   transportPerUnitOverride?: number;
   loadingPerUnitOverride?: number;
 }): {
   baseCost: number;
+  packagingPerUnit: number;
+  packagingTotal: number;
   withOverhead: number;
   overheadAmount: number;
   overheadRate: number;
@@ -124,13 +128,18 @@ export function computeSupplyPrice(opts: {
   const lastVal = Number(opts.lastPurchasePrice ?? 0);
   const wacOrLast = wacVal > 0 ? wacVal : lastVal;
 
-  const packaging = Number(opts.pricing?.packaging_cost ?? 0);
+  // Packaging respects its model (per unit / per transfer / per package) and is
+  // then spread over the transferred quantity to stay a per-unit figure.
+  const packQty = Number(opts.packagingQuantity ?? opts.quantity ?? 1) || 1;
+  const packagingTotal = computePackagingCost(opts.pricing, packQty);
+  const packaging = packQty > 0 ? packagingTotal / packQty : 0;
   const supplyType = opts.pricing?.supply_type ?? "cost_plus_profit";
   const autoCalc = opts.pricing?.auto_calculate ?? true;
   const manual = Number(opts.pricing?.manual_base_price ?? 0);
 
   const computedBase = wacOrLast + packaging;
   const baseCost = autoCalc || !manual ? computedBase : manual;
+
 
   const overheadRate = Number(opts.overheadRate ?? 0);
   const overheadAmount = baseCost * (overheadRate / 100);

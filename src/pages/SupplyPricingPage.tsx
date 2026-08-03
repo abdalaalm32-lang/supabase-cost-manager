@@ -645,7 +645,7 @@ export const SupplyPricingPage: React.FC = () => {
                                 if (v !== Number(p?.package_size ?? 1)) upsertPricing({ stock_item_id: it.id, package_size: v > 0 ? v : 1 });
                               }}/>
                           </TableCell>
-
+                          <TableCell className="text-center">
                             <Switch checked={avail}
                               onCheckedChange={(v) => upsertPricing({ stock_item_id: it.id, is_available_for_transfer: v })}/>
                           </TableCell>

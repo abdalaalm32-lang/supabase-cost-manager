@@ -396,12 +396,16 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3">
         <KpiCard icon={<Receipt size={20} className="text-primary"/>} tone="bg-primary/10"
           label="عدد الفواتير" value={String(kpis.count)} />
         <KpiCard icon={<DollarSign size={20} className="text-emerald-500"/>} tone="bg-emerald-500/10"
           label="إجمالي التوريدات" value={`${fmt(kpis.total)} ج.م`}
           hint="قيمة الخامات + النقل + التحميل" />
+        <KpiCard icon={<TrendingUp size={20} className="text-teal-500"/>} tone="bg-teal-500/10"
+          label="المبيعات الداخلية (P&L)" value={`${fmt(kpis.internalSales)} ج.م`}
+          hint="التكلفة المحمّلة + هامش ربح المخزن — مطابق لصفحة P&L" />
+
         <KpiCard icon={<Layers size={20} className="text-cyan-500"/>} tone="bg-cyan-500/10"
           label="تكلفة الخامات" value={`${fmt(kpis.rawCost)} ج.م`}
           hint="قبل الباكينج والمصاريف" />

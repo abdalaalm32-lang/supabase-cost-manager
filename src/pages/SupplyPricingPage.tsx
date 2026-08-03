@@ -16,12 +16,15 @@ import { useLocationStock } from "@/hooks/useLocationStock";
 import {
   computeSupplyPrice,
   computeMonthlyRate,
+  computePackagingCost,
+  PACKAGING_TYPE_LABELS,
   useBranchPolicies,
   useSupplyPricing,
   useWarehouseOverhead,
   useWarehouseMonthlyRates,
   type BranchSupplyPolicy,
   type SupplyPricingRow,
+  type PackagingType,
 } from "@/hooks/useSupplyPricing";
 import {
   Search, Package, Building2, Eye,
@@ -221,6 +224,9 @@ export const SupplyPricingPage: React.FC = () => {
           stock_item_id: row.stock_item_id,
           supply_type: row.supply_type ?? "cost_plus_profit",
           packaging_cost: row.packaging_cost ?? 0,
+          packaging_type: row.packaging_type ?? "per_unit",
+          package_size: row.package_size ?? 1,
+
           auto_calculate: row.auto_calculate ?? true,
           manual_base_price: row.manual_base_price ?? null,
           is_available_for_transfer: row.is_available_for_transfer ?? true,
@@ -386,7 +392,8 @@ export const SupplyPricingPage: React.FC = () => {
     { key: "unit", label: "الوحدة" },
     { key: "wac", label: "WAC" },
     { key: "last_purchase", label: "آخر شراء" },
-    { key: "packaging", label: "تعبئة" },
+    { key: "packaging", label: "تكلفة التعبئة" },
+    { key: "packaging_type", label: "طريقة الباكينج" },
     { key: "overhead_rate", label: "معدل التحميل %" },
     { key: "base_price", label: "السعر الأساسي بعد التحميل" },
     { key: "available", label: "متاح للتوريد" },
@@ -415,6 +422,7 @@ export const SupplyPricingPage: React.FC = () => {
       wac: Number(it.avg_cost || 0).toFixed(2),
       last_purchase: Number(lastP).toFixed(2),
       packaging: Number(p?.packaging_cost ?? 0).toFixed(2),
+      packaging_type: PACKAGING_TYPE_LABELS[(p?.packaging_type ?? "per_unit") as PackagingType] + ((p?.packaging_type ?? "per_unit") === "per_package" ? ` (${Number(p?.package_size ?? 1)})` : ""),
       overhead_rate: fmtPct(currentRate.rate),
       base_price: r.withOverhead.toFixed(2),
       available: (p?.is_available_for_transfer ?? true) ? "نعم" : "لا",
@@ -562,7 +570,10 @@ export const SupplyPricingPage: React.FC = () => {
                     <TableHead className="text-center">الرصيد الحالي</TableHead>
                     <TableHead className="text-center">WAC</TableHead>
                     <TableHead className="text-center">آخر شراء</TableHead>
-                    <TableHead className="text-center">تعبئة</TableHead>
+                    <TableHead className="text-center">تكلفة التعبئة</TableHead>
+                    <TableHead className="text-center">طريقة الباكينج</TableHead>
+                    <TableHead className="text-center">حجم العبوة</TableHead>
+
                     <TableHead className="text-center">متاح للتوريد</TableHead>
                     <TableHead className="text-center">نوع التوريد</TableHead>
                     <TableHead className="text-center">حساب تلقائي</TableHead>
@@ -592,7 +603,7 @@ export const SupplyPricingPage: React.FC = () => {
                       overheadRate: currentRate.rate,
                     });
                     const isExpanded = expandedId === it.id;
-                    const colSpan = selectedBranchId !== "all" ? 14 : 13;
+                    const colSpan = selectedBranchId !== "all" ? 16 : 15;
                     return (
                       <React.Fragment key={`${it.id}-${p?.id ?? "new"}-${p?.last_calculated_at ?? ""}`}>
                         <TableRow className={cn("hover:bg-muted/30", !avail && "opacity-50")}>
@@ -613,6 +624,27 @@ export const SupplyPricingPage: React.FC = () => {
                               onBlur={(e) => {
                                 const v = Number(e.target.value) || 0;
                                 if (v !== Number(p?.packaging_cost ?? 0)) upsertPricing({ stock_item_id: it.id, packaging_cost: v });
+                              }}/>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Select value={(p?.packaging_type ?? "per_unit") as PackagingType}
+                              onValueChange={(v: PackagingType) => upsertPricing({ stock_item_id: it.id, packaging_type: v })}>
+                              <SelectTrigger className="h-8 w-[130px] mx-auto text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="per_unit">{PACKAGING_TYPE_LABELS.per_unit}</SelectItem>
+                                <SelectItem value="per_transfer">{PACKAGING_TYPE_LABELS.per_transfer}</SelectItem>
+                                <SelectItem value="per_package">{PACKAGING_TYPE_LABELS.per_package}</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Input type="number" step="0.001"
+                              className="h-8 w-20 mx-auto text-xs text-center"
+                              disabled={(p?.packaging_type ?? "per_unit") !== "per_package"}
+                              defaultValue={p?.package_size ?? 1}
+                              onBlur={(e) => {
+                                const v = Number(e.target.value) || 0;
+                                if (v !== Number(p?.package_size ?? 1)) upsertPricing({ stock_item_id: it.id, package_size: v > 0 ? v : 1 });
                               }}/>
                           </TableCell>
                           <TableCell className="text-center">
@@ -683,7 +715,7 @@ export const SupplyPricingPage: React.FC = () => {
                   })}
                   {filteredItems.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={selectedBranchId !== "all" ? 14 : 13} className="text-center py-8 text-muted-foreground">لا توجد خامات</TableCell>
+                      <TableCell colSpan={selectedBranchId !== "all" ? 16 : 15} className="text-center py-8 text-muted-foreground">لا توجد خامات</TableCell>
                     </TableRow>
                   )}
                 </TableBody>

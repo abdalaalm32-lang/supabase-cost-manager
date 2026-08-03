@@ -2693,7 +2693,9 @@ export type Database = {
           manual_overhead_share: number
           manual_transport_share: number
           manufacturing_cost: number
+          package_size: number
           packaging_cost: number
+          packaging_type: string
           stock_item_id: string
           supply_type: string
           unit_volume: number
@@ -2711,7 +2713,9 @@ export type Database = {
           manual_overhead_share?: number
           manual_transport_share?: number
           manufacturing_cost?: number
+          package_size?: number
           packaging_cost?: number
+          packaging_type?: string
           stock_item_id: string
           supply_type?: string
           unit_volume?: number
@@ -2729,7 +2733,9 @@ export type Database = {
           manual_overhead_share?: number
           manual_transport_share?: number
           manufacturing_cost?: number
+          package_size?: number
           packaging_cost?: number
+          packaging_type?: string
           stock_item_id?: string
           supply_type?: string
           unit_volume?: number

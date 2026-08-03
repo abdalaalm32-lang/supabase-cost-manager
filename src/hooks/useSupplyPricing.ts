@@ -12,17 +12,50 @@ export type BranchSupplyPolicy = {
   is_active: boolean;
 };
 
+export type PackagingType = "per_unit" | "per_transfer" | "per_package";
+
+export const PACKAGING_TYPE_LABELS: Record<PackagingType, string> = {
+  per_unit: "لكل وحدة/كجم",
+  per_transfer: "ثابت لكل إذن",
+  per_package: "لكل عبوة",
+};
+
 export type SupplyPricingRow = {
   id: string;
   company_id: string;
   stock_item_id: string;
   supply_type: "cost" | "cost_plus_profit";
   packaging_cost: number;
+  packaging_type?: PackagingType;
+  package_size?: number;
   auto_calculate: boolean;
   manual_base_price: number | null;
   last_calculated_at: string | null;
   is_available_for_transfer?: boolean;
 };
+
+/**
+ * Total packaging cost for a transferred quantity, respecting the packaging model:
+ *  - per_unit     → cost × quantity (stretch film, vacuum bags…)
+ *  - per_transfer → cost once per item line, whatever the quantity (one salad bag)
+ *  - per_package  → ceil(quantity / package_size) × cost (boxes of a fixed size)
+ */
+export function computePackagingCost(
+  pricing: Partial<SupplyPricingRow> | null | undefined,
+  quantity: number,
+): number {
+  const cost = Number(pricing?.packaging_cost ?? 0);
+  const qty = Number(quantity ?? 0);
+  if (!(cost > 0) || !(qty > 0)) return 0;
+  const type = (pricing?.packaging_type ?? "per_unit") as PackagingType;
+  if (type === "per_transfer") return cost;
+  if (type === "per_package") {
+    const size = Number(pricing?.package_size ?? 0) || 1;
+    return Math.ceil(qty / size) * cost;
+  }
+  return cost * qty;
+}
+
 
 export type WarehouseOverheadExpense = {
   id: string;
@@ -69,11 +102,15 @@ export function computeSupplyPrice(opts: {
   pricing?: Partial<SupplyPricingRow> | null;
   policy?: Partial<BranchSupplyPolicy> | null;
   quantity?: number;
+  /** Actual transferred quantity used for the packaging model (may be < 1). */
+  packagingQuantity?: number;
   overheadRate?: number; // percentage
   transportPerUnitOverride?: number;
   loadingPerUnitOverride?: number;
 }): {
   baseCost: number;
+  packagingPerUnit: number;
+  packagingTotal: number;
   withOverhead: number;
   overheadAmount: number;
   overheadRate: number;
@@ -91,13 +128,18 @@ export function computeSupplyPrice(opts: {
   const lastVal = Number(opts.lastPurchasePrice ?? 0);
   const wacOrLast = wacVal > 0 ? wacVal : lastVal;
 
-  const packaging = Number(opts.pricing?.packaging_cost ?? 0);
+  // Packaging respects its model (per unit / per transfer / per package) and is
+  // then spread over the transferred quantity to stay a per-unit figure.
+  const packQty = Number(opts.packagingQuantity ?? opts.quantity ?? 1) || 1;
+  const packagingTotal = computePackagingCost(opts.pricing, packQty);
+  const packaging = packQty > 0 ? packagingTotal / packQty : 0;
   const supplyType = opts.pricing?.supply_type ?? "cost_plus_profit";
   const autoCalc = opts.pricing?.auto_calculate ?? true;
   const manual = Number(opts.pricing?.manual_base_price ?? 0);
 
   const computedBase = wacOrLast + packaging;
   const baseCost = autoCalc || !manual ? computedBase : manual;
+
 
   const overheadRate = Number(opts.overheadRate ?? 0);
   const overheadAmount = baseCost * (overheadRate / 100);
@@ -119,6 +161,9 @@ export function computeSupplyPrice(opts: {
 
   return {
     baseCost,
+    packagingPerUnit: packaging,
+    packagingTotal,
+
     withOverhead,
     overheadAmount,
     overheadRate,

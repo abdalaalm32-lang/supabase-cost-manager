@@ -129,11 +129,13 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
     (pricingRows as any[]).forEach((p: any) => priceByItem.set(p.transfer_item_id, p));
     const transferById = new Map<string, any>();
     (transfers as any[]).forEach((t: any) => transferById.set(t.id, t));
-    const map = new Map<string, { raw: number; packing: number; overhead: number; loaded: number; hasBreakdown: boolean }>();
+    const map = new Map<string, { raw: number; packing: number; overhead: number; loaded: number; sales: number; hasBreakdown: boolean }>();
     (transferItems as any[]).forEach((it: any) => {
       const p = priceByItem.get(it.id);
       const qty = Number(it.quantity) || 0;
-      const cur = map.get(it.transfer_id) || { raw: 0, packing: 0, overhead: 0, loaded: 0, hasBreakdown: false };
+      const cur = map.get(it.transfer_id) || { raw: 0, packing: 0, overhead: 0, loaded: 0, sales: 0, hasBreakdown: false };
+      const tr = transferById.get(it.transfer_id);
+      const profitPct = Number(policyByBranch[tr?.destination_id]?.is_active === false ? 0 : policyByBranch[tr?.destination_id]?.profit_percentage ?? 0);
       if (p && Number(p.final_unit_price) > 0) {
         const base = Number(p.base_cost ?? 0) * qty;
         const manuf = Number(p.manufacturing_cost ?? 0) * qty;
@@ -149,22 +151,24 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
         cur.packing += pack;
         cur.overhead += overhead;
         cur.loaded += loaded;
+        cur.sales += final;
       } else {
         // No pricing snapshot → transfer_items.total_cost IS the actual cost
         // (avg_cost × qty), not a supply price. Build the loaded cost forward.
-        const tr = transferById.get(it.transfer_id);
         const overheadRate = Number(tr?.overhead_rate_applied) || 0;
         const raw = Number(it.total_cost) || (Number(it.avg_cost) || 0) * qty;
         const overhead = raw * (overheadRate / 100);
         cur.raw += raw;
         cur.overhead += overhead;
         cur.loaded += raw + overhead;
+        cur.sales += (raw + overhead) * (1 + profitPct / 100);
       }
       cur.hasBreakdown = true;
       map.set(it.transfer_id, cur);
     });
     return map;
-  }, [pricingRows, transferItems, transfers]);
+  }, [pricingRows, transferItems, transfers, policyByBranch]);
+
 
 
 
@@ -212,22 +216,28 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
     const total = filtered.reduce((s, t) => s + t.grand, 0);
     const surcharge = filtered.reduce((s, t) => s + t.transport + t.loading, 0);
     const top = filtered.reduce<any>((best, t) => (!best || t.grand > best.grand ? t : best), null);
-    let rawCost = 0, packingCost = 0, overheadCost = 0;
+    let rawCost = 0, packingCost = 0, overheadCost = 0, internalSales = 0;
     filtered.forEach((t) => {
       const c = perTransferCosts.get(t.id);
       if (c && c.hasBreakdown) {
         rawCost += c.raw; packingCost += c.packing; overheadCost += c.overhead;
+        internalSales += c.sales;
       } else {
         // Header-only transfer (no item rows): total_cost is a cost figure → build forward.
         const raw = Number(t.itemsCost) || 0;
         const overheadRate = Number(t.overhead_rate_applied) || 0;
+        const pol = policyByBranch[t.destination_id];
+        const profitPct = pol?.is_active === false ? 0 : Number(pol?.profit_percentage ?? 0);
+        const loaded = raw + raw * (overheadRate / 100);
         rawCost += raw;
         overheadCost += raw * (overheadRate / 100);
+        internalSales += loaded * (1 + profitPct / 100);
       }
 
     });
-    return { count, total, surcharge, top, rawCost, packingCost, overheadCost };
-  }, [filtered, perTransferCosts]);
+    return { count, total, surcharge, top, rawCost, packingCost, overheadCost, internalSales };
+  }, [filtered, perTransferCosts, policyByBranch]);
+
 
 
   const branchName = branchFilter === "all"
@@ -386,12 +396,16 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3">
         <KpiCard icon={<Receipt size={20} className="text-primary"/>} tone="bg-primary/10"
           label="عدد الفواتير" value={String(kpis.count)} />
         <KpiCard icon={<DollarSign size={20} className="text-emerald-500"/>} tone="bg-emerald-500/10"
           label="إجمالي التوريدات" value={`${fmt(kpis.total)} ج.م`}
           hint="قيمة الخامات + النقل + التحميل" />
+        <KpiCard icon={<TrendingUp size={20} className="text-teal-500"/>} tone="bg-teal-500/10"
+          label="المبيعات الداخلية (P&L)" value={`${fmt(kpis.internalSales)} ج.م`}
+          hint="التكلفة المحمّلة + هامش ربح المخزن — مطابق لصفحة P&L" />
+
         <KpiCard icon={<Layers size={20} className="text-cyan-500"/>} tone="bg-cyan-500/10"
           label="تكلفة الخامات" value={`${fmt(kpis.rawCost)} ج.م`}
           hint="قبل الباكينج والمصاريف" />

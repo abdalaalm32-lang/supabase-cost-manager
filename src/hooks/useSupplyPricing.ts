@@ -161,6 +161,9 @@ export function computeSupplyPrice(opts: {
 
   return {
     baseCost,
+    packagingPerUnit: packaging,
+    packagingTotal,
+
     withOverhead,
     overheadAmount,
     overheadRate,

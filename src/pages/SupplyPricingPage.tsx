@@ -617,7 +617,6 @@ export const SupplyPricingPage: React.FC = () => {
                           <TableCell className="text-center text-xs">{fmt(Number(it.avg_cost) || 0)}</TableCell>
                           <TableCell className="text-center text-xs">{fmt(lastP)}</TableCell>
                           <TableCell className="text-center">
-                          <TableCell className="text-center">
                             <Input type="number" className="h-8 w-20 mx-auto text-xs text-center"
                               defaultValue={p?.packaging_cost ?? 0}
                               onBlur={(e) => {

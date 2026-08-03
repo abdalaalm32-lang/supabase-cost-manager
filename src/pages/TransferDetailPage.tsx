@@ -285,6 +285,8 @@ export const TransferDetailPage: React.FC = () => {
       pricing,
       policy: destPolicy,
       quantity: Math.max(Number(item.quantity) || 1, 1),
+      packagingQuantity: Number(item.quantity) || 0,
+
       overheadRate,
       transportPerUnitOverride: 0,
       loadingPerUnitOverride: 0,

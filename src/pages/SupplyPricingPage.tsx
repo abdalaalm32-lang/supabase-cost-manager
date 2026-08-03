@@ -224,6 +224,9 @@ export const SupplyPricingPage: React.FC = () => {
           stock_item_id: row.stock_item_id,
           supply_type: row.supply_type ?? "cost_plus_profit",
           packaging_cost: row.packaging_cost ?? 0,
+          packaging_type: row.packaging_type ?? "per_unit",
+          package_size: row.package_size ?? 1,
+
           auto_calculate: row.auto_calculate ?? true,
           manual_base_price: row.manual_base_price ?? null,
           is_available_for_transfer: row.is_available_for_transfer ?? true,

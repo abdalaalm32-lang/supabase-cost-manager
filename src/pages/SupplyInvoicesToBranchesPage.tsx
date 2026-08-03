@@ -216,22 +216,28 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
     const total = filtered.reduce((s, t) => s + t.grand, 0);
     const surcharge = filtered.reduce((s, t) => s + t.transport + t.loading, 0);
     const top = filtered.reduce<any>((best, t) => (!best || t.grand > best.grand ? t : best), null);
-    let rawCost = 0, packingCost = 0, overheadCost = 0;
+    let rawCost = 0, packingCost = 0, overheadCost = 0, internalSales = 0;
     filtered.forEach((t) => {
       const c = perTransferCosts.get(t.id);
       if (c && c.hasBreakdown) {
         rawCost += c.raw; packingCost += c.packing; overheadCost += c.overhead;
+        internalSales += c.sales;
       } else {
         // Header-only transfer (no item rows): total_cost is a cost figure → build forward.
         const raw = Number(t.itemsCost) || 0;
         const overheadRate = Number(t.overhead_rate_applied) || 0;
+        const pol = policyByBranch[t.destination_id];
+        const profitPct = pol?.is_active === false ? 0 : Number(pol?.profit_percentage ?? 0);
+        const loaded = raw + raw * (overheadRate / 100);
         rawCost += raw;
         overheadCost += raw * (overheadRate / 100);
+        internalSales += loaded * (1 + profitPct / 100);
       }
 
     });
-    return { count, total, surcharge, top, rawCost, packingCost, overheadCost };
-  }, [filtered, perTransferCosts]);
+    return { count, total, surcharge, top, rawCost, packingCost, overheadCost, internalSales };
+  }, [filtered, perTransferCosts, policyByBranch]);
+
 
 
   const branchName = branchFilter === "all"

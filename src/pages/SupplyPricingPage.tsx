@@ -16,12 +16,15 @@ import { useLocationStock } from "@/hooks/useLocationStock";
 import {
   computeSupplyPrice,
   computeMonthlyRate,
+  computePackagingCost,
+  PACKAGING_TYPE_LABELS,
   useBranchPolicies,
   useSupplyPricing,
   useWarehouseOverhead,
   useWarehouseMonthlyRates,
   type BranchSupplyPolicy,
   type SupplyPricingRow,
+  type PackagingType,
 } from "@/hooks/useSupplyPricing";
 import {
   Search, Package, Building2, Eye,

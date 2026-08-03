@@ -601,7 +601,7 @@ export const SupplyPricingPage: React.FC = () => {
                       overheadRate: currentRate.rate,
                     });
                     const isExpanded = expandedId === it.id;
-                    const colSpan = selectedBranchId !== "all" ? 14 : 13;
+                    const colSpan = selectedBranchId !== "all" ? 16 : 15;
                     return (
                       <React.Fragment key={`${it.id}-${p?.id ?? "new"}-${p?.last_calculated_at ?? ""}`}>
                         <TableRow className={cn("hover:bg-muted/30", !avail && "opacity-50")}>
@@ -713,7 +713,7 @@ export const SupplyPricingPage: React.FC = () => {
                   })}
                   {filteredItems.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={selectedBranchId !== "all" ? 14 : 13} className="text-center py-8 text-muted-foreground">لا توجد خامات</TableCell>
+                      <TableCell colSpan={selectedBranchId !== "all" ? 16 : 15} className="text-center py-8 text-muted-foreground">لا توجد خامات</TableCell>
                     </TableRow>
                   )}
                 </TableBody>

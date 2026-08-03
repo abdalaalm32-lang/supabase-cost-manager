@@ -129,11 +129,13 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
     (pricingRows as any[]).forEach((p: any) => priceByItem.set(p.transfer_item_id, p));
     const transferById = new Map<string, any>();
     (transfers as any[]).forEach((t: any) => transferById.set(t.id, t));
-    const map = new Map<string, { raw: number; packing: number; overhead: number; loaded: number; hasBreakdown: boolean }>();
+    const map = new Map<string, { raw: number; packing: number; overhead: number; loaded: number; sales: number; hasBreakdown: boolean }>();
     (transferItems as any[]).forEach((it: any) => {
       const p = priceByItem.get(it.id);
       const qty = Number(it.quantity) || 0;
-      const cur = map.get(it.transfer_id) || { raw: 0, packing: 0, overhead: 0, loaded: 0, hasBreakdown: false };
+      const cur = map.get(it.transfer_id) || { raw: 0, packing: 0, overhead: 0, loaded: 0, sales: 0, hasBreakdown: false };
+      const tr = transferById.get(it.transfer_id);
+      const profitPct = Number(policyByBranch[tr?.destination_id]?.is_active === false ? 0 : policyByBranch[tr?.destination_id]?.profit_percentage ?? 0);
       if (p && Number(p.final_unit_price) > 0) {
         const base = Number(p.base_cost ?? 0) * qty;
         const manuf = Number(p.manufacturing_cost ?? 0) * qty;
@@ -149,22 +151,24 @@ export const SupplyInvoicesToBranchesPage: React.FC = () => {
         cur.packing += pack;
         cur.overhead += overhead;
         cur.loaded += loaded;
+        cur.sales += final;
       } else {
         // No pricing snapshot → transfer_items.total_cost IS the actual cost
         // (avg_cost × qty), not a supply price. Build the loaded cost forward.
-        const tr = transferById.get(it.transfer_id);
         const overheadRate = Number(tr?.overhead_rate_applied) || 0;
         const raw = Number(it.total_cost) || (Number(it.avg_cost) || 0) * qty;
         const overhead = raw * (overheadRate / 100);
         cur.raw += raw;
         cur.overhead += overhead;
         cur.loaded += raw + overhead;
+        cur.sales += (raw + overhead) * (1 + profitPct / 100);
       }
       cur.hasBreakdown = true;
       map.set(it.transfer_id, cur);
     });
     return map;
-  }, [pricingRows, transferItems, transfers]);
+  }, [pricingRows, transferItems, transfers, policyByBranch]);
+
 
 
 

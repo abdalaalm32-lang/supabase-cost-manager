@@ -617,6 +617,7 @@ export const SupplyPricingPage: React.FC = () => {
                           <TableCell className="text-center text-xs">{fmt(Number(it.avg_cost) || 0)}</TableCell>
                           <TableCell className="text-center text-xs">{fmt(lastP)}</TableCell>
                           <TableCell className="text-center">
+                          <TableCell className="text-center">
                             <Input type="number" className="h-8 w-20 mx-auto text-xs text-center"
                               defaultValue={p?.packaging_cost ?? 0}
                               onBlur={(e) => {
@@ -625,6 +626,27 @@ export const SupplyPricingPage: React.FC = () => {
                               }}/>
                           </TableCell>
                           <TableCell className="text-center">
+                            <Select value={(p?.packaging_type ?? "per_unit") as PackagingType}
+                              onValueChange={(v: PackagingType) => upsertPricing({ stock_item_id: it.id, packaging_type: v })}>
+                              <SelectTrigger className="h-8 w-[130px] mx-auto text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="per_unit">{PACKAGING_TYPE_LABELS.per_unit}</SelectItem>
+                                <SelectItem value="per_transfer">{PACKAGING_TYPE_LABELS.per_transfer}</SelectItem>
+                                <SelectItem value="per_package">{PACKAGING_TYPE_LABELS.per_package}</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Input type="number" step="0.001"
+                              className="h-8 w-20 mx-auto text-xs text-center"
+                              disabled={(p?.packaging_type ?? "per_unit") !== "per_package"}
+                              defaultValue={p?.package_size ?? 1}
+                              onBlur={(e) => {
+                                const v = Number(e.target.value) || 0;
+                                if (v !== Number(p?.package_size ?? 1)) upsertPricing({ stock_item_id: it.id, package_size: v > 0 ? v : 1 });
+                              }}/>
+                          </TableCell>
+
                             <Switch checked={avail}
                               onCheckedChange={(v) => upsertPricing({ stock_item_id: it.id, is_available_for_transfer: v })}/>
                           </TableCell>

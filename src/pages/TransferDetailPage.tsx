@@ -402,11 +402,13 @@ export const TransferDetailPage: React.FC = () => {
       const pricing = pricingMap[item.stock_item_id];
       const baseWac = Number(item.wac ?? item.avg_cost) || 0;
       const quantity = Math.max(Number(item.quantity) || 1, 1);
+      const realQty = Number(item.quantity) || 0;
       const calc = computeSupplyPrice({
         wac: baseWac,
         pricing,
         policy: destPolicy,
         quantity,
+        packagingQuantity: realQty,
         overheadRate: appliedRate,
         transportPerUnitOverride: 0,
         loadingPerUnitOverride: 0,
@@ -418,7 +420,10 @@ export const TransferDetailPage: React.FC = () => {
         transfer_item_id: insertedItem.id,
         base_cost: baseWac,
         manufacturing_cost: 0,
-        packaging_cost: Number(pricing?.packaging_cost ?? 0),
+        // Stored per-unit so downstream reports (× qty) reproduce the real
+        // packaging spend for this line, whatever the packaging model is.
+        packaging_cost: calc.packagingPerUnit,
+
         transport_cost: 0,
         loading_cost: 0,
         profit_amount: Math.max(finalUnitPrice - loadedUnitCost, 0),

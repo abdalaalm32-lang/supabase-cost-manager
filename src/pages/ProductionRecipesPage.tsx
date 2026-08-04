@@ -36,6 +36,7 @@ interface LocalIngredient {
   stock_unit: string;
   conversion_factor: number;
   qty: number; // in recipe_unit
+  qtyStr?: string; // raw input text (allows typing 0.06 / 0.900 freely)
   avg_cost: number; // per stock_unit (e.g. per kg)
   affects_waste: boolean;
 }
@@ -254,6 +255,7 @@ export const ProductionRecipesPage: React.FC = () => {
           stock_unit: si?.stock_unit || "كجم",
           conversion_factor: Number(si?.conversion_factor) || 1,
           qty: Number(ri.qty),
+          qtyStr: Number(ri.qty) ? String(Number(ri.qty)) : "",
           avg_cost: Number(si?.avg_cost || 0),
           affects_waste: ri.affects_waste ?? true,
         };
@@ -314,6 +316,7 @@ export const ProductionRecipesPage: React.FC = () => {
         stock_unit: si.stock_unit || "كجم",
         conversion_factor: Number(si.conversion_factor) || 1,
         qty: 0,
+        qtyStr: "",
         avg_cost: Number(si.avg_cost) || 0,
         affects_waste: true,
       };
@@ -329,7 +332,16 @@ export const ProductionRecipesPage: React.FC = () => {
   };
 
   const updateIngredientQty = (idx: number, val: string) => {
-    setIngredients(prev => prev.map((ing, i) => i === idx ? { ...ing, qty: Number(val) || 0 } : ing));
+    // allow free typing: "", "0.", "0.06", ".9", "0.900"
+    let clean = val.replace(/[^\d.]/g, "");
+    const firstDot = clean.indexOf(".");
+    if (firstDot !== -1) {
+      clean = clean.slice(0, firstDot + 1) + clean.slice(firstDot + 1).replace(/\./g, "");
+    }
+    const parsed = parseFloat(clean);
+    setIngredients(prev => prev.map((ing, i) =>
+      i === idx ? { ...ing, qtyStr: clean, qty: isNaN(parsed) ? 0 : parsed } : ing
+    ));
   };
 
   const toggleIngredientWaste = (idx: number) => {
@@ -865,13 +877,15 @@ export const ProductionRecipesPage: React.FC = () => {
                                 <span className="text-sm">{ing.qty}</span>
                               ) : (
                                 <Input
-                                  type="number"
-                                  min="0"
-                                  step="0.001"
-                                  value={ing.qty || ""}
+                                  type="text"
+                                  inputMode="decimal"
+                                  dir="ltr"
+                                  placeholder="0.000"
+                                  value={ing.qtyStr ?? (ing.qty ? String(ing.qty) : "")}
                                   onChange={e => updateIngredientQty(idx, e.target.value)}
                                   className="w-24 h-8 text-sm text-center"
                                 />
+
                               )}
                               {(ing.conversion_factor || 1) !== 1 && (
                                 <span className="block text-[10px] text-muted-foreground mt-0.5">

@@ -877,13 +877,15 @@ export const ProductionRecipesPage: React.FC = () => {
                                 <span className="text-sm">{ing.qty}</span>
                               ) : (
                                 <Input
-                                  type="number"
-                                  min="0"
-                                  step="0.001"
-                                  value={ing.qty || ""}
+                                  type="text"
+                                  inputMode="decimal"
+                                  dir="ltr"
+                                  placeholder="0.000"
+                                  value={ing.qtyStr ?? (ing.qty ? String(ing.qty) : "")}
                                   onChange={e => updateIngredientQty(idx, e.target.value)}
                                   className="w-24 h-8 text-sm text-center"
                                 />
+
                               )}
                               {(ing.conversion_factor || 1) !== 1 && (
                                 <span className="block text-[10px] text-muted-foreground mt-0.5">

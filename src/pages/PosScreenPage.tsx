@@ -53,6 +53,7 @@ const PAYMENT_METHODS = [
   { value: "كاش", label: "كاش", icon: Banknote },
   { value: "فيزا", label: "فيزا", icon: CreditCard },
   { value: "انستا باي", label: "انستا باي", icon: Banknote },
+  { value: "فودافون كاش", label: "فودافون كاش", icon: Smartphone },
 ];
 
 const DELIVERY_STATUSES = [
@@ -854,23 +855,18 @@ export const PosScreenPage: React.FC = () => {
               {/* Payment Method Selector */}
               <div className="flex gap-2 mb-2">
                 <div className="flex-1">
-                  <div className="flex rounded-lg border border-border/50 overflow-hidden">
-                    {PAYMENT_METHODS.map((method) => (
-                      <button
-                        key={method.value}
-                        className={cn(
-                          "flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-[10px] font-medium transition-colors",
-                          paymentMethod === method.value
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted/30 text-muted-foreground hover:bg-muted/60"
-                        )}
-                        onClick={() => setPaymentMethod(method.value)}
-                      >
-                        <method.icon className="h-3 w-3" />
-                        {method.label}
-                      </button>
-                    ))}
-                  </div>
+                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="طريقة الدفع" />
+                    </SelectTrigger>
+                    <SelectContent className="z-50 bg-popover">
+                      {PAYMENT_METHODS.map((method) => (
+                        <SelectItem key={method.value} value={method.value} className="text-xs">
+                          <span className="flex items-center gap-2"><method.icon className="h-3.5 w-3.5" />{method.label}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 

@@ -23,7 +23,7 @@ import {
   Search, Maximize, Minimize, Pause, User, Keyboard,
   UtensilsCrossed, ShoppingBag, Truck, Banknote, CreditCard, Bell,
   ChefHat, CheckCircle2, Clock, MapPin, Phone, PlayCircle
-} from "lucide-react";
+, Smartphone } from "lucide-react";
 import { printCustomerReceipt, printKitchenReceipt, printViaIframe } from "@/lib/posPrintUtils";
 import { PosHeldInvoices } from "@/components/pos/PosHeldInvoices";
 

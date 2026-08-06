@@ -488,7 +488,7 @@ export const WasteListPage: React.FC = () => {
 
             <div>
               <Label>نوع الموقع</Label>
-              <Select value={locationType} onValueChange={(v: any) => { setLocationType(v); setLocationId(""); }}>
+              <Select value={locationType} onValueChange={(v: any) => { setLocationType(v); setLocationId(""); if (v !== "branch") setDepartmentId(""); }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="branch">فرع</SelectItem>
@@ -509,6 +509,7 @@ export const WasteListPage: React.FC = () => {
               </Select>
             </div>
 
+            {locationType === "branch" && (
             <div>
               <Label>القسم (اختياري)</Label>
               <Select value={departmentId} onValueChange={setDepartmentId}>
@@ -521,6 +522,7 @@ export const WasteListPage: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
+            )}
 
             <div>
               <Label>ملاحظة إدارية (اختياري)</Label>

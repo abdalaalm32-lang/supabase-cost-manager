@@ -70,8 +70,15 @@ export const PosShiftsPage: React.FC = () => {
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_company_profiles_directory", { _company_id: companyId! });
       if (error) throw error;
+      const { data: roles } = await supabase.from("job_roles").select("id, name").eq("company_id", companyId!);
+      const isCashierText = (t?: string | null) => {
+        const v = (t || "").toLowerCase();
+        return v.includes("كاشير") || v.includes("cashier");
+      };
+      const cashierRoleIds = new Set((roles || []).filter((r: any) => isCashierText(r.name)).map((r: any) => r.id));
       return (data || [])
         .filter((p: any) => p.status === "نشط")
+        .filter((p: any) => (p.job_role_id && cashierRoleIds.has(p.job_role_id)))
         .map((p: any) => ({ id: p.id, full_name: p.full_name, user_code: p.user_code }))
         .sort((a: any, b: any) => (a.full_name || "").localeCompare(b.full_name || ""));
     },
@@ -351,18 +358,18 @@ export const PosShiftsPage: React.FC = () => {
                     ) : (
                       shifts.map((shift: any) => (
                         <TableRow key={shift.id} className="border-border/30 hover:bg-muted/30">
-                          <TableCell className="font-mono text-xs font-bold text-primary py-3 whitespace-nowrap">{shift.shift_number || "—"}</TableCell>
-                          <TableCell className="text-sm py-3 whitespace-nowrap">{shift.shift_name || "—"}</TableCell>
-                          <TableCell className="py-3 whitespace-nowrap">
+                          <TableCell className="text-right font-mono text-xs font-bold text-primary py-3 whitespace-nowrap">{shift.shift_number || "—"}</TableCell>
+                          <TableCell className="text-right text-sm py-3 whitespace-nowrap">{shift.shift_name || "—"}</TableCell>
+                          <TableCell className="text-right py-3 whitespace-nowrap">
                             <Badge variant={shift.status === "مفتوح" ? "default" : "secondary"} className={cn("text-[10px]", shift.status === "مفتوح" && "bg-green-500/20 text-green-500 border-green-500/30")}>
                               {shift.status}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-sm py-3 whitespace-nowrap">{shift.opened_by || "—"}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground py-3 whitespace-nowrap">{format(new Date(shift.opened_at), "yyyy/MM/dd HH:mm")}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground py-3 whitespace-nowrap">{shift.closed_at ? format(new Date(shift.closed_at), "yyyy/MM/dd HH:mm") : "—"}</TableCell>
-                          <TableCell className="font-bold text-sm py-3 whitespace-nowrap">{(shift.opening_cash || 0).toFixed(2)} EGP</TableCell>
-                          <TableCell className="font-bold text-sm py-3 whitespace-nowrap">{shift.actual_cash != null ? `${Number(shift.actual_cash).toFixed(2)} EGP` : "—"}</TableCell>
+                          <TableCell className="text-right text-sm py-3 whitespace-nowrap">{shift.opened_by || "—"}</TableCell>
+                          <TableCell className="text-right text-xs text-muted-foreground py-3 whitespace-nowrap">{format(new Date(shift.opened_at), "yyyy/MM/dd HH:mm")}</TableCell>
+                          <TableCell className="text-right text-xs text-muted-foreground py-3 whitespace-nowrap">{shift.closed_at ? format(new Date(shift.closed_at), "yyyy/MM/dd HH:mm") : "—"}</TableCell>
+                          <TableCell className="text-right font-bold text-sm py-3 whitespace-nowrap">{(shift.opening_cash || 0).toFixed(2)} EGP</TableCell>
+                          <TableCell className="text-right font-bold text-sm py-3 whitespace-nowrap">{shift.actual_cash != null ? `${Number(shift.actual_cash).toFixed(2)} EGP` : "—"}</TableCell>
                           <TableCell className="text-center py-3 whitespace-nowrap">
                             <div className="flex items-center justify-center gap-1">
                               <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setDetailShift(shift)} title="تفاصيل"><Eye className="h-4 w-4" /></Button>

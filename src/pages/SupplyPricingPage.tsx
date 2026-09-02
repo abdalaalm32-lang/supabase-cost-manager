@@ -642,8 +642,30 @@ export const SupplyPricingPage: React.FC = () => {
                   {branches.map((b: any) => (<SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>))}
                 </SelectContent>
               </Select>
+              <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                <SelectTrigger className="w-[180px]"><SelectValue placeholder="القسم" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">كل الأقسام</SelectItem>
+                  {departments.map((d: any) => (<SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>))}
+                </SelectContent>
+              </Select>
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-[190px]"><SelectValue placeholder="المجموعة" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">كل المجموعات</SelectItem>
+                  {categoryOptions.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}
+                </SelectContent>
+              </Select>
+              {(departmentFilter !== "all" || categoryFilter !== "all" || search || availFilter !== "all" || supplyTypeFilter !== "all") && (
+                <Button variant="outline" size="sm" onClick={() => {
+                  setSearch(""); setDepartmentFilter("all"); setCategoryFilter("all");
+                  setAvailFilter("all"); setSupplyTypeFilter("all");
+                }}>مسح الفلاتر</Button>
+              )}
+              <Badge variant="outline" className="h-9 px-3">النتائج: <b className="mx-1 text-primary">{filteredItems.length}</b></Badge>
             </CardContent>
           </Card>
+
 
           <Card>
             <CardContent className="p-0 overflow-x-auto">

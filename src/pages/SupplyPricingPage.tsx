@@ -253,11 +253,24 @@ export const SupplyPricingPage: React.FC = () => {
   const [supplyTypeFilter, setSupplyTypeFilter] = useState<"all" | "cost" | "cost_plus_profit">("all");
   const [availFilter, setAvailFilter] = useState<"all" | "yes" | "no">("all");
   const [selectedBranchId, setSelectedBranchId] = useState<string>("all");
+  const [departmentFilter, setDepartmentFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+
+  // Categories present in the current warehouse items
+  const categoryOptions = useMemo(() => {
+    const m = new Map<string, string>();
+    stockItems.forEach((it: any) => {
+      if (it.category_id) m.set(it.category_id, it.inventory_categories?.name ?? "—");
+    });
+    return Array.from(m, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, "ar"));
+  }, [stockItems]);
 
   const filteredItems = useMemo(() => {
     const q = search.trim().toLowerCase();
     return stockItems.filter((it: any) => {
       if (q && !`${it.name} ${it.code ?? ""}`.toLowerCase().includes(q)) return false;
+      if (categoryFilter !== "all" && it.category_id !== categoryFilter) return false;
+      if (departmentFilter !== "all" && !(deptsByItem.get(it.id)?.has(departmentFilter))) return false;
       const p = pricingByItem.get(it.id);
       const type = p?.supply_type ?? "cost_plus_profit";
       if (supplyTypeFilter !== "all" && type !== supplyTypeFilter) return false;
@@ -266,7 +279,8 @@ export const SupplyPricingPage: React.FC = () => {
       if (availFilter === "no" && avail) return false;
       return true;
     });
-  }, [stockItems, search, supplyTypeFilter, availFilter, pricingByItem]);
+  }, [stockItems, search, supplyTypeFilter, availFilter, pricingByItem, categoryFilter, departmentFilter, deptsByItem]);
+
 
   const kpis = useMemo(() => {
     const total = stockItems.length;

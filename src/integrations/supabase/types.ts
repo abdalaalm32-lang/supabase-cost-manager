@@ -2555,6 +2555,51 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_item_branch_prices: {
+        Row: {
+          branch_id: string
+          company_id: string
+          created_at: string
+          id: string
+          manual_base_price: number | null
+          stock_item_id: string
+          updated_at: string
+        }
+        Insert: {
+          branch_id: string
+          company_id: string
+          created_at?: string
+          id?: string
+          manual_base_price?: number | null
+          stock_item_id: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          manual_base_price?: number | null
+          stock_item_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_item_branch_prices_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_item_branch_prices_stock_item_id_fkey"
+            columns: ["stock_item_id"]
+            isOneToOne: false
+            referencedRelation: "stock_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_item_categories: {
         Row: {
           category_id: string

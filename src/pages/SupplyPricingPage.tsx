@@ -17,6 +17,8 @@ import {
   computeSupplyPrice,
   computeMonthlyRate,
   computePackagingCost,
+  applyBranchManualPrice,
+  useBranchManualPrices,
   PACKAGING_TYPE_LABELS,
   useBranchPolicies,
   useSupplyPricing,
@@ -128,8 +130,78 @@ export const SupplyPricingPage: React.FC = () => {
 
   const { data: pricing = [] } = useSupplyPricing(companyId);
   const { data: policies = [] } = useBranchPolicies(companyId);
+  const { data: branchManualPrices = [] } = useBranchManualPrices(companyId);
   const { data: overhead = [] } = useWarehouseOverhead(companyId, selectedWarehouseId);
   const { data: monthlyRates = [] } = useWarehouseMonthlyRates(companyId, selectedWarehouseId);
+
+  // Departments + item↔department links (for filtering)
+  const { data: departments = [] } = useQuery({
+    queryKey: ["departments-supply", companyId],
+    enabled: !!companyId,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("departments")
+        .select("id, name")
+        .eq("company_id", companyId!)
+        .order("name");
+      return data ?? [];
+    },
+  });
+
+  const { data: itemDepartments = [] } = useQuery({
+    queryKey: ["stock-item-departments-supply", companyId],
+    enabled: !!companyId,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("stock_item_departments")
+        .select("stock_item_id, department_id")
+        .eq("company_id", companyId!);
+      return data ?? [];
+    },
+  });
+
+  const deptsByItem = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    (itemDepartments as any[]).forEach((r) => {
+      if (!m.has(r.stock_item_id)) m.set(r.stock_item_id, new Set());
+      m.get(r.stock_item_id)!.add(r.department_id);
+    });
+    return m;
+  }, [itemDepartments]);
+
+  // Manual price map: `${stock_item_id}|${branch_id}` → price
+  const branchManualMap = useMemo(() => {
+    const m = new Map<string, number>();
+    branchManualPrices.forEach((r) => {
+      if (r.manual_base_price != null) m.set(`${r.stock_item_id}|${r.branch_id}`, Number(r.manual_base_price));
+    });
+    return m;
+  }, [branchManualPrices]);
+
+  const getBranchManual = (itemId: string, branchId: string) => branchManualMap.get(`${itemId}|${branchId}`) ?? null;
+
+  const upsertBranchManual = async (itemId: string, branchId: string, value: number | null) => {
+    if (!companyId) return;
+    const existing = branchManualPrices.find((r) => r.stock_item_id === itemId && r.branch_id === branchId);
+    if (existing) {
+      const { error } = await (supabase as any)
+        .from("stock_item_branch_prices")
+        .update({ manual_base_price: value })
+        .eq("id", existing.id);
+      if (error) { toast({ title: "خطأ", description: error.message, variant: "destructive" }); return; }
+    } else {
+      const { error } = await (supabase as any).from("stock_item_branch_prices").insert({
+        company_id: companyId,
+        stock_item_id: itemId,
+        branch_id: branchId,
+        manual_base_price: value,
+      });
+      if (error) { toast({ title: "خطأ", description: error.message, variant: "destructive" }); return; }
+    }
+    await qc.refetchQueries({ queryKey: ["branch-manual-prices", companyId] });
+    toast({ title: "تم", description: value == null ? "تم إلغاء السعر اليدوي لهذا الفرع" : "تم حفظ السعر اليدوي للفرع" });
+  };
+
 
   // last purchase prices
   const { data: lastPurchases = {} } = useQuery({
@@ -181,11 +253,24 @@ export const SupplyPricingPage: React.FC = () => {
   const [supplyTypeFilter, setSupplyTypeFilter] = useState<"all" | "cost" | "cost_plus_profit">("all");
   const [availFilter, setAvailFilter] = useState<"all" | "yes" | "no">("all");
   const [selectedBranchId, setSelectedBranchId] = useState<string>("all");
+  const [departmentFilter, setDepartmentFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+
+  // Categories present in the current warehouse items
+  const categoryOptions = useMemo(() => {
+    const m = new Map<string, string>();
+    stockItems.forEach((it: any) => {
+      if (it.category_id) m.set(it.category_id, it.inventory_categories?.name ?? "—");
+    });
+    return Array.from(m, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, "ar"));
+  }, [stockItems]);
 
   const filteredItems = useMemo(() => {
     const q = search.trim().toLowerCase();
     return stockItems.filter((it: any) => {
       if (q && !`${it.name} ${it.code ?? ""}`.toLowerCase().includes(q)) return false;
+      if (categoryFilter !== "all" && it.category_id !== categoryFilter) return false;
+      if (departmentFilter !== "all" && !(deptsByItem.get(it.id)?.has(departmentFilter))) return false;
       const p = pricingByItem.get(it.id);
       const type = p?.supply_type ?? "cost_plus_profit";
       if (supplyTypeFilter !== "all" && type !== supplyTypeFilter) return false;
@@ -194,7 +279,8 @@ export const SupplyPricingPage: React.FC = () => {
       if (availFilter === "no" && avail) return false;
       return true;
     });
-  }, [stockItems, search, supplyTypeFilter, availFilter, pricingByItem]);
+  }, [stockItems, search, supplyTypeFilter, availFilter, pricingByItem, categoryFilter, departmentFilter, deptsByItem]);
+
 
   const kpis = useMemo(() => {
     const total = stockItems.length;
@@ -364,7 +450,7 @@ export const SupplyPricingPage: React.FC = () => {
     return Number.isFinite(v) ? v : Number(it.current_stock) || 0;
   };
 
-  // Per-branch final unit price
+  // Per-branch final unit price (respects a per-branch manual price when set)
   const computeBranchFinal = (it: any, branchId: string): number => {
     const p = pricingByItem.get(it.id);
     const pol = policies.find((x) => x.branch_id === branchId);
@@ -373,13 +459,14 @@ export const SupplyPricingPage: React.FC = () => {
       wac: Number(it.avg_cost) || 0,
       lastPurchasePrice: lastPurchases[it.id] ?? 0,
       currentStock: liveBalance(it),
-      pricing: p,
+      pricing: applyBranchManualPrice(p, getBranchManual(it.id, branchId)),
       policy: pol,
       overheadRate: currentRate.rate,
       quantity: 1,
     });
     return r.finalUnitPrice;
   };
+
 
   const selectedBranch = branches.find((b: any) => b.id === selectedBranchId);
 
@@ -555,8 +642,30 @@ export const SupplyPricingPage: React.FC = () => {
                   {branches.map((b: any) => (<SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>))}
                 </SelectContent>
               </Select>
+              <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                <SelectTrigger className="w-[180px]"><SelectValue placeholder="القسم" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">كل الأقسام</SelectItem>
+                  {departments.map((d: any) => (<SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>))}
+                </SelectContent>
+              </Select>
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-[190px]"><SelectValue placeholder="المجموعة" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">كل المجموعات</SelectItem>
+                  {categoryOptions.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}
+                </SelectContent>
+              </Select>
+              {(departmentFilter !== "all" || categoryFilter !== "all" || search || availFilter !== "all" || supplyTypeFilter !== "all") && (
+                <Button variant="outline" size="sm" onClick={() => {
+                  setSearch(""); setDepartmentFilter("all"); setCategoryFilter("all");
+                  setAvailFilter("all"); setSupplyTypeFilter("all");
+                }}>مسح الفلاتر</Button>
+              )}
+              <Badge variant="outline" className="h-9 px-3">النتائج: <b className="mx-1 text-primary">{filteredItems.length}</b></Badge>
             </CardContent>
           </Card>
+
 
           <Card>
             <CardContent className="p-0 overflow-x-auto">
@@ -685,7 +794,7 @@ export const SupplyPricingPage: React.FC = () => {
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <div>
                                   <label className="text-xs text-muted-foreground flex items-center gap-1">
-                                    سعر يدوي
+                                    سعر يدوي عام (كل الفروع)
                                     <span className="text-[10px] text-amber-600">(يلغي الحساب التلقائي)</span>
                                   </label>
                                   <Input type="number" className="mt-1 h-9"
@@ -707,6 +816,49 @@ export const SupplyPricingPage: React.FC = () => {
                                   </p>
                                 </div>
                               </div>
+
+                              {/* Per-branch manual prices */}
+                              <div className="mt-4 rounded-lg border bg-card p-3">
+                                <p className="text-xs font-bold flex items-center gap-1 mb-1">
+                                  <Building2 size={14} className="text-primary" /> سعر يدوي لكل فرع
+                                </p>
+                                <p className="text-[11px] text-muted-foreground mb-3">
+                                  السعر اليدوي هنا يخص الفرع المحدد فقط ويحل محل السعر الأساسي قبل التحميل والربح. اترك الخانة فارغة ليعمل الفرع بالسعر التلقائي/العام.
+                                </p>
+                                {branches.length === 0 ? (
+                                  <p className="text-xs text-muted-foreground">لا توجد فروع مفعّلة</p>
+                                ) : (
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                    {branches.map((br: any) => {
+                                      const bm = getBranchManual(it.id, br.id);
+                                      return (
+                                        <div key={br.id} className="rounded-md border p-2 space-y-1">
+                                          <div className="flex items-center justify-between gap-2">
+                                            <span className="text-xs font-medium">{br.name}</span>
+                                            {bm != null && <Badge className="text-[10px] bg-amber-500/15 text-amber-700 border-amber-500/30" variant="outline">يدوي</Badge>}
+                                          </div>
+                                          <Input
+                                            key={`${it.id}-${br.id}-${bm ?? "auto"}`}
+                                            type="number" step="0.01" className="h-8 text-xs"
+                                            placeholder="تلقائي"
+                                            defaultValue={bm ?? ""}
+                                            onBlur={(e) => {
+                                              const raw = e.target.value.trim();
+                                              const next = raw === "" ? null : Number(raw) || 0;
+                                              if ((next ?? null) === (bm ?? null)) return;
+                                              void upsertBranchManual(it.id, br.id, next);
+                                            }}
+                                          />
+                                          <div className="text-[11px] text-muted-foreground">
+                                            السعر النهائي: <b className="text-emerald-600">{fmt(computeBranchFinal(it, br.id))}</b>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+
                             </TableCell>
                           </TableRow>
                         )}

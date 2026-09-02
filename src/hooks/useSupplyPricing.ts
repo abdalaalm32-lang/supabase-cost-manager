@@ -34,6 +34,38 @@ export type SupplyPricingRow = {
   is_available_for_transfer?: boolean;
 };
 
+export type BranchManualPrice = {
+  id: string;
+  company_id: string;
+  stock_item_id: string;
+  branch_id: string;
+  manual_base_price: number | null;
+};
+
+/** Merge a per-branch manual price (if any) on top of the global pricing row. */
+export function applyBranchManualPrice(
+  pricing: Partial<SupplyPricingRow> | null | undefined,
+  branchManual?: number | null,
+): Partial<SupplyPricingRow> | null | undefined {
+  if (branchManual == null || !(Number(branchManual) > 0)) return pricing;
+  return { ...(pricing ?? {}), manual_base_price: Number(branchManual), auto_calculate: false };
+}
+
+/** Per-branch manual supply prices for a company, keyed `${stock_item_id}|${branch_id}`. */
+export function useBranchManualPrices(companyId?: string) {
+  return useQuery({
+    queryKey: ["branch-manual-prices", companyId],
+    enabled: !!companyId,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("stock_item_branch_prices")
+        .select("*")
+        .eq("company_id", companyId);
+      return (data ?? []) as BranchManualPrice[];
+    },
+  });
+}
+
 /**
  * Total packaging cost for a transferred quantity, respecting the packaging model:
  *  - per_unit     → cost × quantity (stretch film, vacuum bags…)

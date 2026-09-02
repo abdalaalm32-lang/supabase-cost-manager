@@ -794,7 +794,7 @@ export const SupplyPricingPage: React.FC = () => {
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <div>
                                   <label className="text-xs text-muted-foreground flex items-center gap-1">
-                                    سعر يدوي
+                                    سعر يدوي عام (كل الفروع)
                                     <span className="text-[10px] text-amber-600">(يلغي الحساب التلقائي)</span>
                                   </label>
                                   <Input type="number" className="mt-1 h-9"
@@ -816,6 +816,49 @@ export const SupplyPricingPage: React.FC = () => {
                                   </p>
                                 </div>
                               </div>
+
+                              {/* Per-branch manual prices */}
+                              <div className="mt-4 rounded-lg border bg-card p-3">
+                                <p className="text-xs font-bold flex items-center gap-1 mb-1">
+                                  <Building2 size={14} className="text-primary" /> سعر يدوي لكل فرع
+                                </p>
+                                <p className="text-[11px] text-muted-foreground mb-3">
+                                  السعر اليدوي هنا يخص الفرع المحدد فقط ويحل محل السعر الأساسي قبل التحميل والربح. اترك الخانة فارغة ليعمل الفرع بالسعر التلقائي/العام.
+                                </p>
+                                {branches.length === 0 ? (
+                                  <p className="text-xs text-muted-foreground">لا توجد فروع مفعّلة</p>
+                                ) : (
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                    {branches.map((br: any) => {
+                                      const bm = getBranchManual(it.id, br.id);
+                                      return (
+                                        <div key={br.id} className="rounded-md border p-2 space-y-1">
+                                          <div className="flex items-center justify-between gap-2">
+                                            <span className="text-xs font-medium">{br.name}</span>
+                                            {bm != null && <Badge className="text-[10px] bg-amber-500/15 text-amber-700 border-amber-500/30" variant="outline">يدوي</Badge>}
+                                          </div>
+                                          <Input
+                                            key={`${it.id}-${br.id}-${bm ?? "auto"}`}
+                                            type="number" step="0.01" className="h-8 text-xs"
+                                            placeholder="تلقائي"
+                                            defaultValue={bm ?? ""}
+                                            onBlur={(e) => {
+                                              const raw = e.target.value.trim();
+                                              const next = raw === "" ? null : Number(raw) || 0;
+                                              if ((next ?? null) === (bm ?? null)) return;
+                                              void upsertBranchManual(it.id, br.id, next);
+                                            }}
+                                          />
+                                          <div className="text-[11px] text-muted-foreground">
+                                            السعر النهائي: <b className="text-emerald-600">{fmt(computeBranchFinal(it, br.id))}</b>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+
                             </TableCell>
                           </TableRow>
                         )}

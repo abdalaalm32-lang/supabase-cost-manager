@@ -235,15 +235,23 @@ export const TransferDetailPage: React.FC = () => {
         setOverheadRate(0);
         return;
       }
-      const [{ data: prc }, { data: pol }] = await Promise.all([
+      const [{ data: prc }, { data: pol }, { data: branchPrices }] = await Promise.all([
         (supabase as any).from("stock_item_supply_pricing").select("*").eq("company_id", companyId),
         (supabase as any).from("branch_supply_policies").select("*").eq("branch_id", destinationId).maybeSingle(),
+        (supabase as any).from("stock_item_branch_prices").select("stock_item_id, manual_base_price").eq("company_id", companyId).eq("branch_id", destinationId),
       ]);
       if (cancelled) return;
       const map: Record<string, any> = {};
       (prc ?? []).forEach((r: any) => { map[r.stock_item_id] = r; });
+      // Per-branch manual price overrides the global base price for this destination only
+      (branchPrices ?? []).forEach((r: any) => {
+        const v = Number(r.manual_base_price);
+        if (!(v > 0)) return;
+        map[r.stock_item_id] = { ...(map[r.stock_item_id] ?? {}), manual_base_price: v, auto_calculate: false };
+      });
       setPricingMap(map);
       setDestPolicy(pol);
+
       const month = (date || new Date().toISOString().slice(0, 10)).slice(0, 7);
       const rate = await resolveOverheadRate(sourceId, month);
       if (!cancelled) setOverheadRate(Number(rate) || 0);

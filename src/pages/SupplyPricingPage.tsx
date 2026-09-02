@@ -130,8 +130,78 @@ export const SupplyPricingPage: React.FC = () => {
 
   const { data: pricing = [] } = useSupplyPricing(companyId);
   const { data: policies = [] } = useBranchPolicies(companyId);
+  const { data: branchManualPrices = [] } = useBranchManualPrices(companyId);
   const { data: overhead = [] } = useWarehouseOverhead(companyId, selectedWarehouseId);
   const { data: monthlyRates = [] } = useWarehouseMonthlyRates(companyId, selectedWarehouseId);
+
+  // Departments + item↔department links (for filtering)
+  const { data: departments = [] } = useQuery({
+    queryKey: ["departments-supply", companyId],
+    enabled: !!companyId,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("departments")
+        .select("id, name")
+        .eq("company_id", companyId!)
+        .order("name");
+      return data ?? [];
+    },
+  });
+
+  const { data: itemDepartments = [] } = useQuery({
+    queryKey: ["stock-item-departments-supply", companyId],
+    enabled: !!companyId,
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("stock_item_departments")
+        .select("stock_item_id, department_id")
+        .eq("company_id", companyId!);
+      return data ?? [];
+    },
+  });
+
+  const deptsByItem = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    (itemDepartments as any[]).forEach((r) => {
+      if (!m.has(r.stock_item_id)) m.set(r.stock_item_id, new Set());
+      m.get(r.stock_item_id)!.add(r.department_id);
+    });
+    return m;
+  }, [itemDepartments]);
+
+  // Manual price map: `${stock_item_id}|${branch_id}` → price
+  const branchManualMap = useMemo(() => {
+    const m = new Map<string, number>();
+    branchManualPrices.forEach((r) => {
+      if (r.manual_base_price != null) m.set(`${r.stock_item_id}|${r.branch_id}`, Number(r.manual_base_price));
+    });
+    return m;
+  }, [branchManualPrices]);
+
+  const getBranchManual = (itemId: string, branchId: string) => branchManualMap.get(`${itemId}|${branchId}`) ?? null;
+
+  const upsertBranchManual = async (itemId: string, branchId: string, value: number | null) => {
+    if (!companyId) return;
+    const existing = branchManualPrices.find((r) => r.stock_item_id === itemId && r.branch_id === branchId);
+    if (existing) {
+      const { error } = await (supabase as any)
+        .from("stock_item_branch_prices")
+        .update({ manual_base_price: value })
+        .eq("id", existing.id);
+      if (error) { toast({ title: "خطأ", description: error.message, variant: "destructive" }); return; }
+    } else {
+      const { error } = await (supabase as any).from("stock_item_branch_prices").insert({
+        company_id: companyId,
+        stock_item_id: itemId,
+        branch_id: branchId,
+        manual_base_price: value,
+      });
+      if (error) { toast({ title: "خطأ", description: error.message, variant: "destructive" }); return; }
+    }
+    await qc.refetchQueries({ queryKey: ["branch-manual-prices", companyId] });
+    toast({ title: "تم", description: value == null ? "تم إلغاء السعر اليدوي لهذا الفرع" : "تم حفظ السعر اليدوي للفرع" });
+  };
+
 
   // last purchase prices
   const { data: lastPurchases = {} } = useQuery({

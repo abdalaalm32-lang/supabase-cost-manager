@@ -450,7 +450,7 @@ export const SupplyPricingPage: React.FC = () => {
     return Number.isFinite(v) ? v : Number(it.current_stock) || 0;
   };
 
-  // Per-branch final unit price
+  // Per-branch final unit price (respects a per-branch manual price when set)
   const computeBranchFinal = (it: any, branchId: string): number => {
     const p = pricingByItem.get(it.id);
     const pol = policies.find((x) => x.branch_id === branchId);
@@ -459,13 +459,14 @@ export const SupplyPricingPage: React.FC = () => {
       wac: Number(it.avg_cost) || 0,
       lastPurchasePrice: lastPurchases[it.id] ?? 0,
       currentStock: liveBalance(it),
-      pricing: p,
+      pricing: applyBranchManualPrice(p, getBranchManual(it.id, branchId)),
       policy: pol,
       overheadRate: currentRate.rate,
       quantity: 1,
     });
     return r.finalUnitPrice;
   };
+
 
   const selectedBranch = branches.find((b: any) => b.id === selectedBranchId);
 

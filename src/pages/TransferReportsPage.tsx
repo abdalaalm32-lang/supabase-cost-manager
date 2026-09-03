@@ -288,7 +288,7 @@ export const TransferReportsPage: React.FC = () => {
     }
     for (const [, arr] of m) arr.sort((a, b) => b.date.localeCompare(a.date));
     return m;
-  }, [transferItems, stockItems, dateFrom, dateTo, locationFilter, locationType, categoryFilter]);
+  }, [transferItems, stockItems, dateFrom, dateTo, sourceFilter, destFilter, categoryFilter, departmentFilter, itemDeptMap]);
 
 
   // Stats

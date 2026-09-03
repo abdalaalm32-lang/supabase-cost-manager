@@ -431,6 +431,30 @@ export const TransferReportsPage: React.FC = () => {
                 onChange={(e) => setSearchQuery(e.target.value)} className="pr-9 text-sm" />
             </div>
 
+            <Select value={sourceFilter} onValueChange={setSourceFilter}>
+              <SelectTrigger className="text-sm"><SelectValue placeholder="الجهة المصدرة" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل الجهات المصدرة</SelectItem>
+                {allLocations.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select value={destFilter} onValueChange={setDestFilter}>
+              <SelectTrigger className="text-sm"><SelectValue placeholder="الجهة المستلمة" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل الجهات المستلمة</SelectItem>
+                {allLocations.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+              <SelectTrigger className="text-sm"><SelectValue placeholder="القسم" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل الأقسام</SelectItem>
+                {departments.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
               <SelectTrigger className="text-sm"><SelectValue placeholder="المجموعة" /></SelectTrigger>
               <SelectContent>
@@ -438,29 +462,6 @@ export const TransferReportsPage: React.FC = () => {
                 {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>
-
-            <div className="flex gap-1">
-              <div className="flex items-center gap-0.5 bg-muted/40 rounded-lg p-0.5 border border-border/40">
-                <Button variant={locationType === "branch" ? "default" : "ghost"} size="sm" className="h-8 text-xs px-2"
-                  onClick={() => { setLocationType("branch"); setLocationFilter("all"); }}>
-                  <Store className="h-3.5 w-3.5 ml-1" /> فرع
-                </Button>
-                <Button variant={locationType === "warehouse" ? "default" : "ghost"} size="sm" className="h-8 text-xs px-2"
-                  onClick={() => { setLocationType("warehouse"); setLocationFilter("all"); }}>
-                  <Warehouse className="h-3.5 w-3.5 ml-1" /> مخزن
-                </Button>
-              </div>
-              <Select value={locationFilter} onValueChange={setLocationFilter}>
-                <SelectTrigger className="text-sm flex-1"><SelectValue placeholder={locationType === "branch" ? "كل الفروع" : "كل المخازن"} /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{locationType === "branch" ? "كل الفروع" : "كل المخازن"}</SelectItem>
-                  {locationType === "branch"
-                    ? branches.map((b: any) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)
-                    : warehouses.map((w: any) => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)
-                  }
-                </SelectContent>
-              </Select>
-            </div>
 
             <Popover>
               <PopoverTrigger asChild>

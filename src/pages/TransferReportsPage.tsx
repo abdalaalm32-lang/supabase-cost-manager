@@ -248,7 +248,7 @@ export const TransferReportsPage: React.FC = () => {
     }
 
     return result;
-  }, [transferItems, stockItems, dateFrom, dateTo, locationFilter, locationType, categoryFilter, searchQuery]);
+  }, [transferItems, stockItems, dateFrom, dateTo, sourceFilter, destFilter, categoryFilter, departmentFilter, itemDeptMap, searchQuery]);
 
   // Transfers per stock item (for expandable detail rows)
   const transfersByItem = useMemo(() => {

@@ -38,9 +38,10 @@ export const TransferReportsPage: React.FC = () => {
   const companyId = auth.profile?.company_id;
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [locationType, setLocationType] = useState<"branch" | "warehouse">("branch");
-  const [locationFilter, setLocationFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
+  const [destFilter, setDestFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [departmentFilter, setDepartmentFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
@@ -106,6 +107,39 @@ export const TransferReportsPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  const { data: departments = [] } = useQuery({
+    queryKey: ["departments-transfer-report", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("departments").select("id, name").eq("active", true).order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
+  // Map: stock_item_id -> Set<department_id>
+  const { data: itemDeptMap = new Map<string, Set<string>>() } = useQuery({
+    queryKey: ["item-departments-transfer-report", companyId],
+    queryFn: async () => {
+      const rows = await fetchAllRows<any>((from, to) =>
+        supabase.from("stock_item_departments").select("stock_item_id, department_id").range(from, to)
+      );
+      const m = new Map<string, Set<string>>();
+      for (const r of rows) {
+        if (!m.has(r.stock_item_id)) m.set(r.stock_item_id, new Set());
+        m.get(r.stock_item_id)!.add(r.department_id);
+      }
+      return m;
+    },
+    enabled: !!companyId,
+  });
+
+  // All locations (branches + warehouses) for source/destination filters
+  const allLocations = useMemo(() => ([
+    ...warehouses.map((w: any) => ({ id: w.id, name: w.name })),
+    ...branches.map((b: any) => ({ id: b.id, name: b.name })),
+  ]), [warehouses, branches]);
+
   const processedData = useMemo(() => {
     const stockMap = new Map<string, any>();
     for (const si of stockItems) stockMap.set(si.id, si);
@@ -115,10 +149,9 @@ export const TransferReportsPage: React.FC = () => {
       if (!rec) return false;
       if (dateFrom && rec.date < format(dateFrom, "yyyy-MM-dd")) return false;
       if (dateTo && rec.date > format(dateTo, "yyyy-MM-dd")) return false;
-      if (locationFilter !== "all") {
-        // Filter: the selected location must be either source or destination
-        if (rec.source_id !== locationFilter && rec.destination_id !== locationFilter) return false;
-      }
+      if (sourceFilter !== "all" && rec.source_id !== sourceFilter) return false;
+      if (destFilter !== "all" && rec.destination_id !== destFilter) return false;
+      if (departmentFilter !== "all" && !itemDeptMap.get(ti.stock_item_id)?.has(departmentFilter)) return false;
       return true;
     });
 
@@ -151,9 +184,9 @@ export const TransferReportsPage: React.FC = () => {
       const cost = Number(ti.total_cost || 0);
       const routeKey = `${rec?.source_name || "—"}→${rec?.destination_name || "—"}`;
 
-      // Determine direction relative to selected location
-      const isOutgoing = locationFilter !== "all" && rec?.source_id === locationFilter;
-      const isIncoming = locationFilter !== "all" && rec?.destination_id === locationFilter;
+      // Determine direction relative to selected filters
+      const isOutgoing = sourceFilter !== "all" && rec?.source_id === sourceFilter;
+      const isIncoming = destFilter !== "all" && rec?.destination_id === destFilter;
 
       const existing = itemMap.get(sid);
       if (existing) {
@@ -215,7 +248,7 @@ export const TransferReportsPage: React.FC = () => {
     }
 
     return result;
-  }, [transferItems, stockItems, dateFrom, dateTo, locationFilter, locationType, categoryFilter, searchQuery]);
+  }, [transferItems, stockItems, dateFrom, dateTo, sourceFilter, destFilter, categoryFilter, departmentFilter, itemDeptMap, searchQuery]);
 
   // Transfers per stock item (for expandable detail rows)
   const transfersByItem = useMemo(() => {
@@ -231,9 +264,9 @@ export const TransferReportsPage: React.FC = () => {
       if (!rec?.date) continue;
       if (dateFrom && rec.date < format(dateFrom, "yyyy-MM-dd")) continue;
       if (dateTo && rec.date > format(dateTo, "yyyy-MM-dd")) continue;
-      if (locationFilter !== "all") {
-        if (rec.source_id !== locationFilter && rec.destination_id !== locationFilter) continue;
-      }
+      if (sourceFilter !== "all" && rec.source_id !== sourceFilter) continue;
+      if (destFilter !== "all" && rec.destination_id !== destFilter) continue;
+      if (departmentFilter !== "all" && !itemDeptMap.get(ti.stock_item_id)?.has(departmentFilter)) continue;
       if (categoryFilter !== "all") {
         const si = stockItems?.find((s: any) => s.id === ti.stock_item_id);
         if (si?.category_id !== categoryFilter) continue;
@@ -255,7 +288,7 @@ export const TransferReportsPage: React.FC = () => {
     }
     for (const [, arr] of m) arr.sort((a, b) => b.date.localeCompare(a.date));
     return m;
-  }, [transferItems, stockItems, dateFrom, dateTo, locationFilter, locationType, categoryFilter]);
+  }, [transferItems, stockItems, dateFrom, dateTo, sourceFilter, destFilter, categoryFilter, departmentFilter, itemDeptMap]);
 
 
   // Stats
@@ -263,9 +296,8 @@ export const TransferReportsPage: React.FC = () => {
     let filtered = [...transfers];
     if (dateFrom) filtered = filtered.filter(r => r.date >= format(dateFrom, "yyyy-MM-dd"));
     if (dateTo) filtered = filtered.filter(r => r.date <= format(dateTo, "yyyy-MM-dd"));
-    if (locationFilter !== "all") {
-      filtered = filtered.filter(r => r.source_id === locationFilter || r.destination_id === locationFilter);
-    }
+    if (sourceFilter !== "all") filtered = filtered.filter(r => r.source_id === sourceFilter);
+    if (destFilter !== "all") filtered = filtered.filter(r => r.destination_id === destFilter);
 
     const totalRecords = filtered.length;
     const totalCost = filtered.reduce((s, r) => s + Number(r.total_cost), 0);
@@ -274,16 +306,15 @@ export const TransferReportsPage: React.FC = () => {
     const avgCostPerTransfer = totalRecords > 0 ? totalCost / totalRecords : 0;
 
     return { totalRecords, totalCost, uniqueItems, totalQty, avgCostPerTransfer };
-  }, [transfers, processedData, dateFrom, dateTo, locationFilter, locationType]);
+  }, [transfers, processedData, dateFrom, dateTo, sourceFilter, destFilter]);
 
   // Monthly trend
   const monthlyTrend = useMemo(() => {
     let filtered = [...transfers];
     if (dateFrom) filtered = filtered.filter(r => r.date >= format(dateFrom, "yyyy-MM-dd"));
     if (dateTo) filtered = filtered.filter(r => r.date <= format(dateTo, "yyyy-MM-dd"));
-    if (locationFilter !== "all") {
-      filtered = filtered.filter(r => r.source_id === locationFilter || r.destination_id === locationFilter);
-    }
+    if (sourceFilter !== "all") filtered = filtered.filter(r => r.source_id === sourceFilter);
+    if (destFilter !== "all") filtered = filtered.filter(r => r.destination_id === destFilter);
 
     const map = new Map<string, { month: string; cost: number; count: number }>();
     for (const r of filtered) {
@@ -297,7 +328,7 @@ export const TransferReportsPage: React.FC = () => {
       }
     }
     return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month));
-  }, [transfers, dateFrom, dateTo, locationFilter, locationType]);
+  }, [transfers, dateFrom, dateTo, sourceFilter, destFilter]);
 
   // Top transferred items
   const topTransferredChart = useMemo(() => {
@@ -350,16 +381,15 @@ export const TransferReportsPage: React.FC = () => {
     return { source: parts[0] || "—", destination: parts[1] || "—" };
   };
 
-  // Get selected location name for display
-  const selectedLocationName = useMemo(() => {
-    if (locationFilter === "all") return "";
-    if (locationType === "branch") {
-      const b = branches.find((b: any) => b.id === locationFilter);
-      return b?.name || "";
-    }
-    const w = warehouses.find((w: any) => w.id === locationFilter);
-    return w?.name || "";
-  }, [locationFilter, locationType, branches, warehouses]);
+  // Get selected source/destination names for display
+  const selectedSourceName = useMemo(
+    () => (sourceFilter === "all" ? "" : allLocations.find((l) => l.id === sourceFilter)?.name || ""),
+    [sourceFilter, allLocations]
+  );
+  const selectedDestName = useMemo(
+    () => (destFilter === "all" ? "" : allLocations.find((l) => l.id === destFilter)?.name || ""),
+    [destFilter, allLocations]
+  );
 
   const exportCSV = () => {
     const headers = ["#", "الكود", "اسم الصنف", "المجموعة", "من", "إلى", "إجمالي الكمية", "الوحدة", "إجمالي التكلفة", "مرات التحويل", "آخر تحويل"];
@@ -401,6 +431,30 @@ export const TransferReportsPage: React.FC = () => {
                 onChange={(e) => setSearchQuery(e.target.value)} className="pr-9 text-sm" />
             </div>
 
+            <Select value={sourceFilter} onValueChange={setSourceFilter}>
+              <SelectTrigger className="text-sm"><SelectValue placeholder="الجهة المصدرة" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل الجهات المصدرة</SelectItem>
+                {allLocations.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select value={destFilter} onValueChange={setDestFilter}>
+              <SelectTrigger className="text-sm"><SelectValue placeholder="الجهة المستلمة" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل الجهات المستلمة</SelectItem>
+                {allLocations.map((l) => <SelectItem key={l.id} value={l.id}>{l.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+              <SelectTrigger className="text-sm"><SelectValue placeholder="القسم" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل الأقسام</SelectItem>
+                {departments.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
               <SelectTrigger className="text-sm"><SelectValue placeholder="المجموعة" /></SelectTrigger>
               <SelectContent>
@@ -408,29 +462,6 @@ export const TransferReportsPage: React.FC = () => {
                 {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>
-
-            <div className="flex gap-1">
-              <div className="flex items-center gap-0.5 bg-muted/40 rounded-lg p-0.5 border border-border/40">
-                <Button variant={locationType === "branch" ? "default" : "ghost"} size="sm" className="h-8 text-xs px-2"
-                  onClick={() => { setLocationType("branch"); setLocationFilter("all"); }}>
-                  <Store className="h-3.5 w-3.5 ml-1" /> فرع
-                </Button>
-                <Button variant={locationType === "warehouse" ? "default" : "ghost"} size="sm" className="h-8 text-xs px-2"
-                  onClick={() => { setLocationType("warehouse"); setLocationFilter("all"); }}>
-                  <Warehouse className="h-3.5 w-3.5 ml-1" /> مخزن
-                </Button>
-              </div>
-              <Select value={locationFilter} onValueChange={setLocationFilter}>
-                <SelectTrigger className="text-sm flex-1"><SelectValue placeholder={locationType === "branch" ? "كل الفروع" : "كل المخازن"} /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{locationType === "branch" ? "كل الفروع" : "كل المخازن"}</SelectItem>
-                  {locationType === "branch"
-                    ? branches.map((b: any) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)
-                    : warehouses.map((w: any) => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)
-                  }
-                </SelectContent>
-              </Select>
-            </div>
 
             <Popover>
               <PopoverTrigger asChild>
@@ -456,9 +487,9 @@ export const TransferReportsPage: React.FC = () => {
               </PopoverContent>
             </Popover>
           </div>
-          {(categoryFilter !== "all" || locationFilter !== "all" || searchQuery || dateFrom || dateTo) && (
+          {(categoryFilter !== "all" || departmentFilter !== "all" || sourceFilter !== "all" || destFilter !== "all" || searchQuery || dateFrom || dateTo) && (
             <div className="mt-2 flex justify-end">
-              <Button variant="ghost" size="sm" onClick={() => { setCategoryFilter("all"); setLocationFilter("all"); setSearchQuery(""); setDateFrom(undefined); setDateTo(undefined); }}>
+              <Button variant="ghost" size="sm" onClick={() => { setCategoryFilter("all"); setDepartmentFilter("all"); setSourceFilter("all"); setDestFilter("all"); setSearchQuery(""); setDateFrom(undefined); setDateTo(undefined); }}>
                 مسح الفلاتر
               </Button>
             </div>
@@ -702,7 +733,9 @@ export const TransferReportsPage: React.FC = () => {
                 filename="تقارير_التحويلات"
                 title="تقارير التحويلات"
                 filters={[
-                  { label: locationType === "branch" ? "الفرع" : "المخزن", value: locationFilter === "all" ? "الكل" : ((locationType === "branch" ? branches : warehouses).find((l: any) => l.id === locationFilter)?.name ?? "—") },
+                  { label: "الجهة المصدرة", value: sourceFilter === "all" ? "الكل" : (selectedSourceName || "—") },
+                  { label: "الجهة المستلمة", value: destFilter === "all" ? "الكل" : (selectedDestName || "—") },
+                  { label: "القسم", value: departmentFilter === "all" ? "الكل" : (departments.find((d: any) => d.id === departmentFilter)?.name ?? "—") },
                   { label: "من تاريخ", value: dateFrom ? format(dateFrom, "yyyy/MM/dd") : "—" },
                   { label: "إلى تاريخ", value: dateTo ? format(dateTo, "yyyy/MM/dd") : "—" },
                 ]}
@@ -718,12 +751,12 @@ export const TransferReportsPage: React.FC = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-right w-10">#</TableHead>
-                  <TableHead className="text-right">الكود</TableHead>
-                  <TableHead className="text-right">اسم الصنف</TableHead>
-                  <TableHead className="text-right">المجموعة</TableHead>
-                  <TableHead className="text-center">أرقام الأذون</TableHead>
-                  <TableHead className="text-center">حركة العملية</TableHead>
+                  <TableHead className="text-center w-10">#</TableHead>
+                  <TableHead className="text-center">الكود</TableHead>
+                  <TableHead className="text-center">اسم الصنف</TableHead>
+                  <TableHead className="text-center">المجموعة</TableHead>
+                  <TableHead className="text-center">الجهة المصدرة</TableHead>
+                  <TableHead className="text-center">الجهة المستلمة</TableHead>
                   <TableHead className="text-center">إجمالي الكمية</TableHead>
                   <TableHead className="text-center">الوحدة</TableHead>
                   <TableHead className="text-center">إجمالي التكلفة</TableHead>
@@ -737,62 +770,40 @@ export const TransferReportsPage: React.FC = () => {
                 ) : processedData.length === 0 ? (
                   <TableRow><TableCell colSpan={11} className="text-center py-10 text-muted-foreground">لا توجد بيانات</TableCell></TableRow>
                 ) : (
-                  processedData.map((item, idx) => {
+                   processedData.map((item, idx) => {
                     const isExpanded = expandedItem === item.stockItemId;
                     const transfers = transfersByItem.get(item.stockItemId) || [];
                     const route = getTopRoute(item.routes);
-                    const hasLocationFilter = locationFilter !== "all";
-                    const outRoutes = Array.from(item.outgoingRoutes.entries()).sort((a, b) => b[1] - a[1]);
-                    const inRoutes = Array.from(item.incomingRoutes.entries()).sort((a, b) => b[1] - a[1]);
+                    const srcName = sourceFilter !== "all" ? selectedSourceName : route.source;
+                    const dstName = destFilter !== "all" ? selectedDestName : route.destination;
                     return (
                       <React.Fragment key={item.stockItemId}>
                         <TableRow className={cn("hover:bg-muted/30 cursor-pointer", item.occurrences >= 5 && "bg-primary/5")} onClick={() => setExpandedItem(isExpanded ? null : item.stockItemId)}>
-                          <TableCell className="text-muted-foreground text-xs">
+                          <TableCell className="text-center text-muted-foreground text-xs">
                             <div className="flex items-center justify-center gap-1">
                               {isExpanded ? <ChevronDown size={12} /> : <ChevronLeft size={12} />}
                               <span>{idx + 1}</span>
                             </div>
                           </TableCell>
-                          <TableCell className="font-mono text-xs">{item.code}</TableCell>
-                          <TableCell className="font-medium text-sm">
-                            <div className="flex items-center gap-1">
+                          <TableCell className="text-center font-mono text-xs">{item.code}</TableCell>
+                          <TableCell className="text-center font-medium text-sm">
+                            <div className="flex items-center justify-center gap-1">
                               {item.occurrences >= 5 && <ArrowRightLeft size={14} className="text-primary" />}
                               {item.name}
                             </div>
                           </TableCell>
-                          <TableCell className="text-sm">{item.catName}</TableCell>
-                          <TableCell className="text-center text-xs">
-                            <div className="flex flex-wrap justify-center gap-1">
-                              {Array.from(item.transferNumbers).map((tn, i) => (
-                                <span key={i} className="inline-block px-2 py-0.5 rounded bg-muted text-muted-foreground font-mono text-[10px]">{tn}</span>
-                              ))}
-                            </div>
+                          <TableCell className="text-center text-sm">{item.catName}</TableCell>
+                          <TableCell className="text-center">
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full border border-destructive/30 bg-destructive/5 text-xs font-medium">
+                              <ArrowLeft size={12} className="text-destructive shrink-0" />
+                              {srcName}
+                            </span>
                           </TableCell>
                           <TableCell className="text-center">
-                            {hasLocationFilter ? (
-                              <div className="flex flex-col gap-1 items-center">
-                                {outRoutes.length > 0 && outRoutes.map(([dest], i) => (
-                                  <div key={`out-${i}`} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-destructive/30 bg-destructive/5 text-xs font-medium">
-                                    <span className="text-foreground">{selectedLocationName}</span>
-                                    <ArrowLeft size={14} className="text-destructive shrink-0" />
-                                    <span className="text-foreground">{dest}</span>
-                                  </div>
-                                ))}
-                                {inRoutes.length > 0 && inRoutes.map(([src], i) => (
-                                  <div key={`in-${i}`} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/5 text-xs font-medium">
-                                    <span className="text-foreground">{src}</span>
-                                    <ArrowRight size={14} className="text-emerald-600 shrink-0" />
-                                    <span className="text-foreground">{selectedLocationName}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/60 bg-muted/30 text-xs font-medium">
-                                <span className="text-foreground">{route.source}</span>
-                                <ArrowRight size={14} className="text-primary shrink-0" />
-                                <span className="text-foreground">{route.destination}</span>
-                              </div>
-                            )}
+                            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/5 text-xs font-medium">
+                              <ArrowRight size={12} className="text-emerald-600 shrink-0" />
+                              {dstName}
+                            </span>
                           </TableCell>
                           <TableCell className="text-center font-semibold">{fmt(item.totalTransferQty)}</TableCell>
                           <TableCell className="text-center text-xs text-muted-foreground">{item.unit}</TableCell>

@@ -149,10 +149,9 @@ export const TransferReportsPage: React.FC = () => {
       if (!rec) return false;
       if (dateFrom && rec.date < format(dateFrom, "yyyy-MM-dd")) return false;
       if (dateTo && rec.date > format(dateTo, "yyyy-MM-dd")) return false;
-      if (locationFilter !== "all") {
-        // Filter: the selected location must be either source or destination
-        if (rec.source_id !== locationFilter && rec.destination_id !== locationFilter) return false;
-      }
+      if (sourceFilter !== "all" && rec.source_id !== sourceFilter) return false;
+      if (destFilter !== "all" && rec.destination_id !== destFilter) return false;
+      if (departmentFilter !== "all" && !itemDeptMap.get(ti.stock_item_id)?.has(departmentFilter)) return false;
       return true;
     });
 

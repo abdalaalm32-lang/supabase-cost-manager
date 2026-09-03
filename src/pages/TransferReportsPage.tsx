@@ -487,9 +487,9 @@ export const TransferReportsPage: React.FC = () => {
               </PopoverContent>
             </Popover>
           </div>
-          {(categoryFilter !== "all" || locationFilter !== "all" || searchQuery || dateFrom || dateTo) && (
+          {(categoryFilter !== "all" || departmentFilter !== "all" || sourceFilter !== "all" || destFilter !== "all" || searchQuery || dateFrom || dateTo) && (
             <div className="mt-2 flex justify-end">
-              <Button variant="ghost" size="sm" onClick={() => { setCategoryFilter("all"); setLocationFilter("all"); setSearchQuery(""); setDateFrom(undefined); setDateTo(undefined); }}>
+              <Button variant="ghost" size="sm" onClick={() => { setCategoryFilter("all"); setDepartmentFilter("all"); setSourceFilter("all"); setDestFilter("all"); setSearchQuery(""); setDateFrom(undefined); setDateTo(undefined); }}>
                 مسح الفلاتر
               </Button>
             </div>

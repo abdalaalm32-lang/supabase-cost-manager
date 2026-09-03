@@ -313,9 +313,8 @@ export const TransferReportsPage: React.FC = () => {
     let filtered = [...transfers];
     if (dateFrom) filtered = filtered.filter(r => r.date >= format(dateFrom, "yyyy-MM-dd"));
     if (dateTo) filtered = filtered.filter(r => r.date <= format(dateTo, "yyyy-MM-dd"));
-    if (locationFilter !== "all") {
-      filtered = filtered.filter(r => r.source_id === locationFilter || r.destination_id === locationFilter);
-    }
+    if (sourceFilter !== "all") filtered = filtered.filter(r => r.source_id === sourceFilter);
+    if (destFilter !== "all") filtered = filtered.filter(r => r.destination_id === destFilter);
 
     const map = new Map<string, { month: string; cost: number; count: number }>();
     for (const r of filtered) {

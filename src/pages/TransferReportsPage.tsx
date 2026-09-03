@@ -184,9 +184,9 @@ export const TransferReportsPage: React.FC = () => {
       const cost = Number(ti.total_cost || 0);
       const routeKey = `${rec?.source_name || "—"}→${rec?.destination_name || "—"}`;
 
-      // Determine direction relative to selected location
-      const isOutgoing = locationFilter !== "all" && rec?.source_id === locationFilter;
-      const isIncoming = locationFilter !== "all" && rec?.destination_id === locationFilter;
+      // Determine direction relative to selected filters
+      const isOutgoing = sourceFilter !== "all" && rec?.source_id === sourceFilter;
+      const isIncoming = destFilter !== "all" && rec?.destination_id === destFilter;
 
       const existing = itemMap.get(sid);
       if (existing) {

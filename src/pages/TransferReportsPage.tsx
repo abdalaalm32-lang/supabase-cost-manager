@@ -328,7 +328,7 @@ export const TransferReportsPage: React.FC = () => {
       }
     }
     return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month));
-  }, [transfers, dateFrom, dateTo, locationFilter, locationType]);
+  }, [transfers, dateFrom, dateTo, sourceFilter, destFilter]);
 
   // Top transferred items
   const topTransferredChart = useMemo(() => {

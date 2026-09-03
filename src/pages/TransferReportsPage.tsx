@@ -107,6 +107,39 @@ export const TransferReportsPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  const { data: departments = [] } = useQuery({
+    queryKey: ["departments-transfer-report", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("departments").select("id, name").eq("active", true).order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!companyId,
+  });
+
+  // Map: stock_item_id -> Set<department_id>
+  const { data: itemDeptMap = new Map<string, Set<string>>() } = useQuery({
+    queryKey: ["item-departments-transfer-report", companyId],
+    queryFn: async () => {
+      const rows = await fetchAllRows<any>((from, to) =>
+        supabase.from("stock_item_departments").select("stock_item_id, department_id").range(from, to)
+      );
+      const m = new Map<string, Set<string>>();
+      for (const r of rows) {
+        if (!m.has(r.stock_item_id)) m.set(r.stock_item_id, new Set());
+        m.get(r.stock_item_id)!.add(r.department_id);
+      }
+      return m;
+    },
+    enabled: !!companyId,
+  });
+
+  // All locations (branches + warehouses) for source/destination filters
+  const allLocations = useMemo(() => ([
+    ...warehouses.map((w: any) => ({ id: w.id, name: w.name })),
+    ...branches.map((b: any) => ({ id: b.id, name: b.name })),
+  ]), [warehouses, branches]);
+
   const processedData = useMemo(() => {
     const stockMap = new Map<string, any>();
     for (const si of stockItems) stockMap.set(si.id, si);

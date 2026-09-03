@@ -751,12 +751,12 @@ export const TransferReportsPage: React.FC = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-right w-10">#</TableHead>
-                  <TableHead className="text-right">الكود</TableHead>
-                  <TableHead className="text-right">اسم الصنف</TableHead>
-                  <TableHead className="text-right">المجموعة</TableHead>
-                  <TableHead className="text-center">أرقام الأذون</TableHead>
-                  <TableHead className="text-center">حركة العملية</TableHead>
+                  <TableHead className="text-center w-10">#</TableHead>
+                  <TableHead className="text-center">الكود</TableHead>
+                  <TableHead className="text-center">اسم الصنف</TableHead>
+                  <TableHead className="text-center">المجموعة</TableHead>
+                  <TableHead className="text-center">الجهة المصدرة</TableHead>
+                  <TableHead className="text-center">الجهة المستلمة</TableHead>
                   <TableHead className="text-center">إجمالي الكمية</TableHead>
                   <TableHead className="text-center">الوحدة</TableHead>
                   <TableHead className="text-center">إجمالي التكلفة</TableHead>

@@ -264,9 +264,9 @@ export const TransferReportsPage: React.FC = () => {
       if (!rec?.date) continue;
       if (dateFrom && rec.date < format(dateFrom, "yyyy-MM-dd")) continue;
       if (dateTo && rec.date > format(dateTo, "yyyy-MM-dd")) continue;
-      if (locationFilter !== "all") {
-        if (rec.source_id !== locationFilter && rec.destination_id !== locationFilter) continue;
-      }
+      if (sourceFilter !== "all" && rec.source_id !== sourceFilter) continue;
+      if (destFilter !== "all" && rec.destination_id !== destFilter) continue;
+      if (departmentFilter !== "all" && !itemDeptMap.get(ti.stock_item_id)?.has(departmentFilter)) continue;
       if (categoryFilter !== "all") {
         const si = stockItems?.find((s: any) => s.id === ti.stock_item_id);
         if (si?.category_id !== categoryFilter) continue;

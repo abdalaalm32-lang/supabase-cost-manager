@@ -733,7 +733,9 @@ export const TransferReportsPage: React.FC = () => {
                 filename="تقارير_التحويلات"
                 title="تقارير التحويلات"
                 filters={[
-                  { label: locationType === "branch" ? "الفرع" : "المخزن", value: locationFilter === "all" ? "الكل" : ((locationType === "branch" ? branches : warehouses).find((l: any) => l.id === locationFilter)?.name ?? "—") },
+                  { label: "الجهة المصدرة", value: sourceFilter === "all" ? "الكل" : (selectedSourceName || "—") },
+                  { label: "الجهة المستلمة", value: destFilter === "all" ? "الكل" : (selectedDestName || "—") },
+                  { label: "القسم", value: departmentFilter === "all" ? "الكل" : (departments.find((d: any) => d.id === departmentFilter)?.name ?? "—") },
                   { label: "من تاريخ", value: dateFrom ? format(dateFrom, "yyyy/MM/dd") : "—" },
                   { label: "إلى تاريخ", value: dateTo ? format(dateTo, "yyyy/MM/dd") : "—" },
                 ]}

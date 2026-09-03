@@ -38,9 +38,10 @@ export const TransferReportsPage: React.FC = () => {
   const companyId = auth.profile?.company_id;
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [locationType, setLocationType] = useState<"branch" | "warehouse">("branch");
-  const [locationFilter, setLocationFilter] = useState("all");
+  const [sourceFilter, setSourceFilter] = useState("all");
+  const [destFilter, setDestFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [departmentFilter, setDepartmentFilter] = useState("all");
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [expandedItem, setExpandedItem] = useState<string | null>(null);

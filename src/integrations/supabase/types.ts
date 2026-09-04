@@ -1181,6 +1181,96 @@ export type Database = {
           },
         ]
       }
+      pos_channels: {
+        Row: {
+          active: boolean
+          code: string | null
+          color: string | null
+          company_id: string
+          created_at: string
+          id: string
+          is_default: boolean
+          markup_percent: number
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          code?: string | null
+          color?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          markup_percent?: number
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          code?: string | null
+          color?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          markup_percent?: number
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pos_item_channel_prices: {
+        Row: {
+          active: boolean
+          channel_id: string
+          company_id: string
+          created_at: string
+          id: string
+          pos_item_id: string
+          price: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          channel_id: string
+          company_id: string
+          created_at?: string
+          id?: string
+          pos_item_id: string
+          price?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          channel_id?: string
+          company_id?: string
+          created_at?: string
+          id?: string
+          pos_item_id?: string
+          price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pos_item_channel_prices_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "pos_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_item_channel_prices_pos_item_id_fkey"
+            columns: ["pos_item_id"]
+            isOneToOne: false
+            referencedRelation: "pos_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pos_item_cost_settings: {
         Row: {
           company_id: string
@@ -1458,6 +1548,7 @@ export type Database = {
         Row: {
           assigned_cashier_id: string | null
           branch_id: string | null
+          channel_id: string | null
           company_id: string
           created_at: string
           customer_address: string | null
@@ -1491,6 +1582,7 @@ export type Database = {
         Insert: {
           assigned_cashier_id?: string | null
           branch_id?: string | null
+          channel_id?: string | null
           company_id: string
           created_at?: string
           customer_address?: string | null
@@ -1524,6 +1616,7 @@ export type Database = {
         Update: {
           assigned_cashier_id?: string | null
           branch_id?: string | null
+          channel_id?: string | null
           company_id?: string
           created_at?: string
           customer_address?: string | null
@@ -1567,6 +1660,13 @@ export type Database = {
             columns: ["branch_id"]
             isOneToOne: false
             referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pos_sales_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "pos_channels"
             referencedColumns: ["id"]
           },
           {

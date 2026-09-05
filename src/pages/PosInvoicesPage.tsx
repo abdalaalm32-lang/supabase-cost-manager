@@ -93,6 +93,16 @@ export const PosInvoicesPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  // Fetch sales channels for filter
+  const { data: channelsList } = useQuery({
+    queryKey: ["pos-invoices-channels", companyId],
+    queryFn: async () => {
+      const { data } = await supabase.from("pos_channels").select("id, name").eq("company_id", companyId!).order("sort_order");
+      return data || [];
+    },
+    enabled: !!companyId,
+  });
+
   // Fetch sales
   const { data: sales } = useQuery({
     queryKey: ["pos-sales", companyId],
@@ -100,13 +110,14 @@ export const PosInvoicesPage: React.FC = () => {
       fetchAllRows<any>((from, to) =>
         supabase
           .from("pos_sales")
-          .select("*, branches:branch_id(name)")
+          .select("*, branches:branch_id(name), pos_channels:channel_id(name)")
           .eq("company_id", companyId!)
           .order("created_at", { ascending: false })
           .range(from, to)
       ),
     enabled: !!companyId,
   });
+
 
   // Fetch sale items when selected
   const { data: saleItems } = useQuery({

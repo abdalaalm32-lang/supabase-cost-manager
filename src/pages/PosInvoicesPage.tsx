@@ -62,6 +62,8 @@ export const PosInvoicesPage: React.FC = () => {
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [branchFilter, setBranchFilter] = useState<string>("all");
+  const [channelFilter, setChannelFilter] = useState<string>("all");
+
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
 
   const deleteMutation = useMutation({

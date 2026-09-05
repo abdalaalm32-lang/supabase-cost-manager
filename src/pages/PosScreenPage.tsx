@@ -403,6 +403,61 @@ export const PosScreenPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  // ===== Sales channels (قنوات البيع: صالة / طلبات ...) =====
+  const { data: channels = [] } = useQuery({
+    queryKey: ["pos-channels-active", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pos_channels").select("*").eq("company_id", companyId!).eq("active", true)
+        .order("sort_order").order("created_at");
+      if (error) throw error;
+      return data as any[];
+    },
+    enabled: !!companyId,
+  });
+
+  const [channelId, setChannelId] = useState<string>(() => sessionStorage.getItem("pos_channel") || "");
+
+  useEffect(() => {
+    if (!channels.length) return;
+    const exists = channels.some((c) => c.id === channelId);
+    if (!exists) {
+      const def = channels.find((c) => c.is_default) || channels[0];
+      setChannelId(def.id);
+    }
+  }, [channels]);
+
+  useEffect(() => {
+    if (channelId) sessionStorage.setItem("pos_channel", channelId);
+  }, [channelId]);
+
+  const activeChannel = useMemo(() => channels.find((c) => c.id === channelId), [channels, channelId]);
+
+  const { data: channelPrices = [] } = useQuery({
+    queryKey: ["pos-channel-prices-screen", channelId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pos_item_channel_prices").select("pos_item_id, price").eq("channel_id", channelId);
+      if (error) throw error;
+      return data as any[];
+    },
+    enabled: !!channelId,
+  });
+
+  const channelPriceMap = useMemo(() => {
+    const m: Record<string, number> = {};
+    channelPrices.forEach((p) => { m[p.pos_item_id] = Number(p.price); });
+    return m;
+  }, [channelPrices]);
+
+  // السعر الفعّال: سعر خاص بالقناة إن وُجد، وإلا السعر الأساسي + نسبة الزيادة
+  const getPrice = useCallback((item: any) => {
+    const override = channelPriceMap[item.id];
+    if (override !== undefined && override !== null) return Number(override);
+    const markup = Number(activeChannel?.markup_percent) || 0;
+    return Math.round(Number(item.price || 0) * (1 + markup / 100) * 100) / 100;
+  }, [channelPriceMap, activeChannel]);
+
   const { data: company } = useQuery({
     queryKey: ["company-info", companyId],
     queryFn: async () => {
@@ -411,6 +466,7 @@ export const PosScreenPage: React.FC = () => {
     },
     enabled: !!companyId,
   });
+
 
   const filteredCategories = useMemo(() => {
     if (!categories) return [];

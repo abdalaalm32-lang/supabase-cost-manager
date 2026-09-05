@@ -62,6 +62,8 @@ export const PosInvoicesPage: React.FC = () => {
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [branchFilter, setBranchFilter] = useState<string>("all");
+  const [channelFilter, setChannelFilter] = useState<string>("all");
+
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
 
   const deleteMutation = useMutation({
@@ -93,6 +95,16 @@ export const PosInvoicesPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  // Fetch sales channels for filter
+  const { data: channelsList } = useQuery({
+    queryKey: ["pos-invoices-channels", companyId],
+    queryFn: async () => {
+      const { data } = await supabase.from("pos_channels").select("id, name").eq("company_id", companyId!).order("sort_order");
+      return data || [];
+    },
+    enabled: !!companyId,
+  });
+
   // Fetch sales
   const { data: sales } = useQuery({
     queryKey: ["pos-sales", companyId],
@@ -100,13 +112,14 @@ export const PosInvoicesPage: React.FC = () => {
       fetchAllRows<any>((from, to) =>
         supabase
           .from("pos_sales")
-          .select("*, branches:branch_id(name)")
+          .select("*, branches:branch_id(name), pos_channels:channel_id(name)")
           .eq("company_id", companyId!)
           .order("created_at", { ascending: false })
           .range(from, to)
       ),
     enabled: !!companyId,
   });
+
 
   // Fetch sale items when selected
   const { data: saleItems } = useQuery({
@@ -131,6 +144,7 @@ export const PosInvoicesPage: React.FC = () => {
     let result = sales;
     if (filter !== "الكل") result = result.filter((s) => s.status === filter);
     if (branchFilter !== "all") result = result.filter((s: any) => s.branch_id === branchFilter);
+    if (channelFilter !== "all") result = result.filter((s: any) => s.channel_id === channelFilter);
 
     const fromKey = dateFrom ? format(dateFrom, "yyyy-MM-dd") : undefined;
     const toKey = dateTo ? format(dateTo, "yyyy-MM-dd") : undefined;
@@ -153,7 +167,7 @@ export const PosInvoicesPage: React.FC = () => {
       });
     }
     return result;
-  }, [sales, filter, searchQuery, branchFilter, dateFrom, dateTo]);
+  }, [sales, filter, searchQuery, branchFilter, channelFilter, dateFrom, dateTo]);
 
   const updateEditQty = (id: string, delta: number) => {
     setEditItems((prev) =>
@@ -366,6 +380,18 @@ export const PosInvoicesPage: React.FC = () => {
               ))}
             </SelectContent>
           </Select>
+          <Select value={channelFilter} onValueChange={setChannelFilter}>
+            <SelectTrigger className="w-[180px] glass-input">
+              <SelectValue placeholder="كل قنوات البيع" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">كل قنوات البيع</SelectItem>
+              {(channelsList || []).map((c: any) => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">من</span>
             <Popover>
@@ -392,8 +418,8 @@ export const PosInvoicesPage: React.FC = () => {
               </PopoverContent>
             </Popover>
           </div>
-          {(dateFrom || dateTo || branchFilter !== "all" || searchQuery) && (
-            <Button variant="ghost" size="sm" onClick={() => { setDateFrom(undefined); setDateTo(undefined); setBranchFilter("all"); setSearchQuery(""); }}>
+          {(dateFrom || dateTo || branchFilter !== "all" || channelFilter !== "all" || searchQuery) && (
+            <Button variant="ghost" size="sm" onClick={() => { setDateFrom(undefined); setDateTo(undefined); setBranchFilter("all"); setChannelFilter("all"); setSearchQuery(""); }}>
               <X className="h-4 w-4 mr-1" /> مسح
             </Button>
           )}
@@ -417,6 +443,7 @@ export const PosInvoicesPage: React.FC = () => {
               title="سجل الفواتير"
               filters={[
                 { label: "الفرع", value: branchFilter === "all" ? "الكل" : (branchesList?.find((b: any) => b.id === branchFilter)?.name ?? "—") },
+                { label: "قناة البيع", value: channelFilter === "all" ? "الكل" : ((channelsList as any[])?.find((c: any) => c.id === channelFilter)?.name ?? "—") },
                 { label: "من تاريخ", value: dateFrom ? format(dateFrom, "yyyy/MM/dd") : "—" },
                 { label: "إلى تاريخ", value: dateTo ? format(dateTo, "yyyy/MM/dd") : "—" },
                 { label: "الحالة", value: filter },
@@ -434,6 +461,7 @@ export const PosInvoicesPage: React.FC = () => {
               <TableHead className="text-right">رقم الفاتورة</TableHead>
               <TableHead className="text-right">التاريخ</TableHead>
               <TableHead className="text-right">الفرع</TableHead>
+              <TableHead className="text-right">قناة البيع</TableHead>
               <TableHead className="text-right">الإجمالي</TableHead>
               <TableHead className="text-right">الحالة</TableHead>
               <TableHead className="text-right">إجراء</TableHead>
@@ -445,6 +473,7 @@ export const PosInvoicesPage: React.FC = () => {
                 <TableCell className="font-mono font-bold text-right">{sale.invoice_number || "—"}</TableCell>
                 <TableCell className="text-right">{formatSaleDate(sale)}</TableCell>
                 <TableCell className="text-right">{(sale.branches as any)?.name || "—"}</TableCell>
+                <TableCell className="text-right text-xs">{(sale as any).pos_channels?.name || "—"}</TableCell>
                 <TableCell className="font-bold text-right">{Number(sale.total_amount).toFixed(2)} EGP</TableCell>
                 <TableCell className="text-right">
                   <Badge variant={sale.status === "مكتمل" ? "default" : "secondary"} className={cn(

@@ -403,6 +403,61 @@ export const PosScreenPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  // ===== Sales channels (قنوات البيع: صالة / طلبات ...) =====
+  const { data: channels = [] } = useQuery({
+    queryKey: ["pos-channels-active", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pos_channels").select("*").eq("company_id", companyId!).eq("active", true)
+        .order("sort_order").order("created_at");
+      if (error) throw error;
+      return data as any[];
+    },
+    enabled: !!companyId,
+  });
+
+  const [channelId, setChannelId] = useState<string>(() => sessionStorage.getItem("pos_channel") || "");
+
+  useEffect(() => {
+    if (!channels.length) return;
+    const exists = channels.some((c) => c.id === channelId);
+    if (!exists) {
+      const def = channels.find((c) => c.is_default) || channels[0];
+      setChannelId(def.id);
+    }
+  }, [channels]);
+
+  useEffect(() => {
+    if (channelId) sessionStorage.setItem("pos_channel", channelId);
+  }, [channelId]);
+
+  const activeChannel = useMemo(() => channels.find((c) => c.id === channelId), [channels, channelId]);
+
+  const { data: channelPrices = [] } = useQuery({
+    queryKey: ["pos-channel-prices-screen", channelId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pos_item_channel_prices").select("pos_item_id, price").eq("channel_id", channelId);
+      if (error) throw error;
+      return data as any[];
+    },
+    enabled: !!channelId,
+  });
+
+  const channelPriceMap = useMemo(() => {
+    const m: Record<string, number> = {};
+    channelPrices.forEach((p) => { m[p.pos_item_id] = Number(p.price); });
+    return m;
+  }, [channelPrices]);
+
+  // السعر الفعّال: سعر خاص بالقناة إن وُجد، وإلا السعر الأساسي + نسبة الزيادة
+  const getPrice = useCallback((item: any) => {
+    const override = channelPriceMap[item.id];
+    if (override !== undefined && override !== null) return Number(override);
+    const markup = Number(activeChannel?.markup_percent) || 0;
+    return Math.round(Number(item.price || 0) * (1 + markup / 100) * 100) / 100;
+  }, [channelPriceMap, activeChannel]);
+
   const { data: company } = useQuery({
     queryKey: ["company-info", companyId],
     queryFn: async () => {
@@ -411,6 +466,7 @@ export const PosScreenPage: React.FC = () => {
     },
     enabled: !!companyId,
   });
+
 
   const filteredCategories = useMemo(() => {
     if (!categories) return [];
@@ -446,7 +502,7 @@ export const PosScreenPage: React.FC = () => {
       if (existing) {
         return prev.map((c) => c.pos_item_id === item.id ? { ...c, quantity: c.quantity + 1 } : c);
       }
-      return [...prev, { id: crypto.randomUUID(), pos_item_id: item.id, name: item.name, category_name: (item.categories as any)?.name || "", unit_price: item.price, quantity: 1 }];
+      return [...prev, { id: crypto.randomUUID(), pos_item_id: item.id, name: item.name, category_name: (item.categories as any)?.name || "", unit_price: getPrice(item), quantity: 1 }];
     });
   };
 
@@ -514,7 +570,9 @@ export const PosScreenPage: React.FC = () => {
       unit_price: item.unit_price,
       quantity: item.quantity,
     })));
+    if ((sale as any).channel_id) setChannelId((sale as any).channel_id);
     toast.info("تم استرجاع الفاتورة المعلقة");
+
   };
 
   const saveSale = useMutation({
@@ -525,6 +583,8 @@ export const PosScreenPage: React.FC = () => {
 
       const salePayload = {
         branch_id: branchId || null,
+        channel_id: channelId || null,
+
         date: saleDate.toISOString(),
         total_amount: total, status,
         tax_enabled: taxEnabled, tax_rate: taxEnabled ? taxRate : 0, tax_amount: taxAmount,
@@ -652,7 +712,39 @@ export const PosScreenPage: React.FC = () => {
       <div className="flex flex-col h-[calc(100vh-4rem)]" dir="rtl">
         {/* Top bar */}
         <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-card/50 print:hidden flex-wrap gap-2">
-          <div />
+          {/* Sales channel switcher — يغيّر أسعار المنيو كله فورًا */}
+          <div className="flex items-center gap-1 flex-wrap">
+            {channels.length > 0 && (
+              <span className="text-[10px] text-muted-foreground font-bold ml-1">قائمة الأسعار:</span>
+            )}
+            {channels.map((ch) => {
+              const isActive = ch.id === channelId;
+              return (
+                <button
+                  key={ch.id}
+                  onClick={() => {
+                    if (ch.id === channelId) return;
+                    if (cart.length > 0) {
+                      toast.error("لا يمكن تغيير قائمة الأسعار والسلة بها أصناف");
+                      return;
+                    }
+                    setChannelId(ch.id);
+                    toast.success(`تم التحويل إلى أسعار: ${ch.name}`);
+                  }}
+                  className={cn(
+                    "px-3 py-1 rounded-full text-[11px] font-bold border transition-colors",
+                    isActive
+                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                      : "bg-transparent text-muted-foreground border-border/50 hover:bg-muted"
+                  )}
+                  title={Number(ch.markup_percent) ? `نسبة زيادة افتراضية ${ch.markup_percent}%` : undefined}
+                >
+                  {ch.name}
+                </button>
+              );
+            })}
+          </div>
+
 
           <div className="flex items-center gap-2">
             {(pendingDeliveryOrders?.length ?? 0) > 0 && (
@@ -776,7 +868,7 @@ export const PosScreenPage: React.FC = () => {
                       <div className="flex-1 min-w-0">
                         <h4 className="font-bold text-foreground text-sm leading-tight line-clamp-1" title={item.name}>{item.name}</h4>
                         <span className="text-[11px] text-muted-foreground block truncate">{categoryName || "—"}</span>
-                        <span className="font-black text-primary text-sm whitespace-nowrap">{item.price} <span className="text-[10px] font-bold">EGP</span></span>
+                        <span className="font-black text-primary text-sm whitespace-nowrap">{getPrice(item).toFixed(2)} <span className="text-[10px] font-bold">EGP</span></span>
                       </div>
                       <div className="flex items-center justify-center">
                         {inCart ? (

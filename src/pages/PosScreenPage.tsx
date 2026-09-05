@@ -832,7 +832,7 @@ export const PosScreenPage: React.FC = () => {
                       <div className="flex-1 min-w-0">
                         <h4 className="font-bold text-foreground text-sm leading-tight line-clamp-1" title={item.name}>{item.name}</h4>
                         <span className="text-[11px] text-muted-foreground block truncate">{categoryName || "—"}</span>
-                        <span className="font-black text-primary text-sm whitespace-nowrap">{item.price} <span className="text-[10px] font-bold">EGP</span></span>
+                        <span className="font-black text-primary text-sm whitespace-nowrap">{getPrice(item).toFixed(2)} <span className="text-[10px] font-bold">EGP</span></span>
                       </div>
                       <div className="flex items-center justify-center">
                         {inCart ? (

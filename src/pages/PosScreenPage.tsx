@@ -710,7 +710,39 @@ export const PosScreenPage: React.FC = () => {
       <div className="flex flex-col h-[calc(100vh-4rem)]" dir="rtl">
         {/* Top bar */}
         <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 bg-card/50 print:hidden flex-wrap gap-2">
-          <div />
+          {/* Sales channel switcher — يغيّر أسعار المنيو كله فورًا */}
+          <div className="flex items-center gap-1 flex-wrap">
+            {channels.length > 0 && (
+              <span className="text-[10px] text-muted-foreground font-bold ml-1">قائمة الأسعار:</span>
+            )}
+            {channels.map((ch) => {
+              const isActive = ch.id === channelId;
+              return (
+                <button
+                  key={ch.id}
+                  onClick={() => {
+                    if (ch.id === channelId) return;
+                    if (cart.length > 0) {
+                      toast.error("لا يمكن تغيير قائمة الأسعار والسلة بها أصناف");
+                      return;
+                    }
+                    setChannelId(ch.id);
+                    toast.success(`تم التحويل إلى أسعار: ${ch.name}`);
+                  }}
+                  className={cn(
+                    "px-3 py-1 rounded-full text-[11px] font-bold border transition-colors",
+                    isActive
+                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                      : "bg-transparent text-muted-foreground border-border/50 hover:bg-muted"
+                  )}
+                  title={Number(ch.markup_percent) ? `نسبة زيادة افتراضية ${ch.markup_percent}%` : undefined}
+                >
+                  {ch.name}
+                </button>
+              );
+            })}
+          </div>
+
 
           <div className="flex items-center gap-2">
             {(pendingDeliveryOrders?.length ?? 0) > 0 && (

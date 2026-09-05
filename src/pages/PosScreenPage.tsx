@@ -570,7 +570,9 @@ export const PosScreenPage: React.FC = () => {
       unit_price: item.unit_price,
       quantity: item.quantity,
     })));
+    if ((sale as any).channel_id) setChannelId((sale as any).channel_id);
     toast.info("تم استرجاع الفاتورة المعلقة");
+
   };
 
   const saveSale = useMutation({

@@ -379,6 +379,18 @@ export const PosInvoicesPage: React.FC = () => {
               ))}
             </SelectContent>
           </Select>
+          <Select value={channelFilter} onValueChange={setChannelFilter}>
+            <SelectTrigger className="w-[180px] glass-input">
+              <SelectValue placeholder="كل قنوات البيع" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">كل قنوات البيع</SelectItem>
+              {(channelsList || []).map((c: any) => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">من</span>
             <Popover>

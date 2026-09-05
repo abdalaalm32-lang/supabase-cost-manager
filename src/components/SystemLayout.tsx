@@ -42,6 +42,7 @@ const mainNavItems: NavItem[] = [
       { id: "sales-analytics", path: "/pos/analytics", label: "ذكاء المبيعات", icon: BrainCircuit },
       { id: "sales-groups", path: "/pos/groups", label: "المجموعات", icon: FolderOpen },
       { id: "sales-items", path: "/pos/items", label: "الأصناف", icon: UtensilsCrossed },
+      { id: "sales-channels", path: "/pos/channels", label: "قنوات البيع وأسعارها", icon: Tags },
       { id: "driver-settlement", path: "/sales/driver-settlement", label: "تسوية الطيارين", icon: Store },
       { id: "delivery-companies", path: "/sales/delivery-companies", label: "شركات التوصيل", icon: Truck },
       { id: "sales-shifts", path: "/sales/shifts", label: "سجل الشيفتات", icon: Clock },

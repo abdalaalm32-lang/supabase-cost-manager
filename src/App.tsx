@@ -20,6 +20,7 @@ const DashboardPage = lazy(() => import("@/pages/DashboardPage").then((m) => ({ 
 const RecipesPage = lazy(() => import("@/pages/RecipesPage").then((m) => ({ default: m.RecipesPage })));
 const PosGroupsPage = lazy(() => import("@/pages/PosGroupsPage").then((m) => ({ default: m.PosGroupsPage })));
 const PosItemsPage = lazy(() => import("@/pages/PosItemsPage").then((m) => ({ default: m.PosItemsPage })));
+const PosChannelsPage = lazy(() => import("@/pages/PosChannelsPage").then((m) => ({ default: m.PosChannelsPage })));
 const PosImportPage = lazy(() => import("@/pages/PosImportPage").then((m) => ({ default: m.PosImportPage })));
 const PosApiPage = lazy(() => import("@/pages/PosApiPage").then((m) => ({ default: m.PosApiPage })));
 const PosIntegrationPage = lazy(() => import("@/pages/PosIntegrationPage").then((m) => ({ default: m.PosIntegrationPage })));
@@ -510,6 +511,7 @@ const AppRoutes = () => {
                   <Route path="/pos/analytics" element={<PermissionGuard permKey="sales_management"><PosAnalyticsPage /></PermissionGuard>} />
                   <Route path="/pos/groups" element={<PermissionGuard permKey="sales_management"><PosGroupsPage /></PermissionGuard>} />
                   <Route path="/pos/items" element={<PermissionGuard permKey="sales_management"><PosItemsPage /></PermissionGuard>} />
+                  <Route path="/pos/channels" element={<PermissionGuard permKey="sales_management"><PosChannelsPage /></PermissionGuard>} />
                   <Route path="/integrations/pos-import" element={<PermissionGuard permKey="sales_management"><PosImportPage /></PermissionGuard>} />
                   <Route path="/integrations/pos-api" element={<PermissionGuard permKey="sales_management"><PosIntegrationPage /></PermissionGuard>} />
                   <Route path="/call-center" element={<PermissionGuard permKey="call_center"><CallCenterPage /></PermissionGuard>} />

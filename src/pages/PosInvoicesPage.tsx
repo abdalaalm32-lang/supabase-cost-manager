@@ -144,6 +144,7 @@ export const PosInvoicesPage: React.FC = () => {
     let result = sales;
     if (filter !== "الكل") result = result.filter((s) => s.status === filter);
     if (branchFilter !== "all") result = result.filter((s: any) => s.branch_id === branchFilter);
+    if (channelFilter !== "all") result = result.filter((s: any) => s.channel_id === channelFilter);
 
     const fromKey = dateFrom ? format(dateFrom, "yyyy-MM-dd") : undefined;
     const toKey = dateTo ? format(dateTo, "yyyy-MM-dd") : undefined;
@@ -166,7 +167,7 @@ export const PosInvoicesPage: React.FC = () => {
       });
     }
     return result;
-  }, [sales, filter, searchQuery, branchFilter, dateFrom, dateTo]);
+  }, [sales, filter, searchQuery, branchFilter, channelFilter, dateFrom, dateTo]);
 
   const updateEditQty = (id: string, delta: number) => {
     setEditItems((prev) =>
@@ -417,8 +418,8 @@ export const PosInvoicesPage: React.FC = () => {
               </PopoverContent>
             </Popover>
           </div>
-          {(dateFrom || dateTo || branchFilter !== "all" || searchQuery) && (
-            <Button variant="ghost" size="sm" onClick={() => { setDateFrom(undefined); setDateTo(undefined); setBranchFilter("all"); setSearchQuery(""); }}>
+          {(dateFrom || dateTo || branchFilter !== "all" || channelFilter !== "all" || searchQuery) && (
+            <Button variant="ghost" size="sm" onClick={() => { setDateFrom(undefined); setDateTo(undefined); setBranchFilter("all"); setChannelFilter("all"); setSearchQuery(""); }}>
               <X className="h-4 w-4 mr-1" /> مسح
             </Button>
           )}
@@ -442,6 +443,7 @@ export const PosInvoicesPage: React.FC = () => {
               title="سجل الفواتير"
               filters={[
                 { label: "الفرع", value: branchFilter === "all" ? "الكل" : (branchesList?.find((b: any) => b.id === branchFilter)?.name ?? "—") },
+                { label: "قناة البيع", value: channelFilter === "all" ? "الكل" : ((channelsList as any[])?.find((c: any) => c.id === channelFilter)?.name ?? "—") },
                 { label: "من تاريخ", value: dateFrom ? format(dateFrom, "yyyy/MM/dd") : "—" },
                 { label: "إلى تاريخ", value: dateTo ? format(dateTo, "yyyy/MM/dd") : "—" },
                 { label: "الحالة", value: filter },

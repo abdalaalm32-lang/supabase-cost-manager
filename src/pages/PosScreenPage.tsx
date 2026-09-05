@@ -502,7 +502,7 @@ export const PosScreenPage: React.FC = () => {
       if (existing) {
         return prev.map((c) => c.pos_item_id === item.id ? { ...c, quantity: c.quantity + 1 } : c);
       }
-      return [...prev, { id: crypto.randomUUID(), pos_item_id: item.id, name: item.name, category_name: (item.categories as any)?.name || "", unit_price: item.price, quantity: 1 }];
+      return [...prev, { id: crypto.randomUUID(), pos_item_id: item.id, name: item.name, category_name: (item.categories as any)?.name || "", unit_price: getPrice(item), quantity: 1 }];
     });
   };
 

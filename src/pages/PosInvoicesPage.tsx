@@ -461,6 +461,7 @@ export const PosInvoicesPage: React.FC = () => {
               <TableHead className="text-right">رقم الفاتورة</TableHead>
               <TableHead className="text-right">التاريخ</TableHead>
               <TableHead className="text-right">الفرع</TableHead>
+              <TableHead className="text-right">قناة البيع</TableHead>
               <TableHead className="text-right">الإجمالي</TableHead>
               <TableHead className="text-right">الحالة</TableHead>
               <TableHead className="text-right">إجراء</TableHead>
@@ -472,6 +473,7 @@ export const PosInvoicesPage: React.FC = () => {
                 <TableCell className="font-mono font-bold text-right">{sale.invoice_number || "—"}</TableCell>
                 <TableCell className="text-right">{formatSaleDate(sale)}</TableCell>
                 <TableCell className="text-right">{(sale.branches as any)?.name || "—"}</TableCell>
+                <TableCell className="text-right text-xs">{(sale as any).pos_channels?.name || "—"}</TableCell>
                 <TableCell className="font-bold text-right">{Number(sale.total_amount).toFixed(2)} EGP</TableCell>
                 <TableCell className="text-right">
                   <Badge variant={sale.status === "مكتمل" ? "default" : "secondary"} className={cn(

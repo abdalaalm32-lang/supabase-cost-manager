@@ -581,6 +581,8 @@ export const PosScreenPage: React.FC = () => {
 
       const salePayload = {
         branch_id: branchId || null,
+        channel_id: channelId || null,
+
         date: saleDate.toISOString(),
         total_amount: total, status,
         tax_enabled: taxEnabled, tax_rate: taxEnabled ? taxRate : 0, tax_amount: taxAmount,

@@ -58,11 +58,21 @@ export const PosAnalyticsPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  const { data: channelsList } = useQuery({
+    queryKey: ["analytics-channels", companyId],
+    queryFn: async () => {
+      const { data } = await supabase.from("pos_channels").select("id, name").eq("company_id", companyId!).order("sort_order");
+      return data || [];
+    },
+    enabled: !!companyId,
+  });
+
   const { data: sales } = useQuery({
-    queryKey: ["analytics-sales", companyId, branchFilter, dateFrom?.toISOString(), dateTo?.toISOString()],
+    queryKey: ["analytics-sales", companyId, branchFilter, channelFilter, dateFrom?.toISOString(), dateTo?.toISOString()],
     queryFn: async () => {
       let query = supabase.from("pos_sales").select("*, branches:branch_id(name)").eq("company_id", companyId!).eq("status", "مكتمل");
       if (branchFilter !== "all") query = query.eq("branch_id", branchFilter);
+      if (channelFilter !== "all") query = query.eq("channel_id", channelFilter);
       if (dateFrom) query = query.gte("date", startOfDay(dateFrom).toISOString());
       if (dateTo) query = query.lte("date", endOfDay(dateTo).toISOString());
       query = query.order("date", { ascending: true });
@@ -73,7 +83,7 @@ export const PosAnalyticsPage: React.FC = () => {
   });
 
   const { data: saleItems } = useQuery({
-    queryKey: ["analytics-sale-items", companyId, branchFilter, dateFrom?.toISOString(), dateTo?.toISOString()],
+    queryKey: ["analytics-sale-items", companyId, branchFilter, channelFilter, dateFrom?.toISOString(), dateTo?.toISOString()],
     queryFn: async () => {
       const saleIds = (sales || []).map(s => s.id);
       if (saleIds.length === 0) return [];

@@ -1101,20 +1101,78 @@ export const VarianceAnalysisPage: React.FC = () => {
         <span><b>الفترة السابقة:</b> ${prevStr}</span>
       </div>`;
 
-    // KPI row
-    const kpiHTML = `
-      <div class="kpi-row">
+    // KPI row — full details of the on-screen boxes
+    const bench = selectedActivity ? activityBenchmarks.find((b) => b.key === selectedActivity) : null;
+    let benchLine = "";
+    if (bench && netSales > 0) {
+      const r = Math.abs(costKpis.netVal / netSales);
+      const lbl = r > bench.dangerMin ? "خطر" : r > bench.warnMin ? "إنذار" : "مقبول";
+      benchLine = `<div class="kpi-line"><span>مقارنة بمعيار: ${bench.name}</span><b>${lbl}</b></div>`;
+    }
+    let manualLines = "";
+    if (manualBenchmark > 0) {
+      const diff = actualCost.pct - manualBenchmark / 100;
+      manualLines = `
+          <div class="kpi-line"><span>النسبة المعيارية (يدوي)</span><b>${manualBenchmark}%</b></div>
+          <div class="kpi-line"><span>الفرق (فعلي − معياري)</span><b>${diff >= 0 ? "+" : ""}${fmtPct(diff)}</b></div>`;
+    }
+
+    const periodBoxHTML = `
         <div class="kpi-box">
           <div class="kpi-title">بيانات الفترة</div>
           <div class="kpi-line"><span>مبيعات الفترة</span><b>${fmt(netSales)} ج.م</b></div>
-        </div>
+          ${netSales > 0 ? `<div class="kpi-line"><span>نسبة الانحراف من المبيعات</span><b>${fmtPct(costKpis.netVal / netSales)}</b></div>` : ""}
+          ${benchLine}
+          ${netSales > 0 ? `
+          <div class="kpi-line"><span>نطاق حساب التكلفة</span><b>${costScopeMode === "kitchen_packaging" ? "مطبخ + باكينج" : "مطبخ فقط"}</b></div>
+          <div class="kpi-line"><span>التكلفة الفعلية المستهلكة</span><b>${fmt(actualCost.totalVal)} ج.م</b></div>
+          <div class="kpi-line"><span>نسبة التكلفة الفعلية</span><b>${fmtPct(actualCost.pct)}</b></div>
+          ${manualLines}` : ""}
+          <div class="kpi-line"><span>الفترة السابقة</span><b>${prevStr}</b></div>
+        </div>`;
+
+    const consRowsHTML = consumables.rows.map((r: any) => {
+      const label = r.kind === "packaging" ? "Packaging Control"
+        : r.kind === "general" ? "General Consumables Control"
+        : "نسبة المستهلكات";
+      const statusLbl = r.kind === "consumables"
+        ? (r.status === "alert" ? "تخطت الحد" : "مستقر")
+        : (r.status === "alert" ? "أعلى من الهدف" : r.status === "low" ? "أقل من الهدف" : "ضمن الهدف");
+      const targetLine = r.kind !== "consumables"
+        ? `<div class="kpi-line"><span>الهدف</span><b>${(r.targetMin * 100).toFixed(1)}% - ${(r.targetMax * 100).toFixed(1)}%</b></div>`
+        : "";
+      const catsHTML = (r.cats || []).length > 0
+        ? `<div class="cons-cats"><div class="cons-cats-title">تفصيل حسب المجموعة</div>${(r.cats || []).map((c: any) => `
+            <div class="kpi-line"><span>${c.catName}</span><b>${fmt(c.consumedVal)} ج.م • ${fmtPct(c.ratio)}</b></div>`).join("")}</div>`
+        : "";
+      return `
+        <div class="cons-row">
+          <div class="kpi-line"><span><b>${r.deptName}</b></span><b>${label}</b></div>
+          <div class="kpi-line"><span>قيمة الاستهلاك</span><b>${fmt(r.consumedVal)} ج.م</b></div>
+          <div class="kpi-line"><span>النسبة / المبيعات</span><b>${fmtPct(r.ratio)}</b></div>
+          ${targetLine}
+          <div class="kpi-line"><span>الحالة</span><b>${statusLbl}</b></div>
+          ${catsHTML}
+        </div>`;
+    }).join("");
+
+    const consBoxHTML = `
         <div class="kpi-box">
-          <div class="kpi-title">رقابة المستهلكات</div>
-          <div class="kpi-line"><span>قيمة استهلاك المستهلكات</span><b>${fmt(consumables.consumedVal)} ج.م</b></div>
-          <div class="kpi-line"><span>النسبة / المبيعات</span><b>${fmtPct(consumables.ratio)}</b></div>
-          <div class="kpi-line"><span>الحد المسموح</span><b>${consumablesLimitPct}%</b></div>
-          <div class="kpi-line"><span>الحالة</span><b>${consumables.status === "alert" ? "تخطت النسبة" : "مستقر"}</b></div>
-        </div>
+          <div class="kpi-title">رقابة المستهلكات ${departmentFilter !== "all" ? "(القسم المحدد)" : "(كل الأقسام)"}</div>
+          ${consRowsHTML || `<div class="kpi-line"><span>لا توجد مستهلكات مسجلة لهذا النطاق</span></div>`}
+          ${consumables.hasConsumablesKind ? `
+          <div class="cons-total">
+            <div class="kpi-line"><span>إجمالي المستهلكات (بدون Packaging/General)</span><b>${fmt(consumables.consumedVal)} ج.م</b></div>
+            <div class="kpi-line"><span>النسبة الإجمالية</span><b>${fmtPct(consumables.ratio)}</b></div>
+            <div class="kpi-line"><span>الحد المسموح</span><b>${consumablesLimitPct}%</b></div>
+            <div class="kpi-line"><span>الحالة</span><b>${consumables.status === "alert" ? "تخطت النسبة" : "مستقر"}</b></div>
+          </div>` : ""}
+        </div>`;
+
+    const kpiHTML = `
+      <div class="kpi-row">
+        ${periodBoxHTML}
+        ${consBoxHTML}
         <div class="kpi-box">
           <div class="kpi-title">نسب الانحراف</div>
           <div class="range-line"><span>طبيعي</span><b>0% : 2%</b></div>
@@ -1125,6 +1183,7 @@ export const VarianceAnalysisPage: React.FC = () => {
           <div class="range-line"><span>مشكلة</span><b>&gt; 50%</b></div>
         </div>
       </div>`;
+
 
     // Groups tables
     const groupsHTML = enriched.map((group) => {
@@ -1245,7 +1304,12 @@ export const VarianceAnalysisPage: React.FC = () => {
     .kpi-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 8px; }
     .kpi-box { border: 1px solid #000; padding: 6px 8px; font-size: 10px; }
     .kpi-title { font-weight: bold; border-bottom: 1px solid #000; padding-bottom: 3px; margin-bottom: 4px; font-size: 11px; }
-    .kpi-line, .range-line { display: flex; justify-content: space-between; padding: 1px 0; }
+    .kpi-line, .range-line { display: flex; justify-content: space-between; padding: 1px 0; gap: 8px; }
+    .cons-row { border: 1px solid #999; padding: 3px 5px; margin-bottom: 4px; }
+    .cons-cats { border-top: 1px dashed #999; margin-top: 3px; padding-top: 3px; }
+    .cons-cats-title { font-weight: bold; font-size: 9px; margin-bottom: 2px; }
+    .cons-total { border-top: 1px solid #000; margin-top: 4px; padding-top: 3px; }
+    .kpi-row { align-items: start; }
     .group { border: 1px solid #000; margin-bottom: 8px; page-break-inside: avoid; }
     .group-title { background: #f0f0f0; padding: 5px 8px; display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; border-bottom: 1px solid #000; }
     table.items { width: 100%; border-collapse: collapse; font-size: 8.5px; }
@@ -1453,6 +1517,51 @@ export const VarianceAnalysisPage: React.FC = () => {
         { key: "action_status", label: "حالة الإجراء" },
       ];
       const rows: any[] = [];
+
+      // ── Summary boxes replicated in Excel (بيانات الفترة + رقابة المستهلكات) ──
+      const addInfo = (label: string, value: string) => rows.push({ catName: label, name: value, __rowType: "group-total" });
+      addInfo("بيانات الفترة", "");
+      addInfo("مبيعات الفترة", `${fmt(netSales)} ج.م`);
+      if (netSales > 0) addInfo("نسبة الانحراف من المبيعات", fmtPct(costKpis.netVal / netSales));
+      const xBench = selectedActivity ? activityBenchmarks.find((b) => b.key === selectedActivity) : null;
+      if (xBench && netSales > 0) {
+        const r = Math.abs(costKpis.netVal / netSales);
+        addInfo(`مقارنة بمعيار: ${xBench.name}`, r > xBench.dangerMin ? "خطر" : r > xBench.warnMin ? "إنذار" : "مقبول");
+      }
+      if (netSales > 0) {
+        addInfo("نطاق حساب التكلفة", costScopeMode === "kitchen_packaging" ? "مطبخ + باكينج" : "مطبخ فقط");
+        addInfo("التكلفة الفعلية المستهلكة", `${fmt(actualCost.totalVal)} ج.م`);
+        addInfo("نسبة التكلفة الفعلية", fmtPct(actualCost.pct));
+        if (manualBenchmark > 0) {
+          addInfo("النسبة المعيارية (يدوي)", `${manualBenchmark}%`);
+          const d = actualCost.pct - manualBenchmark / 100;
+          addInfo("الفرق (فعلي − معياري)", `${d >= 0 ? "+" : ""}${fmtPct(d)}`);
+        }
+      }
+      addInfo("الفترة السابقة", prevRange ? `${format(prevRange.from, "yyyy-MM-dd")} → ${format(prevRange.to, "yyyy-MM-dd")}` : "-");
+
+      addInfo(`رقابة المستهلكات ${departmentFilter !== "all" ? "(القسم المحدد)" : "(كل الأقسام)"}`, "");
+      if (consumables.rows.length === 0) addInfo("لا توجد مستهلكات مسجلة لهذا النطاق", "");
+      consumables.rows.forEach((r: any) => {
+        const label = r.kind === "packaging" ? "Packaging Control" : r.kind === "general" ? "General Consumables Control" : "نسبة المستهلكات";
+        const statusLbl = r.kind === "consumables"
+          ? (r.status === "alert" ? "تخطت الحد" : "مستقر")
+          : (r.status === "alert" ? "أعلى من الهدف" : r.status === "low" ? "أقل من الهدف" : "ضمن الهدف");
+        addInfo(r.deptName, label);
+        addInfo("قيمة الاستهلاك", `${fmt(r.consumedVal)} ج.م`);
+        addInfo("النسبة / المبيعات", fmtPct(r.ratio));
+        if (r.kind !== "consumables") addInfo("الهدف", `${(r.targetMin * 100).toFixed(1)}% - ${(r.targetMax * 100).toFixed(1)}%`);
+        addInfo("الحالة", statusLbl);
+        (r.cats || []).forEach((c: any) => addInfo(`— ${c.catName}`, `${fmt(c.consumedVal)} ج.م • ${fmtPct(c.ratio)}`));
+      });
+      if (consumables.hasConsumablesKind) {
+        addInfo("إجمالي المستهلكات (بدون Packaging/General)", `${fmt(consumables.consumedVal)} ج.م`);
+        addInfo("النسبة الإجمالية", fmtPct(consumables.ratio));
+        addInfo("الحد المسموح", `${consumablesLimitPct}%`);
+        addInfo("الحالة", consumables.status === "alert" ? "تخطت النسبة" : "مستقر");
+      }
+      rows.push({ catName: "", name: "" });
+
       for (const g of enriched) {
         for (const i of g.items) {
           const n = notesByItem.get(i.id);

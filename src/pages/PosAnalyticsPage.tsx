@@ -33,6 +33,7 @@ export const PosAnalyticsPage: React.FC = () => {
   const queryClient = useQueryClient();
 
   const [branchFilter, setBranchFilter] = useState<string>("all");
+  const [channelFilter, setChannelFilter] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState<Date | undefined>(() => subDays(new Date(), 30));
   const [dateTo, setDateTo] = useState<Date | undefined>(new Date());
 
@@ -58,11 +59,21 @@ export const PosAnalyticsPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  const { data: channelsList } = useQuery({
+    queryKey: ["analytics-channels", companyId],
+    queryFn: async () => {
+      const { data } = await supabase.from("pos_channels").select("id, name").eq("company_id", companyId!).order("sort_order");
+      return data || [];
+    },
+    enabled: !!companyId,
+  });
+
   const { data: sales } = useQuery({
-    queryKey: ["analytics-sales", companyId, branchFilter, dateFrom?.toISOString(), dateTo?.toISOString()],
+    queryKey: ["analytics-sales", companyId, branchFilter, channelFilter, dateFrom?.toISOString(), dateTo?.toISOString()],
     queryFn: async () => {
       let query = supabase.from("pos_sales").select("*, branches:branch_id(name)").eq("company_id", companyId!).eq("status", "مكتمل");
       if (branchFilter !== "all") query = query.eq("branch_id", branchFilter);
+      if (channelFilter !== "all") query = query.eq("channel_id", channelFilter);
       if (dateFrom) query = query.gte("date", startOfDay(dateFrom).toISOString());
       if (dateTo) query = query.lte("date", endOfDay(dateTo).toISOString());
       query = query.order("date", { ascending: true });
@@ -73,7 +84,7 @@ export const PosAnalyticsPage: React.FC = () => {
   });
 
   const { data: saleItems } = useQuery({
-    queryKey: ["analytics-sale-items", companyId, branchFilter, dateFrom?.toISOString(), dateTo?.toISOString()],
+    queryKey: ["analytics-sale-items", companyId, branchFilter, channelFilter, dateFrom?.toISOString(), dateTo?.toISOString()],
     queryFn: async () => {
       const saleIds = (sales || []).map(s => s.id);
       if (saleIds.length === 0) return [];
@@ -219,6 +230,18 @@ export const PosAnalyticsPage: React.FC = () => {
             </Select>
           </div>
 
+          <div className="min-w-[180px]">
+            <Select value={channelFilter} onValueChange={setChannelFilter}>
+              <SelectTrigger className="glass-input h-9 text-sm">
+                <SelectValue placeholder="كل القنوات" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل القنوات</SelectItem>
+                {(channelsList || []).map((c: any) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" className={cn("glass-input h-9 text-sm min-w-[160px] justify-start", !dateFrom && "text-muted-foreground")}>
@@ -243,8 +266,8 @@ export const PosAnalyticsPage: React.FC = () => {
             </PopoverContent>
           </Popover>
 
-          {(dateFrom || dateTo || branchFilter !== "all") && (
-            <Button variant="ghost" size="sm" onClick={() => { setBranchFilter("all"); setDateFrom(subDays(new Date(), 30)); setDateTo(new Date()); }}>
+          {(dateFrom || dateTo || branchFilter !== "all" || channelFilter !== "all") && (
+            <Button variant="ghost" size="sm" onClick={() => { setBranchFilter("all"); setChannelFilter("all"); setDateFrom(subDays(new Date(), 30)); setDateTo(new Date()); }}>
               مسح الفلاتر
             </Button>
           )}

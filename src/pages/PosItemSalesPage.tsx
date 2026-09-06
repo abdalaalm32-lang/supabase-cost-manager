@@ -37,6 +37,7 @@ export const PosItemSalesPage: React.FC = () => {
   const [shiftFilter, setShiftFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [cashierFilter, setCashierFilter] = useState<string>("all");
+  const [channelFilter, setChannelFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("revenue");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -73,6 +74,18 @@ export const PosItemSalesPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  // Sales channels
+  const { data: channelsList } = useQuery({
+    queryKey: ["item-sales-channels", companyId],
+    queryFn: async () => {
+      const { data } = await supabase.from("pos_channels").select("id, name").eq("company_id", companyId!).order("sort_order");
+      return data || [];
+    },
+    enabled: !!companyId,
+  });
+
+
+
   // Cashiers
   const { data: cashiers } = useQuery({
     queryKey: ["item-sales-cashiers", companyId],
@@ -86,7 +99,7 @@ export const PosItemSalesPage: React.FC = () => {
 
   // Sales (filtered by date/branch/shift/cashier at server when possible)
   const { data: salesRaw, isLoading } = useQuery({
-    queryKey: ["item-sales-data", companyId, branchFilter, shiftFilter, cashierFilter, dateFrom?.toISOString(), dateTo?.toISOString()],
+    queryKey: ["item-sales-data", companyId, branchFilter, shiftFilter, cashierFilter, channelFilter, dateFrom?.toISOString(), dateTo?.toISOString()],
     queryFn: async () =>
       fetchAllRows<any>((from, to) => {
         let q = supabase
@@ -98,6 +111,7 @@ export const PosItemSalesPage: React.FC = () => {
         if (branchFilter !== "all") q = q.eq("branch_id", branchFilter);
         if (shiftFilter !== "all") q = q.eq("shift_id", shiftFilter);
         if (cashierFilter !== "all") q = q.eq("assigned_cashier_id", cashierFilter);
+        if (channelFilter !== "all") q = q.eq("channel_id", channelFilter);
         if (dateFrom) {
           const f = new Date(dateFrom); f.setHours(0, 0, 0, 0);
           q = q.gte("created_at", f.toISOString());

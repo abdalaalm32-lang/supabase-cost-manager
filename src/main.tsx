@@ -54,9 +54,8 @@ window.addEventListener("unhandledrejection", (event) => {
   }
 });
 
-window.addEventListener("load", () => {
-  sessionStorage.removeItem(RELOAD_FLAG);
-});
+// Clear the guard once the app has stayed up for a while, so a future deploy can recover again
+window.setTimeout(() => sessionStorage.removeItem(RELOAD_FLAG), 15000);
 
 // Initialize theme before render
 const savedTheme = localStorage.getItem("theme") || "dark";

@@ -1517,6 +1517,51 @@ export const VarianceAnalysisPage: React.FC = () => {
         { key: "action_status", label: "حالة الإجراء" },
       ];
       const rows: any[] = [];
+
+      // ── Summary boxes replicated in Excel (بيانات الفترة + رقابة المستهلكات) ──
+      const addInfo = (label: string, value: string) => rows.push({ catName: label, name: value, __rowType: "group-total" });
+      addInfo("بيانات الفترة", "");
+      addInfo("مبيعات الفترة", `${fmt(netSales)} ج.م`);
+      if (netSales > 0) addInfo("نسبة الانحراف من المبيعات", fmtPct(costKpis.netVal / netSales));
+      const xBench = selectedActivity ? activityBenchmarks.find((b) => b.key === selectedActivity) : null;
+      if (xBench && netSales > 0) {
+        const r = Math.abs(costKpis.netVal / netSales);
+        addInfo(`مقارنة بمعيار: ${xBench.name}`, r > xBench.dangerMin ? "خطر" : r > xBench.warnMin ? "إنذار" : "مقبول");
+      }
+      if (netSales > 0) {
+        addInfo("نطاق حساب التكلفة", costScopeMode === "kitchen_packaging" ? "مطبخ + باكينج" : "مطبخ فقط");
+        addInfo("التكلفة الفعلية المستهلكة", `${fmt(actualCost.totalVal)} ج.م`);
+        addInfo("نسبة التكلفة الفعلية", fmtPct(actualCost.pct));
+        if (manualBenchmark > 0) {
+          addInfo("النسبة المعيارية (يدوي)", `${manualBenchmark}%`);
+          const d = actualCost.pct - manualBenchmark / 100;
+          addInfo("الفرق (فعلي − معياري)", `${d >= 0 ? "+" : ""}${fmtPct(d)}`);
+        }
+      }
+      addInfo("الفترة السابقة", prevRange ? `${format(prevRange.from, "yyyy-MM-dd")} → ${format(prevRange.to, "yyyy-MM-dd")}` : "-");
+
+      addInfo(`رقابة المستهلكات ${departmentFilter !== "all" ? "(القسم المحدد)" : "(كل الأقسام)"}`, "");
+      if (consumables.rows.length === 0) addInfo("لا توجد مستهلكات مسجلة لهذا النطاق", "");
+      consumables.rows.forEach((r: any) => {
+        const label = r.kind === "packaging" ? "Packaging Control" : r.kind === "general" ? "General Consumables Control" : "نسبة المستهلكات";
+        const statusLbl = r.kind === "consumables"
+          ? (r.status === "alert" ? "تخطت الحد" : "مستقر")
+          : (r.status === "alert" ? "أعلى من الهدف" : r.status === "low" ? "أقل من الهدف" : "ضمن الهدف");
+        addInfo(r.deptName, label);
+        addInfo("قيمة الاستهلاك", `${fmt(r.consumedVal)} ج.م`);
+        addInfo("النسبة / المبيعات", fmtPct(r.ratio));
+        if (r.kind !== "consumables") addInfo("الهدف", `${(r.targetMin * 100).toFixed(1)}% - ${(r.targetMax * 100).toFixed(1)}%`);
+        addInfo("الحالة", statusLbl);
+        (r.cats || []).forEach((c: any) => addInfo(`— ${c.catName}`, `${fmt(c.consumedVal)} ج.م • ${fmtPct(c.ratio)}`));
+      });
+      if (consumables.hasConsumablesKind) {
+        addInfo("إجمالي المستهلكات (بدون Packaging/General)", `${fmt(consumables.consumedVal)} ج.م`);
+        addInfo("النسبة الإجمالية", fmtPct(consumables.ratio));
+        addInfo("الحد المسموح", `${consumablesLimitPct}%`);
+        addInfo("الحالة", consumables.status === "alert" ? "تخطت النسبة" : "مستقر");
+      }
+      rows.push({ catName: "", name: "" });
+
       for (const g of enriched) {
         for (const i of g.items) {
           const n = notesByItem.get(i.id);

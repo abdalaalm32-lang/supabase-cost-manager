@@ -230,6 +230,18 @@ export const PosAnalyticsPage: React.FC = () => {
             </Select>
           </div>
 
+          <div className="min-w-[180px]">
+            <Select value={channelFilter} onValueChange={setChannelFilter}>
+              <SelectTrigger className="glass-input h-9 text-sm">
+                <SelectValue placeholder="كل القنوات" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل القنوات</SelectItem>
+                {(channelsList || []).map((c: any) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" className={cn("glass-input h-9 text-sm min-w-[160px] justify-start", !dateFrom && "text-muted-foreground")}>

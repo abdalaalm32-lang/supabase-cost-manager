@@ -33,6 +33,7 @@ export const PosAnalyticsPage: React.FC = () => {
   const queryClient = useQueryClient();
 
   const [branchFilter, setBranchFilter] = useState<string>("all");
+  const [channelFilter, setChannelFilter] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState<Date | undefined>(() => subDays(new Date(), 30));
   const [dateTo, setDateTo] = useState<Date | undefined>(new Date());
 

@@ -266,8 +266,8 @@ export const PosAnalyticsPage: React.FC = () => {
             </PopoverContent>
           </Popover>
 
-          {(dateFrom || dateTo || branchFilter !== "all") && (
-            <Button variant="ghost" size="sm" onClick={() => { setBranchFilter("all"); setDateFrom(subDays(new Date(), 30)); setDateTo(new Date()); }}>
+          {(dateFrom || dateTo || branchFilter !== "all" || channelFilter !== "all") && (
+            <Button variant="ghost" size="sm" onClick={() => { setBranchFilter("all"); setChannelFilter("all"); setDateFrom(subDays(new Date(), 30)); setDateTo(new Date()); }}>
               مسح الفلاتر
             </Button>
           )}

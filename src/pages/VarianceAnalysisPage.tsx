@@ -1304,7 +1304,12 @@ export const VarianceAnalysisPage: React.FC = () => {
     .kpi-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 8px; }
     .kpi-box { border: 1px solid #000; padding: 6px 8px; font-size: 10px; }
     .kpi-title { font-weight: bold; border-bottom: 1px solid #000; padding-bottom: 3px; margin-bottom: 4px; font-size: 11px; }
-    .kpi-line, .range-line { display: flex; justify-content: space-between; padding: 1px 0; }
+    .kpi-line, .range-line { display: flex; justify-content: space-between; padding: 1px 0; gap: 8px; }
+    .cons-row { border: 1px solid #999; padding: 3px 5px; margin-bottom: 4px; }
+    .cons-cats { border-top: 1px dashed #999; margin-top: 3px; padding-top: 3px; }
+    .cons-cats-title { font-weight: bold; font-size: 9px; margin-bottom: 2px; }
+    .cons-total { border-top: 1px solid #000; margin-top: 4px; padding-top: 3px; }
+    .kpi-row { align-items: start; }
     .group { border: 1px solid #000; margin-bottom: 8px; page-break-inside: avoid; }
     .group-title { background: #f0f0f0; padding: 5px 8px; display: flex; justify-content: space-between; font-size: 11px; font-weight: bold; border-bottom: 1px solid #000; }
     table.items { width: 100%; border-collapse: collapse; font-size: 8.5px; }

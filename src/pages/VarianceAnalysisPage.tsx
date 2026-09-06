@@ -1101,20 +1101,78 @@ export const VarianceAnalysisPage: React.FC = () => {
         <span><b>الفترة السابقة:</b> ${prevStr}</span>
       </div>`;
 
-    // KPI row
-    const kpiHTML = `
-      <div class="kpi-row">
+    // KPI row — full details of the on-screen boxes
+    const bench = selectedActivity ? activityBenchmarks.find((b) => b.key === selectedActivity) : null;
+    let benchLine = "";
+    if (bench && netSales > 0) {
+      const r = Math.abs(costKpis.netVal / netSales);
+      const lbl = r > bench.dangerMin ? "خطر" : r > bench.warnMin ? "إنذار" : "مقبول";
+      benchLine = `<div class="kpi-line"><span>مقارنة بمعيار: ${bench.name}</span><b>${lbl}</b></div>`;
+    }
+    let manualLines = "";
+    if (manualBenchmark > 0) {
+      const diff = actualCost.pct - manualBenchmark / 100;
+      manualLines = `
+          <div class="kpi-line"><span>النسبة المعيارية (يدوي)</span><b>${manualBenchmark}%</b></div>
+          <div class="kpi-line"><span>الفرق (فعلي − معياري)</span><b>${diff >= 0 ? "+" : ""}${fmtPct(diff)}</b></div>`;
+    }
+
+    const periodBoxHTML = `
         <div class="kpi-box">
           <div class="kpi-title">بيانات الفترة</div>
           <div class="kpi-line"><span>مبيعات الفترة</span><b>${fmt(netSales)} ج.م</b></div>
-        </div>
+          ${netSales > 0 ? `<div class="kpi-line"><span>نسبة الانحراف من المبيعات</span><b>${fmtPct(costKpis.netVal / netSales)}</b></div>` : ""}
+          ${benchLine}
+          ${netSales > 0 ? `
+          <div class="kpi-line"><span>نطاق حساب التكلفة</span><b>${costScopeMode === "kitchen_packaging" ? "مطبخ + باكينج" : "مطبخ فقط"}</b></div>
+          <div class="kpi-line"><span>التكلفة الفعلية المستهلكة</span><b>${fmt(actualCost.totalVal)} ج.م</b></div>
+          <div class="kpi-line"><span>نسبة التكلفة الفعلية</span><b>${fmtPct(actualCost.pct)}</b></div>
+          ${manualLines}` : ""}
+          <div class="kpi-line"><span>الفترة السابقة</span><b>${prevStr}</b></div>
+        </div>`;
+
+    const consRowsHTML = consumables.rows.map((r: any) => {
+      const label = r.kind === "packaging" ? "Packaging Control"
+        : r.kind === "general" ? "General Consumables Control"
+        : "نسبة المستهلكات";
+      const statusLbl = r.kind === "consumables"
+        ? (r.status === "alert" ? "تخطت الحد" : "مستقر")
+        : (r.status === "alert" ? "أعلى من الهدف" : r.status === "low" ? "أقل من الهدف" : "ضمن الهدف");
+      const targetLine = r.kind !== "consumables"
+        ? `<div class="kpi-line"><span>الهدف</span><b>${(r.targetMin * 100).toFixed(1)}% - ${(r.targetMax * 100).toFixed(1)}%</b></div>`
+        : "";
+      const catsHTML = (r.cats || []).length > 0
+        ? `<div class="cons-cats"><div class="cons-cats-title">تفصيل حسب المجموعة</div>${(r.cats || []).map((c: any) => `
+            <div class="kpi-line"><span>${c.catName}</span><b>${fmt(c.consumedVal)} ج.م • ${fmtPct(c.ratio)}</b></div>`).join("")}</div>`
+        : "";
+      return `
+        <div class="cons-row">
+          <div class="kpi-line"><span><b>${r.deptName}</b></span><b>${label}</b></div>
+          <div class="kpi-line"><span>قيمة الاستهلاك</span><b>${fmt(r.consumedVal)} ج.م</b></div>
+          <div class="kpi-line"><span>النسبة / المبيعات</span><b>${fmtPct(r.ratio)}</b></div>
+          ${targetLine}
+          <div class="kpi-line"><span>الحالة</span><b>${statusLbl}</b></div>
+          ${catsHTML}
+        </div>`;
+    }).join("");
+
+    const consBoxHTML = `
         <div class="kpi-box">
-          <div class="kpi-title">رقابة المستهلكات</div>
-          <div class="kpi-line"><span>قيمة استهلاك المستهلكات</span><b>${fmt(consumables.consumedVal)} ج.م</b></div>
-          <div class="kpi-line"><span>النسبة / المبيعات</span><b>${fmtPct(consumables.ratio)}</b></div>
-          <div class="kpi-line"><span>الحد المسموح</span><b>${consumablesLimitPct}%</b></div>
-          <div class="kpi-line"><span>الحالة</span><b>${consumables.status === "alert" ? "تخطت النسبة" : "مستقر"}</b></div>
-        </div>
+          <div class="kpi-title">رقابة المستهلكات ${departmentFilter !== "all" ? "(القسم المحدد)" : "(كل الأقسام)"}</div>
+          ${consRowsHTML || `<div class="kpi-line"><span>لا توجد مستهلكات مسجلة لهذا النطاق</span></div>`}
+          ${consumables.hasConsumablesKind ? `
+          <div class="cons-total">
+            <div class="kpi-line"><span>إجمالي المستهلكات (بدون Packaging/General)</span><b>${fmt(consumables.consumedVal)} ج.م</b></div>
+            <div class="kpi-line"><span>النسبة الإجمالية</span><b>${fmtPct(consumables.ratio)}</b></div>
+            <div class="kpi-line"><span>الحد المسموح</span><b>${consumablesLimitPct}%</b></div>
+            <div class="kpi-line"><span>الحالة</span><b>${consumables.status === "alert" ? "تخطت النسبة" : "مستقر"}</b></div>
+          </div>` : ""}
+        </div>`;
+
+    const kpiHTML = `
+      <div class="kpi-row">
+        ${periodBoxHTML}
+        ${consBoxHTML}
         <div class="kpi-box">
           <div class="kpi-title">نسب الانحراف</div>
           <div class="range-line"><span>طبيعي</span><b>0% : 2%</b></div>
@@ -1125,6 +1183,7 @@ export const VarianceAnalysisPage: React.FC = () => {
           <div class="range-line"><span>مشكلة</span><b>&gt; 50%</b></div>
         </div>
       </div>`;
+
 
     // Groups tables
     const groupsHTML = enriched.map((group) => {

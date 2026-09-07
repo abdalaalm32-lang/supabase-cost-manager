@@ -202,7 +202,7 @@ export const MenuEngineeringPage: React.FC = () => {
   const dateToStr = dateTo ? format(dateTo, "yyyy-MM-dd") : null;
 
   const { data: sales = [] } = useQuery({
-    queryKey: ["pos-sales-with-items", companyId, selectedBranch, dateFromStr, dateToStr],
+    queryKey: ["pos-sales-with-items", companyId, selectedBranch, selectedChannel, dateFromStr, dateToStr],
     queryFn: async () => {
       const all: any[] = [];
       const pageSize = 1000;
@@ -216,6 +216,7 @@ export const MenuEngineeringPage: React.FC = () => {
           .eq("company_id", companyId!)
           .eq("status", "مكتمل");
         if (selectedBranch && selectedBranch !== "all") q = q.eq("branch_id", selectedBranch);
+        if (selectedChannel && selectedChannel !== "all") q = q.eq("channel_id", selectedChannel);
         if (dateFromStr) q = q.gte("date", `${dateFromStr}T00:00:00`);
         if (dateToStr) q = q.lte("date", `${dateToStr}T23:59:59`);
         const { data, error } = await q.range(from, from + pageSize - 1);
@@ -632,6 +633,7 @@ export const MenuEngineeringPage: React.FC = () => {
             title={`هندسة المنيو - ${activeTab === "kitchen" ? "المطبخ" : "البار"}`}
             filters={[
               { label: "الفرع", value: selectedBranch === "all" ? "الكل" : (branches.find((b: any) => b.id === selectedBranch)?.name ?? "—") },
+              { label: "القناة", value: selectedChannel === "all" ? "كل القنوات" : ((channelsList as any[]).find((c: any) => c.id === selectedChannel)?.name ?? "—") },
               { label: "من تاريخ", value: dateFrom ? format(dateFrom, "yyyy/MM/dd") : "—" },
               { label: "إلى تاريخ", value: dateTo ? format(dateTo, "yyyy/MM/dd") : "—" },
             ]}
@@ -795,6 +797,7 @@ export const MenuEngineeringPage: React.FC = () => {
   </div>
   <div style="text-align:center;margin-bottom:8px;font-size:9px;font-weight:bold;border:1px solid #000;padding:4px 6px;">
     الفرع: ${selectedBranch === "all" ? "كل الفروع" : (branches.find((b: any) => b.id === selectedBranch)?.name ?? "—")}
+    &nbsp;•&nbsp; القناة: ${selectedChannel === "all" ? "كل القنوات" : ((channelsList as any[]).find((c: any) => c.id === selectedChannel)?.name ?? "—")}
     &nbsp;•&nbsp; من تاريخ: ${dateFrom ? format(dateFrom, "yyyy/MM/dd") : "—"}
     &nbsp;•&nbsp; إلى تاريخ: ${dateTo ? format(dateTo, "yyyy/MM/dd") : "—"}
     &nbsp;•&nbsp; القسم: ${activeTab === "kitchen" ? "المطبخ" : "البار"}
@@ -830,6 +833,14 @@ export const MenuEngineeringPage: React.FC = () => {
             </SelectContent>
           </Select>
 
+          <Select value={selectedChannel} onValueChange={setSelectedChannel}>
+            <SelectTrigger className="w-44"><SelectValue placeholder="كل القنوات" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">كل القنوات</SelectItem>
+              {(channelsList as any[]).map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="outline" className={cn("text-sm justify-start min-w-[160px]", !dateFrom && "text-muted-foreground")}>
@@ -854,8 +865,8 @@ export const MenuEngineeringPage: React.FC = () => {
             </PopoverContent>
           </Popover>
 
-          {(dateFrom || dateTo || selectedBranch !== "all") && (
-            <Button variant="ghost" size="sm" onClick={() => { setSelectedBranch("all"); setDateFrom(undefined); setDateTo(undefined); }}>
+          {(dateFrom || dateTo || selectedBranch !== "all" || selectedChannel !== "all") && (
+            <Button variant="ghost" size="sm" onClick={() => { setSelectedBranch("all"); setSelectedChannel("all"); setDateFrom(undefined); setDateTo(undefined); }}>
               مسح الفلاتر
             </Button>
           )}

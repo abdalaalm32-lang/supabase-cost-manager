@@ -249,11 +249,11 @@ export const PosItemSalesPage: React.FC = () => {
   const clearFilters = () => {
     setDateFrom(undefined); setDateTo(undefined);
     setBranchFilter("all"); setShiftFilter("all");
-    setCategoryFilter("all"); setCashierFilter("all");
+    setCategoryFilter("all"); setCashierFilter("all"); setChannelFilter("all");
     setSearchQuery("");
   };
 
-  const hasFilters = dateFrom || dateTo || branchFilter !== "all" || shiftFilter !== "all" || categoryFilter !== "all" || cashierFilter !== "all" || searchQuery;
+  const hasFilters = dateFrom || dateTo || branchFilter !== "all" || shiftFilter !== "all" || categoryFilter !== "all" || cashierFilter !== "all" || channelFilter !== "all" || searchQuery;
 
   const fmt = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -288,6 +288,7 @@ export const PosItemSalesPage: React.FC = () => {
           title="تقرير مبيعات الأصناف"
           filters={[
             { label: "الفرع", value: branchFilter === "all" ? "الكل" : (branches?.find((b: any) => b.id === branchFilter)?.name ?? "—") },
+            { label: "القناة", value: channelFilter === "all" ? "كل القنوات" : (((channelsList as any[]) || []).find((c: any) => c.id === channelFilter)?.name ?? "—") },
             { label: "من تاريخ", value: dateFrom ? format(dateFrom, "yyyy/MM/dd") : "—" },
             { label: "إلى تاريخ", value: dateTo ? format(dateTo, "yyyy/MM/dd") : "—" },
           ]}
@@ -352,6 +353,14 @@ export const PosItemSalesPage: React.FC = () => {
               <SelectContent>
                 <SelectItem value="all">كل المجموعات</SelectItem>
                 {(categories || []).map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+
+            <Select value={channelFilter} onValueChange={setChannelFilter}>
+              <SelectTrigger className="glass-input w-[160px]"><SelectValue placeholder="القناة" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">كل القنوات</SelectItem>
+                {((channelsList as any[]) || []).map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>
 

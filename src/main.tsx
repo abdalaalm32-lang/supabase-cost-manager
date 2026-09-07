@@ -26,8 +26,9 @@ const RELOAD_FLAG = "chunk-reload-attempt";
 const recoverFromStaleChunks = () => {
   if (sessionStorage.getItem(RELOAD_FLAG)) return;
   sessionStorage.setItem(RELOAD_FLAG, "1");
-  if ("caches" in window) {
-    void caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k)))).finally(() => {
+  const cacheApi = (window as any).caches as CacheStorage | undefined;
+  if (cacheApi) {
+    void cacheApi.keys().then((keys) => Promise.all(keys.map((k) => cacheApi.delete(k)))).finally(() => {
       window.location.reload();
     });
   } else {

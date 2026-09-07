@@ -13,72 +13,106 @@ import { LoginPage } from "@/pages/LoginPage";
 import { HomePage } from "@/pages/HomePage";
 import { TrialSignupPage } from "@/pages/TrialSignupPage";
 import { useTrackCompanyLogin } from "@/hooks/useTrackCompanyLogin";
-const AdminLeadsPage = lazy(() => import("@/pages/AdminLeadsPage").then((m) => ({ default: m.AdminLeadsPage })));
-const AdminTestimonialsPage = lazy(() => import("@/pages/AdminTestimonialsPage").then((m) => ({ default: m.AdminTestimonialsPage })));
+// Resilient lazy loader: retries once (cache-busted) if a chunk fails or the
+// module namespace comes back undefined after a new deploy.
+function lazyPage<T extends React.ComponentType<any>>(
+  loader: () => Promise<any>,
+  name: string
+) {
+  return lazy(async () => {
+    let mod: any;
+    try {
+      mod = await loader();
+    } catch {
+      mod = undefined;
+    }
+    const pick = (m: any) => (m ? (m[name] ?? m.default) : undefined);
+    let Comp = pick(mod);
+    if (!Comp) {
+      try {
+        mod = await loader();
+        Comp = pick(mod);
+      } catch {
+        /* ignore */
+      }
+    }
+    if (!Comp) {
+      if (!sessionStorage.getItem("chunk-reload-attempt")) {
+        sessionStorage.setItem("chunk-reload-attempt", "1");
+        window.location.reload();
+      }
+      return { default: (() => null) as unknown as T };
+    }
+    return { default: Comp as T };
+  });
+}
 
-const DashboardPage = lazy(() => import("@/pages/DashboardPage").then((m) => ({ default: m.DashboardPage })));
-const RecipesPage = lazy(() => import("@/pages/RecipesPage").then((m) => ({ default: m.RecipesPage })));
-const PosGroupsPage = lazy(() => import("@/pages/PosGroupsPage").then((m) => ({ default: m.PosGroupsPage })));
-const PosItemsPage = lazy(() => import("@/pages/PosItemsPage").then((m) => ({ default: m.PosItemsPage })));
-const PosChannelsPage = lazy(() => import("@/pages/PosChannelsPage").then((m) => ({ default: m.PosChannelsPage })));
-const PosImportPage = lazy(() => import("@/pages/PosImportPage").then((m) => ({ default: m.PosImportPage })));
-const PosApiPage = lazy(() => import("@/pages/PosApiPage").then((m) => ({ default: m.PosApiPage })));
-const PosIntegrationPage = lazy(() => import("@/pages/PosIntegrationPage").then((m) => ({ default: m.PosIntegrationPage })));
-const PosScreenPage = lazy(() => import("@/pages/PosScreenPage").then((m) => ({ default: m.PosScreenPage })));
-const PosInvoicesPage = lazy(() => import("@/pages/PosInvoicesPage").then((m) => ({ default: m.PosInvoicesPage })));
-const PosItemSalesPage = lazy(() => import("@/pages/PosItemSalesPage").then((m) => ({ default: m.PosItemSalesPage })));
-const PosAnalyticsPage = lazy(() => import("@/pages/PosAnalyticsPage").then((m) => ({ default: m.PosAnalyticsPage })));
-const SettingsUsersPage = lazy(() => import("@/pages/SettingsUsersPage").then((m) => ({ default: m.SettingsUsersPage })));
-const AdminCompaniesPage = lazy(() => import("@/pages/AdminCompaniesPage").then((m) => ({ default: m.AdminCompaniesPage })));
-const CompanySettingsPage = lazy(() => import("@/pages/CompanySettingsPage").then((m) => ({ default: m.CompanySettingsPage })));
-const SettingsBranchesPage = lazy(() => import("@/pages/SettingsBranchesPage").then((m) => ({ default: m.SettingsBranchesPage })));
-const SettingsWarehousesPage = lazy(() => import("@/pages/SettingsWarehousesPage").then((m) => ({ default: m.SettingsWarehousesPage })));
-const InventoryMaterialsPage = lazy(() => import("@/pages/InventoryMaterialsPage").then((m) => ({ default: m.InventoryMaterialsPage })));
-const InventoryBalancesPage = lazy(() => import("@/pages/InventoryBalancesPage").then((m) => ({ default: m.InventoryBalancesPage })));
-const SupplyPricingPage = lazy(() => import("@/pages/SupplyPricingPage").then((m) => ({ default: m.SupplyPricingPage })));
-const PurchaseInvoicesPage = lazy(() => import("@/pages/PurchaseInvoicesPage").then((m) => ({ default: m.PurchaseInvoicesPage })));
-const PurchaseSuppliersPage = lazy(() => import("@/pages/PurchaseSuppliersPage").then((m) => ({ default: m.PurchaseSuppliersPage })));
-const AddPurchaseInvoicePage = lazy(() => import("@/pages/AddPurchaseInvoicePage").then((m) => ({ default: m.AddPurchaseInvoicePage })));
-const EditPurchaseInvoicePage = lazy(() => import("@/pages/EditPurchaseInvoicePage").then((m) => ({ default: m.EditPurchaseInvoicePage })));
-const SupplierDebtsPage = lazy(() => import("@/pages/SupplierDebtsPage").then((m) => ({ default: m.SupplierDebtsPage })));
-const CostAdjustmentPage = lazy(() => import("@/pages/CostAdjustmentPage").then((m) => ({ default: m.CostAdjustmentPage })));
-const AddCostAdjustmentPage = lazy(() => import("@/pages/AddCostAdjustmentPage").then((m) => ({ default: m.AddCostAdjustmentPage })));
-const StocktakeListPage = lazy(() => import("@/pages/StocktakeListPage").then((m) => ({ default: m.StocktakeListPage })));
-const InstantStocktakeListPage = lazy(() => import("@/pages/InstantStocktakeListPage").then((m) => ({ default: m.InstantStocktakeListPage })));
-const StocktakeDetailPage = lazy(() => import("@/pages/StocktakeDetailPage").then((m) => ({ default: m.StocktakeDetailPage })));
-const WasteListPage = lazy(() => import("@/pages/WasteListPage").then((m) => ({ default: m.WasteListPage })));
-const WasteDetailPage = lazy(() => import("@/pages/WasteDetailPage").then((m) => ({ default: m.WasteDetailPage })));
-const ProductionListPage = lazy(() => import("@/pages/ProductionListPage").then((m) => ({ default: m.ProductionListPage })));
-const ProductionDetailPage = lazy(() => import("@/pages/ProductionDetailPage").then((m) => ({ default: m.ProductionDetailPage })));
-const TransferListPage = lazy(() => import("@/pages/TransferListPage").then((m) => ({ default: m.TransferListPage })));
-const TransferDetailPage = lazy(() => import("@/pages/TransferDetailPage").then((m) => ({ default: m.TransferDetailPage })));
-const SupplyInvoicesToBranchesPage = lazy(() => import("@/pages/SupplyInvoicesToBranchesPage").then((m) => ({ default: m.SupplyInvoicesToBranchesPage })));
-const ProductionRecipesPage = lazy(() => import("@/pages/ProductionRecipesPage").then((m) => ({ default: m.ProductionRecipesPage })));
-const MenuOffersPage = lazy(() => import("@/pages/MenuOffersPage").then((m) => ({ default: m.MenuOffersPage })));
-const CostAnalysisPage = lazy(() => import("@/pages/CostAnalysisPage").then((m) => ({ default: m.CostAnalysisPage })));
-const VarianceAnalysisPage = lazy(() => import("@/pages/VarianceAnalysisPage").then((m) => ({ default: m.VarianceAnalysisPage })));
-const InventoryMovementPage = lazy(() => import("@/pages/InventoryMovementPage").then((m) => ({ default: m.InventoryMovementPage })));
-const PurchaseReportsPage = lazy(() => import("@/pages/PurchaseReportsPage").then((m) => ({ default: m.PurchaseReportsPage })));
-const InventoryLevelsPage = lazy(() => import("@/pages/InventoryLevelsPage").then((m) => ({ default: m.InventoryLevelsPage })));
-const ProductionReportsPage = lazy(() => import("@/pages/ProductionReportsPage").then((m) => ({ default: m.ProductionReportsPage })));
-const WasteReportsPage = lazy(() => import("@/pages/WasteReportsPage").then((m) => ({ default: m.WasteReportsPage })));
-const CostAdjustmentReportsPage = lazy(() => import("@/pages/CostAdjustmentReportsPage").then((m) => ({ default: m.CostAdjustmentReportsPage })));
-const TransferReportsPage = lazy(() => import("@/pages/TransferReportsPage").then((m) => ({ default: m.TransferReportsPage })));
-const InventoryTurnoverPage = lazy(() => import("@/pages/InventoryTurnoverPage").then((m) => ({ default: m.InventoryTurnoverPage })));
-const MenuEngineeringPage = lazy(() => import("@/pages/MenuEngineeringPage").then((m) => ({ default: m.MenuEngineeringPage })));
-const IndirectExpensesPage = lazy(() => import("@/pages/IndirectExpensesPage").then((m) => ({ default: m.IndirectExpensesPage })));
-const MenuAnalysisPage = lazy(() => import("@/pages/MenuAnalysisPage").then((m) => ({ default: m.MenuAnalysisPage })));
-const MenuFinalReportPage = lazy(() => import("@/pages/MenuFinalReportPage").then((m) => ({ default: m.MenuFinalReportPage })));
-const SystemLayout = lazy(() => import("@/components/SystemLayout").then((m) => ({ default: m.SystemLayout })));
-const AdminMessagesPage = lazy(() => import("@/pages/AdminMessagesPage").then((m) => ({ default: m.AdminMessagesPage })));
-const AdminSubscriptionLogPage = lazy(() => import("@/pages/AdminSubscriptionLogPage").then((m) => ({ default: m.AdminSubscriptionLogPage })));
-const PnlPage = lazy(() => import("@/pages/PnlPage").then((m) => ({ default: m.PnlPage })));
-const BranchComparisonPage = lazy(() => import("@/pages/BranchComparisonPage").then((m) => ({ default: m.BranchComparisonPage })));
-const CallCenterPage = lazy(() => import("@/pages/CallCenterPage").then((m) => ({ default: m.CallCenterPage })));
-const DriverSettlementPage = lazy(() => import("@/pages/DriverSettlementPage").then((m) => ({ default: m.DriverSettlementPage })));
-const DeliveryCompaniesPage = lazy(() => import("@/pages/DeliveryCompaniesPage").then((m) => ({ default: m.DeliveryCompaniesPage })));
-const PosShiftsPage = lazy(() => import("@/pages/PosShiftsPage").then((m) => ({ default: m.PosShiftsPage })));
-const PosShiftReportsPage = lazy(() => import("@/pages/PosShiftReportsPage").then((m) => ({ default: m.PosShiftReportsPage })));
+const AdminLeadsPage = lazyPage(() => import("@/pages/AdminLeadsPage"), "AdminLeadsPage");
+const AdminTestimonialsPage = lazyPage(() => import("@/pages/AdminTestimonialsPage"), "AdminTestimonialsPage");
+
+const DashboardPage = lazyPage(() => import("@/pages/DashboardPage"), "DashboardPage");
+const RecipesPage = lazyPage(() => import("@/pages/RecipesPage"), "RecipesPage");
+const PosGroupsPage = lazyPage(() => import("@/pages/PosGroupsPage"), "PosGroupsPage");
+const PosItemsPage = lazyPage(() => import("@/pages/PosItemsPage"), "PosItemsPage");
+const PosChannelsPage = lazyPage(() => import("@/pages/PosChannelsPage"), "PosChannelsPage");
+const PosImportPage = lazyPage(() => import("@/pages/PosImportPage"), "PosImportPage");
+const PosApiPage = lazyPage(() => import("@/pages/PosApiPage"), "PosApiPage");
+const PosIntegrationPage = lazyPage(() => import("@/pages/PosIntegrationPage"), "PosIntegrationPage");
+const PosScreenPage = lazyPage(() => import("@/pages/PosScreenPage"), "PosScreenPage");
+const PosInvoicesPage = lazyPage(() => import("@/pages/PosInvoicesPage"), "PosInvoicesPage");
+const PosItemSalesPage = lazyPage(() => import("@/pages/PosItemSalesPage"), "PosItemSalesPage");
+const PosAnalyticsPage = lazyPage(() => import("@/pages/PosAnalyticsPage"), "PosAnalyticsPage");
+const SettingsUsersPage = lazyPage(() => import("@/pages/SettingsUsersPage"), "SettingsUsersPage");
+const AdminCompaniesPage = lazyPage(() => import("@/pages/AdminCompaniesPage"), "AdminCompaniesPage");
+const CompanySettingsPage = lazyPage(() => import("@/pages/CompanySettingsPage"), "CompanySettingsPage");
+const SettingsBranchesPage = lazyPage(() => import("@/pages/SettingsBranchesPage"), "SettingsBranchesPage");
+const SettingsWarehousesPage = lazyPage(() => import("@/pages/SettingsWarehousesPage"), "SettingsWarehousesPage");
+const InventoryMaterialsPage = lazyPage(() => import("@/pages/InventoryMaterialsPage"), "InventoryMaterialsPage");
+const InventoryBalancesPage = lazyPage(() => import("@/pages/InventoryBalancesPage"), "InventoryBalancesPage");
+const SupplyPricingPage = lazyPage(() => import("@/pages/SupplyPricingPage"), "SupplyPricingPage");
+const PurchaseInvoicesPage = lazyPage(() => import("@/pages/PurchaseInvoicesPage"), "PurchaseInvoicesPage");
+const PurchaseSuppliersPage = lazyPage(() => import("@/pages/PurchaseSuppliersPage"), "PurchaseSuppliersPage");
+const AddPurchaseInvoicePage = lazyPage(() => import("@/pages/AddPurchaseInvoicePage"), "AddPurchaseInvoicePage");
+const EditPurchaseInvoicePage = lazyPage(() => import("@/pages/EditPurchaseInvoicePage"), "EditPurchaseInvoicePage");
+const SupplierDebtsPage = lazyPage(() => import("@/pages/SupplierDebtsPage"), "SupplierDebtsPage");
+const CostAdjustmentPage = lazyPage(() => import("@/pages/CostAdjustmentPage"), "CostAdjustmentPage");
+const AddCostAdjustmentPage = lazyPage(() => import("@/pages/AddCostAdjustmentPage"), "AddCostAdjustmentPage");
+const StocktakeListPage = lazyPage(() => import("@/pages/StocktakeListPage"), "StocktakeListPage");
+const InstantStocktakeListPage = lazyPage(() => import("@/pages/InstantStocktakeListPage"), "InstantStocktakeListPage");
+const StocktakeDetailPage = lazyPage(() => import("@/pages/StocktakeDetailPage"), "StocktakeDetailPage");
+const WasteListPage = lazyPage(() => import("@/pages/WasteListPage"), "WasteListPage");
+const WasteDetailPage = lazyPage(() => import("@/pages/WasteDetailPage"), "WasteDetailPage");
+const ProductionListPage = lazyPage(() => import("@/pages/ProductionListPage"), "ProductionListPage");
+const ProductionDetailPage = lazyPage(() => import("@/pages/ProductionDetailPage"), "ProductionDetailPage");
+const TransferListPage = lazyPage(() => import("@/pages/TransferListPage"), "TransferListPage");
+const TransferDetailPage = lazyPage(() => import("@/pages/TransferDetailPage"), "TransferDetailPage");
+const SupplyInvoicesToBranchesPage = lazyPage(() => import("@/pages/SupplyInvoicesToBranchesPage"), "SupplyInvoicesToBranchesPage");
+const ProductionRecipesPage = lazyPage(() => import("@/pages/ProductionRecipesPage"), "ProductionRecipesPage");
+const MenuOffersPage = lazyPage(() => import("@/pages/MenuOffersPage"), "MenuOffersPage");
+const CostAnalysisPage = lazyPage(() => import("@/pages/CostAnalysisPage"), "CostAnalysisPage");
+const VarianceAnalysisPage = lazyPage(() => import("@/pages/VarianceAnalysisPage"), "VarianceAnalysisPage");
+const InventoryMovementPage = lazyPage(() => import("@/pages/InventoryMovementPage"), "InventoryMovementPage");
+const PurchaseReportsPage = lazyPage(() => import("@/pages/PurchaseReportsPage"), "PurchaseReportsPage");
+const InventoryLevelsPage = lazyPage(() => import("@/pages/InventoryLevelsPage"), "InventoryLevelsPage");
+const ProductionReportsPage = lazyPage(() => import("@/pages/ProductionReportsPage"), "ProductionReportsPage");
+const WasteReportsPage = lazyPage(() => import("@/pages/WasteReportsPage"), "WasteReportsPage");
+const CostAdjustmentReportsPage = lazyPage(() => import("@/pages/CostAdjustmentReportsPage"), "CostAdjustmentReportsPage");
+const TransferReportsPage = lazyPage(() => import("@/pages/TransferReportsPage"), "TransferReportsPage");
+const InventoryTurnoverPage = lazyPage(() => import("@/pages/InventoryTurnoverPage"), "InventoryTurnoverPage");
+const MenuEngineeringPage = lazyPage(() => import("@/pages/MenuEngineeringPage"), "MenuEngineeringPage");
+const IndirectExpensesPage = lazyPage(() => import("@/pages/IndirectExpensesPage"), "IndirectExpensesPage");
+const MenuAnalysisPage = lazyPage(() => import("@/pages/MenuAnalysisPage"), "MenuAnalysisPage");
+const MenuFinalReportPage = lazyPage(() => import("@/pages/MenuFinalReportPage"), "MenuFinalReportPage");
+const SystemLayout = lazyPage(() => import("@/components/SystemLayout"), "SystemLayout");
+const AdminMessagesPage = lazyPage(() => import("@/pages/AdminMessagesPage"), "AdminMessagesPage");
+const AdminSubscriptionLogPage = lazyPage(() => import("@/pages/AdminSubscriptionLogPage"), "AdminSubscriptionLogPage");
+const PnlPage = lazyPage(() => import("@/pages/PnlPage"), "PnlPage");
+const BranchComparisonPage = lazyPage(() => import("@/pages/BranchComparisonPage"), "BranchComparisonPage");
+const CallCenterPage = lazyPage(() => import("@/pages/CallCenterPage"), "CallCenterPage");
+const DriverSettlementPage = lazyPage(() => import("@/pages/DriverSettlementPage"), "DriverSettlementPage");
+const DeliveryCompaniesPage = lazyPage(() => import("@/pages/DeliveryCompaniesPage"), "DeliveryCompaniesPage");
+const PosShiftsPage = lazyPage(() => import("@/pages/PosShiftsPage"), "PosShiftsPage");
+const PosShiftReportsPage = lazyPage(() => import("@/pages/PosShiftReportsPage"), "PosShiftReportsPage");
 
 const queryClient = new QueryClient();
 

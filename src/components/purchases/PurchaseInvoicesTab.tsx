@@ -206,6 +206,37 @@ export const PurchaseInvoicesTab: React.FC = () => {
   }, [orders, filter, searchQuery, locationFilter, dateRange, locationMap]);
 
 
+  const stats = useMemo(() => {
+    let total = 0, paid = 0, credit = 0, archived = 0;
+    const byLoc = new Map<string, { name: string; kind: string; count: number; total: number }>();
+    filtered.forEach((o: any) => {
+      const amt = Number(o.total_amount) || 0;
+      total += amt;
+      paid += Number(o.paid_amount) || 0;
+      if (o.payment_type === "آجل") credit += amt;
+      if (o.status === "مؤرشف") archived += 1;
+      const locId = o.branch_id || o.warehouse_id || "none";
+      const kind = o.branch_id ? "فرع" : o.warehouse_id ? "مخزن" : "—";
+      const cur = byLoc.get(locId) || { name: getLocationName(o), kind, count: 0, total: 0 };
+      cur.count += 1; cur.total += amt;
+      byLoc.set(locId, cur);
+    });
+    const suppliers = new Set(filtered.map((o: any) => o.supplier_name).filter(Boolean)).size;
+    return {
+      count: filtered.length,
+      total,
+      paid,
+      remaining: Math.max(total - paid, 0),
+      credit,
+      archived,
+      suppliers,
+      avg: filtered.length ? total / filtered.length : 0,
+      locations: Array.from(byLoc.values()).sort((a, b) => b.total - a.total),
+    };
+  }, [filtered, locationMap]);
+
+  const money = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
   const handlePrintInvoice = async (order: any) => {
     const { data: items } = await supabase
       .from("purchase_items")
@@ -416,6 +447,46 @@ export const PurchaseInvoicesTab: React.FC = () => {
           title="فواتير المشتريات"
         />
       </div>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        {[
+          { label: "عدد الفواتير", value: String(stats.count), tone: "text-primary" },
+          { label: "إجمالي الفواتير", value: money(stats.total), tone: "text-emerald-500" },
+          { label: "المدفوع", value: money(stats.paid), tone: "text-sky-500" },
+          { label: "المتبقي (مديونية)", value: money(stats.remaining), tone: "text-destructive" },
+          { label: "متوسط قيمة الفاتورة", value: money(stats.avg), tone: "text-amber-500" },
+          { label: "عدد الموردين", value: String(stats.suppliers), tone: "text-violet-500" },
+        ].map((k) => (
+          <div key={k.label} className="glass-card p-3 rounded-xl">
+            <p className="text-[11px] text-muted-foreground">{k.label}</p>
+            <p className={cn("text-lg font-black mt-1", k.tone)}>{k.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {stats.locations.length > 0 && (
+        <div className="glass-card p-3 rounded-xl">
+          <p className="text-xs font-semibold mb-2">حسب الموقع المستلم</p>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {stats.locations.map((l) => (
+              <div key={l.name + l.kind} className="border border-border/60 rounded-lg p-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold truncate">{l.name}</span>
+                  <Badge variant="outline" className="text-[10px]">{l.kind}</Badge>
+                </div>
+                <div className="flex items-center justify-between mt-1.5">
+                  <span className="text-[11px] text-muted-foreground">{l.count} فاتورة</span>
+                  <span className="text-sm font-bold text-emerald-500">{money(l.total)}</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  {stats.total > 0 ? ((l.total / stats.total) * 100).toFixed(1) : "0.0"}% من الإجمالي
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="glass-card overflow-hidden">
         <Table>

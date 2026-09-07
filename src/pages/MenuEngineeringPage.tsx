@@ -126,6 +126,7 @@ export const MenuEngineeringPage: React.FC = () => {
   const companyId = auth.profile?.company_id;
   const [activeTab, setActiveTab] = useState<EngClass>("kitchen");
   const [selectedBranch, setSelectedBranch] = useState("all");
+  const [selectedChannel, setSelectedChannel] = useState("all");
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [strategicFilter, setStrategicFilter] = useState<Strategic | "all">("all");
@@ -139,6 +140,17 @@ export const MenuEngineeringPage: React.FC = () => {
   });
 
   // Queries
+  const { data: channelsList = [] } = useQuery({
+    queryKey: ["menu-eng-channels", companyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("pos_channels").select("id, name").eq("company_id", companyId!).order("sort_order");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!companyId,
+  });
+
   const { data: branches = [] } = useQuery({
     queryKey: ["branches-active", companyId],
     queryFn: async () => {

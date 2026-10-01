@@ -380,7 +380,7 @@ export const MenuAnalysisPage: React.FC = () => {
       categoryMap.get(catName)!.items.push({
         id: item.id, name: item.name, code: item.code || "", categoryName: catName,
         classification: (item as any).categories?.menu_engineering_class || item.menu_engineering_class || "",
-        price: item.price, mainCost, sideCost: sideCost + categorySideCost, consumables, packingCost,
+        price: item.price, base_price: (item as any).base_price, mainCost, sideCost: sideCost + categorySideCost, consumables, packingCost,
         finalDirectCost, directCostPct, netTakeAway, indirectExpenses, totalCost, netProfit, finalCostPct, finalNetPct,
       });
     }
@@ -924,8 +924,8 @@ export const MenuAnalysisPage: React.FC = () => {
         finalNetPct: grandTotals.totalPrice > 0 ? formatPct(grandTotals.totalProfit / grandTotals.totalPrice * 100) : "0%",
       });
       await exportToExcel({
-        title: `تحليل المنيو - ${tabLabel} - ${branchName} - ${selectedPeriod.name}`,
-        filename: `menu-analysis-${tabLabel}-${selectedPeriod.name}`,
+        title: `تحليل المنيو - ${tabLabel} - ${branchName} - ${selectedPeriod.name} - ${channelLabel}`,
+        filename: `menu-analysis-${tabLabel}-${selectedPeriod.name} - ${channelLabel}`,
         columns,
         data: rows,
       });
@@ -997,8 +997,8 @@ export const MenuAnalysisPage: React.FC = () => {
         finalNetPct: grandTotals.totalPrice > 0 ? formatPct(grandTotals.totalProfit / grandTotals.totalPrice * 100) : "0%",
       });
       await exportToPDF({
-        title: `تحليل المنيو - ${tabLabel} - ${branchName} - ${selectedPeriod.name}`,
-        filename: `menu-analysis-${tabLabel}-${selectedPeriod.name}`,
+        title: `تحليل المنيو - ${tabLabel} - ${branchName} - ${selectedPeriod.name} - ${channelLabel}`,
+        filename: `menu-analysis-${tabLabel}-${selectedPeriod.name} - ${channelLabel}`,
         columns,
         data: rows,
       });

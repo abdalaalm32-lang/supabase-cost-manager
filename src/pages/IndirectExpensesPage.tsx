@@ -569,8 +569,8 @@ export const IndirectExpensesPage: React.FC = () => {
       const branchName = selectedBranchId !== "all" ? branches.find(b => b.id === selectedBranchId)?.name : "كل الفروع";
       const periodBranchName = selectedPeriod.branch_id ? branches.find(b => b.id === selectedPeriod.branch_id)?.name : null;
       await exportToExcel({
-        title: `تحليل المصاريف الغير مباشرة - ${periodBranchName || branchName} - ${selectedPeriod.name}`,
-        filename: `indirect-expenses-${selectedPeriod.name}`,
+        title: `تحليل المصاريف الغير مباشرة - ${periodBranchName || branchName} - ${selectedPeriod.name} - ${channelLabel}`,
+        filename: `indirect-expenses-${selectedPeriod.name} - ${channelLabel}`,
         columns: [
           { key: "label", label: "البند" },
           { key: "value", label: "القيمة" },
@@ -594,8 +594,8 @@ export const IndirectExpensesPage: React.FC = () => {
       const branchName = selectedBranchId !== "all" ? branches.find(b => b.id === selectedBranchId)?.name : "كل الفروع";
       const periodBranchName = selectedPeriod.branch_id ? branches.find(b => b.id === selectedPeriod.branch_id)?.name : null;
       await exportToPDF({
-        title: `تحليل المصاريف الغير مباشرة - ${periodBranchName || branchName} - ${selectedPeriod.name}`,
-        filename: `indirect-expenses-${selectedPeriod.name}`,
+        title: `تحليل المصاريف الغير مباشرة - ${periodBranchName || branchName} - ${selectedPeriod.name} - ${channelLabel}`,
+        filename: `indirect-expenses-${selectedPeriod.name} - ${channelLabel}`,
         columns: [
           { key: "label", label: "البند" },
           { key: "value", label: "القيمة" },

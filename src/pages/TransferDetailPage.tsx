@@ -172,7 +172,18 @@ export const TransferDetailPage: React.FC = () => {
         .eq("id", id!)
         .single();
       if (error) throw error;
-      return data;
+      const itemIds = ((data as any)?.transfer_items || []).map((t: any) => t.id);
+      let baseMap: Record<string, number> = {};
+      if (itemIds.length) {
+        const { data: br } = await (supabase as any)
+          .from("transfer_pricing_breakdown")
+          .select("transfer_item_id, base_cost")
+          .in("transfer_item_id", itemIds);
+        for (const b of br || []) {
+          if (b.base_cost != null) baseMap[b.transfer_item_id] = Number(b.base_cost);
+        }
+      }
+      return { ...(data as any), __baseMap: baseMap };
     },
     enabled: !!id && !isNew,
   });
@@ -191,6 +202,7 @@ export const TransferDetailPage: React.FC = () => {
       setLoadingCost(Number((existingRecord as any).loading_cost) || 0);
       setFeesTouched(true);
 
+      const baseMap: Record<string, number> = (existingRecord as any).__baseMap || {};
       const loadedItems: LocalTransferItem[] = (existingRecord.transfer_items || []).map((ti: any) => {
         const si = allStockItems.find((s: any) => s.id === ti.stock_item_id);
         return {
@@ -201,6 +213,8 @@ export const TransferDetailPage: React.FC = () => {
           unit: ti.unit || si?.stock_unit || "كجم",
           current_stock: Number(ti.current_stock) || Number(si?.current_stock) || 0,
           avg_cost: Number(ti.avg_cost) || Number(si?.avg_cost) || 0,
+          // Original base cost (before profit) from the saved snapshot
+          wac: baseMap[ti.id] != null ? baseMap[ti.id] : undefined,
           quantity: Number(ti.quantity) || 0,
         };
       });
@@ -313,7 +327,10 @@ export const TransferDetailPage: React.FC = () => {
   useEffect(() => {
     if (!isNew && status !== "مؤرشف" && !isEditMode) return;
     setItems(prev => prev.map(it => {
-      const wac = Number(it.wac ?? it.avg_cost) || 0;
+      // Saved lines without a known base cost keep their stored price
+      // (prevents re-applying the profit % on every edit).
+      if (it.wac == null) return it;
+      const wac = Number(it.wac) || 0;
       const r = resolveItemPricing({ ...it, avg_cost: wac }, wac);
       return { ...it, wac, avg_cost: r.price, price_source: r.source, price_note: r.note };
     }));

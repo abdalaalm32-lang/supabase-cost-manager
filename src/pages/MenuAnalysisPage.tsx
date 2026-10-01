@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useMenuChannelPricing } from "@/hooks/useMenuChannelPricing";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -122,7 +123,7 @@ export const MenuAnalysisPage: React.FC = () => {
   const { auth } = useAuth();
   const [periods, setPeriods] = useState<CostingPeriod[]>([]);
   const [selectedPeriodId, setSelectedPeriodIdRaw] = useState<string>(() => sessionStorage.getItem("menu_period") || "");
-  const [posItems, setPosItems] = useState<PosItem[]>([]);
+  const [rawPosItems, setPosItems] = useState<PosItem[]>([]);
   const [recipes, setRecipes] = useState<Map<string, number>>(new Map());
   const [recipeDetails, setRecipeDetails] = useState<Map<string, RecipeIngredientDetail[]>>(new Map());
   const [detailItem, setDetailItem] = useState<ItemAnalysis | null>(null);
@@ -153,6 +154,8 @@ export const MenuAnalysisPage: React.FC = () => {
   const [periodBSideCost, setPeriodBSideCost] = useState<SideCostItem[]>([]);
 
   const companyId = auth.profile?.company_id;
+  const { channels, channelId, setChannelId, activeChannel, applyChannelPrices, channelLabel, customCount } = useMenuChannelPricing(companyId);
+  const posItems = React.useMemo(() => applyChannelPrices(rawPosItems as any[]) as any[], [rawPosItems, applyChannelPrices]);
 
   useEffect(() => {
     if (!companyId) return;
@@ -720,7 +723,7 @@ export const MenuAnalysisPage: React.FC = () => {
                               {item.name}
                             </button>
                           </TableCell>
-                          <TableCell className="text-center text-sm">{formatNum(item.price)}</TableCell>
+                          <TableCell className="text-center text-sm">{formatNum(item.price)}{activeChannel && (item as any).base_price !== undefined && (item as any).base_price !== item.price && <div className="text-[10px] text-muted-foreground line-through">{formatNum((item as any).base_price)}</div>}</TableCell>
                           <TableCell className="text-center text-sm">{formatNum(item.mainCost)}</TableCell>
                           <TableCell className="text-center text-sm">{formatNum(item.sideCost)}</TableCell>
                           <TableCell className="text-center text-sm">{formatNum(item.consumables)}</TableCell>
@@ -1258,6 +1261,15 @@ export const MenuAnalysisPage: React.FC = () => {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <h1 className="text-2xl font-bold">تحليل المنيو</h1>
         <div className="flex items-center gap-3 flex-wrap">
+          <span className="text-sm text-muted-foreground">قناة البيع:</span>
+          <Select value={channelId} onValueChange={setChannelId}>
+            <SelectTrigger className="w-[170px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="base">السعر الأساسي</SelectItem>
+              {channels.map(c => (<SelectItem key={c.id} value={c.id}>{c.name}{Number(c.markup_percent) ? ` (+${c.markup_percent}%)` : ""}</SelectItem>))}
+            </SelectContent>
+          </Select>
+          {activeChannel && <Badge variant="secondary">أسعار {channelLabel} • {customCount} سعر خاص</Badge>}
           <span className="text-sm text-muted-foreground">الفرع:</span>
           <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
             <SelectTrigger className="w-[160px]">

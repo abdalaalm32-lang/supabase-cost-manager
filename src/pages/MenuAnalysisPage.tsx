@@ -94,6 +94,7 @@ interface SideCostItem {
 }
 
 interface ItemAnalysis {
+  base_price?: number;
   id: string;
   name: string;
   code: string;

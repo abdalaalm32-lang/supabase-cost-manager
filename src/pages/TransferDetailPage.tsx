@@ -426,6 +426,8 @@ export const TransferDetailPage: React.FC = () => {
     return insertedItems.map((insertedItem, idx) => {
       const item = items[idx];
       if (!item) return null;
+      // Saved line with unknown base cost: don't write a misleading snapshot
+      if (item.id && item.wac == null) return null;
       const pricing = pricingMap[item.stock_item_id];
       const baseWac = Number(item.wac ?? item.avg_cost) || 0;
       const quantity = Math.max(Number(item.quantity) || 1, 1);

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useMenuChannelPricing } from "@/hooks/useMenuChannelPricing";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -108,7 +109,7 @@ export const IndirectExpensesPage: React.FC = () => {
     setSelectedBranchIdRaw(v);
     sessionStorage.setItem("menu_branch", v);
   };
-  const [posItems, setPosItems] = useState<any[]>([]);
+  const [rawPosItems, setPosItems] = useState<any[]>([]);
   const [recipeCosts, setRecipeCosts] = useState<Map<string, number>>(new Map());
   const [costOverrides, setCostOverrides] = useState<Map<string, CostOverride>>(new Map());
   const [categoryPackingItems, setCategoryPackingItems] = useState<any[]>([]);
@@ -131,6 +132,8 @@ export const IndirectExpensesPage: React.FC = () => {
   });
 
   const companyId = auth.profile?.company_id;
+  const { channels, channelId, setChannelId, activeChannel, applyChannelPrices, channelLabel, customCount } = useMenuChannelPricing(companyId);
+  const posItems = React.useMemo(() => applyChannelPrices(rawPosItems as any[]) as any[], [rawPosItems, applyChannelPrices]);
 
   const fetchPeriods = async () => {
     if (!companyId) return;
@@ -566,8 +569,8 @@ export const IndirectExpensesPage: React.FC = () => {
       const branchName = selectedBranchId !== "all" ? branches.find(b => b.id === selectedBranchId)?.name : "كل الفروع";
       const periodBranchName = selectedPeriod.branch_id ? branches.find(b => b.id === selectedPeriod.branch_id)?.name : null;
       await exportToExcel({
-        title: `تحليل المصاريف الغير مباشرة - ${periodBranchName || branchName} - ${selectedPeriod.name}`,
-        filename: `indirect-expenses-${selectedPeriod.name}`,
+        title: `تحليل المصاريف الغير مباشرة - ${periodBranchName || branchName} - ${selectedPeriod.name} - ${channelLabel}`,
+        filename: `indirect-expenses-${selectedPeriod.name} - ${channelLabel}`,
         columns: [
           { key: "label", label: "البند" },
           { key: "value", label: "القيمة" },
@@ -591,8 +594,8 @@ export const IndirectExpensesPage: React.FC = () => {
       const branchName = selectedBranchId !== "all" ? branches.find(b => b.id === selectedBranchId)?.name : "كل الفروع";
       const periodBranchName = selectedPeriod.branch_id ? branches.find(b => b.id === selectedPeriod.branch_id)?.name : null;
       await exportToPDF({
-        title: `تحليل المصاريف الغير مباشرة - ${periodBranchName || branchName} - ${selectedPeriod.name}`,
-        filename: `indirect-expenses-${selectedPeriod.name}`,
+        title: `تحليل المصاريف الغير مباشرة - ${periodBranchName || branchName} - ${selectedPeriod.name} - ${channelLabel}`,
+        filename: `indirect-expenses-${selectedPeriod.name} - ${channelLabel}`,
         columns: [
           { key: "label", label: "البند" },
           { key: "value", label: "القيمة" },
@@ -625,7 +628,7 @@ export const IndirectExpensesPage: React.FC = () => {
     }
     expenseRowsHTML += `<tr style="font-weight:bold;background:#eee;"><td>الإجمالي</td><td>${total.toLocaleString()}</td><td>${monthSales > 0 ? (total / monthSales * 100).toFixed(2) : 0}%</td></tr>`;
 
-    const printHTML = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تحليل المصاريف الغير مباشرة</title>
+    const printHTML = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تحليل المصاريف الغير مباشرة - ${channelLabel}</title>
     <style>
       @font-face { font-family:'CairoLocal'; src:url('${window.location.origin}/fonts/Cairo-Regular.ttf') format('truetype'); }
       * { margin:0; padding:0; box-sizing:border-box; }
@@ -731,6 +734,15 @@ export const IndirectExpensesPage: React.FC = () => {
               </Button>
             </>
           )}
+          <span className="text-sm text-muted-foreground">قناة البيع:</span>
+          <Select value={channelId} onValueChange={setChannelId}>
+            <SelectTrigger className="w-[170px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="base">السعر الأساسي</SelectItem>
+              {channels.map(c => (<SelectItem key={c.id} value={c.id}>{c.name}{Number(c.markup_percent) ? ` (+${c.markup_percent}%)` : ""}</SelectItem>))}
+            </SelectContent>
+          </Select>
+          {activeChannel && <Badge variant="secondary">أسعار {channelLabel} • {customCount} سعر خاص</Badge>}
           <span className="text-sm text-muted-foreground">الفرع:</span>
           <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
             <SelectTrigger className="w-[160px]">

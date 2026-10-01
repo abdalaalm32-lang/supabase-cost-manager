@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useMenuChannelPricing } from "@/hooks/useMenuChannelPricing";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -93,6 +94,7 @@ interface SideCostItem {
 }
 
 interface ItemAnalysis {
+  base_price?: number;
   id: string;
   name: string;
   code: string;
@@ -122,7 +124,7 @@ export const MenuAnalysisPage: React.FC = () => {
   const { auth } = useAuth();
   const [periods, setPeriods] = useState<CostingPeriod[]>([]);
   const [selectedPeriodId, setSelectedPeriodIdRaw] = useState<string>(() => sessionStorage.getItem("menu_period") || "");
-  const [posItems, setPosItems] = useState<PosItem[]>([]);
+  const [rawPosItems, setPosItems] = useState<PosItem[]>([]);
   const [recipes, setRecipes] = useState<Map<string, number>>(new Map());
   const [recipeDetails, setRecipeDetails] = useState<Map<string, RecipeIngredientDetail[]>>(new Map());
   const [detailItem, setDetailItem] = useState<ItemAnalysis | null>(null);
@@ -153,6 +155,8 @@ export const MenuAnalysisPage: React.FC = () => {
   const [periodBSideCost, setPeriodBSideCost] = useState<SideCostItem[]>([]);
 
   const companyId = auth.profile?.company_id;
+  const { channels, channelId, setChannelId, activeChannel, applyChannelPrices, channelLabel, customCount } = useMenuChannelPricing(companyId);
+  const posItems = React.useMemo(() => applyChannelPrices(rawPosItems as any[]) as any[], [rawPosItems, applyChannelPrices]);
 
   useEffect(() => {
     if (!companyId) return;
@@ -377,7 +381,7 @@ export const MenuAnalysisPage: React.FC = () => {
       categoryMap.get(catName)!.items.push({
         id: item.id, name: item.name, code: item.code || "", categoryName: catName,
         classification: (item as any).categories?.menu_engineering_class || item.menu_engineering_class || "",
-        price: item.price, mainCost, sideCost: sideCost + categorySideCost, consumables, packingCost,
+        price: item.price, base_price: (item as any).base_price, mainCost, sideCost: sideCost + categorySideCost, consumables, packingCost,
         finalDirectCost, directCostPct, netTakeAway, indirectExpenses, totalCost, netProfit, finalCostPct, finalNetPct,
       });
     }
@@ -720,7 +724,7 @@ export const MenuAnalysisPage: React.FC = () => {
                               {item.name}
                             </button>
                           </TableCell>
-                          <TableCell className="text-center text-sm">{formatNum(item.price)}</TableCell>
+                          <TableCell className="text-center text-sm">{formatNum(item.price)}{activeChannel && (item as any).base_price !== undefined && (item as any).base_price !== item.price && <div className="text-[10px] text-muted-foreground line-through">{formatNum((item as any).base_price)}</div>}</TableCell>
                           <TableCell className="text-center text-sm">{formatNum(item.mainCost)}</TableCell>
                           <TableCell className="text-center text-sm">{formatNum(item.sideCost)}</TableCell>
                           <TableCell className="text-center text-sm">{formatNum(item.consumables)}</TableCell>
@@ -921,8 +925,8 @@ export const MenuAnalysisPage: React.FC = () => {
         finalNetPct: grandTotals.totalPrice > 0 ? formatPct(grandTotals.totalProfit / grandTotals.totalPrice * 100) : "0%",
       });
       await exportToExcel({
-        title: `تحليل المنيو - ${tabLabel} - ${branchName} - ${selectedPeriod.name}`,
-        filename: `menu-analysis-${tabLabel}-${selectedPeriod.name}`,
+        title: `تحليل المنيو - ${tabLabel} - ${branchName} - ${selectedPeriod.name} - ${channelLabel}`,
+        filename: `menu-analysis-${tabLabel}-${selectedPeriod.name} - ${channelLabel}`,
         columns,
         data: rows,
       });
@@ -994,8 +998,8 @@ export const MenuAnalysisPage: React.FC = () => {
         finalNetPct: grandTotals.totalPrice > 0 ? formatPct(grandTotals.totalProfit / grandTotals.totalPrice * 100) : "0%",
       });
       await exportToPDF({
-        title: `تحليل المنيو - ${tabLabel} - ${branchName} - ${selectedPeriod.name}`,
-        filename: `menu-analysis-${tabLabel}-${selectedPeriod.name}`,
+        title: `تحليل المنيو - ${tabLabel} - ${branchName} - ${selectedPeriod.name} - ${channelLabel}`,
+        filename: `menu-analysis-${tabLabel}-${selectedPeriod.name} - ${channelLabel}`,
         columns,
         data: rows,
       });
@@ -1088,7 +1092,7 @@ export const MenuAnalysisPage: React.FC = () => {
       .footer { text-align:center; margin-top:10px; font-size:8px; border-top:1px solid #000; padding-top:5px; }
     </style></head><body>
     <div class="header">
-      <div class="header-top"><img src="${logoSrc}" alt="Logo" class="logo"/><div><div class="company-name">${companyName}</div><h1>تحليل المنيو - ${tabLabel}</h1></div></div>
+      <div class="header-top"><img src="${logoSrc}" alt="Logo" class="logo"/><div><div class="company-name">${companyName}</div><h1>تحليل المنيو - ${tabLabel} - ${channelLabel}</h1></div></div>
       <div class="sub-info"><span>الفرع: ${branchName || "كل الفروع"}</span><span>الفترة: ${selectedPeriod.name}</span><span>${dateStr}</span></div>
     </div>
     ${categoriesHTML}${summaryHTML}
@@ -1258,6 +1262,15 @@ export const MenuAnalysisPage: React.FC = () => {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <h1 className="text-2xl font-bold">تحليل المنيو</h1>
         <div className="flex items-center gap-3 flex-wrap">
+          <span className="text-sm text-muted-foreground">قناة البيع:</span>
+          <Select value={channelId} onValueChange={setChannelId}>
+            <SelectTrigger className="w-[170px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="base">السعر الأساسي</SelectItem>
+              {channels.map(c => (<SelectItem key={c.id} value={c.id}>{c.name}{Number(c.markup_percent) ? ` (+${c.markup_percent}%)` : ""}</SelectItem>))}
+            </SelectContent>
+          </Select>
+          {activeChannel && <Badge variant="secondary">أسعار {channelLabel} • {customCount} سعر خاص</Badge>}
           <span className="text-sm text-muted-foreground">الفرع:</span>
           <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
             <SelectTrigger className="w-[160px]">

@@ -107,7 +107,6 @@ export const InventoryBalancesPage: React.FC = () => {
   });
 
   const isLocationFiltered = locationFilter !== "";
-  const activeDeptFilter = (departmentFilter && departmentFilter !== "all") ? departmentFilter : null;
 
   // Department filter narrows the items list only — stock is always computed
   // for the whole location so balances stay identical whether a department

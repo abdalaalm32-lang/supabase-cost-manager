@@ -393,7 +393,7 @@ export const TransferDetailPage: React.FC = () => {
     const numVal = val === "" ? 0 : Number(val);
     setItems(prev => prev.map((item, i) => {
       if (i !== idx) return item;
-      if (numVal > item.current_stock) {
+      if (Math.round(numVal * 1000) > Math.round(item.current_stock * 1000)) {
         toast({ title: "تنبيه", description: `الكمية المطلوبة (${numVal}) تتجاوز الرصيد الحالي (${item.current_stock}) للصنف "${item.name}"`, variant: "destructive" });
       }
       return { ...item, quantity: numVal };
@@ -589,7 +589,7 @@ export const TransferDetailPage: React.FC = () => {
       return;
     }
 
-    const overStockItems = items.filter(item => item.quantity > item.current_stock);
+    const overStockItems = items.filter(item => Math.round(item.quantity * 1000) > Math.round(item.current_stock * 1000));
     if (overStockItems.length > 0) {
       const names = overStockItems.map(i => `"${i.name}" (المطلوب: ${i.quantity} / المتاح: ${i.current_stock})`).join("، ");
       toast({ title: "خطأ", description: `لا يمكن صرف كمية أكبر من الرصيد الحالي: ${names}`, variant: "destructive" });

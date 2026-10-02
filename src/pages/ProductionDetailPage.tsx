@@ -182,7 +182,7 @@ export const ProductionDetailPage: React.FC = () => {
           name: pi.name || si?.name || "—",
           code: si?.code || "—",
           unit: pi.unit || si?.stock_unit || "كجم",
-          required_qty: Number(pi.required_qty),
+          required_qty: Math.round(Number(pi.required_qty) * 1000) / 1000,
           unit_cost: Number(pi.unit_cost) || Number(si?.avg_cost) || 0,
         };
       });
@@ -275,7 +275,7 @@ export const ProductionDetailPage: React.FC = () => {
           const ings: LocalIngredient[] = recipe.production_recipe_ingredients.map((ri: any) => {
             const si = allStockItems.find((s: any) => s.id === ri.stock_item_id);
             const conversionFactor = Number(si?.conversion_factor) || 1;
-            const qtyInStockUnit = Number(ri.qty) / conversionFactor;
+            const qtyInStockUnit = Math.round((Number(ri.qty) / conversionFactor) * 1000) / 1000;
             return {
               stock_item_id: ri.stock_item_id,
               name: si?.name || "—",
@@ -756,7 +756,7 @@ export const ProductionDetailPage: React.FC = () => {
                           <TableCell className="font-medium text-sm">{ing.name}</TableCell>
                           <TableCell className="text-sm">{ing.unit}</TableCell>
                           <TableCell className={cn("text-sm", isOverStock && "text-destructive font-bold")}>
-                            {available !== null ? available : "—"}
+                            {available !== null ? Math.round(available * 1000) / 1000 : "—"}
                           </TableCell>
                           <TableCell>
                             {isLocked ? (
@@ -771,7 +771,7 @@ export const ProductionDetailPage: React.FC = () => {
                               />
                             )}
                             {isOverStock && (
-                              <p className="text-[10px] text-destructive mt-0.5">المتاح: {available}</p>
+                              <p className="text-[10px] text-destructive mt-0.5">المتاح: {Math.round(available * 1000) / 1000}</p>
                             )}
                           </TableCell>
                           <TableCell className="text-sm">{ing.unit_cost.toFixed(2)}</TableCell>

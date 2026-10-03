@@ -103,6 +103,7 @@ const MenuEngineeringPage = lazyPage(() => import("@/pages/MenuEngineeringPage")
 const IndirectExpensesPage = lazyPage(() => import("@/pages/IndirectExpensesPage"), "IndirectExpensesPage");
 const MenuAnalysisPage = lazyPage(() => import("@/pages/MenuAnalysisPage"), "MenuAnalysisPage");
 const MenuFinalReportPage = lazyPage(() => import("@/pages/MenuFinalReportPage"), "MenuFinalReportPage");
+const ProfitabilityOptimizationPage = lazyPage(() => import("@/pages/ProfitabilityOptimizationPage"), "ProfitabilityOptimizationPage");
 const SystemLayout = lazyPage(() => import("@/components/SystemLayout"), "SystemLayout");
 const AdminMessagesPage = lazyPage(() => import("@/pages/AdminMessagesPage"), "AdminMessagesPage");
 const AdminSubscriptionLogPage = lazyPage(() => import("@/pages/AdminSubscriptionLogPage"), "AdminSubscriptionLogPage");
@@ -589,6 +590,7 @@ const AppRoutes = () => {
                   <Route path="/menu-costing/indirect-expenses" element={<PermissionGuard permKey="menu-costing"><IndirectExpensesPage /></PermissionGuard>} />
                   <Route path="/menu-costing/analysis" element={<PermissionGuard permKey="menu-costing"><MenuAnalysisPage /></PermissionGuard>} />
                   <Route path="/menu-costing/report" element={<PermissionGuard permKey="menu-costing"><MenuFinalReportPage /></PermissionGuard>} />
+                  <Route path="/menu-costing/profitability" element={<PermissionGuard permKey="menu-costing"><ProfitabilityOptimizationPage /></PermissionGuard>} />
                   <Route path="/menu-engineering" element={<PermissionGuard permKey="menu-engineering"><MenuEngineeringPage /></PermissionGuard>} />
                   <Route path="/cost-adjustment" element={<PermissionGuard permKey="cost-adjustment"><CostAdjustmentPage /></PermissionGuard>} />
                   <Route path="/cost-adjustment/add" element={<PermissionGuard permKey="cost-adjustment"><AddCostAdjustmentPage /></PermissionGuard>} />

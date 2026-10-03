@@ -12,7 +12,10 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { TrendingUp, Printer, AlertTriangle, CheckCircle2, Target } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
-import { printHTML } from "@/lib/posPrintUtils";
+const printHTML = (html: string) => {
+  const w = window.open("", "_blank");
+  if (w) { w.document.write(html); w.document.close(); w.focus(); w.print(); }
+};
 
 interface PosItem {
   id: string;

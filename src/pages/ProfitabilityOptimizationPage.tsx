@@ -218,6 +218,16 @@ export const ProfitabilityOptimizationPage: React.FC = () => {
   }, [selectedPeriod]);
 
   const indirectCostPct = monthSales > 0 ? totalIndirectCost / monthSales : 0;
+  const defaultIndirectPct = indirectCostPct * 100; // as percentage
+
+  const setItemIndirectPct = (itemId: string, pct: number) => {
+    setIndirectPctOverrides(prev => {
+      const next = new Map(prev);
+      if (isNaN(pct)) next.delete(itemId);
+      else next.set(itemId, Math.max(0, Math.min(100, pct)));
+      return next;
+    });
+  };
 
   const getCatPackingCost = (catName: string) => categoryPackingItems.filter(p => p.category_name === catName).reduce((s, p) => s + p.cost, 0);
   const getCatSideCost = (catName: string) => categorySideCostItems.filter(p => p.category_name === catName).reduce((s, p) => s + p.cost, 0);

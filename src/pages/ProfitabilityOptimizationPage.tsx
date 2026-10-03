@@ -20,6 +20,7 @@ const printHTML = (html: string) => {
 interface PosItem {
   id: string;
   name: string;
+  code?: string | null;
   price: number;
   category: string | null;
   menu_engineering_class: string | null;
@@ -49,9 +50,11 @@ interface SideCostItem { id: string; category_name: string; cost_name: string; c
 interface ItemRow {
   id: string;
   name: string;
+  code: string;
   category: string;
   price: number;          // effective (channel) price
   basePrice: number;
+  indirectPct: number;    // effective indirect expenses % (editable per item)
   directCost: number;
   indirectCost: number;
   totalCost: number;
@@ -82,6 +85,7 @@ export const ProfitabilityOptimizationPage: React.FC = () => {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [selectedBranchId, setSelectedBranchId] = useState(() => sessionStorage.getItem("menu_branch") || "all");
   const [targetPct, setTargetPct] = useState<number>(20);
+  const [indirectPctOverrides, setIndirectPctOverrides] = useState<Map<string, number>>(new Map());
   const [showAll, setShowAll] = useState(false);
   const [loading, setLoading] = useState(true);
   const [companyName, setCompanyName] = useState("");
@@ -215,6 +219,16 @@ export const ProfitabilityOptimizationPage: React.FC = () => {
   }, [selectedPeriod]);
 
   const indirectCostPct = monthSales > 0 ? totalIndirectCost / monthSales : 0;
+  const defaultIndirectPct = indirectCostPct * 100; // as percentage
+
+  const setItemIndirectPct = (itemId: string, pct: number) => {
+    setIndirectPctOverrides(prev => {
+      const next = new Map(prev);
+      if (isNaN(pct)) next.delete(itemId);
+      else next.set(itemId, Math.max(0, Math.min(100, pct)));
+      return next;
+    });
+  };
 
   const getCatPackingCost = (catName: string) => categoryPackingItems.filter(p => p.category_name === catName).reduce((s, p) => s + p.cost, 0);
   const getCatSideCost = (catName: string) => categorySideCostItems.filter(p => p.category_name === catName).reduce((s, p) => s + p.cost, 0);
@@ -243,7 +257,8 @@ export const ProfitabilityOptimizationPage: React.FC = () => {
       const consumables = (item.price * consumablesPct) / 100;
       const packingCost = getCatPackingCost(catName) + (override?.packing_cost || 0);
       const directCost = mainCost + sideCost + consumables + packingCost;
-      const indirectCost = item.price * indirectCostPct;
+      const itemIndirectPct = indirectPctOverrides.get(item.id) ?? defaultIndirectPct;
+      const indirectCost = (item.price * itemIndirectPct) / 100;
       const totalCost = directCost + indirectCost;
 
       const price = Number(item.price ?? 0);
@@ -259,17 +274,19 @@ export const ProfitabilityOptimizationPage: React.FC = () => {
       const belowTarget = profitPctBefore < targetPct;
 
       out.push({
-        id: item.id, name: item.name, category: catName,
+        id: item.id, name: item.name, code: item.code || "", category: catName,
         price, basePrice: Number(item.base_price ?? price),
+        indirectPct: itemIndirectPct,
         directCost, indirectCost, totalCost,
         profitBefore, profitPctBefore, costPct,
         suggestedPrice, profitAfter, profitPctAfter, priceIncrease,
         belowTarget,
       });
     }
-    out.sort((a, b) => a.profitPctBefore - b.profitPctBefore);
+    // Same ordering as Menu Analysis page: by item code (numeric-aware)
+    out.sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
     return out;
-  }, [posItems, selectedPeriod, selectedBranchId, recipes, costOverrides, indirectCostPct, categoryPackingItems, categorySideCostItems, targetPct]);
+  }, [posItems, selectedPeriod, selectedBranchId, recipes, costOverrides, indirectCostPct, defaultIndirectPct, indirectPctOverrides, categoryPackingItems, categorySideCostItems, targetPct]);
 
   const visibleRows = useMemo(() => (showAll ? rows : rows.filter(r => r.belowTarget)), [rows, showAll]);
 
@@ -287,6 +304,9 @@ export const ProfitabilityOptimizationPage: React.FC = () => {
     { key: "name", label: "الصنف" },
     { key: "category", label: "التصنيف" },
     { key: "price", label: "السعر الحالي" },
+    { key: "indirectPct", label: "نسبة المصاريف غير المباشرة %" },
+    { key: "directCost", label: "إجمالي التكلفة المباشرة" },
+    { key: "indirectCost", label: "إجمالي التكلفة غير المباشرة" },
     { key: "totalCost", label: "إجمالي التكلفة" },
     { key: "costPct", label: "نسبة التكلفة %" },
     { key: "profitBefore", label: "صافي الربح قبل" },
@@ -299,7 +319,9 @@ export const ProfitabilityOptimizationPage: React.FC = () => {
 
   const exportData = visibleRows.map(r => ({
     name: r.name, category: r.category,
-    price: fmt(r.price), totalCost: fmt(r.totalCost), costPct: fmtPct(r.costPct),
+    price: fmt(r.price), indirectPct: fmtPct(r.indirectPct),
+    directCost: fmt(r.directCost), indirectCost: fmt(r.indirectCost),
+    totalCost: fmt(r.totalCost), costPct: fmtPct(r.costPct),
     profitBefore: fmt(r.profitBefore), profitPctBefore: fmtPct(r.profitPctBefore),
     suggestedPrice: fmt(r.suggestedPrice), priceIncrease: fmt(r.priceIncrease),
     profitAfter: fmt(r.profitAfter), profitPctAfter: fmtPct(r.profitPctAfter),
@@ -312,6 +334,9 @@ export const ProfitabilityOptimizationPage: React.FC = () => {
         <td style="text-align:right">${r.name}</td>
         <td>${r.category}</td>
         <td>${fmt(r.price)}</td>
+        <td>${fmtPct(r.indirectPct)}</td>
+        <td>${fmt(r.directCost)}</td>
+        <td>${fmt(r.indirectCost)}</td>
         <td>${fmt(r.totalCost)}</td>
         <td>${fmtPct(r.costPct)}</td>
         <td class="${r.profitBefore < 0 ? "neg" : ""}">${fmt(r.profitBefore)}</td>
@@ -342,7 +367,7 @@ export const ProfitabilityOptimizationPage: React.FC = () => {
       <div class="sub">الفترة: ${selectedPeriod?.name || "-"} | نسبة الربح المستهدفة: ${targetPct}% | ${showAll ? "كل الأصناف" : "الأصناف أقل من المستهدف فقط"}</div>
       <div class="formula">سعر البيع المقترح = إجمالي التكلفة ÷ (1 - نسبة الربح المستهدفة ${targetPct}%)</div>
       <table><thead><tr>
-        <th>#</th><th>الصنف</th><th>التصنيف</th><th>السعر الحالي</th><th>إجمالي التكلفة</th><th>نسبة التكلفة</th>
+        <th>#</th><th>الصنف</th><th>التصنيف</th><th>السعر الحالي</th><th>نسبة المصاريف غير المباشرة</th><th>إجمالي التكلفة المباشرة</th><th>إجمالي التكلفة غير المباشرة</th><th>إجمالي التكلفة</th><th>نسبة التكلفة</th>
         <th>صافي الربح قبل</th><th>نسبة الربح قبل</th><th>السعر المقترح</th><th>الزيادة المطلوبة</th><th>صافي الربح بعد</th><th>نسبة الربح بعد</th>
       </tr></thead><tbody>${rowsHtml}</tbody></table>
       <div class="footer">عدد الأصناف المعروضة: ${visibleRows.length} من ${rows.length} — أصناف تحت المستهدف: ${kpis.belowCount}</div>
@@ -474,6 +499,9 @@ export const ProfitabilityOptimizationPage: React.FC = () => {
               <TableHead className="text-center font-bold">الصنف</TableHead>
               <TableHead className="text-center font-bold">التصنيف</TableHead>
               <TableHead className="text-center font-bold">السعر الحالي</TableHead>
+              <TableHead className="text-center font-bold">نسبة المصاريف غير المباشرة %</TableHead>
+              <TableHead className="text-center font-bold">إجمالي التكلفة المباشرة</TableHead>
+              <TableHead className="text-center font-bold">إجمالي التكلفة غير المباشرة</TableHead>
               <TableHead className="text-center font-bold">إجمالي التكلفة</TableHead>
               <TableHead className="text-center font-bold">نسبة التكلفة</TableHead>
               <TableHead className="text-center font-bold">صافي الربح قبل</TableHead>
@@ -486,7 +514,7 @@ export const ProfitabilityOptimizationPage: React.FC = () => {
           </TableHeader>
           <TableBody>
             {visibleRows.length === 0 && (
-              <TableRow><TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
+              <TableRow><TableCell colSpan={15} className="text-center py-8 text-muted-foreground">
                 {rows.length === 0 ? "لا توجد أصناف" : "كل الأصناف تحقق نسبة الربح المستهدفة 🎉"}
               </TableCell></TableRow>
             )}
@@ -501,7 +529,17 @@ export const ProfitabilityOptimizationPage: React.FC = () => {
                     <div className="text-[10px] text-muted-foreground line-through">{fmt(r.basePrice)}</div>
                   )}
                 </TableCell>
-                <TableCell className="text-center text-sm">{fmt(r.totalCost)}</TableCell>
+                <TableCell className="text-center">
+                  <Input
+                    type="number" inputMode="decimal" min={0} max={100} step={0.01}
+                    className="w-[80px] h-7 text-center text-xs mx-auto"
+                    value={Number(r.indirectPct.toFixed(2))}
+                    onChange={e => setItemIndirectPct(r.id, e.target.value === "" ? NaN : Number(e.target.value))}
+                  />
+                </TableCell>
+                <TableCell className="text-center text-sm">{fmt(r.directCost)}</TableCell>
+                <TableCell className="text-center text-sm">{fmt(r.indirectCost)}</TableCell>
+                <TableCell className="text-center text-sm font-semibold">{fmt(r.totalCost)}</TableCell>
                 <TableCell className="text-center text-sm">{fmtPct(r.costPct)}</TableCell>
                 <TableCell className={`text-center text-sm font-semibold ${r.profitBefore < 0 ? "text-red-500" : ""}`}>{fmt(r.profitBefore)}</TableCell>
                 <TableCell className="text-center text-sm">

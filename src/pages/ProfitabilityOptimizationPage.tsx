@@ -20,6 +20,7 @@ const printHTML = (html: string) => {
 interface PosItem {
   id: string;
   name: string;
+  code?: string | null;
   price: number;
   category: string | null;
   menu_engineering_class: string | null;
@@ -52,6 +53,7 @@ interface ItemRow {
   category: string;
   price: number;          // effective (channel) price
   basePrice: number;
+  indirectPct: number;    // effective indirect expenses % (editable per item)
   directCost: number;
   indirectCost: number;
   totalCost: number;
@@ -82,6 +84,7 @@ export const ProfitabilityOptimizationPage: React.FC = () => {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [selectedBranchId, setSelectedBranchId] = useState(() => sessionStorage.getItem("menu_branch") || "all");
   const [targetPct, setTargetPct] = useState<number>(20);
+  const [indirectPctOverrides, setIndirectPctOverrides] = useState<Map<string, number>>(new Map());
   const [showAll, setShowAll] = useState(false);
   const [loading, setLoading] = useState(true);
   const [companyName, setCompanyName] = useState("");

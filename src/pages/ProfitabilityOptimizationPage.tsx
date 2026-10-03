@@ -256,7 +256,8 @@ export const ProfitabilityOptimizationPage: React.FC = () => {
       const consumables = (item.price * consumablesPct) / 100;
       const packingCost = getCatPackingCost(catName) + (override?.packing_cost || 0);
       const directCost = mainCost + sideCost + consumables + packingCost;
-      const indirectCost = item.price * indirectCostPct;
+      const itemIndirectPct = indirectPctOverrides.get(item.id) ?? defaultIndirectPct;
+      const indirectCost = (item.price * itemIndirectPct) / 100;
       const totalCost = directCost + indirectCost;
 
       const price = Number(item.price ?? 0);
@@ -274,15 +275,21 @@ export const ProfitabilityOptimizationPage: React.FC = () => {
       out.push({
         id: item.id, name: item.name, category: catName,
         price, basePrice: Number(item.base_price ?? price),
+        indirectPct: itemIndirectPct,
         directCost, indirectCost, totalCost,
         profitBefore, profitPctBefore, costPct,
         suggestedPrice, profitAfter, profitPctAfter, priceIncrease,
         belowTarget,
       });
     }
-    out.sort((a, b) => a.profitPctBefore - b.profitPctBefore);
+    // Same ordering as Menu Analysis page: by item code (numeric-aware)
+    out.sort((a, b) => {
+      const ca = (posItems.find((p: any) => p.id === a.id) as any)?.code || "";
+      const cb = (posItems.find((p: any) => p.id === b.id) as any)?.code || "";
+      return ca.localeCompare(cb, undefined, { numeric: true });
+    });
     return out;
-  }, [posItems, selectedPeriod, selectedBranchId, recipes, costOverrides, indirectCostPct, categoryPackingItems, categorySideCostItems, targetPct]);
+  }, [posItems, selectedPeriod, selectedBranchId, recipes, costOverrides, indirectCostPct, defaultIndirectPct, indirectPctOverrides, categoryPackingItems, categorySideCostItems, targetPct]);
 
   const visibleRows = useMemo(() => (showAll ? rows : rows.filter(r => r.belowTarget)), [rows, showAll]);
 

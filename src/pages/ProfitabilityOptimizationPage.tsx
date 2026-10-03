@@ -304,6 +304,9 @@ export const ProfitabilityOptimizationPage: React.FC = () => {
     { key: "name", label: "الصنف" },
     { key: "category", label: "التصنيف" },
     { key: "price", label: "السعر الحالي" },
+    { key: "indirectPct", label: "نسبة المصاريف غير المباشرة %" },
+    { key: "directCost", label: "إجمالي التكلفة المباشرة" },
+    { key: "indirectCost", label: "إجمالي التكلفة غير المباشرة" },
     { key: "totalCost", label: "إجمالي التكلفة" },
     { key: "costPct", label: "نسبة التكلفة %" },
     { key: "profitBefore", label: "صافي الربح قبل" },
@@ -316,7 +319,9 @@ export const ProfitabilityOptimizationPage: React.FC = () => {
 
   const exportData = visibleRows.map(r => ({
     name: r.name, category: r.category,
-    price: fmt(r.price), totalCost: fmt(r.totalCost), costPct: fmtPct(r.costPct),
+    price: fmt(r.price), indirectPct: fmtPct(r.indirectPct),
+    directCost: fmt(r.directCost), indirectCost: fmt(r.indirectCost),
+    totalCost: fmt(r.totalCost), costPct: fmtPct(r.costPct),
     profitBefore: fmt(r.profitBefore), profitPctBefore: fmtPct(r.profitPctBefore),
     suggestedPrice: fmt(r.suggestedPrice), priceIncrease: fmt(r.priceIncrease),
     profitAfter: fmt(r.profitAfter), profitPctAfter: fmtPct(r.profitPctAfter),
@@ -329,6 +334,9 @@ export const ProfitabilityOptimizationPage: React.FC = () => {
         <td style="text-align:right">${r.name}</td>
         <td>${r.category}</td>
         <td>${fmt(r.price)}</td>
+        <td>${fmtPct(r.indirectPct)}</td>
+        <td>${fmt(r.directCost)}</td>
+        <td>${fmt(r.indirectCost)}</td>
         <td>${fmt(r.totalCost)}</td>
         <td>${fmtPct(r.costPct)}</td>
         <td class="${r.profitBefore < 0 ? "neg" : ""}">${fmt(r.profitBefore)}</td>
@@ -359,7 +367,7 @@ export const ProfitabilityOptimizationPage: React.FC = () => {
       <div class="sub">الفترة: ${selectedPeriod?.name || "-"} | نسبة الربح المستهدفة: ${targetPct}% | ${showAll ? "كل الأصناف" : "الأصناف أقل من المستهدف فقط"}</div>
       <div class="formula">سعر البيع المقترح = إجمالي التكلفة ÷ (1 - نسبة الربح المستهدفة ${targetPct}%)</div>
       <table><thead><tr>
-        <th>#</th><th>الصنف</th><th>التصنيف</th><th>السعر الحالي</th><th>إجمالي التكلفة</th><th>نسبة التكلفة</th>
+        <th>#</th><th>الصنف</th><th>التصنيف</th><th>السعر الحالي</th><th>نسبة المصاريف غير المباشرة</th><th>إجمالي التكلفة المباشرة</th><th>إجمالي التكلفة غير المباشرة</th><th>إجمالي التكلفة</th><th>نسبة التكلفة</th>
         <th>صافي الربح قبل</th><th>نسبة الربح قبل</th><th>السعر المقترح</th><th>الزيادة المطلوبة</th><th>صافي الربح بعد</th><th>نسبة الربح بعد</th>
       </tr></thead><tbody>${rowsHtml}</tbody></table>
       <div class="footer">عدد الأصناف المعروضة: ${visibleRows.length} من ${rows.length} — أصناف تحت المستهدف: ${kpis.belowCount}</div>

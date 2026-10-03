@@ -50,6 +50,7 @@ interface SideCostItem { id: string; category_name: string; cost_name: string; c
 interface ItemRow {
   id: string;
   name: string;
+  code: string;
   category: string;
   price: number;          // effective (channel) price
   basePrice: number;
@@ -273,7 +274,7 @@ export const ProfitabilityOptimizationPage: React.FC = () => {
       const belowTarget = profitPctBefore < targetPct;
 
       out.push({
-        id: item.id, name: item.name, category: catName,
+        id: item.id, name: item.name, code: item.code || "", category: catName,
         price, basePrice: Number(item.base_price ?? price),
         indirectPct: itemIndirectPct,
         directCost, indirectCost, totalCost,
@@ -283,11 +284,7 @@ export const ProfitabilityOptimizationPage: React.FC = () => {
       });
     }
     // Same ordering as Menu Analysis page: by item code (numeric-aware)
-    out.sort((a, b) => {
-      const ca = (posItems.find((p: any) => p.id === a.id) as any)?.code || "";
-      const cb = (posItems.find((p: any) => p.id === b.id) as any)?.code || "";
-      return ca.localeCompare(cb, undefined, { numeric: true });
-    });
+    out.sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
     return out;
   }, [posItems, selectedPeriod, selectedBranchId, recipes, costOverrides, indirectCostPct, defaultIndirectPct, indirectPctOverrides, categoryPackingItems, categorySideCostItems, targetPct]);
 

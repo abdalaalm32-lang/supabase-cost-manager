@@ -499,6 +499,9 @@ export const ProfitabilityOptimizationPage: React.FC = () => {
               <TableHead className="text-center font-bold">الصنف</TableHead>
               <TableHead className="text-center font-bold">التصنيف</TableHead>
               <TableHead className="text-center font-bold">السعر الحالي</TableHead>
+              <TableHead className="text-center font-bold">نسبة المصاريف غير المباشرة %</TableHead>
+              <TableHead className="text-center font-bold">إجمالي التكلفة المباشرة</TableHead>
+              <TableHead className="text-center font-bold">إجمالي التكلفة غير المباشرة</TableHead>
               <TableHead className="text-center font-bold">إجمالي التكلفة</TableHead>
               <TableHead className="text-center font-bold">نسبة التكلفة</TableHead>
               <TableHead className="text-center font-bold">صافي الربح قبل</TableHead>
@@ -511,7 +514,7 @@ export const ProfitabilityOptimizationPage: React.FC = () => {
           </TableHeader>
           <TableBody>
             {visibleRows.length === 0 && (
-              <TableRow><TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
+              <TableRow><TableCell colSpan={15} className="text-center py-8 text-muted-foreground">
                 {rows.length === 0 ? "لا توجد أصناف" : "كل الأصناف تحقق نسبة الربح المستهدفة 🎉"}
               </TableCell></TableRow>
             )}
@@ -526,7 +529,17 @@ export const ProfitabilityOptimizationPage: React.FC = () => {
                     <div className="text-[10px] text-muted-foreground line-through">{fmt(r.basePrice)}</div>
                   )}
                 </TableCell>
-                <TableCell className="text-center text-sm">{fmt(r.totalCost)}</TableCell>
+                <TableCell className="text-center">
+                  <Input
+                    type="number" inputMode="decimal" min={0} max={100} step={0.01}
+                    className="w-[80px] h-7 text-center text-xs mx-auto"
+                    value={Number(r.indirectPct.toFixed(2))}
+                    onChange={e => setItemIndirectPct(r.id, e.target.value === "" ? NaN : Number(e.target.value))}
+                  />
+                </TableCell>
+                <TableCell className="text-center text-sm">{fmt(r.directCost)}</TableCell>
+                <TableCell className="text-center text-sm">{fmt(r.indirectCost)}</TableCell>
+                <TableCell className="text-center text-sm font-semibold">{fmt(r.totalCost)}</TableCell>
                 <TableCell className="text-center text-sm">{fmtPct(r.costPct)}</TableCell>
                 <TableCell className={`text-center text-sm font-semibold ${r.profitBefore < 0 ? "text-red-500" : ""}`}>{fmt(r.profitBefore)}</TableCell>
                 <TableCell className="text-center text-sm">

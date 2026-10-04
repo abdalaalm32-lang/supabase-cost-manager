@@ -252,7 +252,7 @@ export const ProfitabilityOptimizationPage: React.FC = () => {
       const consumables = (item.price * consumablesPct) / 100;
       const packingCost = getCatPackingCost(catName) + (override?.packing_cost || 0);
       const directCost = mainCost + sideCost + consumables + packingCost;
-      const itemIndirectPct = indirectPctOverrides.get(item.id) ?? defaultIndirectPct;
+      const itemIndirectPct = effectiveIndirectPct;
       const indirectCost = (item.price * itemIndirectPct) / 100;
       const totalCost = directCost + indirectCost;
 
@@ -281,7 +281,7 @@ export const ProfitabilityOptimizationPage: React.FC = () => {
     // Same ordering as Menu Analysis page: by item code (numeric-aware)
     out.sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
     return out;
-  }, [posItems, selectedPeriod, selectedBranchId, recipes, costOverrides, indirectCostPct, defaultIndirectPct, indirectPctOverrides, categoryPackingItems, categorySideCostItems, targetPct]);
+  }, [posItems, selectedPeriod, selectedBranchId, recipes, costOverrides, indirectCostPct, defaultIndirectPct, effectiveIndirectPct, categoryPackingItems, categorySideCostItems, targetPct]);
 
   const visibleRows = useMemo(() => (showAll ? rows : rows.filter(r => r.belowTarget)), [rows, showAll]);
 

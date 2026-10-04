@@ -6,6 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useBranchCosts } from "@/hooks/useBranchCosts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DecimalInput } from "@/components/ui/decimal-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +41,7 @@ interface OfferItem {
   id?: string;
   name: string;
   source_pos_item_id: string | null;
+  menu_qty?: number;
   ingredients: OfferIngredient[];
 }
 
@@ -66,6 +68,8 @@ export const MenuOffersPage: React.FC = () => {
   const [notes, setNotes] = useState<string>("");
   const [items, setItems] = useState<OfferItem[]>([]);
   const [status, setStatus] = useState<string>("مسودة");
+  const [targetProfitPct, setTargetProfitPct] = useState<number>(20);
+  const [discountPct, setDiscountPct] = useState<number>(0);
 
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
@@ -176,6 +180,24 @@ export const MenuOffersPage: React.FC = () => {
     return { ingTotal, consumablesAmount, directCost, indirectAmount, fullCost, netSale, taxAmount, profit, margin };
   }, [items, consumablesPct, packingCost, sideCost, indirectExpensesPct, orderType, salePrice, taxRate]);
 
+  const pricing = useMemo(() => {
+    const isTakeAway = orderType.includes("تيك") || orderType.toLowerCase().includes("away");
+    const t = Math.min(Math.max(targetProfitPct ?? 0, 0), 99.99);
+    const netRequired = calcs.fullCost / (1 - t / 100);
+    const suggestedPrice = isTakeAway ? netRequired : netRequired * (1 + (taxRate ?? 0) / 100);
+    const menuPrice = items.reduce((s, it) => {
+      if (!it.source_pos_item_id) return s;
+      const p = posItems.find((x: any) => x.id === it.source_pos_item_id);
+      return s + Number(p?.price ?? 0) * Number(it.menu_qty ?? 1);
+    }, 0);
+    const hasMenu = items.some((it) => !!it.source_pos_item_id);
+    const discountedPrice = menuPrice * (1 - (discountPct ?? 0) / 100);
+    const netDisc = isTakeAway ? discountedPrice : discountedPrice / (1 + (taxRate ?? 0) / 100);
+    const discMargin = netDisc > 0 ? ((netDisc - calcs.fullCost) / netDisc) * 100 : 0;
+    const maxDiscountPct = menuPrice > 0 ? Math.max(0, (1 - suggestedPrice / menuPrice) * 100) : 0;
+    return { suggestedPrice, menuPrice, hasMenu, discountedPrice, discMargin, maxDiscountPct };
+  }, [calcs.fullCost, targetProfitPct, orderType, taxRate, items, posItems, discountPct]);
+
   const marginColor = calcs.margin < 20 ? "text-red-500" : calcs.margin <= 40 ? "text-green-500" : "text-yellow-500";
 
   // Reset form
@@ -206,6 +228,7 @@ export const MenuOffersPage: React.FC = () => {
       id: it.id,
       name: it.name,
       source_pos_item_id: it.source_pos_item_id ?? null,
+      menu_qty: Number((String(it.name ?? "").match(/×\s*(\d+(?:\.\d+)?)/) ?? [])[1] ?? 1),
       ingredients: (it.menu_offer_ingredients ?? []).map((ing: any) => ({
         tempId: uid(),
         id: ing.id,
@@ -241,7 +264,7 @@ export const MenuOffersPage: React.FC = () => {
       };
     });
     const displayName = multiplier > 1 ? `${p.name} ×${multiplier}` : p.name;
-    setItems((prev) => [...prev, { tempId: uid(), name: displayName, source_pos_item_id: p.id, ingredients: ings }]);
+    setItems((prev) => [...prev, { tempId: uid(), name: displayName, source_pos_item_id: p.id, menu_qty: multiplier, ingredients: ings }]);
     setShowAddItem(false);
   };
 
@@ -599,7 +622,7 @@ export const MenuOffersPage: React.FC = () => {
                                           <TableCell className="text-xs">{ing.name}</TableCell>
                                           <TableCell className="text-xs">{ing.unit}</TableCell>
                                           <TableCell>
-                                            <Input type="number" value={ing.qty} onChange={(e) => updateIngQty(item.tempId, ing.tempId, Number(e.target.value))} className="h-7 w-24" />
+                                            <DecimalInput value={ing.qty} onValueChange={(v) => updateIngQty(item.tempId, ing.tempId, v)} className="h-7 w-24" />
                                           </TableCell>
                                           <TableCell className="text-xs">{ing.avg_cost.toFixed(2)}</TableCell>
                                           <TableCell className="text-xs font-semibold">{c.toFixed(2)}</TableCell>
@@ -621,6 +644,57 @@ export const MenuOffersPage: React.FC = () => {
                     );
                   })}
                 </Accordion>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Price suggestion */}
+          <Card>
+            <CardHeader className="pb-2"><CardTitle className="text-sm">اقتراح سعر البيع</CardTitle></CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-12 gap-3 items-end">
+                <div className="col-span-6 md:col-span-3">
+                  <Label className="text-xs">نسبة الربح المطلوبة %</Label>
+                  <DecimalInput value={targetProfitPct} onValueChange={setTargetProfitPct} />
+                </div>
+                <div className="col-span-6 md:col-span-3">
+                  <Label className="text-xs">التكلفة الكاملة</Label>
+                  <div className="h-10 flex items-center font-semibold">{calcs.fullCost.toFixed(2)} EGP</div>
+                </div>
+                <div className="col-span-6 md:col-span-3">
+                  <Label className="text-xs">السعر المقترح {orderType.includes("تيك") ? "" : "(شامل الضريبة)"}</Label>
+                  <div className="h-10 flex items-center font-bold text-primary text-lg">{pricing.suggestedPrice.toFixed(2)} EGP</div>
+                </div>
+                <div className="col-span-6 md:col-span-3">
+                  <Button className="w-full" variant="secondary" disabled={!(calcs.fullCost > 0)} onClick={() => setSalePrice(Number(pricing.suggestedPrice.toFixed(2)))}>اعتماد كسعر بيع</Button>
+                </div>
+              </div>
+              {pricing.hasMenu && (
+                <div className="grid grid-cols-12 gap-3 items-end border-t mt-3 pt-3">
+                  <div className="col-span-6 md:col-span-2">
+                    <Label className="text-xs">سعر المنيو الأصلي</Label>
+                    <div className="h-10 flex items-center font-semibold">{pricing.menuPrice.toFixed(2)} EGP</div>
+                  </div>
+                  <div className="col-span-6 md:col-span-2">
+                    <Label className="text-xs">نسبة الخصم %</Label>
+                    <DecimalInput value={discountPct} onValueChange={setDiscountPct} />
+                  </div>
+                  <div className="col-span-6 md:col-span-2">
+                    <Label className="text-xs">السعر بعد الخصم</Label>
+                    <div className="h-10 flex items-center font-bold text-primary">{pricing.discountedPrice.toFixed(2)} EGP</div>
+                  </div>
+                  <div className="col-span-6 md:col-span-2">
+                    <Label className="text-xs">هامش الربح بعد الخصم</Label>
+                    <div className={`h-10 flex items-center font-bold ${pricing.discMargin < (targetProfitPct ?? 0) ? "text-destructive" : "text-primary"}`}>{pricing.discMargin.toFixed(2)}%</div>
+                  </div>
+                  <div className="col-span-6 md:col-span-2">
+                    <Label className="text-xs">أقصى خصم يحقق الهدف</Label>
+                    <div className="h-10 flex items-center font-semibold">{pricing.maxDiscountPct.toFixed(2)}%</div>
+                  </div>
+                  <div className="col-span-6 md:col-span-2">
+                    <Button className="w-full" variant="secondary" onClick={() => setSalePrice(Number(pricing.discountedPrice.toFixed(2)))}>اعتماد بعد الخصم</Button>
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>

@@ -1,3 +1,4 @@
+import { DecimalInput } from "@/components/ui/decimal-input";
 import React, { useState, useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -462,7 +463,7 @@ export const AddPurchaseInvoicePage: React.FC = () => {
                   <TableCell className="font-medium">{item.name}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{item.unit || "—"}</TableCell>
                   <TableCell>
-                    <Input type="number" min={0} step="0.01" value={item.quantity || ""} placeholder="0" onChange={(e) => updateItemField(idx, "quantity", parseFloat(e.target.value) || 0)} className="glass-input w-28" />
+                    <DecimalInput value={item.quantity} placeholder="0" onValueChange={(v) => updateItemField(idx, "quantity", v)} className="glass-input w-28" />
                   </TableCell>
                   <TableCell className="font-mono text-sm text-muted-foreground">{item.unit_cost.toFixed(2)}</TableCell>
                   <TableCell>

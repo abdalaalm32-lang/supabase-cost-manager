@@ -395,6 +395,7 @@ export const ProfitabilityOptimizationPage: React.FC = () => {
               { label: "الفرع", value: branchName },
               { label: "القناة", value: channelLabel },
               { label: "نسبة الربح المستهدفة", value: `${targetPct}%` },
+              { label: "نسبة المصاريف غير المباشرة", value: fmtPct(effectiveIndirectPct) },
             ]}
           />
         </div>
@@ -460,7 +461,18 @@ export const ProfitabilityOptimizationPage: React.FC = () => {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <Card className="border-primary/40 bg-primary/5"><CardContent className="p-4 text-center space-y-1">
+          <Input
+            type="number" inputMode="decimal" min={0} max={100} step={0.01}
+            className="w-[90px] h-8 text-center text-sm font-bold mx-auto"
+            placeholder={defaultIndirectPct.toFixed(2)}
+            value={indirectPctInput}
+            onChange={e => setIndirectPctInput(e.target.value)}
+          />
+          <div className="text-xs text-muted-foreground">نسبة المصاريف غير المباشرة %</div>
+          <div className="text-[10px] text-muted-foreground">{indirectPctInput.trim() === "" ? `تلقائي: ${fmtPct(defaultIndirectPct)}` : "يدوي"}</div>
+        </CardContent></Card>
         <Card><CardContent className="p-4 text-center">
           <div className="text-2xl font-bold">{kpis.total}</div>
           <div className="text-xs text-muted-foreground">إجمالي الأصناف</div>
@@ -492,7 +504,6 @@ export const ProfitabilityOptimizationPage: React.FC = () => {
               <TableHead className="text-center font-bold">الصنف</TableHead>
               <TableHead className="text-center font-bold">التصنيف</TableHead>
               <TableHead className="text-center font-bold">السعر الحالي</TableHead>
-              <TableHead className="text-center font-bold">نسبة المصاريف غير المباشرة %</TableHead>
               <TableHead className="text-center font-bold">إجمالي التكلفة المباشرة</TableHead>
               <TableHead className="text-center font-bold">إجمالي التكلفة غير المباشرة</TableHead>
               <TableHead className="text-center font-bold">إجمالي التكلفة</TableHead>
@@ -507,7 +518,7 @@ export const ProfitabilityOptimizationPage: React.FC = () => {
           </TableHeader>
           <TableBody>
             {visibleRows.length === 0 && (
-              <TableRow><TableCell colSpan={15} className="text-center py-8 text-muted-foreground">
+              <TableRow><TableCell colSpan={14} className="text-center py-8 text-muted-foreground">
                 {rows.length === 0 ? "لا توجد أصناف" : "كل الأصناف تحقق نسبة الربح المستهدفة 🎉"}
               </TableCell></TableRow>
             )}
@@ -521,14 +532,6 @@ export const ProfitabilityOptimizationPage: React.FC = () => {
                   {channelId !== "base" && r.basePrice !== r.price && (
                     <div className="text-[10px] text-muted-foreground line-through">{fmt(r.basePrice)}</div>
                   )}
-                </TableCell>
-                <TableCell className="text-center">
-                  <Input
-                    type="number" inputMode="decimal" min={0} max={100} step={0.01}
-                    className="w-[80px] h-7 text-center text-xs mx-auto"
-                    value={Number(r.indirectPct.toFixed(2))}
-                    onChange={e => setItemIndirectPct(r.id, e.target.value === "" ? NaN : Number(e.target.value))}
-                  />
                 </TableCell>
                 <TableCell className="text-center text-sm">{fmt(r.directCost)}</TableCell>
                 <TableCell className="text-center text-sm">{fmt(r.indirectCost)}</TableCell>

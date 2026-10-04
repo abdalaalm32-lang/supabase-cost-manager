@@ -329,9 +329,9 @@ export const ProductionDetailPage: React.FC = () => {
       for (const ing of ingredients) {
         if (ing.stock_item_id && ing.required_qty > 0) {
           const available = getLocationStock(ing.stock_item_id);
-          // Use small epsilon tolerance to avoid floating-point precision issues
-          // when required exactly matches available (e.g., 10.5 vs 10.4999999)
-          if (ing.required_qty - available > 0.0001) {
+          // Compare after rounding to 3 decimals so 0.400 vs 0.400 passes
+          // and only a genuine excess (e.g., 0.401 vs 0.400) is blocked
+          if (Math.round(ing.required_qty * 1000) > Math.round(available * 1000)) {
             overStockItems.push(`"${ing.name}" (المطلوب: ${ing.required_qty} / المتاح: ${available.toFixed(2)})`);
           }
         }
@@ -749,7 +749,7 @@ export const ProductionDetailPage: React.FC = () => {
                   ) : (
                     ingredients.map((ing, idx) => {
                       const available = locationId ? getLocationStock(ing.stock_item_id) : null;
-                      const isOverStock = available !== null && ing.required_qty > 0 && ing.required_qty > available;
+                      const isOverStock = available !== null && ing.required_qty > 0 && Math.round(ing.required_qty * 1000) > Math.round(available * 1000);
                       return (
                         <TableRow key={idx}>
                           <TableCell className="font-mono text-xs">{ing.code}</TableCell>

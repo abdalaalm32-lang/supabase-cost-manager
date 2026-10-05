@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { format, subMonths, subDays } from "date-fns";
+import { format, subDays } from "date-fns";
 import { CalendarIcon, Store, Building2, Warehouse, Settings2, Package, AlertTriangle, CheckCircle2, Printer, FileDown, Loader2, MessageSquare, TrendingUp, TrendingDown, BarChart3, PieChart as PieChartIcon, DollarSign, ArrowUp, ArrowDown, Minus, RotateCcw } from "lucide-react";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { useBranchCosts } from "@/hooks/useBranchCosts";
@@ -297,13 +297,13 @@ export const VarianceAnalysisPage: React.FC = () => {
   const activeLocationId = branchFilter !== "all" ? branchFilter : null;
   const { getCost } = useBranchCosts(activeLocationId);
 
-  // Previous period: the full period immediately preceding the current one.
-  // Ends the day before dateFrom, starts one month earlier — so a full-month
-  // current range (e.g. 06-01→06-30) maps to the full previous month (05-01→05-31).
+  // Previous period: same length as the current range, ending the day before
+  // dateFrom — so 16/9→30/9 (15 days) maps to 1/9→15/9.
   const prevRange = useMemo(() => {
     if (!dateFrom || !dateTo) return null;
+    const days = Math.round((dateTo.getTime() - dateFrom.getTime()) / 86400000) + 1;
     const to = subDays(dateFrom, 1);
-    const from = subMonths(dateFrom, 1);
+    const from = subDays(dateFrom, days);
     return { from, to };
   }, [dateFrom, dateTo]);
 

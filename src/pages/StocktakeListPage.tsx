@@ -643,6 +643,41 @@ export const StocktakeListPage: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* ===== Delete Stocktake Confirmation ===== */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100">
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+              </div>
+              <div className="space-y-1">
+                <AlertDialogTitle>هل أنت متأكد من حذف هذا الجرد؟</AlertDialogTitle>
+                <AlertDialogDescription className="space-y-2">
+                  <span className="block">
+                    الجرد: <span className="font-bold text-foreground">{deleteTarget?.record_number || "—"}</span>
+                    {" — "}{deleteTarget?.date || "—"}
+                    {" — "}{deleteTarget ? getLocationName(deleteTarget) : ""}
+                  </span>
+                  <span className="block">
+                    سيتم حذف الجرد وكل أصنافه نهائيااً، ولا يمكن التراجع عن هذه الخطوة.
+                  </span>
+                </AlertDialogDescription>
+              </div>
+            </div>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row-reverse gap-2">
+            <AlertDialogCancel className="border-green-600 text-green-700 hover:bg-green-50 hover:text-green-800">لا، إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => { e.preventDefault(); handleDeleteStocktake(); }}
+            >
+              نعم، حذف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

@@ -17,12 +17,16 @@ import {
 } from "@/components/ui/table";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, Plus, Search, Archive, Pencil, Eye, History, Printer } from "lucide-react";
+import { CalendarIcon, Plus, Search, Archive, Pencil, Eye, History, Printer, Trash2, AlertTriangle } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const STOCKTAKE_TYPES = [
   
@@ -49,6 +53,7 @@ export const StocktakeListPage: React.FC = () => {
   const [activeFilter, setActiveFilter] = useState<FilterTab>("مكتمل");
   const [showEditHistory, setShowEditHistory] = useState(false);
   const [editHistoryStocktakeId, setEditHistoryStocktakeId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
 
   const { data: stocktakes = [], isLoading } = useQuery({
     queryKey: ["periodic-stocktakes", companyId],
@@ -165,6 +170,34 @@ export const StocktakeListPage: React.FC = () => {
     }
     queryClient.invalidateQueries({ queryKey: ["periodic-stocktakes"] });
     toast({ title: "تم أرشفة الجرد بنجاح" });
+  };
+
+  const handleDeleteStocktake = async () => {
+    const target = deleteTarget;
+    if (!target) return;
+
+    const { error: itemsError } = await supabase
+      .from("stocktake_items")
+      .delete()
+      .eq("stocktake_id", target.id);
+    if (itemsError) {
+      toast({ title: "خطأ في حذف الجرد", description: itemsError.message, variant: "destructive" });
+      return;
+    }
+
+    await supabase.from("stocktake_edit_history").delete().eq("stocktake_id", target.id);
+
+    const { error } = await supabase.from("stocktakes").delete().eq("id", target.id);
+    if (error) {
+      toast({ title: "خطأ في حذف الجرد", description: error.message, variant: "destructive" });
+      return;
+    }
+
+    queryClient.invalidateQueries({ queryKey: ["periodic-stocktakes"] });
+    queryClient.invalidateQueries({ queryKey: ["all-stocktake-items"] });
+    queryClient.invalidateQueries({ queryKey: ["stocktake-edit-history"] });
+    setDeleteTarget(null);
+    toast({ title: "تم حذف الجرد بنجاح", description: `تم حذف الجرد ${target.record_number || ""}` });
   };
 
   // Calculate difference values per stocktake
@@ -475,6 +508,15 @@ export const StocktakeListPage: React.FC = () => {
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handlePrintStocktake(st)} title="طباعة">
                         <Printer size={14} />
                       </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => setDeleteTarget(st)}
+                        title="حذف"
+                      >
+                        <Trash2 size={14} />
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -601,6 +643,41 @@ export const StocktakeListPage: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* ===== Delete Stocktake Confirmation ===== */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100">
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+              </div>
+              <div className="space-y-1">
+                <AlertDialogTitle>هل أنت متأكد من حذف هذا الجرد؟</AlertDialogTitle>
+                <AlertDialogDescription className="space-y-2">
+                  <span className="block">
+                    الجرد: <span className="font-bold text-foreground">{deleteTarget?.record_number || "—"}</span>
+                    {" — "}{deleteTarget?.date || "—"}
+                    {" — "}{deleteTarget ? getLocationName(deleteTarget) : ""}
+                  </span>
+                  <span className="block">
+                    سيتم حذف الجرد وكل أصنافه نهائياً، ولا يمكن التراجع عن هذه الخطوة.
+                  </span>
+                </AlertDialogDescription>
+              </div>
+            </div>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row-reverse gap-2">
+            <AlertDialogCancel className="border-green-600 text-green-700 hover:bg-green-50 hover:text-green-800">لا، إلغاء</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => { e.preventDefault(); handleDeleteStocktake(); }}
+            >
+              نعم، حذف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

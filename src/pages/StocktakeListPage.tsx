@@ -17,12 +17,16 @@ import {
 } from "@/components/ui/table";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, Plus, Search, Archive, Pencil, Eye, History, Printer } from "lucide-react";
+import { CalendarIcon, Plus, Search, Archive, Pencil, Eye, History, Printer, Trash2, AlertTriangle } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const STOCKTAKE_TYPES = [
   
@@ -49,6 +53,7 @@ export const StocktakeListPage: React.FC = () => {
   const [activeFilter, setActiveFilter] = useState<FilterTab>("مكتمل");
   const [showEditHistory, setShowEditHistory] = useState(false);
   const [editHistoryStocktakeId, setEditHistoryStocktakeId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
 
   const { data: stocktakes = [], isLoading } = useQuery({
     queryKey: ["periodic-stocktakes", companyId],
@@ -165,6 +170,34 @@ export const StocktakeListPage: React.FC = () => {
     }
     queryClient.invalidateQueries({ queryKey: ["periodic-stocktakes"] });
     toast({ title: "تم أرشفة الجرد بنجاح" });
+  };
+
+  const handleDeleteStocktake = async () => {
+    const target = deleteTarget;
+    if (!target) return;
+
+    const { error: itemsError } = await supabase
+      .from("stocktake_items")
+      .delete()
+      .eq("stocktake_id", target.id);
+    if (itemsError) {
+      toast({ title: "خطأ في حذف الجرد", description: itemsError.message, variant: "destructive" });
+      return;
+    }
+
+    await supabase.from("stocktake_edit_history").delete().eq("stocktake_id", target.id);
+
+    const { error } = await supabase.from("stocktakes").delete().eq("id", target.id);
+    if (error) {
+      toast({ title: "خطأ في حذف الجرد", description: error.message, variant: "destructive" });
+      return;
+    }
+
+    queryClient.invalidateQueries({ queryKey: ["periodic-stocktakes"] });
+    queryClient.invalidateQueries({ queryKey: ["all-stocktake-items"] });
+    queryClient.invalidateQueries({ queryKey: ["stocktake-edit-history"] });
+    setDeleteTarget(null);
+    toast({ title: "تم حذف الجرد بنجاح", description: `تم حذف الجرد ${target.record_number || ""}` });
   };
 
   // Calculate difference values per stocktake
@@ -474,6 +507,15 @@ export const StocktakeListPage: React.FC = () => {
                       )}
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handlePrintStocktake(st)} title="طباعة">
                         <Printer size={14} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => setDeleteTarget(st)}
+                        title="حذف"
+                      >
+                        <Trash2 size={14} />
                       </Button>
                     </div>
                   </TableCell>

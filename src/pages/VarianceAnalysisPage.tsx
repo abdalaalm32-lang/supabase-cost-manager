@@ -297,13 +297,13 @@ export const VarianceAnalysisPage: React.FC = () => {
   const activeLocationId = branchFilter !== "all" ? branchFilter : null;
   const { getCost } = useBranchCosts(activeLocationId);
 
-  // Previous period: the full period immediately preceding the current one.
-  // Ends the day before dateFrom, starts one month earlier — so a full-month
-  // current range (e.g. 06-01→06-30) maps to the full previous month (05-01→05-31).
+  // Previous period: same length as the current range, ending the day before
+  // dateFrom — so 16/9→30/9 (15 days) maps to 1/9→15/9.
   const prevRange = useMemo(() => {
     if (!dateFrom || !dateTo) return null;
+    const days = Math.round((dateTo.getTime() - dateFrom.getTime()) / 86400000) + 1;
     const to = subDays(dateFrom, 1);
-    const from = subMonths(dateFrom, 1);
+    const from = subDays(dateFrom, days);
     return { from, to };
   }, [dateFrom, dateTo]);
 

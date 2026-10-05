@@ -661,7 +661,7 @@ export const StocktakeListPage: React.FC = () => {
                     {" — "}{deleteTarget ? getLocationName(deleteTarget) : ""}
                   </span>
                   <span className="block">
-                    سيتم حذف الجرد وكل أصنافه نهائيااً، ولا يمكن التراجع عن هذه الخطوة.
+                    سيتم حذف الجرد وكل أصنافه نهائياً، ولا يمكن التراجع عن هذه الخطوة.
                   </span>
                 </AlertDialogDescription>
               </div>

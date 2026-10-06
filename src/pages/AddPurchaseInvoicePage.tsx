@@ -25,6 +25,7 @@ import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { recalculatePurchaseCostsForItems } from "@/lib/branchCostUtils";
+import { useLocationStock } from "@/hooks/useLocationStock";
 
 interface InvoiceItem {
   stock_item_id: string;
@@ -46,6 +47,7 @@ export const AddPurchaseInvoicePage: React.FC = () => {
   const [departmentId, setDepartmentId] = useState("");
   const [destinationType, setDestinationType] = useState<"branch" | "warehouse" | "">("");
   const [destinationId, setDestinationId] = useState("");
+  const { getLocationStock } = useLocationStock(destinationId || null, destinationType === "warehouse" ? "warehouse" : "branch");
   const [date, setDate] = useState<Date>(new Date());
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<InvoiceItem[]>([]);
@@ -255,10 +257,18 @@ export const AddPurchaseInvoicePage: React.FC = () => {
       // from the actual completed purchase invoices. This keeps new/edited/
       // archived invoices consistent for both branches and warehouses.
       if (status === "مكتمل") {
+        // On-hand stock after this invoice = stock before + new quantities
+        const after = new Map<string, number>();
+        for (const it of items) {
+          if (!it.stock_item_id) continue;
+          const base = after.has(it.stock_item_id) ? after.get(it.stock_item_id)! : Math.max(getLocationStock(it.stock_item_id), 0);
+          after.set(it.stock_item_id, base + (Number(it.quantity) || 0));
+        }
         await recalculatePurchaseCostsForItems({
           companyId: companyId!,
           stockItemIds: items.map((item) => item.stock_item_id).filter(Boolean),
           locationIds: [destinationId || null],
+          onHand: destinationId ? { [destinationId]: after } : undefined,
         });
       }
     },

@@ -21,6 +21,7 @@ import { ArrowRight, Plus, Search, Trash2, Save, Archive } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { recalculatePurchaseCostsForItems } from "@/lib/branchCostUtils";
+import { useLocationStock } from "@/hooks/useLocationStock";
 
 interface InvoiceItem {
   id?: string;
@@ -46,6 +47,7 @@ export const EditPurchaseInvoicePage: React.FC = () => {
   const [departmentId, setDepartmentId] = useState("");
   const [destinationType, setDestinationType] = useState<"branch" | "warehouse" | "">("");
   const [destinationId, setDestinationId] = useState("");
+  const { getLocationStock } = useLocationStock(destinationId || null, destinationType === "warehouse" ? "warehouse" : "branch");
   const [date, setDate] = useState("");
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<InvoiceItem[]>([]);
@@ -286,10 +288,27 @@ export const EditPurchaseInvoicePage: React.FC = () => {
           ...items.map((i) => i.stock_item_id).filter(Boolean) as string[],
         ]));
 
+        // On-hand stock at destination after edit = current - old invoice qty + new qty
+        const onHand: Record<string, Map<string, number>> = {};
+        if (destinationId) {
+          const after = new Map<string, number>();
+          const sameLoc = wasCompleted && oldBranchId === destinationId;
+          for (const sid of allItemIds) {
+            let q = Math.max(getLocationStock(sid), 0);
+            if (sameLoc) q -= oldQtyMap.get(sid) ?? 0;
+            if (status === "مكتمل") {
+              q += items.filter((i) => i.stock_item_id === sid).reduce((s, i) => s + (Number(i.quantity) || 0), 0);
+            }
+            after.set(sid, Math.max(q, 0));
+          }
+          onHand[destinationId] = after;
+        }
+
         await recalculatePurchaseCostsForItems({
           companyId: companyId!,
           stockItemIds: allItemIds,
           locationIds: [oldBranchId, destinationId || null],
+          onHand,
         });
       }
     },

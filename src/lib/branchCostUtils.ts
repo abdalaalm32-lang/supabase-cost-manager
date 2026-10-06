@@ -164,6 +164,8 @@ type PurchaseItemCostRow = {
   purchase_orders?: {
     branch_id: string | null;
     warehouse_id: string | null;
+    date?: string | null;
+    created_at?: string | null;
   } | null;
 };
 
@@ -179,7 +181,7 @@ async function fetchCompletedPurchaseCostRows(params: {
   while (from < 100000) {
     const { data, error } = await supabase
       .from("purchase_items")
-      .select("quantity, unit_cost, purchase_orders!inner(company_id, status, branch_id, warehouse_id)")
+      .select("quantity, unit_cost, purchase_orders!inner(company_id, status, branch_id, warehouse_id, date, created_at)")
       .eq("stock_item_id", stockItemId)
       .eq("purchase_orders.company_id", companyId)
       .eq("purchase_orders.status", "مكتمل")
@@ -217,6 +219,39 @@ function calculateWeightedPurchaseAverage(rows: PurchaseItemCostRow[]): {
 }
 
 /**
+ * Weighted average of the stock that is actually ON HAND.
+ * Walks completed purchases from newest to oldest and only takes enough
+ * quantity to cover the current on-hand stock. Quantities that were already
+ * consumed (sold, transferred, wasted) no longer affect the average, so when
+ * the old stock ran out, a new purchase sets the average to its own price.
+ * If on-hand stock is 0, the latest purchase price is used.
+ */
+function calculateOnHandAverage(rows: PurchaseItemCostRow[], onHand: number): number {
+  const sorted = [...rows]
+    .filter((r) => Number(r.quantity ?? 0) > 0)
+    .sort((a, b) => {
+      const ka = `${a.purchase_orders?.date ?? ""}|${a.purchase_orders?.created_at ?? ""}`;
+      const kb = `${b.purchase_orders?.date ?? ""}|${b.purchase_orders?.created_at ?? ""}`;
+      return kb.localeCompare(ka);
+    });
+  if (sorted.length === 0) return 0;
+  const target = Math.max(Number(onHand) || 0, 0);
+  if (target <= 0.0005) return Math.max(Number(sorted[0].unit_cost ?? 0), 0);
+
+  let remaining = target;
+  let qty = 0;
+  let value = 0;
+  for (const row of sorted) {
+    if (remaining <= 0) break;
+    const q = Math.min(Number(row.quantity ?? 0), remaining);
+    qty += q;
+    value += q * Math.max(Number(row.unit_cost ?? 0), 0);
+    remaining -= q;
+  }
+  return qty > 0 ? value / qty : 0;
+}
+
+/**
  * Rebuild a location WAC from the currently completed purchase invoices.
  * This is used after editing, deleting, or archiving purchases so stale or
  * previously polluted averages are replaced by the true weighted average.
@@ -225,21 +260,32 @@ export async function recalculateLocationPurchaseCost(params: {
   companyId: string;
   stockItemId: string;
   locationId: string;
+  /** Actual on-hand stock at the location AFTER the change (if known). */
+  onHandStock?: number;
 }): Promise<number> {
-  const { companyId, stockItemId, locationId } = params;
+  const { companyId, stockItemId, locationId, onHandStock } = params;
   const rows = await fetchCompletedPurchaseCostRows({ companyId, stockItemId });
   const locationRows = rows.filter((row) => {
     const po = row.purchase_orders;
     return po?.branch_id === locationId || po?.warehouse_id === locationId;
   });
-  const { totalQty, avgCost } = calculateWeightedPurchaseAverage(locationRows);
+  let avgCost: number;
+  let stock: number;
+  if (typeof onHandStock === "number" && Number.isFinite(onHandStock)) {
+    stock = Math.max(onHandStock, 0);
+    avgCost = calculateOnHandAverage(locationRows, stock);
+  } else {
+    const r = calculateWeightedPurchaseAverage(locationRows);
+    avgCost = r.avgCost;
+    stock = r.totalQty;
+  }
 
   await upsertBranchCost({
     companyId,
     stockItemId,
     branchId: locationId,
     newAvgCost: avgCost,
-    newStock: totalQty,
+    newStock: stock,
   });
 
   return avgCost;
@@ -256,12 +302,11 @@ export async function recalculateGlobalPurchaseCost(params: {
 }): Promise<number> {
   const { companyId, stockItemId } = params;
   const rows = await fetchCompletedPurchaseCostRows({ companyId, stockItemId });
-  const { avgCost } = calculateWeightedPurchaseAverage(rows);
-
   const { data: actualStockResult } = await supabase.rpc("get_actual_global_stock", {
     p_stock_item_id: stockItemId,
   });
   const currentStock = Math.max(Number(actualStockResult ?? 0), 0);
+  const avgCost = calculateOnHandAverage(rows, currentStock);
 
   await supabase
     .from("stock_items")
@@ -275,15 +320,22 @@ export async function recalculatePurchaseCostsForItems(params: {
   companyId: string;
   stockItemIds: string[];
   locationIds?: Array<string | null | undefined>;
+  /** Optional on-hand stock after the change: onHand[locationId][stockItemId]. */
+  onHand?: Record<string, Map<string, number>>;
 }): Promise<void> {
-  const { companyId, stockItemIds, locationIds = [] } = params;
+  const { companyId, stockItemIds, locationIds = [], onHand } = params;
   const uniqueItemIds = Array.from(new Set(stockItemIds.filter(Boolean)));
   const uniqueLocationIds = Array.from(new Set(locationIds.filter(Boolean) as string[]));
 
   for (const stockItemId of uniqueItemIds) {
     await recalculateGlobalPurchaseCost({ companyId, stockItemId });
     for (const locationId of uniqueLocationIds) {
-      await recalculateLocationPurchaseCost({ companyId, stockItemId, locationId });
+      await recalculateLocationPurchaseCost({
+        companyId,
+        stockItemId,
+        locationId,
+        onHandStock: onHand?.[locationId]?.get(stockItemId),
+      });
     }
   }
 }

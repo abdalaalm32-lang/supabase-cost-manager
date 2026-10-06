@@ -47,6 +47,7 @@ export const EditPurchaseInvoicePage: React.FC = () => {
   const [departmentId, setDepartmentId] = useState("");
   const [destinationType, setDestinationType] = useState<"branch" | "warehouse" | "">("");
   const [destinationId, setDestinationId] = useState("");
+  const { getLocationStock } = useLocationStock(destinationId || null, destinationType === "warehouse" ? "warehouse" : "branch");
   const [date, setDate] = useState("");
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<InvoiceItem[]>([]);

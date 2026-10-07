@@ -432,9 +432,9 @@ export const EditPurchaseInvoicePage: React.FC = () => {
                 <Input type="number" min={0} max={totalAmount} step="0.01" value={paidAmount} onChange={(e) => setPaidAmount(parseFloat(e.target.value) || 0)} className="glass-input" disabled={isViewOnly} />
               </div>
               <div className="md:col-span-3 flex items-center gap-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-sm">
-                <span className="font-semibold text-amber-600">المتبقي على المورد:</span>
+                <span className="font-semibold text-amber-600">{(totalAmount - (Number(paidAmount) || 0)) >= 0 ? "المتبقي للمورد:" : "المتبقي على المورد:"}</span>
                 <span className="font-mono text-lg font-bold text-amber-700 dark:text-amber-400">
-                  {Math.max(totalAmount - (Number(paidAmount) || 0), 0).toFixed(2)} ج.م
+                  {Math.abs(totalAmount - (Number(paidAmount) || 0)).toFixed(2)} ج.م
                 </span>
               </div>
             </>

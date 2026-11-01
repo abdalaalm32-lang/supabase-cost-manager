@@ -784,7 +784,7 @@ export const SupplyPricingPage: React.FC = () => {
                           )}
                           <TableCell className="text-center">
                             <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
-                              onClick={() => setPreviewItem({ ...it, lastP, bal })}>
+                              onClick={() => setPreviewItem({ ...it, lastP, bal, wac: itemWac(it) })}>
                               <Eye size={12}/> الأسعار
                             </Button>
                           </TableCell>
@@ -811,7 +811,7 @@ export const SupplyPricingPage: React.FC = () => {
                                 <div className="rounded-lg bg-card p-3 text-xs space-y-1 border">
                                   <p className="font-bold mb-1">معادلة السعر:</p>
                                   <p>
-                                    ( WAC <span className="font-mono">{fmt(Number(it.avg_cost)||0)}</span>
+                                    ( WAC <span className="font-mono">{fmt(itemWac(it))}</span>
                                     {" + تعبئة "}<span className="font-mono">{fmt(Number(p?.packaging_cost ?? 0))}</span>
                                     {" ) × ( 1 + "}<span className="font-mono text-amber-600">{fmtPct(currentRate.rate)}</span>
                                     {" ) = "}<span className="font-bold text-primary">{fmt(r.withOverhead)}</span>
@@ -1198,7 +1198,7 @@ export const SupplyPricingPage: React.FC = () => {
                   const p = pricingByItem.get(previewItem.id);
                   const pol = policies.find((x) => x.branch_id === br.id);
                   const r = computeSupplyPrice({
-                    wac: Number(previewItem.avg_cost) || 0,
+                    wac: Number(previewItem.wac) || 0,
                     lastPurchasePrice: previewItem.lastP,
                     currentStock: previewItem.bal,
                     pricing: p,

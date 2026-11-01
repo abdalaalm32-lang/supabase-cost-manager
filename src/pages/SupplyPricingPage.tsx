@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useBranchCosts } from "@/hooks/useBranchCosts";
 import { useLocationStock } from "@/hooks/useLocationStock";
 import {
   computeSupplyPrice,
@@ -113,6 +114,11 @@ export const SupplyPricingPage: React.FC = () => {
 
   // Per-warehouse live balance
   const { getLocationStock } = useLocationStock(selectedWarehouseId || null, "warehouse");
+
+  // WAC identical to the Inventory Balances page: per-warehouse cost row
+  // (stock_item_branch_costs) with fallback to the global stock_items.avg_cost.
+  const { getCost: getWarehouseCost } = useBranchCosts(selectedWarehouseId || null);
+  const itemWac = (it: any) => getWarehouseCost(it.id, it.avg_cost);
 
   const { data: branches = [] } = useQuery({
     queryKey: ["branches-supply", companyId],
@@ -456,7 +462,7 @@ export const SupplyPricingPage: React.FC = () => {
     const pol = policies.find((x) => x.branch_id === branchId);
     if (!pol) return 0;
     const r = computeSupplyPrice({
-      wac: Number(it.avg_cost) || 0,
+      wac: itemWac(it),
       lastPurchasePrice: lastPurchases[it.id] ?? 0,
       currentStock: liveBalance(it),
       pricing: applyBranchManualPrice(p, getBranchManual(it.id, branchId)),
@@ -478,7 +484,6 @@ export const SupplyPricingPage: React.FC = () => {
     { key: "stock", label: "الرصيد الحالي" },
     { key: "unit", label: "الوحدة" },
     { key: "wac", label: "WAC" },
-    { key: "last_purchase", label: "آخر شراء" },
     { key: "packaging", label: "تكلفة التعبئة" },
     { key: "packaging_type", label: "طريقة الباكينج" },
     { key: "overhead_rate", label: "معدل التحميل %" },
@@ -494,7 +499,7 @@ export const SupplyPricingPage: React.FC = () => {
     const lastP = lastPurchases[it.id] ?? 0;
     const bal = liveBalance(it);
     const r = computeSupplyPrice({
-      wac: Number(it.avg_cost) || 0,
+      wac: itemWac(it),
       lastPurchasePrice: lastP,
       currentStock: bal,
       pricing: p,
@@ -506,8 +511,7 @@ export const SupplyPricingPage: React.FC = () => {
       category: it.inventory_categories?.name ?? "—",
       stock: bal.toFixed(2),
       unit: it.stock_unit ?? "—",
-      wac: Number(it.avg_cost || 0).toFixed(2),
-      last_purchase: Number(lastP).toFixed(2),
+      wac: itemWac(it).toFixed(2),
       packaging: Number(p?.packaging_cost ?? 0).toFixed(2),
       packaging_type: PACKAGING_TYPE_LABELS[(p?.packaging_type ?? "per_unit") as PackagingType] + ((p?.packaging_type ?? "per_unit") === "per_package" ? ` (${Number(p?.package_size ?? 1)})` : ""),
       overhead_rate: fmtPct(currentRate.rate),
@@ -678,7 +682,6 @@ export const SupplyPricingPage: React.FC = () => {
                     <TableHead className="text-center">المجموعة</TableHead>
                     <TableHead className="text-center">الرصيد الحالي</TableHead>
                     <TableHead className="text-center">WAC</TableHead>
-                    <TableHead className="text-center">آخر شراء</TableHead>
                     <TableHead className="text-center">تكلفة التعبئة</TableHead>
                     <TableHead className="text-center">طريقة الباكينج</TableHead>
                     <TableHead className="text-center">حجم العبوة</TableHead>
@@ -705,14 +708,14 @@ export const SupplyPricingPage: React.FC = () => {
                     const avail = p?.is_available_for_transfer ?? true;
                     const bal = liveBalance(it);
                     const r = computeSupplyPrice({
-                      wac: Number(it.avg_cost) || 0,
+                      wac: itemWac(it),
                       lastPurchasePrice: lastP,
                       currentStock: bal,
                       pricing: p,
                       overheadRate: currentRate.rate,
                     });
                     const isExpanded = expandedId === it.id;
-                    const colSpan = selectedBranchId !== "all" ? 16 : 15;
+                    const colSpan = selectedBranchId !== "all" ? 15 : 14;
                     return (
                       <React.Fragment key={`${it.id}-${p?.id ?? "new"}-${p?.last_calculated_at ?? ""}`}>
                         <TableRow className={cn("hover:bg-muted/30", !avail && "opacity-50")}>
@@ -725,8 +728,7 @@ export const SupplyPricingPage: React.FC = () => {
                           <TableCell className="text-center font-medium">{it.name}</TableCell>
                           <TableCell className="text-center text-xs text-muted-foreground">{it.inventory_categories?.name ?? "—"}</TableCell>
                           <TableCell className="text-center text-xs font-mono">{bal.toFixed(2)} {it.stock_unit}</TableCell>
-                          <TableCell className="text-center text-xs">{fmt(Number(it.avg_cost) || 0)}</TableCell>
-                          <TableCell className="text-center text-xs">{fmt(lastP)}</TableCell>
+                          <TableCell className="text-center text-xs">{fmt(itemWac(it))}</TableCell>
                           <TableCell className="text-center">
                             <Input type="number" className="h-8 w-20 mx-auto text-xs text-center"
                               defaultValue={p?.packaging_cost ?? 0}
@@ -782,7 +784,7 @@ export const SupplyPricingPage: React.FC = () => {
                           )}
                           <TableCell className="text-center">
                             <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
-                              onClick={() => setPreviewItem({ ...it, lastP, bal })}>
+                              onClick={() => setPreviewItem({ ...it, lastP, bal, wac: itemWac(it) })}>
                               <Eye size={12}/> الأسعار
                             </Button>
                           </TableCell>
@@ -809,7 +811,7 @@ export const SupplyPricingPage: React.FC = () => {
                                 <div className="rounded-lg bg-card p-3 text-xs space-y-1 border">
                                   <p className="font-bold mb-1">معادلة السعر:</p>
                                   <p>
-                                    ( WAC <span className="font-mono">{fmt(Number(it.avg_cost)||0)}</span>
+                                    ( WAC <span className="font-mono">{fmt(itemWac(it))}</span>
                                     {" + تعبئة "}<span className="font-mono">{fmt(Number(p?.packaging_cost ?? 0))}</span>
                                     {" ) × ( 1 + "}<span className="font-mono text-amber-600">{fmtPct(currentRate.rate)}</span>
                                     {" ) = "}<span className="font-bold text-primary">{fmt(r.withOverhead)}</span>
@@ -1196,7 +1198,7 @@ export const SupplyPricingPage: React.FC = () => {
                   const p = pricingByItem.get(previewItem.id);
                   const pol = policies.find((x) => x.branch_id === br.id);
                   const r = computeSupplyPrice({
-                    wac: Number(previewItem.avg_cost) || 0,
+                    wac: Number(previewItem.wac) || 0,
                     lastPurchasePrice: previewItem.lastP,
                     currentStock: previewItem.bal,
                     pricing: p,

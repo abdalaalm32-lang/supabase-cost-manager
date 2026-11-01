@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { useLocationStock } from "@/hooks/useLocationStock";
 import { applyBranchCostIn, getBranchCost } from "@/lib/branchCostUtils";
 import { computeSupplyPrice, resolveOverheadRate } from "@/hooks/useSupplyPricing";
+import { useBranchCosts } from "@/hooks/useBranchCosts";
 
 type PriceSource = "supply" | "cost" | "unavailable" | "no_policy" | "none";
 
@@ -161,6 +162,10 @@ export const TransferDetailPage: React.FC = () => {
     date || null,
     !isNew ? (id || null) : null,
   );
+
+  // WAC read exactly like the Inventory Balances page: per-location cost row
+  // (stock_item_branch_costs) with fallback to the global stock_items.avg_cost.
+  const { getCost: getSourceLocationCost } = useBranchCosts(sourceId || null);
 
   // Load existing record
   const { data: existingRecord } = useQuery({
@@ -369,7 +374,7 @@ export const TransferDetailPage: React.FC = () => {
     const newItems: LocalTransferItem[] = Array.from(selectedItemIds).map(siId => {
       const si = allStockItems.find((s: any) => s.id === siId)!;
       const locationStock = sourceId ? getSourceStock(siId) : Number(si.current_stock) || 0;
-      const wac = Number(si.avg_cost) || 0;
+      const wac = getSourceLocationCost(siId, si.avg_cost) || Number(si.avg_cost) || 0;
       const base: LocalTransferItem = {
         stock_item_id: siId,
         name: si.name,
@@ -1108,7 +1113,7 @@ export const TransferDetailPage: React.FC = () => {
                       <TableCell>{si.name}</TableCell>
                       <TableCell>{si.stock_unit}</TableCell>
                       <TableCell>{fmtQty(sourceId ? getSourceStock(si.id) : Number(si.current_stock) || 0)}</TableCell>
-                      <TableCell>{Number(si.avg_cost).toFixed(2)}</TableCell>
+                      <TableCell>{getSourceLocationCost(si.id, si.avg_cost).toFixed(2)}</TableCell>
                     </TableRow>
                   ))
                 )}

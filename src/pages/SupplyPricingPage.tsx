@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useBranchCosts } from "@/hooks/useBranchCosts";
 import { useLocationStock } from "@/hooks/useLocationStock";
 import {
   computeSupplyPrice,
@@ -113,6 +114,11 @@ export const SupplyPricingPage: React.FC = () => {
 
   // Per-warehouse live balance
   const { getLocationStock } = useLocationStock(selectedWarehouseId || null, "warehouse");
+
+  // WAC identical to the Inventory Balances page: per-warehouse cost row
+  // (stock_item_branch_costs) with fallback to the global stock_items.avg_cost.
+  const { getCost: getWarehouseCost } = useBranchCosts(selectedWarehouseId || null);
+  const itemWac = (it: any) => getWarehouseCost(it.id, it.avg_cost);
 
   const { data: branches = [] } = useQuery({
     queryKey: ["branches-supply", companyId],

@@ -455,14 +455,18 @@ export const InventoryBalancesPage: React.FC = () => {
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">جاري التحميل...</TableCell>
                   </TableRow>
-                ) : filtered.length === 0 ? (
+                ) : displayed.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">لا توجد أصناف</TableCell>
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      {balanceFilter
+                        ? "لا توجد أصناف مطابقة لهذا الفلتر"
+                        : "لا توجد أصناف"}
+                    </TableCell>
                   </TableRow>
                 ) : (
                   <>
-                    {filtered.map((item: any) => {
-                      const stock = getLocationStock(item.id);
+                    {displayed.map((item: any) => {
+                      const stock = normalizeStock(getLocationStock(item.id));
                       const cost = getBranchCost(item.id, item.avg_cost);
                       const inventoryValue = stock * cost;
                       const isNegative = stock < 0;

@@ -153,6 +153,10 @@ export const InventoryBalancesPage: React.FC = () => {
     return names.length > 0 ? names.join("، ") : "—";
   };
 
+  // Stocks that round to zero at the displayed precision (e.g. -0.004) are
+  // treated as exactly 0 so they never show as "-0.00" or count as negative.
+  const normalizeStock = (s: number) => (Math.abs(s) < 0.005 ? 0 : s);
+
   // Suggest possible reason for negative stock
   const getNegativeReason = (item: any): string => {
     const itemId = item.id;

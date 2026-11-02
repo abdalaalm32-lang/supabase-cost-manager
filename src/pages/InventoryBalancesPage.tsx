@@ -218,7 +218,7 @@ export const InventoryBalancesPage: React.FC = () => {
     let negativeCount = 0;
     let positiveCount = 0;
     for (const item of filtered) {
-      const stock = getLocationStock(item.id);
+      const stock = normalizeStock(getLocationStock(item.id));
       const cost = getBranchCost(item.id, item.avg_cost);
       totalValue += stock * cost;
       if (stock < 0) negativeCount++;
@@ -228,8 +228,18 @@ export const InventoryBalancesPage: React.FC = () => {
     return { totalValue, zeroCount, negativeCount, positiveCount, totalItems: filtered.length };
   }, [filtered, locationStockMap, isLocationFiltered, getBranchCost]);
 
-  const exportRows = filtered.map((item: any) => {
-    const s = getLocationStock(item.id);
+  // Balance-filtered list for the table/export: clicking the "صفر" or "سالب"
+  // card narrows the rows to that group immediately (click again to clear).
+  const displayed = useMemo(() => {
+    if (!balanceFilter) return filtered;
+    return filtered.filter((item: any) => {
+      const stock = normalizeStock(getLocationStock(item.id));
+      return balanceFilter === "zero" ? stock === 0 : stock < 0;
+    });
+  }, [filtered, balanceFilter, locationStockMap, isLocationFiltered, getBranchCost]);
+
+  const exportRows = displayed.map((item: any) => {
+    const s = normalizeStock(getLocationStock(item.id));
     const c = getBranchCost(item.id, item.avg_cost);
     return {
       code: item.code || "—",

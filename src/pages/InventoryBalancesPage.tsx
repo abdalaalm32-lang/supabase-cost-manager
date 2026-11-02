@@ -29,6 +29,7 @@ export const InventoryBalancesPage: React.FC = () => {
   const [locationFilter, setLocationFilter] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("");
   const [asOfDate, setAsOfDate] = useState<Date | undefined>(undefined);
+  const [balanceFilter, setBalanceFilter] = useState<"" | "zero" | "negative">("");
 
   const asOfDateStr = asOfDate ? format(asOfDate, "yyyy-MM-dd") : null;
 
@@ -152,6 +153,10 @@ export const InventoryBalancesPage: React.FC = () => {
     return names.length > 0 ? names.join("، ") : "—";
   };
 
+  // Stocks that round to zero at the displayed precision (e.g. -0.004) are
+  // treated as exactly 0 so they never show as "-0.00" or count as negative.
+  const normalizeStock = (s: number) => (Math.abs(s) < 0.005 ? 0 : s);
+
   // Suggest possible reason for negative stock
   const getNegativeReason = (item: any): string => {
     const itemId = item.id;
@@ -213,7 +218,7 @@ export const InventoryBalancesPage: React.FC = () => {
     let negativeCount = 0;
     let positiveCount = 0;
     for (const item of filtered) {
-      const stock = getLocationStock(item.id);
+      const stock = normalizeStock(getLocationStock(item.id));
       const cost = getBranchCost(item.id, item.avg_cost);
       totalValue += stock * cost;
       if (stock < 0) negativeCount++;
@@ -223,8 +228,18 @@ export const InventoryBalancesPage: React.FC = () => {
     return { totalValue, zeroCount, negativeCount, positiveCount, totalItems: filtered.length };
   }, [filtered, locationStockMap, isLocationFiltered, getBranchCost]);
 
-  const exportRows = filtered.map((item: any) => {
-    const s = getLocationStock(item.id);
+  // Balance-filtered list for the table/export: clicking the "صفر" or "سالب"
+  // card narrows the rows to that group immediately (click again to clear).
+  const displayed = useMemo(() => {
+    if (!balanceFilter) return filtered;
+    return filtered.filter((item: any) => {
+      const stock = normalizeStock(getLocationStock(item.id));
+      return balanceFilter === "zero" ? stock === 0 : stock < 0;
+    });
+  }, [filtered, balanceFilter, locationStockMap, isLocationFiltered, getBranchCost]);
+
+  const exportRows = displayed.map((item: any) => {
+    const s = normalizeStock(getLocationStock(item.id));
     const c = getBranchCost(item.id, item.avg_cost);
     return {
       code: item.code || "—",
@@ -297,7 +312,13 @@ export const InventoryBalancesPage: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
-            <Card className="glass-card">
+            <Card
+              className={cn(
+                "glass-card cursor-pointer transition-colors hover:bg-muted/40 select-none",
+                balanceFilter === "zero" && "ring-2 ring-amber-500 bg-amber-500/5",
+              )}
+              onClick={() => setBalanceFilter(balanceFilter === "zero" ? "" : "zero")}
+            >
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-amber-500/10 text-amber-500"><TrendingDown className="h-5 w-5" /></div>
                 <div>
@@ -306,7 +327,14 @@ export const InventoryBalancesPage: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
-            <Card className={cn("glass-card", summary.negativeCount > 0 && "border-destructive/40")}>
+            <Card
+              className={cn(
+                "glass-card cursor-pointer transition-colors hover:bg-muted/40 select-none",
+                summary.negativeCount > 0 && "border-destructive/40",
+                balanceFilter === "negative" && "ring-2 ring-destructive bg-destructive/5",
+              )}
+              onClick={() => setBalanceFilter(balanceFilter === "negative" ? "" : "negative")}
+            >
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-destructive/10 text-destructive"><AlertTriangle className="h-5 w-5" /></div>
                 <div>
@@ -368,6 +396,7 @@ export const InventoryBalancesPage: React.FC = () => {
           onValueChange={(val) => {
             setLocationType(val as "branch" | "warehouse");
             setLocationFilter("");
+            setBalanceFilter("");
           }}
           className="w-full"
         >
@@ -427,14 +456,18 @@ export const InventoryBalancesPage: React.FC = () => {
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">جاري التحميل...</TableCell>
                   </TableRow>
-                ) : filtered.length === 0 ? (
+                ) : displayed.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">لا توجد أصناف</TableCell>
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      {balanceFilter
+                        ? "لا توجد أصناف مطابقة لهذا الفلتر"
+                        : "لا توجد أصناف"}
+                    </TableCell>
                   </TableRow>
                 ) : (
                   <>
-                    {filtered.map((item: any) => {
-                      const stock = getLocationStock(item.id);
+                    {displayed.map((item: any) => {
+                      const stock = normalizeStock(getLocationStock(item.id));
                       const cost = getBranchCost(item.id, item.avg_cost);
                       const inventoryValue = stock * cost;
                       const isNegative = stock < 0;

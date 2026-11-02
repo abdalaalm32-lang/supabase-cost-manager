@@ -29,6 +29,7 @@ export const InventoryBalancesPage: React.FC = () => {
   const [locationFilter, setLocationFilter] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("");
   const [asOfDate, setAsOfDate] = useState<Date | undefined>(undefined);
+  const [balanceFilter, setBalanceFilter] = useState<"" | "zero" | "negative">("");
 
   const asOfDateStr = asOfDate ? format(asOfDate, "yyyy-MM-dd") : null;
 

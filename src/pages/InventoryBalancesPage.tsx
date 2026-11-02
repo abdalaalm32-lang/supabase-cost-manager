@@ -312,7 +312,13 @@ export const InventoryBalancesPage: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
-            <Card className="glass-card">
+            <Card
+              className={cn(
+                "glass-card cursor-pointer transition-colors hover:bg-muted/40 select-none",
+                balanceFilter === "zero" && "ring-2 ring-amber-500 bg-amber-500/5",
+              )}
+              onClick={() => setBalanceFilter(balanceFilter === "zero" ? "" : "zero")}
+            >
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-amber-500/10 text-amber-500"><TrendingDown className="h-5 w-5" /></div>
                 <div>
@@ -321,7 +327,14 @@ export const InventoryBalancesPage: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
-            <Card className={cn("glass-card", summary.negativeCount > 0 && "border-destructive/40")}>
+            <Card
+              className={cn(
+                "glass-card cursor-pointer transition-colors hover:bg-muted/40 select-none",
+                summary.negativeCount > 0 && "border-destructive/40",
+                balanceFilter === "negative" && "ring-2 ring-destructive bg-destructive/5",
+              )}
+              onClick={() => setBalanceFilter(balanceFilter === "negative" ? "" : "negative")}
+            >
               <CardContent className="p-4 flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-destructive/10 text-destructive"><AlertTriangle className="h-5 w-5" /></div>
                 <div>

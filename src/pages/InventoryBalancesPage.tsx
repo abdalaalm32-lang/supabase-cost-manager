@@ -396,6 +396,7 @@ export const InventoryBalancesPage: React.FC = () => {
           onValueChange={(val) => {
             setLocationType(val as "branch" | "warehouse");
             setLocationFilter("");
+            setBalanceFilter("");
           }}
           className="w-full"
         >

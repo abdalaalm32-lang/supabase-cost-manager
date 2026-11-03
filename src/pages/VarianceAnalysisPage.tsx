@@ -1133,7 +1133,7 @@ export const VarianceAnalysisPage: React.FC = () => {
           ${netSales > 0 ? `<div class="kpi-line"><span>نسبة الانحراف من المبيعات</span><b>${fmtPct(costKpis.netVal / netSales)}</b></div>` : ""}
           ${benchLine}
           ${netSales > 0 ? `
-          <div class="kpi-line"><span>نطاق حساب التكلفة</span><b>${costScopeMode === "kitchen_packaging" ? "مطبخ + باكينج" : "مطبخ فقط"}</b></div>
+          <div class="kpi-line"><span>نطاق حساب التكلفة</span><b>${costScopeMode === "kitchen_packaging" ? `${scopeDeptLabel} + باكينج` : `${scopeDeptLabel} فقط`}</b></div>
           <div class="kpi-line"><span>التكلفة الفعلية المستهلكة</span><b>${fmt(actualCost.totalVal)} ج.م</b></div>
           <div class="kpi-line"><span>نسبة التكلفة الفعلية</span><b>${fmtPct(actualCost.pct)}</b></div>
           ${manualLines}` : ""}

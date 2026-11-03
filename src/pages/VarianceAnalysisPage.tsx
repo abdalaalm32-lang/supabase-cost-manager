@@ -1091,6 +1091,9 @@ export const VarianceAnalysisPage: React.FC = () => {
 
   const branchName = branchFilter === "all" ? "كل الفروع" : (branches || []).find((b: any) => b.id === branchFilter)?.name || "-";
   const deptName = departmentFilter === "all" ? "كل الأقسام" : (departments || []).find((d: any) => d.id === departmentFilter)?.name || "-";
+  const scopeDeptLabel = departmentFilter === "all"
+    ? "مطبخ"
+    : ((departments || []).find((d: any) => d.id === departmentFilter)?.name || "القسم");
 
   const buildReportHTML = () => {
     const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });

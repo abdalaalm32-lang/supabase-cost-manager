@@ -1538,7 +1538,7 @@ export const VarianceAnalysisPage: React.FC = () => {
         addInfo(`مقارنة بمعيار: ${xBench.name}`, r > xBench.dangerMin ? "خطر" : r > xBench.warnMin ? "إنذار" : "مقبول");
       }
       if (netSales > 0) {
-        addInfo("نطاق حساب التكلفة", costScopeMode === "kitchen_packaging" ? "مطبخ + باكينج" : "مطبخ فقط");
+        addInfo("نطاق حساب التكلفة", costScopeMode === "kitchen_packaging" ? `${scopeDeptLabel} + باكينج` : `${scopeDeptLabel} فقط`);
         addInfo("التكلفة الفعلية المستهلكة", `${fmt(actualCost.totalVal)} ج.م`);
         addInfo("نسبة التكلفة الفعلية", fmtPct(actualCost.pct));
         if (manualBenchmark > 0) {
@@ -1733,12 +1733,12 @@ export const VarianceAnalysisPage: React.FC = () => {
                     type="button"
                     onClick={() => setCostScopeMode("kitchen_packaging")}
                     className={cn("px-2 py-0.5 rounded border", costScopeMode === "kitchen_packaging" ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted")}
-                  >مطبخ + باكينج</button>
+                  >{scopeDeptLabel} + باكينج</button>
                   <button
                     type="button"
                     onClick={() => setCostScopeMode("kitchen_only")}
                     className={cn("px-2 py-0.5 rounded border", costScopeMode === "kitchen_only" ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted")}
-                  >مطبخ فقط</button>
+                  >{scopeDeptLabel} فقط</button>
                 </div>
               </div>
               <div className="flex justify-between text-sm">

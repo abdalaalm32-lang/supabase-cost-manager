@@ -945,9 +945,15 @@ export const VarianceAnalysisPage: React.FC = () => {
   }, [current, previous]);
 
   /* ============ Actual Consumed Cost vs Menu Analysis benchmark ============ */
-  // Scope: قسم المطبخ فقط دائمًا على مستوى الأقسام. الباكينج بيتم تعريفه على مستوى المجموعة (Category) لأنه غالبًا داخل قسم "جنرال مطبخ".
+  // Scope: لما يكون قسم محدد مختار من الفلتر، نطاق التكلفة بيتبع القسم المختار
+  // (نفس الأصناف المعروضة في الجدول). لما يكون "كل الأقسام"، النطاق الافتراضي
+  // يبقى أقسام المطبخ فقط، والباكينج يتعرّف على مستوى المجموعة (Category).
   const deptInScope = useMemo(() => {
     const map = new Map<string, boolean>();
+    if (departmentFilter !== "all") {
+      (departments || []).forEach((d: any) => map.set(d.id, d.id === departmentFilter));
+      return map;
+    }
     (departments || []).forEach((d: any) => {
       const n = (d.name || "").toLowerCase();
       const hasKitchen = n.includes("مطبخ") || n.includes("kitchen");
@@ -957,7 +963,7 @@ export const VarianceAnalysisPage: React.FC = () => {
       map.set(d.id, ok);
     });
     return map;
-  }, [departments]);
+  }, [departments, departmentFilter]);
 
   // مجموعات (Categories) اسمها فيه "باكينج/packaging" — تُضاف فقط في وضع "مطبخ + باكينج"
   const packagingCatIds = useMemo(() => {

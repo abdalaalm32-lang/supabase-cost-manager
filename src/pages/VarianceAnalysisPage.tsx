@@ -945,9 +945,15 @@ export const VarianceAnalysisPage: React.FC = () => {
   }, [current, previous]);
 
   /* ============ Actual Consumed Cost vs Menu Analysis benchmark ============ */
-  // Scope: قسم المطبخ فقط دائمًا على مستوى الأقسام. الباكينج بيتم تعريفه على مستوى المجموعة (Category) لأنه غالبًا داخل قسم "جنرال مطبخ".
+  // Scope: لما يكون قسم محدد مختار من الفلتر، نطاق التكلفة بيتبع القسم المختار
+  // (نفس الأصناف المعروضة في الجدول). لما يكون "كل الأقسام"، النطاق الافتراضي
+  // يبقى أقسام المطبخ فقط، والباكينج يتعرّف على مستوى المجموعة (Category).
   const deptInScope = useMemo(() => {
     const map = new Map<string, boolean>();
+    if (departmentFilter !== "all") {
+      (departments || []).forEach((d: any) => map.set(d.id, d.id === departmentFilter));
+      return map;
+    }
     (departments || []).forEach((d: any) => {
       const n = (d.name || "").toLowerCase();
       const hasKitchen = n.includes("مطبخ") || n.includes("kitchen");
@@ -957,7 +963,7 @@ export const VarianceAnalysisPage: React.FC = () => {
       map.set(d.id, ok);
     });
     return map;
-  }, [departments]);
+  }, [departments, departmentFilter]);
 
   // مجموعات (Categories) اسمها فيه "باكينج/packaging" — تُضاف فقط في وضع "مطبخ + باكينج"
   const packagingCatIds = useMemo(() => {
@@ -1085,6 +1091,9 @@ export const VarianceAnalysisPage: React.FC = () => {
 
   const branchName = branchFilter === "all" ? "كل الفروع" : (branches || []).find((b: any) => b.id === branchFilter)?.name || "-";
   const deptName = departmentFilter === "all" ? "كل الأقسام" : (departments || []).find((d: any) => d.id === departmentFilter)?.name || "-";
+  const scopeDeptLabel = departmentFilter === "all"
+    ? "مطبخ"
+    : ((departments || []).find((d: any) => d.id === departmentFilter)?.name || "القسم");
 
   const buildReportHTML = () => {
     const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
@@ -1124,7 +1133,7 @@ export const VarianceAnalysisPage: React.FC = () => {
           ${netSales > 0 ? `<div class="kpi-line"><span>نسبة الانحراف من المبيعات</span><b>${fmtPct(costKpis.netVal / netSales)}</b></div>` : ""}
           ${benchLine}
           ${netSales > 0 ? `
-          <div class="kpi-line"><span>نطاق حساب التكلفة</span><b>${costScopeMode === "kitchen_packaging" ? "مطبخ + باكينج" : "مطبخ فقط"}</b></div>
+          <div class="kpi-line"><span>نطاق حساب التكلفة</span><b>${costScopeMode === "kitchen_packaging" ? `${scopeDeptLabel} + باكينج` : `${scopeDeptLabel} فقط`}</b></div>
           <div class="kpi-line"><span>التكلفة الفعلية المستهلكة</span><b>${fmt(actualCost.totalVal)} ج.م</b></div>
           <div class="kpi-line"><span>نسبة التكلفة الفعلية</span><b>${fmtPct(actualCost.pct)}</b></div>
           ${manualLines}` : ""}
@@ -1529,7 +1538,7 @@ export const VarianceAnalysisPage: React.FC = () => {
         addInfo(`مقارنة بمعيار: ${xBench.name}`, r > xBench.dangerMin ? "خطر" : r > xBench.warnMin ? "إنذار" : "مقبول");
       }
       if (netSales > 0) {
-        addInfo("نطاق حساب التكلفة", costScopeMode === "kitchen_packaging" ? "مطبخ + باكينج" : "مطبخ فقط");
+        addInfo("نطاق حساب التكلفة", costScopeMode === "kitchen_packaging" ? `${scopeDeptLabel} + باكينج` : `${scopeDeptLabel} فقط`);
         addInfo("التكلفة الفعلية المستهلكة", `${fmt(actualCost.totalVal)} ج.م`);
         addInfo("نسبة التكلفة الفعلية", fmtPct(actualCost.pct));
         if (manualBenchmark > 0) {
@@ -1724,12 +1733,12 @@ export const VarianceAnalysisPage: React.FC = () => {
                     type="button"
                     onClick={() => setCostScopeMode("kitchen_packaging")}
                     className={cn("px-2 py-0.5 rounded border", costScopeMode === "kitchen_packaging" ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted")}
-                  >مطبخ + باكينج</button>
+                  >{scopeDeptLabel} + باكينج</button>
                   <button
                     type="button"
                     onClick={() => setCostScopeMode("kitchen_only")}
                     className={cn("px-2 py-0.5 rounded border", costScopeMode === "kitchen_only" ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted")}
-                  >مطبخ فقط</button>
+                  >{scopeDeptLabel} فقط</button>
                 </div>
               </div>
               <div className="flex justify-between text-sm">

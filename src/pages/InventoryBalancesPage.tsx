@@ -153,11 +153,12 @@ export const InventoryBalancesPage: React.FC = () => {
     return names.length > 0 ? names.join("، ") : "—";
   };
 
-  // Negative balances smaller in magnitude than 0.05 (e.g. -0.001) are rounding
-  // dust and become exactly 0. Anything at or beyond -0.05 stays negative.
+  // Rounding dust below 0.001 in magnitude (e.g. -0.0004) becomes exactly 0.
+  // Anything from -0.001 and up in magnitude (e.g. -0.001, -0.05) stays negative,
+  // and positive 0.001 is displayed as-is.
   const normalizeStock = (s: number) => {
-    if (s < 0 && s > -0.05) return 0;
-    return Math.abs(s) < 0.005 ? 0 : s;
+    if (Math.abs(s) < 0.001) return 0;
+    return s;
   };
 
   // Suggest possible reason for negative stock

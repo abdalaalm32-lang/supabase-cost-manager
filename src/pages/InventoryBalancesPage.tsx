@@ -251,7 +251,7 @@ export const InventoryBalancesPage: React.FC = () => {
       category: getCatName(item.category_id),
       unit: item.stock_unit,
       locations: getLocationNames(item.id),
-      stock: s.toFixed(2),
+      stock: s.toFixed(3),
       avgCost: c.toFixed(2),
       value: (s * c).toFixed(2),
     };
@@ -504,7 +504,7 @@ export const InventoryBalancesPage: React.FC = () => {
                               ? "text-destructive"
                               : "text-primary"
                           )}>
-                            {stock.toFixed(2)}
+                            {stock.toFixed(3)}
                           </TableCell>
                           <TableCell className={cn(isNegative && "text-destructive")}>{cost.toFixed(2)}</TableCell>
                           <TableCell className={cn("font-semibold", isNegative && "text-destructive")}>

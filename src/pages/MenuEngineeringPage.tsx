@@ -412,8 +412,19 @@ export const MenuEngineeringPage: React.FC = () => {
   const classifiedPosItems = useMemo(() => {
     const result: Record<EngClass, Set<string>> = { kitchen: new Set(), bar: new Set() };
 
-    displayPosItems.forEach((pi: any) => {
+    // Effective class: the item's own class wins. When it is missing or explicitly
+    // "بدون تصنيف" (none), fall back to the category's engineering class so items
+    // inside a kitchen/bar category are still counted in their section's sales.
+    const effectiveClass = (pi: any): string => {
       const cls = String(pi.menu_engineering_class || "").toLowerCase();
+      if (cls === "kitchen" || cls === "bar") return cls;
+      const catCls = String(categoryMap.get(pi.category_id)?.menu_engineering_class || "").toLowerCase();
+      if (catCls === "kitchen" || catCls === "bar") return catCls;
+      return "";
+    };
+
+    displayPosItems.forEach((pi: any) => {
+      const cls = effectiveClass(pi);
       if (cls === "kitchen" || cls === "bar") {
         result[cls as EngClass].add(pi.id);
       }
@@ -440,7 +451,7 @@ export const MenuEngineeringPage: React.FC = () => {
     });
 
     return result;
-  }, [displayPosItems, recipes, stockItems]);
+  }, [displayPosItems, recipes, stockItems, categoryMap]);
 
   // Build engineering rows for active tab
   const engineeringData = useMemo(() => {

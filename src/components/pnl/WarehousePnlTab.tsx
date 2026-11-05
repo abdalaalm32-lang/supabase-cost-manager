@@ -187,6 +187,7 @@ function computeResult(
   let totalInternalSales = 0; // Final supply value charged to branches
   let loadedTransferCost = 0; // COGS = loaded cost at transfer time, before profit
   let totalTransferQty = 0;
+  let maxOverheadRate = 0;   // highest overhead_rate_applied found on transfers
   let snapshotItems = 0;     // items priced from transfer_pricing_breakdown snapshot
   let inferredItems = 0;     // items without snapshot (cost-based, forward-built)
 
@@ -201,6 +202,7 @@ function computeResult(
     const items = itemsByTransfer.get(tr.id) || [];
     const profitPct = policyByBranch.get(tr.destination_id) || 0;
     const overheadRate = Number(tr.overhead_rate_applied) || 0;
+    maxOverheadRate = Math.max(maxOverheadRate, overheadRate);
     let trSales = 0;
     let trLoadedCost = 0;
     let trBaseCost = 0;
@@ -333,6 +335,10 @@ function computeResult(
   const netProfit = grossProfit - totalUnallocated - wasteCost;
   const netProfitPct = totalInternalSales > 0 ? (netProfit / totalInternalSales) * 100 : 0;
 
+  // Periodic (accounting reference) mini P&L: Sales − Periodic COGS − unallocated expenses − waste
+  const periodicGrossProfit = totalInternalSales - periodicCogs;
+  const periodicNetProfit = periodicGrossProfit - totalUnallocated - wasteCost;
+
   // Overhead variance (Over/Under Applied) — separate report
   const actualOverhead = actualOverheadExpenses.reduce((s, e) => s + e.amount, 0);
   const overheadVariance = actualOverhead - appliedOverhead; // + => under-applied, - => over-applied
@@ -349,6 +355,7 @@ function computeResult(
     openingStock, closingStock,
     purchasesTotal, productionCost, productionQty, costPerKg,
     goodsAvailable, periodicCogs, unexplainedVariance,
+    periodicGrossProfit, periodicNetProfit, maxOverheadRate,
     snapshotItems, inferredItems, totalItems: snapshotItems + inferredItems,
 
     totalCogs, grossProfit, grossProfitPct,
@@ -489,11 +496,16 @@ export const WarehousePnlTab: React.FC = () => {
     rows.push({ section: "تحليل التحميل", item: "Actual Overhead (فعلي من مصروفات المخزن)", amount: result.actualOverhead, pct: "" });
     rows.push({ section: "تحليل التحميل", item: (result.overheadVariance >= 0 ? "Under Applied (نقص تحميل)" : "Over Applied (زيادة تحميل)"), amount: result.overheadVariance, pct: "" });
     // Reference block
+    rows.push({ section: "مرجع - جرد", item: "المبيعات الداخلية (Periodic)", amount: result.totalInternalSales, pct: "" });
     rows.push({ section: "مرجع - جرد", item: "جرد أول المدة", amount: result.openingStock, pct: "" });
     rows.push({ section: "مرجع - جرد", item: "(+) المشتريات", amount: result.purchasesTotal, pct: "" });
     rows.push({ section: "مرجع - جرد", item: "البضاعة المتاحة", amount: result.goodsAvailable, pct: "" });
     rows.push({ section: "مرجع - جرد", item: "(-) جرد آخر المدة", amount: -result.closingStock, pct: "" });
-    rows.push({ section: "مرجع - جرد", item: "COGS (Periodic)", amount: result.periodicCogs, pct: "" });
+    rows.push({ section: "مرجع - جرد", item: "COGS (Periodic - محاسبي)", amount: result.periodicCogs, pct: "" });
+    rows.push({ section: "مرجع - جرد", item: "مجمل الربح (Periodic)", amount: result.periodicGrossProfit, pct: "" });
+    if (result.wasteCost > 0) rows.push({ section: "مرجع - جرد", item: "(-) الفاقد", amount: -result.wasteCost, pct: "" });
+    result.unallocatedExpenses.forEach((e) => rows.push({ section: "مرجع - جرد", item: `(-) ${e.name}`, amount: -e.amount, pct: "" }));
+    rows.push({ section: "مرجع - جرد", item: result.periodicNetProfit >= 0 ? "صافي الربح (Periodic)" : "صافي الخسارة (Periodic)", amount: result.periodicNetProfit, pct: "" });
     rows.push({ section: "تسوية", item: "(-) تكلفة التحويلات (Loaded Cost)", amount: -result.loadedTransferCost, pct: "" });
     rows.push({ section: "تسوية", item: "(-) الفاقد المسجل", amount: -result.wasteCost, pct: "" });
     rows.push({ section: "تسوية", item: "فرق غير مفسّر", amount: result.unexplainedVariance, pct: "" });
@@ -583,15 +595,26 @@ export const WarehousePnlTab: React.FC = () => {
       ${row("Applied Overhead — محمّل داخل التحويلات", result.appliedOverhead, "")}
       ${row("Actual Overhead — فعلي من مصروفات المخزن", result.actualOverhead, "")}
       ${row(varStatus, result.overheadVariance, "", { bold: true, bg: "#fef3c7", color: varColor })}
+      ${result.appliedOverhead > 0 && result.maxOverheadRate === 0 ? `<tr><td colspan="3" style="padding:6px 10px;font-size:10px;color:#666;">* لا يوجد معدّل تحميل مسجّل على تحويلات الفترة — القيمة المحمّلة فرق تسعير متبقٍ في الأسعار المسجّلة (فوق الربح المسجّل) وليست مصاريف فعلية.</td></tr>` : ""}
     `;
 
-    // Reference inventory closing block
+    // Reference inventory closing block (Periodic mini P&L + reconciliation)
+    let periodicExpRows = "";
+    if (result.wasteCost > 0) periodicExpRows += row("(-) الفاقد", `(${fmt(result.wasteCost)})`, "", { indent: true });
+    result.unallocatedExpenses.forEach((e) => {
+      periodicExpRows += row(`(-) ${e.name}`, `(${fmt(e.amount)})`, "", { indent: true });
+    });
     const refRows = `
+      ${row("المبيعات الداخلية", result.totalInternalSales, "", { bold: true, bg: "#eff6ff", color: "#1d4ed8" })}
       ${row("جرد أول المدة", result.openingStock, "")}
       ${row("(+) المشتريات", result.purchasesTotal, "")}
       ${row("البضاعة المتاحة", result.goodsAvailable, "", { bold: true, bg: "#fafafa" })}
       ${row("(-) جرد آخر المدة", `(${fmt(result.closingStock)})`, "")}
-      ${row("COGS (Periodic - محاسبي)", result.periodicCogs, "", { bold: true, bg: "#f5f5f5" })}
+      ${row("COGS (Periodic - محاسبي)", `(${fmt(result.periodicCogs)})`, "", { bold: true, bg: "#f5f5f5" })}
+      ${row(result.periodicGrossProfit >= 0 ? "مجمل الربح (Periodic)" : "مجمل الخسارة (Periodic)", result.periodicGrossProfit, "", { bold: true, bg: "#ecfdf5", color: result.periodicGrossProfit < 0 ? "#dc2626" : "#047857" })}
+      ${periodicExpRows}
+      ${row(result.periodicNetProfit >= 0 ? "صافي الربح (Periodic)" : "صافي الخسارة (Periodic)", result.periodicNetProfit, "", { bold: true, bg: result.periodicNetProfit >= 0 ? "#d1fae5" : "#fee2e2", color: result.periodicNetProfit < 0 ? "#dc2626" : "#047857" })}
+      ${sep}
       ${row("(-) تكلفة التحويلات للفروع (Loaded Cost)", `(${fmt(result.loadedTransferCost)})`, "")}
       ${row("(-) الفاقد المسجل", `(${fmt(result.wasteCost)})`, "")}
       ${row("فرق غير مفسّر (عجز / زيادة مخزون)", result.unexplainedVariance, "", { bold: true, bg: "#fef3c7" })}
@@ -668,7 +691,7 @@ export const WarehousePnlTab: React.FC = () => {
     </tr></thead>
     <tbody>${refRows}</tbody>
   </table>
-  <p class="note">* هذا القسم لأغراض المراجعة المحاسبية فقط ولا يؤثر على مجمل الربح أعلاه.</p>
+  <p class="note">* هذا القسم قائمة محاسبية منفصلة بطريقة تقفيل المخزون (Periodic) — صافي الربح/الخسارة هنا مستقل عن مجمل الربح الدائم (Perpetual) أعلاه.</p>
 
   <div class="footer">Powered by Mohamed Abdel Aal</div>
   <script>
@@ -836,6 +859,13 @@ export const WarehousePnlTab: React.FC = () => {
                       <td className="p-2 text-left tabular-nums">{fmt(result.appliedOverhead)}</td>
                       <td className="p-2 text-left text-xs text-muted-foreground">{pct(result.appliedOverhead, result.totalInternalSales)}</td>
                     </tr>
+                    {result.appliedOverhead > 0 && result.maxOverheadRate === 0 && (
+                      <tr className="border-b">
+                        <td colSpan={3} className="p-2 pr-8 text-[10px] text-muted-foreground italic">
+                          * لا يوجد معدّل تحميل مسجّل على تحويلات هذه الفترة — هذا المبلغ هو فرق تسعير متبقٍ في الأسعار المسجّلة (سعر التوريد أكبر من التكلفة + الربح المسجّل) وليس مصاريف فعلية.
+                        </td>
+                      </tr>
+                    )}
                   </>
                 )}
 
@@ -925,6 +955,7 @@ export const WarehousePnlTab: React.FC = () => {
               </table>
               <p className="p-3 text-[10px] text-muted-foreground italic">
                 * الفرق بين المصروفات الفعلية والمبلغ المحمّل على المنتجات يُستخدم في نهاية الفترة لتسوية حساب التكلفة فقط، ولا يُخصم من صافي الربح أعلاه.
+                {result.appliedOverhead > 0 && result.maxOverheadRate === 0 && " لا يوجد معدّل تحميل مسجّل على تحويلات الفترة، فالقيمة المحمّلة هي فرق تسعير متبقٍ في الأسعار المسجّلة وليست مصاريف فعلية."}
               </p>
             </div>
           </div>
@@ -932,19 +963,34 @@ export const WarehousePnlTab: React.FC = () => {
           {/* Reference: Periodic Inventory Closing (not part of P&L) */}
           <div className="border-t bg-muted/10">
             <div className="p-3 border-b flex items-center justify-between">
-              <h3 className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
+                <h3 className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
                 <BarChart3 className="h-3.5 w-3.5" />
-                مرجع محاسبي — تقفيل المخزون (Periodic) — لا يؤثر على الأرباح أعلاه
-              </h3>
-            </div>
+                مرجع محاسبي — قائمة الأرباح والخسائر بتقفيل المخزون (Periodic)
+                </h3>
+              </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <tbody>
+                  <tr className="border-b font-semibold text-blue-700 dark:text-blue-400"><td className="p-2 pr-4">المبيعات الداخلية</td><td className="p-2 text-left tabular-nums">{fmt(result.totalInternalSales)}</td></tr>
                   <tr className="border-b"><td className="p-2 pr-4 text-muted-foreground">جرد أول المدة</td><td className="p-2 text-left tabular-nums">{fmt(result.openingStock)}</td></tr>
                   <tr className="border-b"><td className="p-2 pr-4 text-muted-foreground">(+) المشتريات</td><td className="p-2 text-left tabular-nums">{fmt(result.purchasesTotal)}</td></tr>
                   <tr className="border-b bg-muted/30 font-medium"><td className="p-2 pr-4">البضاعة المتاحة</td><td className="p-2 text-left tabular-nums">{fmt(result.goodsAvailable)}</td></tr>
                   <tr className="border-b"><td className="p-2 pr-4 text-muted-foreground">(-) جرد آخر المدة</td><td className="p-2 text-left tabular-nums">({fmt(result.closingStock)})</td></tr>
-                  <tr className="bg-muted/40 font-semibold"><td className="p-2 pr-4">COGS (Periodic - محاسبي)</td><td className="p-2 text-left tabular-nums">{fmt(result.periodicCogs)}</td></tr>
+                  <tr className="bg-muted/40 font-semibold border-b"><td className="p-2 pr-4">(-) COGS (Periodic - محاسبي)</td><td className="p-2 text-left tabular-nums">({fmt(result.periodicCogs)})</td></tr>
+                  <tr className={`border-b font-semibold ${result.periodicGrossProfit < 0 ? "bg-red-500/10 text-destructive" : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"}`}>
+                    <td className="p-2 pr-4">{result.periodicGrossProfit >= 0 ? "مجمل الربح (Periodic)" : "مجمل الخسارة (Periodic)"}</td>
+                    <td className="p-2 text-left tabular-nums">{fmt(result.periodicGrossProfit)}</td>
+                  </tr>
+                  {result.wasteCost > 0 && (
+                    <tr className="border-b"><td className="p-2 pr-4 text-muted-foreground">(-) الفاقد</td><td className="p-2 text-left tabular-nums">({fmt(result.wasteCost)})</td></tr>
+                  )}
+                  {result.unallocatedExpenses.map((e, i) => (
+                    <tr key={i} className="border-b"><td className="p-2 pr-4 text-muted-foreground">(-) {e.name}</td><td className="p-2 text-left tabular-nums">({fmt(e.amount)})</td></tr>
+                  ))}
+                  <tr className={`font-bold ${result.periodicNetProfit >= 0 ? "bg-emerald-500/15" : "bg-red-500/15"}`}>
+                    <td className="p-3">{result.periodicNetProfit >= 0 ? "صافي الربح (Periodic)" : "صافي الخسارة (Periodic)"}</td>
+                    <td className={`p-3 text-left tabular-nums ${result.periodicNetProfit < 0 ? "text-destructive" : "text-emerald-600"}`}>{fmt(result.periodicNetProfit)}</td>
+                  </tr>
                   <tr><td colSpan={2} className="p-2 pr-4 text-[10px] text-muted-foreground italic">
                     * تكلفة الإنتاج ({fmt(result.productionCost)}) غير مضافة هنا لأن خاماتها محتسبة أصلًا ضمن المشتريات/رصيد أول المدة، والمنتج النهائي معدود في جرد آخر المدة.
                   </td></tr>

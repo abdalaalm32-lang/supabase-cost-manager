@@ -46,6 +46,7 @@ const PAYMENT_METHODS = [
   { value: "كاش", label: "كاش", icon: Banknote },
   { value: "فيزا", label: "فيزا", icon: CreditCard },
   { value: "انستا باي", label: "انستا باي", icon: Smartphone },
+  { value: "فودافون كاش", label: "فودافون كاش", icon: Smartphone },
 ];
 
 const FEEDBACK_TYPES = [

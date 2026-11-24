@@ -346,6 +346,21 @@ export const EditPurchaseInvoicePage: React.FC = () => {
     setSubmitted(true);
     if (!supplierId || !destinationType || !destinationId) return;
     if (items.length === 0) { toast.error("يرجى إضافة أصناف للفاتورة"); return; }
+    if (linkedPaidTotal > 0) {
+      if (paymentType !== "آجل") {
+        toast.error("لا يمكن تحويل الفاتورة إلى نقدي لوجود دفعات مرتبطة بها في مديونية الموردين. احذف الدفعات أو فك ربطها أولاً");
+        return;
+      }
+      if (order?.supplier_id && supplierId !== order.supplier_id) {
+        toast.error("لا يمكن تغيير المورد لوجود دفعات مرتبطة بالفاتورة في مديونية الموردين");
+        return;
+      }
+      const paidTotal = linkedPaidTotal + (Number(paidAmount) || 0);
+      if (paidTotal > totalAmount + 0.005) {
+        toast.error(`إجمالي الفاتورة (${totalAmount.toFixed(2)}) أقل من المدفوع عليها (${paidTotal.toFixed(2)}). عدّل الدفعات المرتبطة أولاً`);
+        return;
+      }
+    }
     saveMutation.mutate(status);
   };
 

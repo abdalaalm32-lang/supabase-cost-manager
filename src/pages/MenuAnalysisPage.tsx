@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMenuChannelPricing } from "@/hooks/useMenuChannelPricing";
+import { calculateMenuMainCost } from "@/lib/menuMainCost";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -404,6 +405,11 @@ export const MenuAnalysisPage: React.FC = () => {
     return { totalPrice, totalDirectCost, totalIndirect, totalProfit, itemCount };
   }, [categorizedData]);
 
+  const mainCostSummary = useMemo(
+    () => calculateMenuMainCost(categorizedData.flatMap(category => category.items)),
+    [categorizedData],
+  );
+
   // ===== Period A/B metrics for in-page efficiency comparison =====
   const periodAResolved = useMemo(() => periods.find(p => p.id === efficiencyPeriodAId) ?? selectedPeriod ?? null, [periods, efficiencyPeriodAId, selectedPeriod]);
   const periodBResolved = useMemo(() => periods.find(p => p.id === efficiencyPeriodBId) ?? null, [periods, efficiencyPeriodBId]);
@@ -608,7 +614,14 @@ export const MenuAnalysisPage: React.FC = () => {
   const renderCategoryContent = () => (
     <>
       {/* Summary KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+        <Card>
+          <CardContent className="p-3 text-center">
+            <p className="text-xs text-muted-foreground" dir="ltr">{activeTab === "kitchen" ? "Food Cost" : "Beverage Cost"}</p>
+            <p className="text-lg font-bold text-primary" dir="ltr">{formatPct(mainCostSummary.percentage)}</p>
+            <p className="text-[10px] text-muted-foreground">إجمالي التكلفة الرئيسية: {formatNum(mainCostSummary.totalMainCost)} ج.م</p>
+          </CardContent>
+        </Card>
         <Card>
           <CardContent className="p-3 text-center">
             <p className="text-[10px] text-muted-foreground">إجمالي أسعار البيع</p>

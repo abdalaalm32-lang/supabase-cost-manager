@@ -237,6 +237,7 @@ export const PosShiftsPage: React.FC = () => {
   const dTotalCash = detailSales?.filter((s: any) => s.payment_method === "كاش").reduce((s: number, sale: any) => s + sale.total_amount, 0) ?? 0;
   const dTotalVisa = detailSales?.filter((s: any) => s.payment_method === "فيزا").reduce((s: number, sale: any) => s + sale.total_amount, 0) ?? 0;
   const dTotalInstapay = detailSales?.filter((s: any) => s.payment_method === "انستا باي").reduce((s: number, sale: any) => s + sale.total_amount, 0) ?? 0;
+  const dTotalVodafone = detailSales?.filter((s: any) => s.payment_method === "فودافون كاش").reduce((s: number, sale: any) => s + (Number(sale.total_amount) || 0), 0) ?? 0;
   const dInvoiceCount = detailSales?.length ?? 0;
   const dTotalExpenses = detailExpenses?.reduce((s: number, e: any) => s + (e.amount || 0), 0) ?? 0;
   const dTotalReturns = detailReturns?.reduce((s: number, r: any) => s + (r.total_amount || 0), 0) ?? 0;
@@ -481,6 +482,7 @@ export const PosShiftsPage: React.FC = () => {
                 {dTotalInstapay > 0 && (
                   <p><span className="text-muted-foreground">انستا باي:</span> <span className="font-bold">{dTotalInstapay.toFixed(2)} EGP</span></p>
                 )}
+                <p><span className="text-muted-foreground">فودافون كاش:</span> <span className="font-bold">{dTotalVodafone.toFixed(2)} EGP</span></p>
               </div>
               {dTotalExpenses > 0 && (
                 <div className="p-3 rounded-lg bg-destructive/5 border border-destructive/10 space-y-1">

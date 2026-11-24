@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo } from "react";
+import { POS_PAYMENT, sumByPaymentMethod } from "@/lib/posPaymentTotals";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -196,6 +197,8 @@ export const PosShiftManager: React.FC<PosShiftManagerProps> = ({ companyId, bra
       .filter((s: any) => s.payment_method === "انستا باي")
       .reduce((sum: number, sale: any) => sum + (Number(sale.total_amount) || 0), 0);
 
+    const totalVodafoneSales = sumByPaymentMethod(sales, POS_PAYMENT.vodafoneCash);
+
     const totalReturns = returns.reduce((s: number, r: any) => s + (Number(r.total_amount) || 0), 0);
     const totalReturnsCash = returns
       .filter((r: any) => (r.payment_method || "كاش") === "كاش")
@@ -207,17 +210,19 @@ export const PosShiftManager: React.FC<PosShiftManagerProps> = ({ companyId, bra
       .filter((r: any) => r.payment_method === "انستا باي")
       .reduce((s: number, r: any) => s + (Number(r.total_amount) || 0), 0);
 
+    const totalReturnsVodafone = sumByPaymentMethod(returns, POS_PAYMENT.vodafoneCash);
+
     const totalExpenses = expenses.reduce((s: number, e: any) => s + (Number(e.amount) || 0), 0);
     const openingCashVal = Number(currentShift?.opening_cash) || 0;
 
-    // Cash drawer expected = Opening + Cash sales - Cash returns - Expenses (InstaPay/Visa don't affect drawer)
+    // Cash drawer expected = Opening + Cash sales - Cash returns - Expenses (InstaPay/Visa/Vodafone Cash don't affect drawer)
     const expectedCash = openingCashVal + totalCashSales - totalReturnsCash - totalExpenses;
     const netRevenue = totalSales - totalReturns - totalExpenses;
 
     return {
       invoiceCount,
-      totalSales, totalCashSales, totalVisaSales, totalInstapaySales,
-      totalReturns, totalReturnsCash, totalReturnsVisa, totalReturnsInstapay,
+      totalSales, totalCashSales, totalVisaSales, totalInstapaySales, totalVodafoneSales,
+      totalReturns, totalReturnsCash, totalReturnsVisa, totalReturnsInstapay, totalReturnsVodafone,
       totalExpenses, openingCash: openingCashVal,
       expectedCash, netRevenue,
     };
@@ -443,6 +448,7 @@ ${!isNaN(actualCashNum) ? `
 <p>كاش: ${fmtMoney(totals.totalCashSales)} EGP</p>
 <p>فيزا: ${fmtMoney(totals.totalVisaSales)} EGP</p>
 ${totals.totalInstapaySales > 0 ? `<p>انستا باي: ${fmtMoney(totals.totalInstapaySales)} EGP</p>` : ""}
+<p>فودافون كاش: ${fmtMoney(totals.totalVodafoneSales)} EGP</p>
 </div>
 
 ${itemsList.length > 0 ? `<div class="sep"><p class="bold">🍽 الأصناف المباعة</p>
@@ -458,7 +464,7 @@ ${totals.totalExpenses > 0 ? `<div class="sep"><p class="bold expense-label">ا�
 
 ${totals.totalReturns > 0 ? `<div class="sep"><p class="bold expense-label">المرتجعات (${(shiftReturns || []).length})</p>
 <table><thead><tr><th>رقم</th><th style="text-align:center">طريقة</th><th>المبلغ</th></tr></thead><tbody>${returnsRows}</tbody></table>
-<p class="bold" style="margin-top:4px">إجمالي: ${fmtMoney(totals.totalReturns)} EGP (كاش ${fmtMoney(totals.totalReturnsCash)} | فيزا ${fmtMoney(totals.totalReturnsVisa)}${totals.totalReturnsInstapay > 0 ? ` | انستا باي ${fmtMoney(totals.totalReturnsInstapay)}` : ""})</p></div>` : ""}
+<p class="bold" style="margin-top:4px">إجمالي: ${fmtMoney(totals.totalReturns)} EGP (كاش ${fmtMoney(totals.totalReturnsCash)} | فيزا ${fmtMoney(totals.totalReturnsVisa)}${totals.totalReturnsInstapay > 0 ? ` | انستا باي ${fmtMoney(totals.totalReturnsInstapay)}` : ""}${totals.totalReturnsVodafone > 0 ? ` | فودافون كاش ${fmtMoney(totals.totalReturnsVodafone)}` : ""})</p></div>` : ""}
 
 <div class="sep center box">
 <p>إجمالي المبيعات: ${fmtMoney(totals.totalSales)} EGP</p>
@@ -617,6 +623,7 @@ ${closingNotes.trim() ? `<div class="sep"><p class="bold">📝 ملاحظات:</
               {totals.totalInstapaySales > 0 && (
                 <div className="flex justify-between text-xs"><span className="text-muted-foreground">— انستا باي:</span> <span>{fmtMoney(totals.totalInstapaySales)} EGP</span></div>
               )}
+              <div className="flex justify-between text-xs"><span className="text-muted-foreground">— فودافون كاش:</span> <span>{fmtMoney(totals.totalVodafoneSales)} EGP</span></div>
             </div>
 
             {/* Returns */}
@@ -627,6 +634,9 @@ ${closingNotes.trim() ? `<div class="sep"><p class="bold">📝 ملاحظات:</
                 <div className="flex justify-between text-xs"><span className="text-muted-foreground">فيزا:</span> <span className="font-bold">{fmtMoney(totals.totalReturnsVisa)} EGP</span></div>
                 {totals.totalReturnsInstapay > 0 && (
                   <div className="flex justify-between text-xs"><span className="text-muted-foreground">انستا باي:</span> <span className="font-bold">{fmtMoney(totals.totalReturnsInstapay)} EGP</span></div>
+                )}
+                {totals.totalReturnsVodafone > 0 && (
+                  <div className="flex justify-between text-xs"><span className="text-muted-foreground">فودافون كاش:</span> <span className="font-bold">{fmtMoney(totals.totalReturnsVodafone)} EGP</span></div>
                 )}
                 <div className="flex justify-between text-xs border-t border-destructive/10 pt-1 mt-1"><span>إجمالي:</span> <span className="font-bold">{fmtMoney(totals.totalReturns)} EGP</span></div>
               </div>

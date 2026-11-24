@@ -64,7 +64,7 @@ export const PosShiftReportsPage: React.FC = () => {
   const { data: stats, isLoading } = useQuery({
     queryKey: ["shift-report-stats", companyId, branchId, dayStart, dayEnd, shiftMode],
     queryFn: async () => {
-      const empty = { totalSales: 0, invoiceCount: 0, avgInvoice: 0, itemsCount: 0, cashSales: 0, visaSales: 0, instapaySales: 0, returnsCash: 0, returnsVisa: 0, returnsInstapay: 0, returnsTotal: 0, netSales: 0 };
+      const empty = { totalSales: 0, invoiceCount: 0, avgInvoice: 0, itemsCount: 0, cashSales: 0, visaSales: 0, instapaySales: 0, vodafoneSales: 0, returnsCash: 0, returnsVisa: 0, returnsInstapay: 0, returnsVodafone: 0, returnsTotal: 0, netSales: 0 };
 
       let salesQ = supabase.from("pos_sales")
         .select("id, total_amount, payment_method, status, shift_id, created_at, branch_id")
@@ -149,9 +149,11 @@ export const PosShiftReportsPage: React.FC = () => {
       { label: "كاش", value: `${(s.cashSales || 0).toFixed(2)} EGP` },
       { label: "فيزا", value: `${(s.visaSales || 0).toFixed(2)} EGP` },
       { label: "انستا باي", value: `${(s.instapaySales || 0).toFixed(2)} EGP` },
+      { label: "فودافون كاش", value: `${(s.vodafoneSales || 0).toFixed(2)} EGP` },
       { label: "مرتجعات كاش", value: `${(s.returnsCash || 0).toFixed(2)} EGP` },
       { label: "مرتجعات فيزا", value: `${(s.returnsVisa || 0).toFixed(2)} EGP` },
       { label: "مرتجعات انستا باي", value: `${(s.returnsInstapay || 0).toFixed(2)} EGP` },
+      { label: "مرتجعات فودافون كاش", value: `${(s.returnsVodafone || 0).toFixed(2)} EGP` },
     ];
   }, [stats]);
 
@@ -174,6 +176,7 @@ export const PosShiftReportsPage: React.FC = () => {
     { icon: Wallet, label: "كاش", value: stats?.cashSales, tone: "emerald", suffix: "EGP" },
     { icon: CreditCard, label: "فيزا", value: stats?.visaSales, tone: "blue", suffix: "EGP" },
     { icon: Smartphone, label: "انستا باي", value: stats?.instapaySales, tone: "violet", suffix: "EGP" },
+    { icon: Smartphone, label: "فودافون كاش", value: stats?.vodafoneSales, tone: "destructive", suffix: "EGP" },
   ];
 
   const toneStyles: Record<string, { bg: string; text: string; ring: string }> = {
@@ -302,6 +305,7 @@ export const PosShiftReportsPage: React.FC = () => {
                 <PayRow label="كاش" value={stats?.cashSales || 0} icon={Wallet} color="text-emerald-500" />
                 <PayRow label="فيزا" value={stats?.visaSales || 0} icon={CreditCard} color="text-blue-400" />
                 <PayRow label="انستا باي" value={stats?.instapaySales || 0} icon={Smartphone} color="text-violet-400" />
+                <PayRow label="فودافون كاش" value={stats?.vodafoneSales || 0} icon={Smartphone} color="text-destructive" />
                 <div className="pt-2 mt-2 border-t border-border/50 flex items-center justify-between font-bold">
                   <span>الإجمالي</span>
                   <span>{(stats?.totalSales || 0).toFixed(2)} EGP</span>
@@ -319,6 +323,7 @@ export const PosShiftReportsPage: React.FC = () => {
                 <PayRow label="كاش" value={stats?.returnsCash || 0} icon={Wallet} color="text-emerald-500" />
                 <PayRow label="فيزا" value={stats?.returnsVisa || 0} icon={CreditCard} color="text-blue-400" />
                 <PayRow label="انستا باي" value={stats?.returnsInstapay || 0} icon={Smartphone} color="text-violet-400" />
+                <PayRow label="فودافون كاش" value={stats?.returnsVodafone || 0} icon={Smartphone} color="text-destructive" />
                 <div className="pt-2 mt-2 border-t border-border/50 flex items-center justify-between font-bold">
                   <span>الإجمالي</span>
                   <span>{(stats?.returnsTotal || 0).toFixed(2)} EGP</span>
@@ -355,12 +360,14 @@ function calcStats(sales: any[], returns: any[], itemsCount: number) {
   const cashSales = sales.filter(s => s.payment_method === "كاش").reduce((s, r) => s + Number(r.total_amount || 0), 0);
   const visaSales = sales.filter(s => s.payment_method === "فيزا" || s.payment_method === "visa").reduce((s, r) => s + Number(r.total_amount || 0), 0);
   const instapaySales = sales.filter(s => s.payment_method === "انستا باي").reduce((s, r) => s + Number(r.total_amount || 0), 0);
+  const vodafoneSales = sales.filter(s => s.payment_method === "فودافون كاش").reduce((s, r) => s + Number(r.total_amount || 0), 0);
   const returnsCash = returns.filter(r => r.payment_method === "كاش").reduce((s, r) => s + Number(r.total_amount || 0), 0);
   const returnsVisa = returns.filter(r => r.payment_method === "فيزا" || r.payment_method === "visa").reduce((s, r) => s + Number(r.total_amount || 0), 0);
   const returnsInstapay = returns.filter(r => r.payment_method === "انستا باي").reduce((s, r) => s + Number(r.total_amount || 0), 0);
+  const returnsVodafone = returns.filter(r => r.payment_method === "فودافون كاش").reduce((s, r) => s + Number(r.total_amount || 0), 0);
   const returnsTotal = returns.reduce((s, r) => s + Number(r.total_amount || 0), 0);
   const netSales = totalSales - returnsTotal;
-  return { totalSales, invoiceCount, avgInvoice, itemsCount, cashSales, visaSales, instapaySales, returnsCash, returnsVisa, returnsInstapay, returnsTotal, netSales };
+  return { totalSales, invoiceCount, avgInvoice, itemsCount, cashSales, visaSales, instapaySales, vodafoneSales, returnsCash, returnsVisa, returnsInstapay, returnsVodafone, returnsTotal, netSales };
 }
 
 export default PosShiftReportsPage;

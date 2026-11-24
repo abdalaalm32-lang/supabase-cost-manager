@@ -36,6 +36,7 @@ export function useLocationStock(
       ),
     enabled,
     staleTime: 30000,
+    refetchOnMount: "always",
   });
 
   const { data: productionRecords = [] } = useQuery({
@@ -52,6 +53,7 @@ export function useLocationStock(
       ),
     enabled,
     staleTime: 30000,
+    refetchOnMount: "always",
   });
 
   const { data: productionIngredients = [] } = useQuery({
@@ -68,6 +70,7 @@ export function useLocationStock(
       ),
     enabled,
     staleTime: 30000,
+    refetchOnMount: "always",
   });
 
   const { data: transferItems = [] } = useQuery({
@@ -84,6 +87,7 @@ export function useLocationStock(
       ),
     enabled,
     staleTime: 30000,
+    refetchOnMount: "always",
   });
 
   const { data: wasteItems = [] } = useQuery({
@@ -100,6 +104,7 @@ export function useLocationStock(
       ),
     enabled,
     staleTime: 30000,
+    refetchOnMount: "always",
   });
 
   const { data: posSaleItems = [] } = useQuery({
@@ -116,6 +121,7 @@ export function useLocationStock(
       ),
     enabled,
     staleTime: 30000,
+    refetchOnMount: "always",
   });
 
   const { data: recipes = [] } = useQuery({
@@ -130,6 +136,7 @@ export function useLocationStock(
     },
     enabled,
     staleTime: 30000,
+    refetchOnMount: "always",
   });
 
   // Fetch stock items to get conversion_factor for unit conversion
@@ -145,6 +152,7 @@ export function useLocationStock(
     },
     enabled,
     staleTime: 30000,
+    refetchOnMount: "always",
   });
 
   // Stocktake adjustments - use latest completed stocktake per location
@@ -163,6 +171,7 @@ export function useLocationStock(
     },
     enabled,
     staleTime: 30000,
+    refetchOnMount: "always",
   });
 
   const stockMap = useMemo(() => {

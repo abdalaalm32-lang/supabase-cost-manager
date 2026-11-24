@@ -26,6 +26,7 @@ import { DateRange } from "react-day-picker";
 import { format, startOfDay, endOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { recalculatePurchaseCostsForItems } from "@/lib/branchCostUtils";
+import { getPurchasePaymentSummary, sumLinkedPayments } from "@/lib/purchasePaymentStatus";
 
 
 type FilterStatus = "الكل" | "مكتمل" | "مؤرشف" | "معدل";
@@ -110,6 +111,23 @@ export const PurchaseInvoicesTab: React.FC = () => {
     },
     enabled: !!companyId,
   });
+
+  const { data: linkedPayments = [] } = useQuery({
+    queryKey: ["supplier-payments", companyId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("supplier_payments")
+        .select("*")
+        .order("payment_date", { ascending: false });
+      if (error) throw error;
+      return data as any[];
+    },
+    enabled: !!companyId,
+    refetchOnMount: "always",
+  });
+
+  const linkedPaidByOrder = useMemo(() => sumLinkedPayments(linkedPayments as any[]), [linkedPayments]);
+  const paymentOf = (o: any) => getPurchasePaymentSummary(o, linkedPaidByOrder[o.id] ?? 0);
 
   const { data: branches = [] } = useQuery({
     queryKey: ["branches-all", companyId],
@@ -212,7 +230,7 @@ export const PurchaseInvoicesTab: React.FC = () => {
     filtered.forEach((o: any) => {
       const amt = Number(o.total_amount) || 0;
       total += amt;
-      paid += Number(o.paid_amount) || 0;
+      paid += paymentOf(o).paid;
       if (o.payment_type === "آجل") credit += amt;
       if (o.status === "مؤرشف") archived += 1;
       const locId = o.branch_id || o.warehouse_id || "none";
@@ -233,7 +251,7 @@ export const PurchaseInvoicesTab: React.FC = () => {
       avg: filtered.length ? total / filtered.length : 0,
       locations: Array.from(byLoc.values()).sort((a, b) => b.total - a.total),
     };
-  }, [filtered, locationMap]);
+  }, [filtered, locationMap, linkedPaidByOrder]);
 
   const money = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -311,6 +329,8 @@ export const PurchaseInvoicesTab: React.FC = () => {
     <div class="info-item"><strong>المنشئ:</strong> ${order.creator_name || "—"}</div>
     <div class="info-item"><strong>الحالة:</strong> ${order.is_edited ? "معدّل" : order.status || "—"}</div>
     <div class="info-item"><strong>إجمالي الفاتورة:</strong> ${Number(order.total_amount).toFixed(2)}</div>
+    <div class="info-item"><strong>نوع الدفع:</strong> ${paymentOf(order).label}</div>
+    <div class="info-item"><strong>المدفوع / المتبقي:</strong> ${paymentOf(order).paid.toFixed(2)} / ${Math.max(paymentOf(order).remaining, 0).toFixed(2)}</div>
     ${order.notes ? `<div class="info-item" style="grid-column:span 2;"><strong>ملاحظات:</strong> ${order.notes}</div>` : ""}
   </div>
   <table>
@@ -441,8 +461,8 @@ export const PurchaseInvoicesTab: React.FC = () => {
           </SelectContent>
         </Select>
         <ExportButtons
-          data={filtered.map((o: any) => ({ invoice: o.invoice_number || "—", supplier: o.supplier_name, location: getLocationName(o), date: new Date(o.date).toLocaleDateString("ar-EG"), creator: o.creator_name || "—", status: o.is_edited ? "معدل" : o.status, total: Number(o.total_amount).toFixed(2) }))}
-          columns={[{ key: "invoice", label: "رقم الفاتورة" }, { key: "supplier", label: "المورد" }, { key: "location", label: "الموقع المستلم" }, { key: "date", label: "التاريخ" }, { key: "creator", label: "المنشئ" }, { key: "status", label: "الحالة" }, { key: "total", label: "الإجمالي" }]}
+          data={filtered.map((o: any) => ({ invoice: o.invoice_number || "—", supplier: o.supplier_name, location: getLocationName(o), date: new Date(o.date).toLocaleDateString("ar-EG"), creator: o.creator_name || "—", status: o.is_edited ? "معدل" : o.status, payType: paymentOf(o).label, total: Number(o.total_amount).toFixed(2), paid: paymentOf(o).paid.toFixed(2), remaining: Math.max(paymentOf(o).remaining, 0).toFixed(2) }))}
+          columns={[{ key: "invoice", label: "رقم الفاتورة" }, { key: "supplier", label: "المورد" }, { key: "location", label: "الموقع المستلم" }, { key: "date", label: "التاريخ" }, { key: "creator", label: "المنشئ" }, { key: "status", label: "الحالة" }, { key: "payType", label: "نوع الدفع" }, { key: "total", label: "الإجمالي" }, { key: "paid", label: "المدفوع" }, { key: "remaining", label: "المتبقي" }]}
           filename="فواتير_المشتريات"
           title="فواتير المشتريات"
         />
@@ -511,10 +531,9 @@ export const PurchaseInvoicesTab: React.FC = () => {
               <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">لا توجد فواتير</TableCell></TableRow>
             ) : (
               filtered.map((o: any) => {
-                const total = Number(o.total_amount) || 0;
-                const paid = Number(o.paid_amount) || 0;
-                const remaining = Math.max(total - paid, 0);
-                const isCredit = o.payment_type === "آجل";
+                const pay = paymentOf(o);
+                const total = pay.total;
+                const remaining = Math.max(pay.remaining, 0);
                 return (
                 <TableRow key={o.id}>
                   <TableCell className="font-mono text-xs">{o.invoice_number || "—"}</TableCell>
@@ -532,7 +551,11 @@ export const PurchaseInvoicesTab: React.FC = () => {
                     )}
                   </TableCell>
                   <TableCell>
-                    {isCredit ? (
+                    {pay.status === "credit_paid" ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/15 text-emerald-500">تم السداد</span>
+                    ) : pay.status === "credit_partial" ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-sky-500/15 text-sky-500" title={`مدفوع ${pay.paid.toFixed(2)}`}>مسدد جزئياً</span>
+                    ) : pay.status === "credit_unpaid" ? (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/15 text-amber-500">آجل</span>
                     ) : (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-500/15 text-slate-400">نقدي</span>

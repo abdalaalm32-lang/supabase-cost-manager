@@ -17,7 +17,9 @@ import {
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Search, Wallet, CalendarIcon, X, Eye, Trash2, Printer, Pencil, Landmark } from "lucide-react";
+import { Search, Wallet, CalendarIcon, X, Eye, Trash2, Printer, Pencil, Landmark, FileText, FileSpreadsheet } from "lucide-react";
+import { exportToExcel, exportToPDF } from "@/lib/exportUtils";
+import { getPurchasePaymentSummary, sumLinkedPayments, buildSupplierStatement } from "@/lib/purchasePaymentStatus";
 import { ExportButtons } from "@/components/ExportButtons";
 import { toast } from "sonner";
 import { DateRange } from "react-day-picker";
@@ -35,7 +37,7 @@ export const SupplierDebtsPage: React.FC = () => {
   });
   const [search, setSearch] = useState("");
   const [supplierFilter, setSupplierFilter] = useState<string>("all");
-  const [detailsSupplier, setDetailsSupplier] = useState<any>(null);
+  const [detailsSupplierId, setDetailsSupplierId] = useState<string | null>(null);
 
   // Payment dialog (add or edit)
   const [payOpen, setPayOpen] = useState(false);
@@ -92,6 +94,9 @@ export const SupplierDebtsPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  const linkedPaidByOrder = useMemo(() => sumLinkedPayments(payments as any[]), [payments]);
+  const paymentOf = (o: any) => getPurchasePaymentSummary(o, linkedPaidByOrder[o.id] ?? 0);
+
   const supplierRows = useMemo(() => {
     return (suppliers as any[]).map((s: any) => {
       const openingBal = Number(s.opening_balance) || 0;
@@ -134,6 +139,11 @@ export const SupplierDebtsPage: React.FC = () => {
     });
   }, [suppliers, orders, payments, periodStart, periodEnd]);
 
+  const detailsSupplier = useMemo(
+    () => (detailsSupplierId ? supplierRows.find((r: any) => r.id === detailsSupplierId) ?? null : null),
+    [detailsSupplierId, supplierRows],
+  );
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     let rows = supplierRows;
@@ -164,6 +174,18 @@ export const SupplierDebtsPage: React.FC = () => {
   const savePaymentMutation = useMutation({
     mutationFn: async () => {
       if (!paySupplier || !payAmount || payAmount <= 0) throw new Error("مبلغ غير صحيح");
+      if (payInvoiceId) {
+        const order = (orders as any[]).find((o) => o.id === payInvoiceId);
+        if (order) {
+          const editingOld = editingPaymentId
+            ? (payments as any[]).find((p) => p.id === editingPaymentId && p.purchase_order_id === payInvoiceId)
+            : null;
+          const remaining = paymentOf(order).remaining + (Number(editingOld?.amount) || 0);
+          if (payAmount > remaining + 0.005) {
+            throw new Error(`المبلغ أكبر من المتبقي على الفاتورة (${Math.max(remaining, 0).toFixed(2)} ج.م)`);
+          }
+        }
+      }
       if (editingPaymentId) {
         const { error } = await (supabase as any).from("supplier_payments").update({
           amount: payAmount,
@@ -189,6 +211,8 @@ export const SupplierDebtsPage: React.FC = () => {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["supplier-payments"] });
+      qc.invalidateQueries({ queryKey: ["supplier-payments-for-order"] });
+      qc.invalidateQueries({ queryKey: ["purchase-orders"] });
       toast.success(editingPaymentId ? "تم تعديل الدفعة" : "تم تسجيل الدفعة");
       setPayOpen(false);
       setPayAmount(0); setPayNotes(""); setPayInvoiceId(""); setPaySupplier(null); setEditingPaymentId(null);
@@ -203,6 +227,8 @@ export const SupplierDebtsPage: React.FC = () => {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["supplier-payments"] });
+      qc.invalidateQueries({ queryKey: ["supplier-payments-for-order"] });
+      qc.invalidateQueries({ queryKey: ["purchase-orders"] });
       toast.success("تم حذف الدفعة");
     },
     onError: (e: any) => toast.error(e.message),
@@ -309,6 +335,138 @@ export const SupplierDebtsPage: React.FC = () => {
       </table>
       <div class="footer">Powered by Mohamed Abdel Aal</div>
       <script>window.print();window.onafterprint=function(){window.close();}</script>
+    </body></html>`;
+    const w = window.open("", "_blank");
+    if (w) { w.document.write(html); w.document.close(); }
+  };
+
+  const statementFor = (sup: any) => {
+    const invoiceNumberById: Record<string, string> = {};
+    (orders as any[]).forEach((o) => { invoiceNumberById[o.id] = o.invoice_number || o.id.slice(0, 8); });
+    return buildSupplierStatement({
+      openingBalance: sup.openingOfPeriod,
+      orders: sup.creditOrders,
+      payments: sup.payments,
+      periodStart,
+      periodEnd,
+      invoiceNumberById,
+    });
+  };
+
+  const statementColumns = [
+    { key: "date", label: "التاريخ" },
+    { key: "description", label: "البيان" },
+    { key: "reference", label: "رقم الفاتورة" },
+    { key: "debit", label: "مدين (فواتير)" },
+    { key: "credit", label: "دائن (مدفوعات)" },
+    { key: "balance", label: "الرصيد" },
+  ];
+
+  const statementRows = (sup: any) => {
+    const entries = statementFor(sup);
+    const totalDebit = entries.reduce((s, e) => s + e.debit, 0);
+    const totalCredit = entries.reduce((s, e) => s + e.credit, 0);
+    const closing = entries[entries.length - 1]?.balance ?? 0;
+    return {
+      entries,
+      totalDebit,
+      totalCredit,
+      closing,
+      rows: [
+        ...entries.map((e) => ({
+          date: e.date,
+          description: e.description,
+          reference: e.reference,
+          debit: e.debit ? e.debit.toFixed(2) : "—",
+          credit: e.credit ? e.credit.toFixed(2) : "—",
+          balance: e.balance.toFixed(2),
+        })),
+        { date: "", description: "الإجمالي", reference: "", debit: totalDebit.toFixed(2), credit: totalCredit.toFixed(2), balance: closing.toFixed(2), __rowType: "grand-total" },
+      ],
+    };
+  };
+
+  const exportStatement = async (sup: any, kind: "pdf" | "excel") => {
+    const { rows } = statementRows(sup);
+    const opts = {
+      title: `كشف حساب المورد — ${sup.name}`,
+      filename: `كشف_حساب_${sup.name}_${periodLabel}`,
+      columns: statementColumns,
+      data: rows,
+      filters: [
+        { label: "المورد", value: `${sup.name}${sup.code ? ` (${sup.code})` : ""}` },
+        { label: "الفترة", value: periodLabel },
+      ],
+    };
+    try {
+      if (kind === "pdf") await exportToPDF(opts);
+      else await exportToExcel(opts);
+      toast.success(kind === "pdf" ? "تم تصدير PDF بنجاح" : "تم تصدير Excel بنجاح");
+    } catch (e) {
+      console.error(e);
+      toast.error("حدث خطأ أثناء التصدير");
+    }
+  };
+
+  const printStatement = (sup: any) => {
+    const { entries, totalDebit, totalCredit, closing } = statementRows(sup);
+    const dateStr = new Date().toLocaleDateString("ar-EG");
+    const logoSrc = `${window.location.origin}/logo.png`;
+    const esc = (v: any) => String(v ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c] as string));
+    const rowsHTML = entries.map((e, i) => `<tr>
+        <td>${i + 1}</td>
+        <td>${esc(e.date)}</td>
+        <td style="text-align:right;">${esc(e.description)}</td>
+        <td>${esc(e.reference)}</td>
+        <td>${e.debit ? e.debit.toFixed(2) : "—"}</td>
+        <td>${e.credit ? e.credit.toFixed(2) : "—"}</td>
+        <td><b>${e.balance.toFixed(2)}</b></td>
+      </tr>`).join("");
+    const invoicesHTML = (sup.creditOrders as any[]).map((o) => {
+      const pay = paymentOf(o);
+      return `<tr><td>${esc(o.invoice_number || "—")}</td><td>${esc(String(o.date).slice(0, 10))}</td><td>${pay.total.toFixed(2)}</td><td>${pay.paid.toFixed(2)}</td><td>${Math.max(pay.remaining, 0).toFixed(2)}</td><td>${pay.label}</td></tr>`;
+    }).join("");
+    const html = `<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>كشف حساب ${esc(sup.name)}</title>
+    <style>
+      @font-face{font-family:'CairoLocal';src:url('${window.location.origin}/fonts/Cairo-Regular.ttf') format('truetype');}
+      *{margin:0;padding:0;box-sizing:border-box;}
+      body{font-family:'CairoLocal',sans-serif;direction:rtl;padding:20px;color:#000;}
+      @media print{@page{size:portrait;margin:10mm;}}
+      .header{text-align:center;border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:15px;}
+      .header img{width:60px;height:60px;object-fit:contain;}
+      h1{font-size:18px;font-weight:bold;} h2{font-size:13px;margin:14px 0 6px;}
+      .info{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px;font-size:11px;}
+      .info div{border:1px solid #000;padding:6px;text-align:center;} .info b{display:block;font-size:13px;margin-top:2px;}
+      table{width:100%;border-collapse:collapse;font-size:11px;}
+      th,td{border:1px solid #000;padding:5px 6px;text-align:center;}
+      th{background:#f0f0f0;font-weight:bold;}
+      tfoot td{background:#f5f5f5;font-weight:bold;}
+      .footer{text-align:center;margin-top:15px;font-size:9px;border-top:1px solid #000;padding-top:6px;}
+    </style></head>
+    <body>
+      <div class="header">
+        <img src="${logoSrc}" alt="Logo" />
+        <div><h1>كشف حساب المورد — ${esc(sup.name)}</h1><p>${sup.code ? esc(sup.code) + " • " : ""}الفترة: ${periodLabel} • تاريخ الطباعة: ${dateStr}</p></div>
+      </div>
+      <div class="info">
+        <div>رصيد أول المدة<b>${sup.openingOfPeriod.toFixed(2)}</b></div>
+        <div>فواتير الفترة<b>${totalDebit.toFixed(2)}</b></div>
+        <div>مدفوعات الفترة<b>${totalCredit.toFixed(2)}</b></div>
+        <div>الرصيد الختامي<b>${closing.toFixed(2)}</b></div>
+      </div>
+      <h2>حركة الحساب</h2>
+      <table>
+        <thead><tr><th>م</th><th>التاريخ</th><th>البيان</th><th>رقم الفاتورة</th><th>مدين (فواتير)</th><th>دائن (مدفوعات)</th><th>الرصيد</th></tr></thead>
+        <tbody>${rowsHTML}</tbody>
+        <tfoot><tr><td colspan="4">الإجمالي</td><td>${totalDebit.toFixed(2)}</td><td>${totalCredit.toFixed(2)}</td><td>${closing.toFixed(2)}</td></tr></tfoot>
+      </table>
+      ${invoicesHTML ? `<h2>حالة الفواتير الآجلة</h2>
+      <table>
+        <thead><tr><th>رقم الفاتورة</th><th>التاريخ</th><th>الإجمالي</th><th>المدفوع</th><th>المتبقي</th><th>الحالة</th></tr></thead>
+        <tbody>${invoicesHTML}</tbody>
+      </table>` : ""}
+      <div class="footer">Powered by Mohamed Abdel Aal</div>
+      <script>window.onload=function(){window.print();};window.onafterprint=function(){window.close();}</script>
     </body></html>`;
     const w = window.open("", "_blank");
     if (w) { w.document.write(html); w.document.close(); }
@@ -437,7 +595,7 @@ export const SupplierDebtsPage: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDetailsSupplier(r)} title="تفاصيل">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setDetailsSupplierId(r.id)} title="تفاصيل">
                         <Eye size={14} />
                       </Button>
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-500" onClick={() => openOpeningBalance(r)} title="رصيد افتتاحي">
@@ -498,7 +656,11 @@ export const SupplierDebtsPage: React.FC = () => {
                 <SelectContent>
                   <SelectItem value="none">بدون تحديد</SelectItem>
                   {(paySupplier?.creditOrders || []).map((o: any) => {
-                    const rem = (Number(o.total_amount) || 0) - (Number(o.paid_amount) || 0);
+                    const editingOld = editingPaymentId
+                      ? (payments as any[]).find((p) => p.id === editingPaymentId && p.purchase_order_id === o.id)
+                      : null;
+                    const rem = paymentOf(o).remaining + (Number(editingOld?.amount) || 0);
+                    if (rem <= 0.005 && o.id !== payInvoiceId) return null;
                     return (
                       <SelectItem key={o.id} value={o.id}>
                         {o.invoice_number || o.id.slice(0, 8)} — متبقي {rem.toFixed(2)}
@@ -552,11 +714,26 @@ export const SupplierDebtsPage: React.FC = () => {
       </Dialog>
 
       {/* Details Dialog */}
-      <Dialog open={!!detailsSupplier} onOpenChange={(v) => !v && setDetailsSupplier(null)}>
+      <Dialog open={!!detailsSupplier} onOpenChange={(v) => !v && setDetailsSupplierId(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>كشف حساب — {detailsSupplier?.name}</DialogTitle>
           </DialogHeader>
+          {detailsSupplier && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-muted-foreground">الفترة: {periodLabel}</span>
+              <div className="flex-1" />
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => printStatement(detailsSupplier)}>
+                <Printer size={14} /> طباعة الكشف
+              </Button>
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => exportStatement(detailsSupplier, "pdf")}>
+                <FileText size={14} /> PDF
+              </Button>
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => exportStatement(detailsSupplier, "excel")}>
+                <FileSpreadsheet size={14} /> Excel
+              </Button>
+            </div>
+          )}
           {detailsSupplier && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -592,23 +769,31 @@ export const SupplierDebtsPage: React.FC = () => {
                       <TableHead className="text-right">الاستحقاق</TableHead>
                       <TableHead className="text-right">الإجمالي</TableHead>
                       <TableHead className="text-right">مدفوع مقدماً</TableHead>
+                      <TableHead className="text-right">دفعات مرتبطة</TableHead>
                       <TableHead className="text-right">المتبقي</TableHead>
+                      <TableHead className="text-right">الحالة</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {detailsSupplier.creditOrders.length === 0 ? (
-                      <TableRow><TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-4">لا توجد فواتير آجلة</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-4">لا توجد فواتير آجلة</TableCell></TableRow>
                     ) : detailsSupplier.creditOrders.map((o: any) => {
-                      const t = Number(o.total_amount) || 0;
-                      const p = Number(o.paid_amount) || 0;
+                      const pay = paymentOf(o);
                       return (
                         <TableRow key={o.id}>
                           <TableCell className="font-mono text-xs">{o.invoice_number || "—"}</TableCell>
                           <TableCell>{new Date(o.date).toLocaleDateString("ar-EG")}</TableCell>
                           <TableCell>{o.due_date ? new Date(o.due_date).toLocaleDateString("ar-EG") : "—"}</TableCell>
-                          <TableCell className="font-mono">{t.toFixed(2)}</TableCell>
-                          <TableCell className="font-mono text-emerald-500">{p.toFixed(2)}</TableCell>
-                          <TableCell className="font-mono font-bold text-amber-500">{(t - p).toFixed(2)}</TableCell>
+                          <TableCell className="font-mono">{pay.total.toFixed(2)}</TableCell>
+                          <TableCell className="font-mono text-emerald-500">{pay.prepaid.toFixed(2)}</TableCell>
+                          <TableCell className="font-mono text-emerald-500">{pay.linkedPaid.toFixed(2)}</TableCell>
+                          <TableCell className={cn("font-mono font-bold", pay.remaining > 0 ? "text-amber-500" : "text-emerald-500")}>{Math.max(pay.remaining, 0).toFixed(2)}</TableCell>
+                          <TableCell>
+                            <span className={cn(
+                              "inline-flex px-2 py-0.5 rounded-full text-xs font-medium",
+                              pay.status === "credit_paid" ? "bg-emerald-500/15 text-emerald-500" : pay.status === "credit_partial" ? "bg-sky-500/15 text-sky-500" : "bg-amber-500/15 text-amber-500",
+                            )}>{pay.label}</span>
+                          </TableCell>
                         </TableRow>
                       );
                     })}

@@ -1,4 +1,5 @@
 import { DecimalInput } from "@/components/ui/decimal-input";
+import { getPurchasePaymentSummary } from "@/lib/purchasePaymentStatus";
 import React, { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -73,6 +74,23 @@ export const EditPurchaseInvoicePage: React.FC = () => {
     staleTime: 0,
     refetchOnMount: "always",
   });
+
+  const { data: linkedPayments = [] } = useQuery({
+    queryKey: ["supplier-payments-for-order", id],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("supplier_payments")
+        .select("id, amount, payment_date, payment_method")
+        .eq("purchase_order_id", id!)
+        .order("payment_date");
+      if (error) throw error;
+      return data as any[];
+    },
+    enabled: !!id,
+    staleTime: 0,
+    refetchOnMount: "always",
+  });
+  const linkedPaidTotal = (linkedPayments as any[]).reduce((s, p) => s + (Number(p.amount) || 0), 0);
 
   const { data: existingItems = [], isFetched: itemsFetched } = useQuery({
     queryKey: ["purchase-items", id],
@@ -431,12 +449,40 @@ export const EditPurchaseInvoicePage: React.FC = () => {
                 <Label>مبلغ مدفوع مقدماً (اختياري)</Label>
                 <Input type="number" min={0} max={totalAmount} step="0.01" value={paidAmount} onChange={(e) => setPaidAmount(parseFloat(e.target.value) || 0)} className="glass-input" disabled={isViewOnly} />
               </div>
-              <div className="md:col-span-3 flex items-center gap-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-sm">
-                <span className="font-semibold text-amber-600">{(totalAmount - (Number(paidAmount) || 0)) >= 0 ? "المتبقي للمورد:" : "المتبقي على المورد:"}</span>
-                <span className="font-mono text-lg font-bold text-amber-700 dark:text-amber-400">
-                  {Math.abs(totalAmount - (Number(paidAmount) || 0)).toFixed(2)} ج.م
-                </span>
-              </div>
+              {(() => {
+                const pay = getPurchasePaymentSummary({ total_amount: totalAmount, paid_amount: paidAmount, payment_type: "آجل" }, linkedPaidTotal);
+                return (
+                  <>
+                    {linkedPaidTotal > 0 && (
+                      <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                        <div className="p-3 rounded-lg border border-border/60">
+                          <div className="text-xs text-muted-foreground">دفعات مسددة من مديونية الموردين</div>
+                          <div className="font-mono font-bold text-emerald-500">{linkedPaidTotal.toFixed(2)} ج.م</div>
+                          <div className="text-[11px] text-muted-foreground mt-1">
+                            {(linkedPayments as any[]).map((p) => `${p.payment_date}: ${Number(p.amount).toFixed(2)}`).join(" • ")}
+                          </div>
+                        </div>
+                        <div className="p-3 rounded-lg border border-border/60">
+                          <div className="text-xs text-muted-foreground">إجمالي المدفوع</div>
+                          <div className="font-mono font-bold text-sky-500">{pay.paid.toFixed(2)} ج.م</div>
+                        </div>
+                        <div className="p-3 rounded-lg border border-border/60">
+                          <div className="text-xs text-muted-foreground">حالة السداد</div>
+                          <div className={pay.status === "credit_paid" ? "font-bold text-emerald-500" : pay.status === "credit_partial" ? "font-bold text-sky-500" : "font-bold text-amber-500"}>{pay.label}</div>
+                        </div>
+                      </div>
+                    )}
+                    <div className={pay.status === "credit_paid" ? "md:col-span-3 flex items-center gap-4 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-sm" : "md:col-span-3 flex items-center gap-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-sm"}>
+                      <span className={pay.status === "credit_paid" ? "font-semibold text-emerald-600" : "font-semibold text-amber-600"}>
+                        {pay.status === "credit_paid" && pay.remaining === 0 ? "تم السداد بالكامل:" : pay.remaining >= 0 ? "المتبقي للمورد:" : "المتبقي على المورد:"}
+                      </span>
+                      <span className={pay.status === "credit_paid" ? "font-mono text-lg font-bold text-emerald-600" : "font-mono text-lg font-bold text-amber-700 dark:text-amber-400"}>
+                        {Math.abs(pay.remaining).toFixed(2)} ج.م
+                      </span>
+                    </div>
+                  </>
+                );
+              })()}
             </>
           )}
         </div>

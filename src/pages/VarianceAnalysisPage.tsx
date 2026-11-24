@@ -22,6 +22,7 @@ import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { exportToExcel } from "@/lib/exportUtils";
+import { computeScopeCost } from "@/lib/varianceCostScope";
 
 /* =========================================================
    VARIANCE ANALYSIS PAGE (تقرير انحراف خامات المطبخ)
@@ -223,6 +224,14 @@ export const VarianceAnalysisPage: React.FC = () => {
     } catch { return "kitchen_packaging"; }
   });
   useEffect(() => { localStorage.setItem("variance-cost-scope-mode", costScopeMode); }, [costScopeMode]);
+
+  // Department used by the cost-scope box when the page filter is "كل الأقسام"
+  // ("all" = every department). When a department is selected in the page
+  // filter, the box always follows that department.
+  const [scopeDeptChoice, setScopeDeptChoice] = useState<string>(() => {
+    try { return localStorage.getItem("variance-cost-scope-dept") || "all"; } catch { return "all"; }
+  });
+  useEffect(() => { localStorage.setItem("variance-cost-scope-dept", scopeDeptChoice); }, [scopeDeptChoice]);
 
   // Load saved filters once on mount
   useEffect(() => {
@@ -534,16 +543,9 @@ export const VarianceAnalysisPage: React.FC = () => {
     const map = new Map<string, ItemCalc>();
     if (!stockItems || !from || !to) return map;
 
+    // All items are computed here; the department filter is applied afterwards
+    // so the cost-scope box can still see items of other departments.
     for (const si of stockItems as any[]) {
-      // Category filter via department: item's categories must belong to selected dept (if set)
-      if (departmentFilter !== "all") {
-        const cats = itemCats.get(si.id);
-        if (!cats) continue;
-        const inDept = Array.from(cats).some((cid) =>
-          (categories || []).find((c: any) => c.id === cid && c.department_id === departmentFilter)
-        );
-        if (!inDept && si.department_id !== departmentFilter) continue;
-      }
       map.set(si.id, {
         id: si.id, name: si.name, code: si.code, unit: si.stock_unit,
         avgCost: getCost(si.id, si.avg_cost),
@@ -684,15 +686,42 @@ export const VarianceAnalysisPage: React.FC = () => {
     return map;
   };
 
-  // Current period
-  const current = useMemo(() => computeForRange(dateFrom, dateTo),
+  // Current period — every item (before the department filter)
+  const currentAll = useMemo(() => computeForRange(dateFrom, dateTo),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [stockItems, stocktakeData, purchaseData, productionIngData, productionRecords, wasteData, transferData, posSaleItems, recipeIngredients, dateFrom, dateTo, branchFilter, departmentFilter, itemCats, categories, getCost, thresholds]);
+    [stockItems, stocktakeData, purchaseData, productionIngData, productionRecords, wasteData, transferData, posSaleItems, recipeIngredients, dateFrom, dateTo, branchFilter, itemCats, categories, getCost, thresholds]);
 
   // Previous period (for prev-rate)
-  const previous = useMemo(() => computeForRange(prevRange?.from, prevRange?.to),
+  const previousAll = useMemo(() => computeForRange(prevRange?.from, prevRange?.to),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [stockItems, stocktakeData, purchaseData, productionIngData, productionRecords, wasteData, transferData, posSaleItems, recipeIngredients, prevRange, branchFilter, departmentFilter, itemCats, categories, getCost, thresholds]);
+    [stockItems, stocktakeData, purchaseData, productionIngData, productionRecords, wasteData, transferData, posSaleItems, recipeIngredients, prevRange, branchFilter, itemCats, categories, getCost, thresholds]);
+
+  // Department membership: any of the item's categories belongs to the
+  // department, or the item's own department matches.
+  const itemDeptIds = useMemo(() => {
+    const catDept = new Map<string, string | null>();
+    (categories || []).forEach((c: any) => catDept.set(c.id, c.department_id ?? null));
+    const m = new Map<string, string[]>();
+    (stockItems || []).forEach((si: any) => {
+      const set = new Set<string>();
+      const cats = itemCats.get(si.id);
+      if (cats) for (const cid of cats) { const d = catDept.get(cid); if (d) set.add(d); }
+      if (si.department_id) set.add(si.department_id);
+      m.set(si.id, Array.from(set));
+    });
+    return m;
+  }, [stockItems, categories, itemCats]);
+
+  const filterByDept = (src: Map<string, ItemCalc>): Map<string, ItemCalc> => {
+    if (departmentFilter === "all") return src;
+    const out = new Map<string, ItemCalc>();
+    for (const [id, c] of src) if ((itemDeptIds.get(id) || []).includes(departmentFilter)) out.set(id, c);
+    return out;
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const current = useMemo(() => filterByDept(currentAll), [currentAll, departmentFilter, itemDeptIds]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const previous = useMemo(() => filterByDept(previousAll), [previousAll, departmentFilter, itemDeptIds]);
 
   // Net sales for period (branch scope)
   const netSales = useMemo(() => {
@@ -945,27 +974,13 @@ export const VarianceAnalysisPage: React.FC = () => {
   }, [current, previous]);
 
   /* ============ Actual Consumed Cost vs Menu Analysis benchmark ============ */
-  // Scope: لما يكون قسم محدد مختار من الفلتر، نطاق التكلفة بيتبع القسم المختار
-  // (نفس الأصناف المعروضة في الجدول). لما يكون "كل الأقسام"، النطاق الافتراضي
-  // يبقى أقسام المطبخ فقط، والباكينج يتعرّف على مستوى المجموعة (Category).
-  const deptInScope = useMemo(() => {
-    const map = new Map<string, boolean>();
-    if (departmentFilter !== "all") {
-      (departments || []).forEach((d: any) => map.set(d.id, d.id === departmentFilter));
-      return map;
-    }
-    (departments || []).forEach((d: any) => {
-      const n = (d.name || "").toLowerCase();
-      const hasKitchen = n.includes("مطبخ") || n.includes("kitchen");
-      const hasPackaging = n.includes("باكينج") || n.includes("packing") || n.includes("packaging") || n.includes("تغليف");
-      const hasGeneral = n.includes("جنرال") || n.includes("general") || n.includes("عام");
-      const ok = hasKitchen && !hasGeneral && !hasPackaging;
-      map.set(d.id, ok);
-    });
-    return map;
-  }, [departments, departmentFilter]);
+  // نطاق حساب التكلفة: لو في قسم مختار من فلتر الصفحة → النطاق هو القسم ده.
+  // لو "كل الأقسام" → المستخدم يختار من خانة النطاق (كل الأقسام أو قسم معين).
+  const effectiveScopeDept = departmentFilter !== "all"
+    ? departmentFilter
+    : (scopeDeptChoice === "all" || (departments || []).some((d: any) => d.id === scopeDeptChoice) ? scopeDeptChoice : "all");
 
-  // مجموعات (Categories) اسمها فيه "باكينج/packaging" — تُضاف فقط في وضع "مطبخ + باكينج"
+  // مجموعات (Categories) اسمها فيه "باكينج/packaging" — تُضاف في وضع "القسم + باكينج"
   const packagingCatIds = useMemo(() => {
     const set = new Set<string>();
     (categories || []).forEach((c: any) => {
@@ -978,39 +993,20 @@ export const VarianceAnalysisPage: React.FC = () => {
   }, [categories]);
 
   const actualCost = useMemo(() => {
-    const catById = new Map<string, any>();
-    (categories || []).forEach((c: any) => catById.set(c.id, c));
-    const primaryDept = new Map<string, string | null>();
-    (stockItems || []).forEach((si: any) => primaryDept.set(si.id, si.department_id ?? null));
-    const itemDeptIds = (itemId: string): string[] => {
-      const set = new Set<string>();
-      const cats = itemCats.get(itemId);
-      if (cats) for (const cid of cats) {
-        const did = catById.get(cid)?.department_id;
-        if (did) set.add(did);
-      }
-      if (set.size === 0) {
-        const p = primaryDept.get(itemId);
-        if (p) set.add(p);
-      }
-      return Array.from(set);
-    };
-    const itemInPackagingCat = (itemId: string): boolean => {
-      const cats = itemCats.get(itemId);
-      if (!cats) return false;
-      for (const cid of cats) if (packagingCatIds.has(cid)) return true;
-      return false;
-    };
-    let totalVal = 0;
-    for (const i of current.values()) {
-      const dids = itemDeptIds(i.id);
-      const inKitchen = dids.some(d => deptInScope.get(d));
-      const inPackaging = costScopeMode === "kitchen_packaging" && itemInPackagingCat(i.id);
-      if (inKitchen || inPackaging) totalVal += (i.actualConsumedVal || 0);
-    }
-    const pct = netSales > 0 ? totalVal / netSales : 0;
-    return { totalVal, pct };
-  }, [current, netSales, categories, itemCats, stockItems, deptInScope, costScopeMode, packagingCatIds]);
+    return computeScopeCost({
+      items: Array.from(currentAll.values()).map((i) => ({ id: i.id, value: i.actualConsumedVal || 0 })),
+      itemDeptIds: (id) => itemDeptIds.get(id) || [],
+      itemIsPackaging: (id) => {
+        const cats = itemCats.get(id);
+        if (!cats) return false;
+        for (const cid of cats) if (packagingCatIds.has(cid)) return true;
+        return false;
+      },
+      scopeDeptId: effectiveScopeDept,
+      includePackaging: costScopeMode === "kitchen_packaging",
+      netSales,
+    });
+  }, [currentAll, netSales, itemDeptIds, itemCats, packagingCatIds, effectiveScopeDept, costScopeMode]);
 
   // Manual standard-ratio (percentage number, e.g. 59.6 means 59.60%) — persisted per company
   const benchmarkKey = companyId ? `variance-manual-benchmark-${companyId}` : null;
@@ -1091,9 +1087,23 @@ export const VarianceAnalysisPage: React.FC = () => {
 
   const branchName = branchFilter === "all" ? "كل الفروع" : (branches || []).find((b: any) => b.id === branchFilter)?.name || "-";
   const deptName = departmentFilter === "all" ? "كل الأقسام" : (departments || []).find((d: any) => d.id === departmentFilter)?.name || "-";
-  const scopeDeptLabel = departmentFilter === "all"
-    ? "مطبخ"
-    : ((departments || []).find((d: any) => d.id === departmentFilter)?.name || "القسم");
+  const scopeDeptLabel = effectiveScopeDept === "all"
+    ? "كل الأقسام"
+    : ((departments || []).find((d: any) => d.id === effectiveScopeDept)?.name || "القسم");
+  const scopeLabel = effectiveScopeDept === "all"
+    ? "كل الأقسام"
+    : costScopeMode === "kitchen_packaging" ? `${scopeDeptLabel} + باكينج` : `${scopeDeptLabel} فقط`;
+  // Breakdown of the actual consumed cost (shown in page, print, PDF and Excel)
+  const scopeBreakdown: [string, string][] = effectiveScopeDept === "all"
+    ? [
+        ...(departments || []).map((d: any) => [`— ${d.name}`, fmt(actualCost.perDept.get(d.id) ?? 0)] as [string, string]),
+        ...(actualCost.sharedVal > 0 ? [["— خامات مشتركة بين أكثر من قسم (تُحسب مرة واحدة)", `− ${fmt(actualCost.sharedVal)}`] as [string, string]] : []),
+        ...(actualCost.noDeptVal !== 0 ? [["— خامات بدون قسم", fmt(actualCost.noDeptVal)] as [string, string]] : []),
+      ]
+    : [
+        [`— خامات ${scopeDeptLabel}`, fmt(actualCost.deptVal)],
+        ...(costScopeMode === "kitchen_packaging" ? [["— باكينج من أقسام أخرى", fmt(actualCost.packagingExtraVal)] as [string, string]] : []),
+      ];
 
   const buildReportHTML = () => {
     const dateStr = new Date().toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" });
@@ -1133,8 +1143,9 @@ export const VarianceAnalysisPage: React.FC = () => {
           ${netSales > 0 ? `<div class="kpi-line"><span>نسبة الانحراف من المبيعات</span><b>${fmtPct(costKpis.netVal / netSales)}</b></div>` : ""}
           ${benchLine}
           ${netSales > 0 ? `
-          <div class="kpi-line"><span>نطاق حساب التكلفة</span><b>${costScopeMode === "kitchen_packaging" ? `${scopeDeptLabel} + باكينج` : `${scopeDeptLabel} فقط`}</b></div>
+          <div class="kpi-line"><span>نطاق حساب التكلفة</span><b>${scopeLabel}</b></div>
           <div class="kpi-line"><span>التكلفة الفعلية المستهلكة</span><b>${fmt(actualCost.totalVal)} ج.م</b></div>
+          ${scopeBreakdown.map(([l, v]) => `<div class="kpi-line"><span>${l}</span><b>${v}</b></div>`).join("")}
           <div class="kpi-line"><span>نسبة التكلفة الفعلية</span><b>${fmtPct(actualCost.pct)}</b></div>
           ${manualLines}` : ""}
           <div class="kpi-line"><span>الفترة السابقة</span><b>${prevStr}</b></div>
@@ -1220,6 +1231,7 @@ export const VarianceAnalysisPage: React.FC = () => {
           <td class="${i.diffQty < 0 ? "neg" : i.diffQty > 0 ? "pos" : ""}">${fmt(i.diffQty, 3)}</td>
           <td class="${i.costVar < 0 ? "neg" : i.costVar > 0 ? "pos" : ""}">${fmt(i.costVar)}</td>
           <td>${fmt(i.actualConsumedQty, 3)}</td>
+          <td>${fmt(i.actualConsumedVal)}</td>
           <td>${fmtPct(i.rate)}</td>
           <td>${i.result === "Short" ? "عجز" : i.result === "Over" ? "زيادة" : "متطابق"}</td>
           <td>${i.analysis}</td>
@@ -1239,7 +1251,7 @@ export const VarianceAnalysisPage: React.FC = () => {
               <tr>
                 <th>الخامة</th><th>أول المدة</th><th>وارد</th><th>استهلاك نظري</th>
                 <th>آخر المدة نظري</th><th>الرصيد الفعلي</th><th>الفرق</th><th>قيمة الانحراف</th>
-                <th>استهلاك فعلي</th><th>نسبة الانحراف</th><th>النتيجة</th><th>التحليل</th>
+                <th>استهلاك فعلي</th><th>تكلفة الاستهلاك الفعلي</th><th>نسبة الانحراف</th><th>النتيجة</th><th>التحليل</th>
                 <th>القيمة المحملة</th><th>النسبة السابقة</th><th>مقارنة</th>
               </tr>
             </thead>
@@ -1249,7 +1261,9 @@ export const VarianceAnalysisPage: React.FC = () => {
                 <td>إجمالي ${group.catName}</td>
                 <td colspan="6"></td>
                 <td class="${costSum < 0 ? "neg" : costSum > 0 ? "pos" : ""}">${fmt(costSum)}</td>
-                <td colspan="4"></td>
+                <td></td>
+                <td>${fmt(consumedValSum)}</td>
+                <td colspan="3"></td>
                 <td>${fmt(chargedSum)}</td>
                 <td colspan="2"></td>
               </tr>
@@ -1516,7 +1530,7 @@ export const VarianceAnalysisPage: React.FC = () => {
         { key: "diffQty", label: "الفرق" },
         { key: "costVar", label: "قيمة الانحراف" },
         { key: "actualConsumedQty", label: "استهلاك فعلي" },
-        { key: "actualConsumedVal", label: "قيمة الاستهلاك" },
+        { key: "actualConsumedVal", label: "تكلفة الاستهلاك الفعلي" },
         { key: "rate", label: "نسبة الانحراف" },
         { key: "result", label: "النتيجة" },
         { key: "analysis", label: "التحليل" },
@@ -1538,8 +1552,9 @@ export const VarianceAnalysisPage: React.FC = () => {
         addInfo(`مقارنة بمعيار: ${xBench.name}`, r > xBench.dangerMin ? "خطر" : r > xBench.warnMin ? "إنذار" : "مقبول");
       }
       if (netSales > 0) {
-        addInfo("نطاق حساب التكلفة", costScopeMode === "kitchen_packaging" ? `${scopeDeptLabel} + باكينج` : `${scopeDeptLabel} فقط`);
+        addInfo("نطاق حساب التكلفة", scopeLabel);
         addInfo("التكلفة الفعلية المستهلكة", `${fmt(actualCost.totalVal)} ج.م`);
+        scopeBreakdown.forEach(([l, v]) => addInfo(l, v));
         addInfo("نسبة التكلفة الفعلية", fmtPct(actualCost.pct));
         if (manualBenchmark > 0) {
           addInfo("النسبة المعيارية (يدوي)", `${manualBenchmark}%`);
@@ -1728,7 +1743,20 @@ export const VarianceAnalysisPage: React.FC = () => {
             <div className="border-t pt-2 space-y-1">
               <div className="flex items-center justify-between gap-2 pb-1">
                 <span className="text-[11px] text-muted-foreground">نطاق حساب التكلفة</span>
-                <div className="flex items-center gap-1 text-[11px]">
+                {departmentFilter === "all" ? (
+                  <Select value={effectiveScopeDept} onValueChange={setScopeDeptChoice}>
+                    <SelectTrigger className="h-7 w-40 text-[11px]"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">كل الأقسام</SelectItem>
+                      {(departments || []).map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <span className="text-[11px] font-semibold">{scopeDeptLabel}</span>
+                )}
+              </div>
+              {effectiveScopeDept !== "all" && (
+                <div className="flex items-center justify-end gap-1 text-[11px] pb-1">
                   <button
                     type="button"
                     onClick={() => setCostScopeMode("kitchen_packaging")}
@@ -1740,10 +1768,47 @@ export const VarianceAnalysisPage: React.FC = () => {
                     className={cn("px-2 py-0.5 rounded border", costScopeMode === "kitchen_only" ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted")}
                   >{scopeDeptLabel} فقط</button>
                 </div>
-              </div>
+              )}
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">التكلفة الفعلية المستهلكة</span>
                 <span className="font-bold">{fmt(actualCost.totalVal)} ج.م</span>
+              </div>
+              <div className="rounded bg-muted/40 px-2 py-1 space-y-0.5 text-[11px]" data-testid="scope-breakdown">
+                {effectiveScopeDept === "all" ? (
+                  <>
+                    {(departments || []).map((d: any) => (
+                      <div key={d.id} className="flex justify-between">
+                        <span className="text-muted-foreground">{d.name}</span>
+                        <span>{fmt(actualCost.perDept.get(d.id) ?? 0)}</span>
+                      </div>
+                    ))}
+                    {actualCost.sharedVal > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">خامات مشتركة بين أكثر من قسم (تُحسب مرة واحدة)</span>
+                        <span>− {fmt(actualCost.sharedVal)}</span>
+                      </div>
+                    )}
+                    {actualCost.noDeptVal !== 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">خامات بدون قسم</span>
+                        <span>{fmt(actualCost.noDeptVal)}</span>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">خامات {scopeDeptLabel}</span>
+                      <span>{fmt(actualCost.deptVal)}</span>
+                    </div>
+                    {costScopeMode === "kitchen_packaging" && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">باكينج من أقسام أخرى</span>
+                        <span>{fmt(actualCost.packagingExtraVal)}</span>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">نسبة التكلفة الفعلية</span>
@@ -2099,6 +2164,7 @@ export const VarianceAnalysisPage: React.FC = () => {
                     <TableHead className="text-center">الفرق</TableHead>
                     <TableHead className="text-center">قيمة الانحراف</TableHead>
                     <TableHead className="text-center">استهلاك فعلي</TableHead>
+                    <TableHead className="text-center">تكلفة الاستهلاك الفعلي</TableHead>
                     <TableHead className="text-center">نسبة الانحراف</TableHead>
                     <TableHead className="text-center">النتيجة</TableHead>
                     <TableHead className="text-center">التحليل</TableHead>
@@ -2126,6 +2192,7 @@ export const VarianceAnalysisPage: React.FC = () => {
                       <TableCell className={cn("text-center font-semibold", i.diffQty < 0 ? "text-red-600" : i.diffQty > 0 ? "text-emerald-600" : "")}>{fmt(i.diffQty, 3)}</TableCell>
                       <TableCell className={cn("text-center font-semibold", i.costVar < 0 ? "text-red-600" : i.costVar > 0 ? "text-emerald-600" : "")}>{fmt(i.costVar)}</TableCell>
                       <TableCell className="text-center">{fmt(i.actualConsumedQty, 3)}</TableCell>
+                      <TableCell className="text-center" title={`${fmt(i.actualConsumedQty, 3)} × ${fmt(i.avgCost)}`}>{fmt(i.actualConsumedVal)}</TableCell>
                       <TableCell className="text-center">{fmtPct(i.rate)}</TableCell>
                       <TableCell className="text-center">{i.result === "Short" ? "عجز" : i.result === "Over" ? "زيادة" : "متطابق"}</TableCell>
                       <TableCell className="text-center"><span className={cn("px-2 py-0.5 rounded text-xs font-semibold", analysisColor(i.analysis))}>{i.analysis}</span></TableCell>
@@ -2146,7 +2213,9 @@ export const VarianceAnalysisPage: React.FC = () => {
                       <TableCell>إجمالي {group.catName}</TableCell>
                       <TableCell colSpan={6}></TableCell>
                       <TableCell className={cn("text-center", costSum < 0 ? "text-red-600" : costSum > 0 ? "text-emerald-600" : "")}>{fmt(costSum)}</TableCell>
-                      <TableCell colSpan={4}></TableCell>
+                      <TableCell></TableCell>
+                      <TableCell className="text-center">{fmt(consumedValSum)}</TableCell>
+                      <TableCell colSpan={3}></TableCell>
                       <TableCell className="text-center">{fmt(chargedSum)}</TableCell>
                       <TableCell colSpan={3}></TableCell>
                     </TableRow>

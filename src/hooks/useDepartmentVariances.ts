@@ -2,6 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { fetchAllRows } from "@/lib/fetchAllRows";
+import { aggregateDepartmentVariances, NO_DEPARTMENT_KEY } from "@/lib/departmentVarianceAggregation";
+
+export const SHARED_OVERLAP_KEY = "__shared__";
 
 export interface DepartmentVariance {
   departmentId: string;
@@ -56,6 +59,34 @@ export function useDepartmentVariances(
         .eq("company_id", companyId!);
       return data || [];
     },
+    enabled: !!companyId,
+  });
+
+  // Extra group ↔ department links (a group can belong to several departments)
+  const { data: categoryDeptLinks } = useQuery({
+    queryKey: ["dept-var-category-dept-links", companyId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("inventory_category_departments")
+        .select("category_id, department_id")
+        .eq("company_id", companyId!);
+      return data || [];
+    },
+    enabled: !!companyId,
+  });
+
+  // Extra item ↔ group links (an item can belong to several groups)
+  const { data: itemCategoryLinks } = useQuery({
+    queryKey: ["dept-var-item-cat-links", companyId],
+    queryFn: async () =>
+      fetchAllRows<{ stock_item_id: string; category_id: string }>((from, to) =>
+        supabase
+          .from("stock_item_categories")
+          .select("stock_item_id, category_id")
+          .eq("company_id", companyId!)
+          .order("stock_item_id")
+          .range(from, to)
+      ),
     enabled: !!companyId,
   });
 
@@ -238,10 +269,24 @@ export function useDepartmentVariances(
     return bc != null ? bc : globalCost;
   };
 
-  // Category → department map (primary)
-  const catDeptMap = new Map<string, string>();
+  // Group → all its departments (primary + extra links) — same rule as variance analysis page
+  const catDeptIds = new Map<string, Set<string>>();
   (categories || []).forEach((c: any) => {
-    if (c.department_id) catDeptMap.set(c.id, c.department_id);
+    const set = new Set<string>();
+    if (c.department_id) set.add(c.department_id);
+    catDeptIds.set(c.id, set);
+  });
+  (categoryDeptLinks || []).forEach((l: any) => {
+    if (!l.category_id || !l.department_id) return;
+    if (!catDeptIds.has(l.category_id)) catDeptIds.set(l.category_id, new Set());
+    catDeptIds.get(l.category_id)!.add(l.department_id);
+  });
+  // Item → extra groups
+  const itemExtraCats = new Map<string, string[]>();
+  (itemCategoryLinks || []).forEach((l) => {
+    if (!l.stock_item_id || !l.category_id) return;
+    if (!itemExtraCats.has(l.stock_item_id)) itemExtraCats.set(l.stock_item_id, []);
+    itemExtraCats.get(l.stock_item_id)!.push(l.category_id);
   });
 
   // Build per-item calcs
@@ -251,18 +296,21 @@ export function useDepartmentVariances(
     outQty: number;
     countQty: number;
     avgCost: number;
-    deptId: string | null;
+    deptIds: string[];
   };
   const itemCalc = new Map<string, Calc>();
   (stockItems || []).forEach((si: any) => {
-    const deptId = si.department_id || catDeptMap.get(si.category_id) || null;
+    const depts = new Set<string>();
+    const cats = [si.category_id, ...(itemExtraCats.get(si.id) || [])].filter(Boolean);
+    for (const cid of cats) catDeptIds.get(cid)?.forEach((d) => depts.add(d));
+    if (si.department_id) depts.add(si.department_id);
     itemCalc.set(si.id, {
       openQty: 0,
       inQty: 0,
       outQty: 0,
       countQty: 0,
       avgCost: getCost(si.id, Number(si.avg_cost || 0)),
-      deptId,
+      deptIds: Array.from(depts),
     });
   });
 
@@ -384,7 +432,6 @@ export function useDepartmentVariances(
   const deptName = new Map<string, string>();
   (departments || []).forEach((d) => deptName.set(d.id, d.name));
 
-  const aggregate = new Map<string, number>(); // deptId -> sum varVal
   // Only consider items with a count (period closing stocktake)
   const itemsWithCount = new Set<string>();
   if (stocktakeData) {
@@ -397,26 +444,35 @@ export function useDepartmentVariances(
     }
   }
 
+  const itemVariances: { varianceValue: number; deptIds: string[] }[] = [];
   for (const [itemId, c] of itemCalc) {
     if (!itemsWithCount.has(itemId)) continue;
     const bookQty = c.openQty + c.inQty - c.outQty;
     const varQty = c.countQty - bookQty;
     if (Math.abs(varQty) < 0.01) continue;
-    const varVal = varQty * c.avgCost;
-    const dKey = c.deptId || "__none__";
-    aggregate.set(dKey, (aggregate.get(dKey) || 0) + varVal);
+    itemVariances.push({ varianceValue: varQty * c.avgCost, deptIds: c.deptIds });
   }
+  // A material linked to several departments appears in each of them;
+  // the double-counted part is returned as a separate adjustment row so the total counts it once.
+  const { byDepartment: aggregate, sharedOverlap } = aggregateDepartmentVariances(itemVariances);
 
   const variances: DepartmentVariance[] = [];
   for (const [dKey, val] of aggregate) {
     if (Math.abs(val) < 0.5) continue;
     variances.push({
       departmentId: dKey,
-      departmentName: dKey === "__none__" ? "بدون قسم" : deptName.get(dKey) || "قسم غير معروف",
+      departmentName: dKey === NO_DEPARTMENT_KEY ? "بدون قسم" : deptName.get(dKey) || "قسم غير معروف",
       varianceValue: val,
     });
   }
   variances.sort((a, b) => a.varianceValue - b.varianceValue);
+  if (Math.abs(sharedOverlap) >= 0.5) {
+    variances.push({
+      departmentId: SHARED_OVERLAP_KEY,
+      departmentName: "خامات مشتركة بين الأقسام (تُحسب مرة واحدة في الإجمالي)",
+      varianceValue: sharedOverlap,
+    });
+  }
 
   // totalDeficit = positive number representing net loss to charge in P&L
   const netVariance = variances.reduce((s, v) => s + v.varianceValue, 0);

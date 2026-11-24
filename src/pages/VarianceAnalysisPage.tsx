@@ -348,6 +348,36 @@ export const VarianceAnalysisPage: React.FC = () => {
     enabled: !!companyId,
   });
 
+  // Extra category ↔ department links (a group can belong to several departments)
+  const { data: categoryDeptLinks } = useQuery({
+    queryKey: ["var-category-dept-links", companyId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("inventory_category_departments")
+        .select("category_id,department_id")
+        .eq("company_id", companyId!);
+      return data || [];
+    },
+    enabled: !!companyId,
+  });
+
+  // category id -> all its departments (primary + extra links)
+  const catDeptIds = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    (categories || []).forEach((c: any) => {
+      const set = new Set<string>();
+      if (c.department_id) set.add(c.department_id);
+      m.set(c.id, set);
+    });
+    (categoryDeptLinks || []).forEach((l: any) => {
+      if (!l.category_id || !l.department_id) return;
+      if (!m.has(l.category_id)) m.set(l.category_id, new Set());
+      m.get(l.category_id)!.add(l.department_id);
+    });
+    return m;
+  }, [categories, categoryDeptLinks]);
+  const catInDept = (cid: string, did: string) => !!catDeptIds.get(cid)?.has(did);
+
   const { data: stockItems } = useQuery({
     queryKey: ["var-stock-items", companyId],
     queryFn: async () => {
@@ -699,18 +729,16 @@ export const VarianceAnalysisPage: React.FC = () => {
   // Department membership: any of the item's categories belongs to the
   // department, or the item's own department matches.
   const itemDeptIds = useMemo(() => {
-    const catDept = new Map<string, string | null>();
-    (categories || []).forEach((c: any) => catDept.set(c.id, c.department_id ?? null));
     const m = new Map<string, string[]>();
     (stockItems || []).forEach((si: any) => {
       const set = new Set<string>();
       const cats = itemCats.get(si.id);
-      if (cats) for (const cid of cats) { const d = catDept.get(cid); if (d) set.add(d); }
+      if (cats) for (const cid of cats) catDeptIds.get(cid)?.forEach((d) => set.add(d));
       if (si.department_id) set.add(si.department_id);
       m.set(si.id, Array.from(set));
     });
     return m;
-  }, [stockItems, categories, itemCats]);
+  }, [stockItems, catDeptIds, itemCats]);
 
   const filterByDept = (src: Map<string, ItemCalc>): Map<string, ItemCalc> => {
     if (departmentFilter === "all") return src;
@@ -754,7 +782,7 @@ export const VarianceAnalysisPage: React.FC = () => {
       if (departmentFilter !== "all") {
         catIds = catIds.filter((cid) => {
           if (cid === "__none__") return false;
-          return catById.get(cid)?.department_id === departmentFilter;
+          return catInDept(cid, departmentFilter);
         });
       }
       for (const cid of catIds) {
@@ -778,7 +806,8 @@ export const VarianceAnalysisPage: React.FC = () => {
       out.push(g);
     }
     return out;
-  }, [current, previous, categories, itemCats, departmentFilter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current, previous, categories, itemCats, departmentFilter, catDeptIds]);
 
   // Consumables monitor — broken down per department
   const classifyDeptKind = (name: string): "packaging" | "general" | "consumables" => {
@@ -799,10 +828,7 @@ export const VarianceAnalysisPage: React.FC = () => {
       const set = new Set<string>();
       const cats = itemCats.get(itemId);
       if (cats) {
-        for (const cid of cats) {
-          const did = catById.get(cid)?.department_id;
-          if (did) set.add(did);
-        }
+        for (const cid of cats) catDeptIds.get(cid)?.forEach((did) => set.add(did));
       }
       if (set.size === 0 && primaryDeptId) set.add(primaryDeptId);
       let arr = Array.from(set);
@@ -823,7 +849,7 @@ export const VarianceAnalysisPage: React.FC = () => {
       const out: string[] = [];
       if (cats) {
         for (const cid of cats) {
-          if (catById.get(cid)?.department_id === deptId) out.push(cid);
+          if (catInDept(cid, deptId)) out.push(cid);
         }
       }
       return out;
@@ -896,7 +922,8 @@ export const VarianceAnalysisPage: React.FC = () => {
       rows,
       hasConsumablesKind,
     };
-  }, [current, netSales, consumablesLimitPct, consumablesTargets, categories, departments, itemCats, stockItems, departmentFilter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current, netSales, consumablesLimitPct, consumablesTargets, categories, departments, itemCats, stockItems, departmentFilter, catDeptIds]);
 
   /* ============ Category permissible update ============ */
   const [savingCat, setSavingCat] = useState<string | null>(null);
@@ -2465,7 +2492,7 @@ export const VarianceAnalysisPage: React.FC = () => {
                       <SelectContent>
                         <SelectItem value="all">كل المجموعات</SelectItem>
                         {(categories || [])
-                          .filter((c: any) => consumableDeptFilter === "all" || c.department_id === consumableDeptFilter)
+                          .filter((c: any) => consumableDeptFilter === "all" || catInDept(c.id, consumableDeptFilter))
                           .map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
@@ -2488,9 +2515,7 @@ export const VarianceAnalysisPage: React.FC = () => {
                     }
                     if (consumableDeptFilter !== "all") {
                       const cats = itemCats.get(si.id);
-                      const inDept = cats && Array.from(cats).some((cid) =>
-                        (categories || []).find((c: any) => c.id === cid && c.department_id === consumableDeptFilter)
-                      );
+                      const inDept = cats && Array.from(cats).some((cid) => catInDept(cid, consumableDeptFilter));
                       if (!inDept && si.department_id !== consumableDeptFilter) return false;
                     }
                     return true;

@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 
 /**
  * Calculates per-location stock for a specific branch or warehouse
@@ -24,101 +25,95 @@ export function useLocationStock(
 
   const { data: purchaseItems = [] } = useQuery({
     queryKey: ["loc-stock-purchases", companyId, "all-statuses-for-production-paginated"],
-    queryFn: async () => {
-      // Paginate to bypass Supabase's default 1000-row limit
-      const pageSize = 1000;
-      let from = 0;
-      const all: any[] = [];
-      // safety cap at 100k rows
-      while (from < 100000) {
-        const { data, error } = await supabase
+    queryFn: async () =>
+      fetchAllRows<any>((from, to) =>
+        supabase
           .from("purchase_items")
           .select("stock_item_id, quantity, purchase_orders!inner(id, status, date, branch_id, warehouse_id, company_id, department_id)")
           .eq("purchase_orders.company_id", companyId!)
-          .range(from, from + pageSize - 1);
-        if (error) throw error;
-        if (!data || data.length === 0) break;
-        all.push(...data);
-        if (data.length < pageSize) break;
-        from += pageSize;
-      }
-      return all as any[];
-    },
+          .order("id")
+          .range(from, to),
+      ),
     enabled,
     staleTime: 30000,
   });
 
   const { data: productionRecords = [] } = useQuery({
     queryKey: ["loc-stock-production-records", companyId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("production_records")
-        .select("product_id, produced_qty, branch_id, warehouse_id, department_id, date, created_at")
-        .eq("company_id", companyId!)
-        .eq("status", "مكتمل");
-      if (error) throw error;
-      return data as any[];
-    },
+    queryFn: async () =>
+      fetchAllRows<any>((from, to) =>
+        supabase
+          .from("production_records")
+          .select("product_id, produced_qty, branch_id, warehouse_id, department_id, date, created_at")
+          .eq("company_id", companyId!)
+          .eq("status", "مكتمل")
+          .order("id")
+          .range(from, to),
+      ),
     enabled,
     staleTime: 30000,
   });
 
   const { data: productionIngredients = [] } = useQuery({
     queryKey: ["loc-stock-production-ingredients", companyId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("production_ingredients")
-        .select("stock_item_id, required_qty, production_records!inner(id, status, branch_id, warehouse_id, department_id, company_id, date, created_at)")
-        .eq("production_records.company_id", companyId!)
-        .eq("production_records.status", "مكتمل");
-      if (error) throw error;
-      return data as any[];
-    },
+    queryFn: async () =>
+      fetchAllRows<any>((from, to) =>
+        supabase
+          .from("production_ingredients")
+          .select("stock_item_id, required_qty, production_records!inner(id, status, branch_id, warehouse_id, department_id, company_id, date, created_at)")
+          .eq("production_records.company_id", companyId!)
+          .eq("production_records.status", "مكتمل")
+          .order("id")
+          .range(from, to),
+      ),
     enabled,
     staleTime: 30000,
   });
 
   const { data: transferItems = [] } = useQuery({
     queryKey: ["loc-stock-transfers", companyId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("transfer_items")
-        .select("stock_item_id, quantity, transfers!inner(id, status, source_id, destination_id, source_department_id, destination_department_id, company_id, date, created_at)")
-        .eq("transfers.company_id", companyId!)
-        .eq("transfers.status", "مكتمل");
-      if (error) throw error;
-      return data as any[];
-    },
+    queryFn: async () =>
+      fetchAllRows<any>((from, to) =>
+        supabase
+          .from("transfer_items")
+          .select("stock_item_id, quantity, transfers!inner(id, status, source_id, destination_id, source_department_id, destination_department_id, company_id, date, created_at)")
+          .eq("transfers.company_id", companyId!)
+          .eq("transfers.status", "مكتمل")
+          .order("id")
+          .range(from, to),
+      ),
     enabled,
     staleTime: 30000,
   });
 
   const { data: wasteItems = [] } = useQuery({
     queryKey: ["loc-stock-waste", companyId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("waste_items")
-        .select("stock_item_id, quantity, waste_records!inner(id, status, branch_id, warehouse_id, company_id, department_id, date, created_at)")
-        .eq("waste_records.company_id", companyId!)
-        .eq("waste_records.status", "مكتمل");
-      if (error) throw error;
-      return data as any[];
-    },
+    queryFn: async () =>
+      fetchAllRows<any>((from, to) =>
+        supabase
+          .from("waste_items")
+          .select("stock_item_id, quantity, waste_records!inner(id, status, branch_id, warehouse_id, company_id, department_id, date, created_at)")
+          .eq("waste_records.company_id", companyId!)
+          .eq("waste_records.status", "مكتمل")
+          .order("id")
+          .range(from, to),
+      ),
     enabled,
     staleTime: 30000,
   });
 
   const { data: posSaleItems = [] } = useQuery({
     queryKey: ["loc-stock-pos-sales", companyId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("pos_sale_items")
-        .select("pos_item_id, quantity, pos_sales!inner(id, status, branch_id, company_id, date, created_at)")
-        .eq("pos_sales.company_id", companyId!)
-        .eq("pos_sales.status", "مكتمل");
-      if (error) throw error;
-      return data as any[];
-    },
+    queryFn: async () =>
+      fetchAllRows<any>((from, to) =>
+        supabase
+          .from("pos_sale_items")
+          .select("pos_item_id, quantity, pos_sales!inner(id, status, branch_id, company_id, date, created_at)")
+          .eq("pos_sales.company_id", companyId!)
+          .eq("pos_sales.status", "مكتمل")
+          .order("id")
+          .range(from, to),
+      ),
     enabled,
     staleTime: 30000,
   });

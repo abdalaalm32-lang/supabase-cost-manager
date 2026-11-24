@@ -924,7 +924,7 @@ export const MenuAnalysisPage: React.FC = () => {
         idx: "",
         name: `${grandTotals.itemCount} صنف`,
         price: formatNum(grandTotals.totalPrice),
-        mainCost: "",
+        mainCost: formatNum(mainCostSummary.totalMainCost),
         sideCost: "",
         consumables: "",
         packingCost: "",
@@ -942,6 +942,11 @@ export const MenuAnalysisPage: React.FC = () => {
         filename: `menu-analysis-${tabLabel}-${selectedPeriod.name} - ${channelLabel}`,
         columns,
         data: rows,
+        filters: [
+          { label: activeTab === "kitchen" ? "Food Cost" : "Beverage Cost", value: formatPct(mainCostSummary.percentage) },
+          { label: "إجمالي التكلفة الرئيسية", value: `${formatNum(mainCostSummary.totalMainCost)} ج.م` },
+          { label: "إجمالي أسعار البيع", value: `${formatNum(mainCostSummary.totalPrice)} ج.م` },
+        ],
       });
       sonnerToast.success("تم تصدير Excel بنجاح");
     } catch (err) {
@@ -1015,6 +1020,11 @@ export const MenuAnalysisPage: React.FC = () => {
         filename: `menu-analysis-${tabLabel}-${selectedPeriod.name} - ${channelLabel}`,
         columns,
         data: rows,
+        filters: [
+          { label: activeTab === "kitchen" ? "Food Cost" : "Beverage Cost", value: formatPct(mainCostSummary.percentage) },
+          { label: "إجمالي التكلفة الرئيسية", value: `${formatNum(mainCostSummary.totalMainCost)} ج.م` },
+          { label: "إجمالي أسعار البيع", value: `${formatNum(mainCostSummary.totalPrice)} ج.م` },
+        ],
       });
       sonnerToast.success("تم تصدير PDF بنجاح");
     } catch (err) {
@@ -1079,6 +1089,8 @@ export const MenuAnalysisPage: React.FC = () => {
 
     const summaryHTML = `<h3 style="margin:20px 0 5px;font-size:13px;font-weight:bold;">الملخص الإجمالي</h3>
     <table><tbody>
+      <tr><td style="font-weight:bold">${activeTab === "kitchen" ? "Food Cost" : "Beverage Cost"}</td><td style="font-weight:bold">${formatPct(mainCostSummary.percentage)}</td></tr>
+      <tr><td style="font-weight:bold">إجمالي التكلفة الرئيسية</td><td>${formatNum(mainCostSummary.totalMainCost)} ج.م</td></tr>
       <tr><td style="font-weight:bold">إجمالي أسعار البيع</td><td style="font-weight:bold">${formatNum(grandTotals.totalPrice)}</td></tr>
       <tr><td style="font-weight:bold">إجمالي التكلفة المباشرة</td><td>${formatNum(grandTotals.totalDirectCost)} (${grandTotals.totalPrice > 0 ? formatPct(grandTotals.totalDirectCost / grandTotals.totalPrice * 100) : "0%"})</td></tr>
       <tr><td style="font-weight:bold">إجمالي المصاريف الغير مباشرة</td><td>${formatNum(grandTotals.totalIndirect)} (${formatPct(indirectCostPct * 100)})</td></tr>

@@ -87,6 +87,23 @@ export async function upsertBranchCost(params: {
  * If the existing branch stock is 0 (or unknown), the incoming unit cost
  * becomes the new average (avoid divide-by-zero).
  */
+export function calculateIncomingWeightedAverage(params: {
+  oldStock: number;
+  oldAverageCost: number;
+  incomingQty: number;
+  incomingUnitCost: number;
+}): number {
+  const oldStock = Math.max(Number(params.oldStock) || 0, 0);
+  const oldAverageCost = Math.max(Number(params.oldAverageCost) || 0, 0);
+  const incomingQty = Math.max(Number(params.incomingQty) || 0, 0);
+  const incomingUnitCost = Math.max(Number(params.incomingUnitCost) || 0, 0);
+  const totalStock = oldStock + incomingQty;
+
+  if (totalStock <= 0) return 0;
+  if (oldStock <= 0) return incomingUnitCost;
+  return (oldStock * oldAverageCost + incomingQty * incomingUnitCost) / totalStock;
+}
+
 export async function applyBranchCostIn(params: {
   companyId: string;
   stockItemId: string;
@@ -126,13 +143,13 @@ export async function applyBranchCostIn(params: {
       : Number(existing?.current_stock) || 0;
 
   const incQty = Math.max(Number(incomingQty) || 0, 0);
-  const incCost = Math.max(Number(incomingUnitCost) || 0, 0);
-
   const totalStock = oldStock + incQty;
-  const newAvg =
-    oldStock <= 0 || totalStock <= 0
-      ? incCost
-      : (oldStock * oldAvg + incQty * incCost) / totalStock;
+  const newAvg = calculateIncomingWeightedAverage({
+    oldStock,
+    oldAverageCost: oldAvg,
+    incomingQty: incQty,
+    incomingUnitCost,
+  });
 
   await upsertBranchCost({
     companyId,
@@ -226,7 +243,11 @@ function calculateWeightedPurchaseAverage(rows: PurchaseItemCostRow[]): {
  * the old stock ran out, a new purchase sets the average to its own price.
  * If on-hand stock is 0, the latest purchase price is used.
  */
-function calculateOnHandAverage(rows: PurchaseItemCostRow[], onHand: number): number {
+export function calculateOnHandAverage(
+  rows: PurchaseItemCostRow[],
+  onHand: number,
+  openingAverageCost = 0,
+): number {
   const sorted = [...rows]
     .filter((r) => Number(r.quantity ?? 0) > 0)
     .sort((a, b) => {
@@ -234,8 +255,10 @@ function calculateOnHandAverage(rows: PurchaseItemCostRow[], onHand: number): nu
       const kb = `${b.purchase_orders?.date ?? ""}|${b.purchase_orders?.created_at ?? ""}`;
       return kb.localeCompare(ka);
     });
-  if (sorted.length === 0) return 0;
   const target = Math.max(Number(onHand) || 0, 0);
+  if (sorted.length === 0) {
+    return target > 0 ? Math.max(Number(openingAverageCost ?? 0), 0) : 0;
+  }
   if (target <= 0.0005) return Math.max(Number(sorted[0].unit_cost ?? 0), 0);
 
   let remaining = target;
@@ -248,6 +271,16 @@ function calculateOnHandAverage(rows: PurchaseItemCostRow[], onHand: number): nu
     value += q * Math.max(Number(row.unit_cost ?? 0), 0);
     remaining -= q;
   }
+
+  // On-hand stock can include an opening balance, production, or transfers
+  // that are not purchase invoice rows. Keep that quantity in the denominator
+  // and value it at the location's previous average instead of inflating WAC
+  // by dividing only by the purchased quantity.
+  if (remaining > 0) {
+    qty += remaining;
+    value += remaining * Math.max(Number(openingAverageCost ?? 0), 0);
+  }
+
   return qty > 0 ? value / qty : 0;
 }
 
@@ -269,11 +302,21 @@ export async function recalculateLocationPurchaseCost(params: {
     const po = row.purchase_orders;
     return po?.branch_id === locationId || po?.warehouse_id === locationId;
   });
+  const { data: existingCost } = await supabase
+    .from("stock_item_branch_costs")
+    .select("avg_cost")
+    .eq("stock_item_id", stockItemId)
+    .eq("branch_id", locationId)
+    .maybeSingle();
+
   let avgCost: number;
   let stock: number;
   if (typeof onHandStock === "number" && Number.isFinite(onHandStock)) {
     stock = Math.max(onHandStock, 0);
-    avgCost = calculateOnHandAverage(locationRows, stock);
+    const previousAverageCost = existingCost
+      ? Number(existingCost.avg_cost ?? 0)
+      : await getBranchCost(stockItemId, locationId);
+    avgCost = calculateOnHandAverage(locationRows, stock, previousAverageCost);
   } else {
     const r = calculateWeightedPurchaseAverage(locationRows);
     avgCost = r.avgCost;
@@ -302,11 +345,16 @@ export async function recalculateGlobalPurchaseCost(params: {
 }): Promise<number> {
   const { companyId, stockItemId } = params;
   const rows = await fetchCompletedPurchaseCostRows({ companyId, stockItemId });
-  const { data: actualStockResult } = await supabase.rpc("get_actual_global_stock", {
-    p_stock_item_id: stockItemId,
-  });
+  const [{ data: actualStockResult }, { data: existingItem }] = await Promise.all([
+    supabase.rpc("get_actual_global_stock", { p_stock_item_id: stockItemId }),
+    supabase.from("stock_items").select("avg_cost").eq("id", stockItemId).maybeSingle(),
+  ]);
   const currentStock = Math.max(Number(actualStockResult ?? 0), 0);
-  const avgCost = calculateOnHandAverage(rows, currentStock);
+  const avgCost = calculateOnHandAverage(
+    rows,
+    currentStock,
+    Number(existingItem?.avg_cost ?? 0),
+  );
 
   await supabase
     .from("stock_items")

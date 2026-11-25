@@ -336,6 +336,8 @@ export const EditPurchaseInvoicePage: React.FC = () => {
       qc.invalidateQueries({ queryKey: ["purchase-items", id] });
       qc.invalidateQueries({ queryKey: ["stock-items"] });
       qc.invalidateQueries({ queryKey: ["stock-items-all"] });
+      qc.invalidateQueries({ queryKey: ["branch-costs"] });
+      qc.invalidateQueries({ queryKey: ["loc-stock-purchases"] });
       toast.success("تم تحديث الفاتورة بنجاح");
       navigate("/purchases/invoices");
     },

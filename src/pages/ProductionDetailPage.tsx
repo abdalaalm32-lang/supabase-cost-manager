@@ -413,17 +413,16 @@ export const ProductionDetailPage: React.FC = () => {
             }
           }
 
-          // Update produced item: increase current_stock and update avg_cost
+          // Keep the global fallback consistent with the actual ledger too.
           if (selectedProductId) {
-            const { data: prodItem } = await supabase
-              .from("stock_items")
-              .select("current_stock, avg_cost")
-              .eq("id", selectedProductId)
-              .single();
+            const [{ data: prodItem }, { data: actualGlobalStock }] = await Promise.all([
+              supabase.from("stock_items").select("avg_cost").eq("id", selectedProductId).single(),
+              supabase.rpc("get_actual_global_stock", { p_stock_item_id: selectedProductId }),
+            ]);
             if (prodItem) {
-              const oldStock = Number(prodItem.current_stock) || 0;
+              const totalStock = Math.max(Number(actualGlobalStock ?? 0), 0);
+              const oldStock = Math.max(totalStock - producedQtyNum, 0);
               const oldAvg = Number(prodItem.avg_cost) || 0;
-              const totalStock = oldStock + producedQtyNum;
               const newAvg = totalStock > 0
                 ? ((oldStock * oldAvg) + (producedQtyNum * unitCost)) / totalStock
                 : unitCost;
@@ -434,8 +433,9 @@ export const ProductionDetailPage: React.FC = () => {
             }
           }
 
-          // PER-BRANCH cost: only when producing at a branch location
-          if (locationType === "branch" && locationId && selectedProductId && producedQtyNum > 0) {
+          // Location cost uses the same actual pre-production balance for
+          // branches and warehouses; zero-stock output adopts its recipe cost.
+          if (locationId && selectedProductId && producedQtyNum > 0) {
             try {
               await applyBranchCostIn({
                 companyId: companyId!,
@@ -443,6 +443,7 @@ export const ProductionDetailPage: React.FC = () => {
                 branchId: locationId,
                 incomingQty: producedQtyNum,
                 incomingUnitCost: unitCost,
+                branchStockBefore: Math.max(getLocationStock(selectedProductId), 0),
               });
             } catch (e) {
               console.error("Failed to update per-branch cost (production)", e);
@@ -511,6 +512,9 @@ export const ProductionDetailPage: React.FC = () => {
 
       queryClient.invalidateQueries({ queryKey: ["production-records"] });
       queryClient.invalidateQueries({ queryKey: ["stock-items-all"] });
+      queryClient.invalidateQueries({ queryKey: ["branch-costs"] });
+      queryClient.invalidateQueries({ queryKey: ["loc-stock-production-records"] });
+      queryClient.invalidateQueries({ queryKey: ["loc-stock-production-ingredients"] });
       navigate("/production");
     } catch (err: any) {
       toast({ title: "خطأ", description: err.message, variant: "destructive" });

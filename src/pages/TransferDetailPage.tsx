@@ -163,6 +163,12 @@ export const TransferDetailPage: React.FC = () => {
     !isNew ? (id || null) : null,
   );
 
+  const { getLocationStock: getDestinationStock } = useLocationStock(
+    destinationId || null,
+    destLocationType,
+    destinationDepartmentId || null,
+  );
+
   // WAC read exactly like the Inventory Balances page: per-location cost row
   // (stock_item_branch_costs) with fallback to the global stock_items.avg_cost.
   const { getCost: getSourceLocationCost } = useBranchCosts(sourceId || null);
@@ -659,8 +665,9 @@ export const TransferDetailPage: React.FC = () => {
         }
 
         // Note: Transfers move stock between locations but don't change global current_stock
-        // PER-BRANCH cost: option 1 → destination branch absorbs source branch cost
-        if (finalStatus === "مكتمل" && destLocationType === "branch" && destinationId) {
+        // Destination branch/warehouse absorbs the incoming transfer cost using
+        // its actual movement balance before this transfer, not a cached total.
+        if (finalStatus === "مكتمل" && destinationId) {
 
 
           for (const item of items) {
@@ -678,6 +685,7 @@ export const TransferDetailPage: React.FC = () => {
                 branchId: destinationId,
                 incomingQty: Number(item.quantity),
                 incomingUnitCost: sourceUnitCost,
+                branchStockBefore: Math.max(getDestinationStock(item.stock_item_id), 0),
               });
             } catch (e) {
               console.error("Failed to update per-branch cost (transfer)", e);
@@ -732,6 +740,9 @@ export const TransferDetailPage: React.FC = () => {
       }
 
       queryClient.invalidateQueries({ queryKey: ["transfers"] });
+      queryClient.invalidateQueries({ queryKey: ["branch-costs"] });
+      queryClient.invalidateQueries({ queryKey: ["stock-items-all"] });
+      queryClient.invalidateQueries({ queryKey: ["loc-stock-transfers"] });
       navigate("/transfers");
     } catch (err: any) {
       toast({ title: "خطأ", description: err.message, variant: "destructive" });

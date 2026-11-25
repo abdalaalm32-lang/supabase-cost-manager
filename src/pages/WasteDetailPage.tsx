@@ -20,6 +20,8 @@ import { ArrowRight, Plus, Trash2, Save, DollarSign, MapPin, User, CalendarDays,
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useLocationStock } from "@/hooks/useLocationStock";
+import { useBranchCosts } from "@/hooks/useBranchCosts";
+import { resolveWasteItemCost } from "@/lib/wasteCost";
 
 const WASTE_REASONS = [
   { value: "تلف عام أو انتهاء صلاحية", label: "تلف عام أو انتهاء صلاحية" },
@@ -155,13 +157,22 @@ export const WasteDetailPage: React.FC = () => {
   }, [wasteRecord]);
 
   const wasteDepartmentId = wasteRecord?.department_id || null;
+  const isEditMode = wasteRecord?.status === "مؤرشف" && new URLSearchParams(window.location.search).get("edit") === "true";
+  const isEditable = wasteRecord?.status === "مسودة" || isEditMode;
 
   const { getLocationStock } = useLocationStock(wasteLocationId, wasteLocationType, wasteDepartmentId, wasteRecord?.date || null);
+  const { getCost: getLocationCost, isLoading: locationCostsLoading } = useBranchCosts(wasteLocationId);
 
   const getStockItemInfo = useCallback((siId: string | null) => {
     if (!siId) return null;
     return allStockItems.find((s: any) => s.id === siId) || null;
   }, [allStockItems]);
+
+  const getWasteItemCost = useCallback((item: any) => {
+    const si = getStockItemInfo(item.stock_item_id);
+    const locationCost = getLocationCost(item.stock_item_id, si?.avg_cost ?? item.cost);
+    return resolveWasteItemCost({ isEditable, locationCost, savedCost: item.cost });
+  }, [getStockItemInfo, getLocationCost, isEditable]);
 
   const locationName = useMemo(() => {
     if (!wasteRecord) return "";
@@ -218,7 +229,7 @@ export const WasteDetailPage: React.FC = () => {
         stock_item_id: siId,
         name: si.name,
         quantity: 0,
-        cost: Number(si.avg_cost) || 0,
+        cost: getLocationCost(siId, si.avg_cost),
         unit: si.stock_unit || "كجم",
         reason: null,
       };
@@ -255,7 +266,7 @@ export const WasteDetailPage: React.FC = () => {
           stock_item_id: ing.stock_item_id,
           name: si?.name || "—",
           quantity: qtyInStockUnit,
-          cost: Number(si?.avg_cost) || 0,
+          cost: getLocationCost(ing.stock_item_id, si?.avg_cost),
           unit: si?.stock_unit || "كجم",
           reason: null,
           source_product: posItems.find((p: any) => p.id === selectedProductId)?.name || "",
@@ -299,11 +310,11 @@ export const WasteDetailPage: React.FC = () => {
         code: si?.code || "—",
         qty: baseQty * productCount,
         unit: si?.stock_unit || "—",
-        avgCost: Number(si?.avg_cost) || 0,
+        avgCost: getLocationCost(ing.stock_item_id, si?.avg_cost),
         alreadyAdded: existingStockItemIds.has(ing.stock_item_id),
       };
     });
-  }, [selectedProductId, recipes, allStockItems, existingStockItemIds, productCount]);
+  }, [selectedProductId, recipes, allStockItems, existingStockItemIds, productCount, getLocationCost]);
 
   const handleDeleteItem = async (itemId: string) => {
     await supabase.from("waste_items").delete().eq("id", itemId);
@@ -313,9 +324,6 @@ export const WasteDetailPage: React.FC = () => {
   const getQty = (item: any) => localQty[item.id] !== undefined ? localQty[item.id] : String(item.quantity);
   const getReason = (item: any) => localReason[item.id] !== undefined ? localReason[item.id] : (item.reason || "");
   const getCustomReason = (item: any) => localCustomReason[item.id] || "";
-
-  const isEditMode = wasteRecord?.status === "مؤرشف" && new URLSearchParams(window.location.search).get("edit") === "true";
-  const isEditable = wasteRecord?.status === "مسودة" || isEditMode;
 
   const getCurrentStock = (stockItemId: string | null) => {
     if (!stockItemId || !wasteRecord) return null;
@@ -330,9 +338,9 @@ export const WasteDetailPage: React.FC = () => {
   const totalCost = useMemo(() => {
     return wasteItems.reduce((sum: number, item: any) => {
       const qty = Number(localQty[item.id] ?? item.quantity);
-      return sum + qty * Number(item.cost);
+      return sum + qty * getWasteItemCost(item);
     }, 0);
-  }, [wasteItems, localQty]);
+  }, [wasteItems, localQty, getWasteItemCost]);
 
   const handleSaveAndFinish = async () => {
     // Validate stock availability
@@ -360,7 +368,7 @@ export const WasteDetailPage: React.FC = () => {
       }
       await supabase.from("waste_items").update({
         quantity: qty,
-        cost: Number(item.cost),
+        cost: getWasteItemCost(item),
         reason,
       }).eq("id", item.id);
     }
@@ -537,10 +545,10 @@ export const WasteDetailPage: React.FC = () => {
       {/* Add Items Buttons */}
       {isEditable && (
         <div className="flex items-center gap-3">
-          <Button onClick={() => { setShowAddItems(true); setSelectedItemIds(new Set()); setFilterDept("all"); setFilterCat("all"); }}>
+          <Button disabled={locationCostsLoading} onClick={() => { setShowAddItems(true); setSelectedItemIds(new Set()); setFilterDept("all"); setFilterCat("all"); }}>
             <Plus size={16} /> إضافة خامات
           </Button>
-          <Button variant="outline" onClick={() => { setShowAddProduct(true); setSelectedProductId(""); setProductCount(1); }}>
+          <Button disabled={locationCostsLoading} variant="outline" onClick={() => { setShowAddProduct(true); setSelectedProductId(""); setProductCount(1); }}>
             <ShoppingBag size={16} /> إضافة منتج
           </Button>
         </div>
@@ -573,7 +581,7 @@ export const WasteDetailPage: React.FC = () => {
                 {wasteItems.map((item: any) => {
                   const si = getStockItemInfo(item.stock_item_id);
                   const qty = Number(getQty(item));
-                  const avgCost = Number(item.cost);
+                  const avgCost = getWasteItemCost(item);
                   const value = qty * avgCost;
                   const currentStock = getCurrentStock(item.stock_item_id);
                   const reason = getReason(item);
@@ -641,7 +649,7 @@ export const WasteDetailPage: React.FC = () => {
                           <span className="text-sm">{reason || "—"}</span>
                         )}
                       </TableCell>
-                      <TableCell>{avgCost.toFixed(2)}</TableCell>
+                      <TableCell>{avgCost.toFixed(3)}</TableCell>
                       <TableCell className="font-semibold">{value.toFixed(2)}</TableCell>
                       {isEditable && (
                         <TableCell>
@@ -669,7 +677,7 @@ export const WasteDetailPage: React.FC = () => {
       {(isEditable || wasteRecord.status === "مكتمل") && (
         <div className="flex items-center gap-3">
           {isEditable && (
-            <Button onClick={handleSaveAndFinish} className="gap-2">
+            <Button onClick={handleSaveAndFinish} disabled={locationCostsLoading} className="gap-2">
               <Save size={16} /> ترحيل وإنهاء
             </Button>
           )}
@@ -742,7 +750,7 @@ export const WasteDetailPage: React.FC = () => {
                     <TableCell className="font-mono text-xs">{si.code || "—"}</TableCell>
                     <TableCell>{si.name}</TableCell>
                     <TableCell>{si.stock_unit}</TableCell>
-                    <TableCell>{Number(si.avg_cost).toFixed(2)}</TableCell>
+                    <TableCell>{getLocationCost(si.id, si.avg_cost).toFixed(3)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -751,7 +759,7 @@ export const WasteDetailPage: React.FC = () => {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddItems(false)}>إلغاء</Button>
-            <Button onClick={handleAddItems} disabled={selectedItemIds.size === 0}>
+            <Button onClick={handleAddItems} disabled={selectedItemIds.size === 0 || locationCostsLoading}>
               إضافة ({selectedItemIds.size})
             </Button>
           </DialogFooter>
@@ -817,7 +825,7 @@ export const WasteDetailPage: React.FC = () => {
                           <TableCell>{ing.name}</TableCell>
                           <TableCell>{ing.qty.toFixed(3)}</TableCell>
                           <TableCell>{ing.unit}</TableCell>
-                          <TableCell>{ing.avgCost.toFixed(2)}</TableCell>
+                          <TableCell>{ing.avgCost.toFixed(3)}</TableCell>
                           <TableCell>
                             {ing.alreadyAdded ? (
                               <span className="text-xs text-muted-foreground">مضاف مسبقاً</span>
@@ -835,7 +843,7 @@ export const WasteDetailPage: React.FC = () => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddProduct(false)}>إلغاء</Button>
-            <Button onClick={handleAddProduct} disabled={!selectedProductId}>
+            <Button onClick={handleAddProduct} disabled={!selectedProductId || locationCostsLoading}>
               إضافة خامات المنتج
             </Button>
           </DialogFooter>

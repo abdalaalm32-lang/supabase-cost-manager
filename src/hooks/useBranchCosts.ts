@@ -25,7 +25,7 @@ export function useBranchCosts(locationId: string | null | undefined) {
   const companyId = auth.profile?.company_id;
   const enabled = !!companyId && !!locationId;
 
-  const { data: branchCosts = [] } = useQuery({
+  const { data: branchCosts = [], isLoading } = useQuery({
     queryKey: ["branch-costs", companyId, locationId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -65,5 +65,5 @@ export function useBranchCosts(locationId: string | null | undefined) {
     return branchCost != null ? branchCost : fallback;
   };
 
-  return { costMap, getCost, isLocationFiltered: !!locationId };
+  return { costMap, getCost, isLocationFiltered: !!locationId, isLoading };
 }

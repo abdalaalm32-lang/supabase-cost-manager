@@ -71,3 +71,8 @@ import { it as _it, expect as _expect } from "vitest";
 _it("chicken breast: 1.75 @ 182.694 + 1kg @ 200 = 188.987", () => {
   _expect(_cwa({ oldStock: 1.75, oldAverageCost: 182.694, incomingQty: 1, incomingUnitCost: 200 })).toBeCloseTo(188.987, 3);
 });
+
+import { calculateReplacedWeightedAverage as _rwa } from "./branchCostUtils";
+_it("edit invoice: 2.75 @ 188.987 replacing 1kg@200 with 1kg@210 = 192.623", () => {
+  _expect(_rwa({ stockBefore: 2.75, currentAverageCost: 188.98691, removeQty: 1, removeUnitCost: 200, addQty: 1, addUnitCost: 210 })).toBeCloseTo((1.75*182.694+210)/2.75, 2);
+});

@@ -163,6 +163,36 @@ export async function applyBranchCostIn(params: {
 }
 
 /**
+ * Pure: replace a previous incoming contribution with a new one on the
+ * location's actual on-hand stock and current average (used when editing a
+ * purchase invoice). Falls back to the incoming/previous cost when stock or
+ * value would become zero/negative.
+ */
+export function calculateReplacedWeightedAverage(params: {
+  stockBefore: number;
+  currentAverageCost: number;
+  removeQty: number;
+  removeUnitCost: number;
+  addQty: number;
+  addUnitCost: number;
+}): number {
+  const stock = Math.max(Number(params.stockBefore) || 0, 0);
+  const avg = Math.max(Number(params.currentAverageCost) || 0, 0);
+  const rq = Math.min(Math.max(Number(params.removeQty) || 0, 0), stock);
+  const aq = Math.max(Number(params.addQty) || 0, 0);
+  const rc = Math.max(Number(params.removeUnitCost) || 0, 0);
+  const ac = Math.max(Number(params.addUnitCost) || 0, 0);
+  const remainingQty = stock - rq;
+  const remainingValue = stock * avg - rq * rc;
+  const totalQty = remainingQty + aq;
+  if (totalQty <= 0.0005) return aq > 0 ? ac : avg;
+  if (remainingQty <= 0.0005 || remainingValue < 0) {
+    return aq > 0 ? ac : avg;
+  }
+  return (remainingValue + aq * ac) / totalQty;
+}
+
+/**
  * Set an explicit avg_cost for a branch (used by Cost Adjustment).
  */
 export async function setBranchCost(params: {

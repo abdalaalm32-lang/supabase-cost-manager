@@ -21,7 +21,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowRight, Plus, Search, Trash2, Save, Archive } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { recalculatePurchaseCostsForItems } from "@/lib/branchCostUtils";
+import { calculateReplacedWeightedAverage, getBranchCost, recalculateGlobalPurchaseCost, upsertBranchCost } from "@/lib/branchCostUtils";
 import { useLocationStock } from "@/hooks/useLocationStock";
 
 interface InvoiceItem {
@@ -254,9 +254,15 @@ export const EditPurchaseInvoicePage: React.FC = () => {
       //  so editing a purchase doesn't double-count its quantity)
       const { data: oldPurchaseItems } = await supabase
         .from("purchase_items")
-        .select("stock_item_id, quantity")
+        .select("stock_item_id, quantity, unit_cost")
         .eq("purchase_order_id", id!);
       const oldQtyMap = new Map<string, number>();
+      const oldValueMap = new Map<string, number>();
+      for (const oi of oldPurchaseItems || []) {
+        if (oi.stock_item_id) {
+          oldValueMap.set(oi.stock_item_id, (oldValueMap.get(oi.stock_item_id) ?? 0) + Number(oi.quantity ?? 0) * Number((oi as any).unit_cost ?? 0));
+        }
+      }
       for (const oi of oldPurchaseItems || []) {
         if (oi.stock_item_id) {
           const q = Number(oi.quantity ?? 0);
@@ -306,28 +312,56 @@ export const EditPurchaseInvoicePage: React.FC = () => {
           ...items.map((i) => i.stock_item_id).filter(Boolean) as string[],
         ]));
 
-        // On-hand stock at destination after edit = current - old invoice qty + new qty
-        const onHand: Record<string, Map<string, number>> = {};
-        if (destinationId) {
-          const after = new Map<string, number>();
-          const sameLoc = wasCompleted && oldBranchId === destinationId;
-          for (const sid of allItemIds) {
-            let q = Math.max(getLocationStock(sid), 0);
-            if (sameLoc) q -= oldQtyMap.get(sid) ?? 0;
-            if (status === "مكتمل") {
-              q += items.filter((i) => i.stock_item_id === sid).reduce((s, i) => s + (Number(i.quantity) || 0), 0);
-            }
-            after.set(sid, Math.max(q, 0));
+        // Replace the old invoice contribution with the new one on the
+        // location's ACTUAL on-hand stock and CURRENT average (same numbers as
+        // Inventory Balances), instead of rebuilding from old invoice prices.
+        const newAgg = new Map<string, { qty: number; value: number }>();
+        if (status === "مكتمل") {
+          for (const i of items) {
+            if (!i.stock_item_id) continue;
+            const p = newAgg.get(i.stock_item_id) ?? { qty: 0, value: 0 };
+            const q = Number(i.quantity) || 0;
+            newAgg.set(i.stock_item_id, { qty: p.qty + q, value: p.value + q * (Number(i.unit_cost) || 0) });
           }
-          onHand[destinationId] = after;
         }
-
-        await recalculatePurchaseCostsForItems({
-          companyId: companyId!,
-          stockItemIds: allItemIds,
-          locationIds: [oldBranchId, destinationId || null],
-          onHand,
-        });
+        const sameLoc = wasCompleted && oldBranchId === destinationId;
+        const readAvg = async (sid: string, loc: string) => {
+          const { data } = await supabase.from("stock_item_branch_costs")
+            .select("avg_cost").eq("stock_item_id", sid).eq("branch_id", loc).maybeSingle();
+          return data ? Number(data.avg_cost ?? 0) : await getBranchCost(sid, loc);
+        };
+        for (const sid of allItemIds) {
+          const oldQ = wasCompleted ? (oldQtyMap.get(sid) ?? 0) : 0;
+          const oldC = oldQ > 0 ? (oldValueMap.get(sid) ?? 0) / oldQ : 0;
+          const add = newAgg.get(sid) ?? { qty: 0, value: 0 };
+          const addC = add.qty > 0 ? add.value / add.qty : 0;
+          if (destinationId) {
+            const stockNow = Math.max(getLocationStock(sid), 0);
+            const avg = calculateReplacedWeightedAverage({
+              stockBefore: stockNow,
+              currentAverageCost: await readAvg(sid, destinationId),
+              removeQty: sameLoc ? oldQ : 0,
+              removeUnitCost: oldC,
+              addQty: add.qty,
+              addUnitCost: addC,
+            });
+            await upsertBranchCost({ companyId: companyId!, stockItemId: sid, branchId: destinationId, newAvgCost: avg,
+              newStock: Math.max(stockNow - (sameLoc ? oldQ : 0) + add.qty, 0) });
+          }
+          if (wasCompleted && oldBranchId && oldBranchId !== destinationId && oldQ > 0) {
+            // Invoice moved away from the old location: remove its contribution there.
+            const { data: row } = await supabase.from("stock_item_branch_costs")
+              .select("current_stock").eq("stock_item_id", sid).eq("branch_id", oldBranchId).maybeSingle();
+            const oldLocStock = Math.max(Number(row?.current_stock ?? 0), 0);
+            const avg = calculateReplacedWeightedAverage({
+              stockBefore: oldLocStock, currentAverageCost: await readAvg(sid, oldBranchId),
+              removeQty: oldQ, removeUnitCost: oldC, addQty: 0, addUnitCost: 0,
+            });
+            await upsertBranchCost({ companyId: companyId!, stockItemId: sid, branchId: oldBranchId, newAvgCost: avg,
+              newStock: Math.max(oldLocStock - oldQ, 0) });
+          }
+          await recalculateGlobalPurchaseCost({ companyId: companyId!, stockItemId: sid });
+        }
       }
     },
     onSuccess: () => {

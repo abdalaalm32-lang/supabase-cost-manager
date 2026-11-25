@@ -875,6 +875,7 @@ export type Database = {
           default_packing_cost: number
           end_date: string
           expected_sales: number
+          expense_classifications: Json
           id: string
           maintenance: number
           media: number
@@ -903,6 +904,7 @@ export type Database = {
           default_packing_cost?: number
           end_date: string
           expected_sales?: number
+          expense_classifications?: Json
           id?: string
           maintenance?: number
           media?: number
@@ -931,6 +933,7 @@ export type Database = {
           default_packing_cost?: number
           end_date?: string
           expected_sales?: number
+          expense_classifications?: Json
           id?: string
           maintenance?: number
           media?: number

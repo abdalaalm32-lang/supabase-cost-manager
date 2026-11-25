@@ -19,10 +19,18 @@ import { toast as sonnerToast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
+import {
+  EXPENSE_CATEGORIES,
+  EXPENSE_CATEGORY_LABELS,
+  normalizeExpenseCategory,
+  summarizeExpenseClassifications,
+  type ExpenseCategory,
+} from "@/lib/indirectExpenseClassification";
 
 interface CustomExpense {
   name: string;
   value: number;
+  category: ExpenseCategory;
 }
 
 interface CostingPeriod {
@@ -47,6 +55,7 @@ interface CostingPeriod {
   status: string;
   created_at: string;
   custom_expenses: CustomExpense[];
+  expense_classifications: Record<string, ExpenseCategory>;
   branch_id: string | null;
   consumables_kitchen_categories: string[];
   consumables_bar_categories: string[];
@@ -72,6 +81,7 @@ const emptyForm = {
   default_packing_cost: 0,
   tax_rate: 0,
   custom_expenses: [] as CustomExpense[],
+  expense_classifications: {} as Record<string, ExpenseCategory>,
   branch_id: "" as string,
   consumables_kitchen_categories: [] as string[],
   consumables_bar_categories: [] as string[],
@@ -97,6 +107,7 @@ export const IndirectExpensesPage: React.FC = () => {
   const [form, setForm] = useState(emptyForm);
   const [selectedPeriod, setSelectedPeriodRaw] = useState<CostingPeriod | null>(null);
   const [newCustomName, setNewCustomName] = useState("");
+  const [newCustomCategory, setNewCustomCategory] = useState<ExpenseCategory>("fixed");
   const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
   const [selectedBranchId, setSelectedBranchIdRaw] = useState<string>(() => sessionStorage.getItem("menu_branch") || "all");
 
@@ -145,7 +156,14 @@ export const IndirectExpensesPage: React.FC = () => {
     if (!error && data) {
       const mapped = data.map((d: any) => ({
         ...d,
-        custom_expenses: Array.isArray(d.custom_expenses) ? d.custom_expenses : [],
+        custom_expenses: Array.isArray(d.custom_expenses)
+          ? d.custom_expenses.map((expense: any) => ({
+              ...expense,
+              value: Number(expense.value) || 0,
+              category: normalizeExpenseCategory(expense.category),
+            }))
+          : [],
+        expense_classifications: d.expense_classifications ?? {},
         consumables_kitchen_categories: Array.isArray(d.consumables_kitchen_categories) ? d.consumables_kitchen_categories : [],
         consumables_bar_categories: Array.isArray(d.consumables_bar_categories) ? d.consumables_bar_categories : [],
       })) as CostingPeriod[];
@@ -297,9 +315,10 @@ export const IndirectExpensesPage: React.FC = () => {
     if (!newCustomName.trim()) return;
     setForm({
       ...form,
-      custom_expenses: [...form.custom_expenses, { name: newCustomName.trim(), value: 0 }],
+      custom_expenses: [...form.custom_expenses, { name: newCustomName.trim(), value: 0, category: newCustomCategory }],
     });
     setNewCustomName("");
+    setNewCustomCategory("fixed");
   };
 
   const handleRemoveCustomExpense = (index: number) => {
@@ -312,6 +331,12 @@ export const IndirectExpensesPage: React.FC = () => {
   const handleCustomExpenseChange = (index: number, value: number) => {
     const updated = [...form.custom_expenses];
     updated[index] = { ...updated[index], value };
+    setForm({ ...form, custom_expenses: updated });
+  };
+
+  const handleCustomExpenseCategoryChange = (index: number, category: ExpenseCategory) => {
+    const updated = [...form.custom_expenses];
+    updated[index] = { ...updated[index], category };
     setForm({ ...form, custom_expenses: updated });
   };
 
@@ -347,6 +372,7 @@ export const IndirectExpensesPage: React.FC = () => {
       default_packing_cost: form.default_packing_cost,
       tax_rate: form.tax_rate,
       custom_expenses: form.custom_expenses as any,
+      expense_classifications: form.expense_classifications as any,
       branch_id: form.branch_id || null,
       consumables_kitchen_categories: form.consumables_kitchen_categories as any,
       consumables_bar_categories: form.consumables_bar_categories as any,
@@ -391,7 +417,8 @@ export const IndirectExpensesPage: React.FC = () => {
       default_consumables_pct_bar: (p as any).default_consumables_pct_bar ?? 1,
       default_packing_cost: p.default_packing_cost,
       tax_rate: (p as any).tax_rate || 0,
-      custom_expenses: p.custom_expenses || [],
+      custom_expenses: p.custom_expenses ?? [],
+      expense_classifications: p.expense_classifications ?? {},
       branch_id: p.branch_id || "",
       consumables_kitchen_categories: Array.isArray((p as any).consumables_kitchen_categories) ? (p as any).consumables_kitchen_categories : [],
       consumables_bar_categories: Array.isArray((p as any).consumables_bar_categories) ? (p as any).consumables_bar_categories : [],
@@ -411,15 +438,25 @@ export const IndirectExpensesPage: React.FC = () => {
 
   const getExpenseItems = (p: CostingPeriod) => {
     const items = [
-      { label: "الإيجار", value: p.rent, icon: Building2, color: "text-blue-500" },
-      { label: "المرتبات", value: p.salaries, icon: Users, color: "text-emerald-500" },
-      { label: "الفواتير", value: p.bills, icon: Zap, color: "text-yellow-500" },
-      { label: "الميديا والتسويق", value: p.media, icon: Megaphone, color: "text-purple-500" },
-      { label: "الصيانة", value: p.maintenance, icon: Wrench, color: "text-orange-500" },
-      { label: "أخرى", value: p.other_expenses, icon: MoreHorizontal, color: "text-muted-foreground" },
-    ];
-    (p.custom_expenses || []).forEach((c) => {
-      items.push({ label: c.name, value: c.value, icon: MoreHorizontal, color: "text-cyan-500" });
+      { id: "rent", label: "الإيجار", value: p.rent, icon: Building2, color: "text-blue-500" },
+      { id: "salaries", label: "المرتبات", value: p.salaries, icon: Users, color: "text-emerald-500" },
+      { id: "bills", label: "الفواتير", value: p.bills, icon: Zap, color: "text-yellow-500" },
+      { id: "media", label: "الميديا والتسويق", value: p.media, icon: Megaphone, color: "text-purple-500" },
+      { id: "maintenance", label: "الصيانة", value: p.maintenance, icon: Wrench, color: "text-orange-500" },
+      { id: "other_expenses", label: "أخرى", value: p.other_expenses, icon: MoreHorizontal, color: "text-muted-foreground" },
+    ].map(item => ({
+      ...item,
+      category: normalizeExpenseCategory(p.expense_classifications?.[item.id]),
+    }));
+    (p.custom_expenses ?? []).forEach((c, index) => {
+      items.push({
+        id: `custom:${index}`,
+        label: c.name,
+        value: c.value,
+        icon: MoreHorizontal,
+        color: "text-cyan-500",
+        category: normalizeExpenseCategory(c.category),
+      });
     });
     return items;
   };
@@ -427,6 +464,7 @@ export const IndirectExpensesPage: React.FC = () => {
   const expenseItems = selectedPeriod ? getExpenseItems(selectedPeriod) : [];
   const total = selectedPeriod ? totalIndirectCost(selectedPeriod) : 0;
   const monthSales = selectedPeriod ? monthlyExpectedSales(selectedPeriod) : 0;
+  const expenseSummary = summarizeExpenseClassifications(expenseItems, monthSales);
 
   // Calculate totals for direct cost and selling price (matching MenuAnalysisPage logic)
   const { totalSellingPrice, totalDirectCostSum, avgDirectCostPct } = (() => {
@@ -479,7 +517,7 @@ export const IndirectExpensesPage: React.FC = () => {
     return { totalSellingPrice: totalPrice, totalDirectCostSum: totalDirectCost, avgDirectCostPct: pct };
   })();
 
-  const indirectPctValue = selectedPeriod ? indirectCostPct(selectedPeriod) : 0;
+  const indirectPctValue = expenseSummary.grandPct;
   const netProfitPct = 100 - indirectPctValue - avgDirectCostPct;
 
   // ─── Executive Summary & Recommendations ──────────────────────────
@@ -530,14 +568,24 @@ export const IndirectExpensesPage: React.FC = () => {
     rows.push({ label: "إجمالي المصاريف الغير مباشرة", value: total.toLocaleString(), pct: monthSales > 0 ? `${(total / monthSales * 100).toFixed(2)}%` : "0%" });
     rows.push({ label: "نقطة التعادل اليومية", value: breakEvenPoint(selectedPeriod).toLocaleString(undefined, { maximumFractionDigits: 2 }), pct: "" });
     rows.push({ __rowType: "group-total", label: "جدول الربحية", value: "", pct: "" });
-    rows.push({ label: "Indirect Cost Per.", value: `${indirectPctValue.toFixed(2)}%`, pct: "" });
+    for (const category of EXPENSE_CATEGORIES) {
+      rows.push({
+        label: `Indirect Cost Per. — ${EXPENSE_CATEGORY_LABELS[category]}`,
+        value: `${expenseSummary[category].pct.toFixed(2)}%`,
+        pct: "",
+      });
+    }
+    rows.push({ __rowType: "grand-total", label: "Total Indirect Cost Per. — إجمالي المصاريف غير المباشرة", value: `${indirectPctValue.toFixed(2)}%`, pct: "" });
     rows.push({ label: "Avg Direct Cost Per.", value: `${avgDirectCostPct.toFixed(2)}%`, pct: "" });
     rows.push({ label: "Net Profit Per.", value: `${netProfitPct.toFixed(2)}%`, pct: "" });
     rows.push({ label: "Break-Even Point (Daily)", value: breakEvenPoint(selectedPeriod).toLocaleString(undefined, { maximumFractionDigits: 2 }), pct: "" });
-    rows.push({ __rowType: "group-total", label: "توزيع المصاريف", value: "", pct: "" });
-    for (const item of expItems) {
-      const pct = monthSales > 0 ? (item.value / monthSales * 100) : 0;
-      rows.push({ label: item.label, value: item.value.toLocaleString(), pct: `${pct.toFixed(2)}%` });
+    rows.push({ __rowType: "group-total", label: "توزيع المصاريف حسب التصنيف", value: "", pct: "" });
+    for (const category of EXPENSE_CATEGORIES) {
+      rows.push({ __rowType: "group-total", label: EXPENSE_CATEGORY_LABELS[category], value: expenseSummary[category].total.toLocaleString(), pct: `${expenseSummary[category].pct.toFixed(2)}%` });
+      for (const item of expItems.filter(expense => expense.category === category)) {
+        const pct = monthSales > 0 ? (item.value / monthSales * 100) : 0;
+        rows.push({ label: item.label, value: item.value.toLocaleString(), pct: `${pct.toFixed(2)}%` });
+      }
     }
     rows.push({ __rowType: "grand-total", label: "الإجمالي", value: total.toLocaleString(), pct: monthSales > 0 ? `${(total / monthSales * 100).toFixed(2)}%` : "0%" });
     rows.push({ __rowType: "group-total", label: "بيانات التشغيل", value: "", pct: "" });
@@ -622,9 +670,12 @@ export const IndirectExpensesPage: React.FC = () => {
     const periodBranchName = selectedPeriod.branch_id ? branches.find(b => b.id === selectedPeriod.branch_id)?.name : null;
 
     let expenseRowsHTML = "";
-    for (const item of expItems) {
-      const pct = monthSales > 0 ? (item.value / monthSales * 100) : 0;
-      expenseRowsHTML += `<tr><td>${item.label}</td><td style="font-weight:bold">${item.value.toLocaleString()}</td><td>${pct.toFixed(2)}%</td></tr>`;
+    for (const category of EXPENSE_CATEGORIES) {
+      expenseRowsHTML += `<tr style="font-weight:bold;background:#f3f4f6;"><td>${EXPENSE_CATEGORY_LABELS[category]}</td><td>${expenseSummary[category].total.toLocaleString()}</td><td>${expenseSummary[category].pct.toFixed(2)}%</td></tr>`;
+      for (const item of expItems.filter(expense => expense.category === category)) {
+        const pct = monthSales > 0 ? (item.value / monthSales * 100) : 0;
+        expenseRowsHTML += `<tr><td>${item.label}</td><td style="font-weight:bold">${item.value.toLocaleString()}</td><td>${pct.toFixed(2)}%</td></tr>`;
+      }
     }
     expenseRowsHTML += `<tr style="font-weight:bold;background:#eee;"><td>الإجمالي</td><td>${total.toLocaleString()}</td><td>${monthSales > 0 ? (total / monthSales * 100).toFixed(2) : 0}%</td></tr>`;
 
@@ -662,13 +713,14 @@ export const IndirectExpensesPage: React.FC = () => {
 
     <h3>جدول الربحية</h3>
     <table><tbody>
-      <tr><td>Indirect Cost Per.</td><td style="font-weight:bold">${indirectPctValue.toFixed(2)}%</td></tr>
+      ${EXPENSE_CATEGORIES.map(category => `<tr><td>Indirect Cost Per. — ${EXPENSE_CATEGORY_LABELS[category]}</td><td style="font-weight:bold">${expenseSummary[category].pct.toFixed(2)}%</td></tr>`).join("")}
+      <tr style="background:#eee;"><td>Total Indirect Cost Per. — إجمالي المصاريف غير المباشرة</td><td style="font-weight:bold">${indirectPctValue.toFixed(2)}%</td></tr>
       <tr><td>Avg Direct Cost Per.</td><td style="font-weight:bold">${avgDirectCostPct.toFixed(2)}%</td></tr>
       <tr><td>Net Profit Per.</td><td style="font-weight:bold;${netProfitPct < 0 ? 'color:red' : 'color:green'}">${netProfitPct.toFixed(2)}%</td></tr>
       <tr><td>Break-Even Point (Daily)</td><td style="font-weight:bold">${breakEvenPoint(selectedPeriod).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td></tr>
     </tbody></table>
 
-    <h3>توزيع المصاريف</h3>
+    <h3>توزيع المصاريف حسب التصنيف</h3>
     <table><thead><tr><th>البند</th><th>القيمة</th><th>النسبة</th></tr></thead><tbody>${expenseRowsHTML}</tbody></table>
 
     <h3>بيانات التشغيل</h3>
@@ -816,7 +868,8 @@ export const IndirectExpensesPage: React.FC = () => {
 
               <div className="border-t pt-4">
                 <h3 className="font-semibold mb-3">المصاريف الغير مباشرة</h3>
-                <div className="grid grid-cols-2 gap-3">
+                <p className="text-xs text-muted-foreground mb-3">حدد طبيعة كل بند؛ البنود غير المصنفة تُعتبر ثابتة تلقائياً.</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {[
                     { key: "rent", label: "الإيجار" },
                     { key: "salaries", label: "المرتبات" },
@@ -825,37 +878,65 @@ export const IndirectExpensesPage: React.FC = () => {
                     { key: "maintenance", label: "الصيانة" },
                     { key: "other_expenses", label: "أخرى" },
                   ].map((item) => (
-                    <div key={item.key}>
+                    <div key={item.key} className="rounded-lg border bg-muted/20 p-3 space-y-2">
                       <Label>{item.label}</Label>
-                      <Input type="number" value={(form as any)[item.key]} onChange={(e) => setForm({ ...form, [item.key]: parseFloat(e.target.value) || 0 })} />
+                      <div className="grid grid-cols-[1fr_150px] gap-2">
+                        <Input type="number" value={(form as any)[item.key]} onChange={(e) => setForm({ ...form, [item.key]: parseFloat(e.target.value) || 0 })} />
+                        <Select
+                          value={form.expense_classifications[item.key] ?? "fixed"}
+                          onValueChange={(category: ExpenseCategory) => setForm({
+                            ...form,
+                            expense_classifications: { ...form.expense_classifications, [item.key]: category },
+                          })}
+                        >
+                          <SelectTrigger aria-label={`تصنيف ${item.label}`}><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {EXPENSE_CATEGORIES.map(category => <SelectItem key={category} value={category}>{EXPENSE_CATEGORY_LABELS[category]}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                   ))}
                 </div>
 
                 {/* Custom expenses */}
                 {form.custom_expenses.length > 0 && (
-                  <div className="grid grid-cols-2 gap-3 mt-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
                     {form.custom_expenses.map((ce, idx) => (
-                      <div key={idx} className="relative">
+                      <div key={idx} className="rounded-lg border bg-muted/20 p-3 space-y-2">
                         <Label className="flex items-center gap-1">
                           {ce.name}
-                          <button type="button" onClick={() => handleRemoveCustomExpense(idx)} className="text-destructive hover:text-destructive/80">
+                          <button type="button" onClick={() => handleRemoveCustomExpense(idx)} className="text-destructive hover:text-destructive/80" aria-label={`حذف ${ce.name}`}>
                             <X size={12} />
                           </button>
                         </Label>
-                        <Input type="number" value={ce.value} onChange={(e) => handleCustomExpenseChange(idx, parseFloat(e.target.value) || 0)} />
+                        <div className="grid grid-cols-[1fr_150px] gap-2">
+                          <Input type="number" value={ce.value} onChange={(e) => handleCustomExpenseChange(idx, parseFloat(e.target.value) || 0)} />
+                          <Select value={ce.category ?? "fixed"} onValueChange={(category: ExpenseCategory) => handleCustomExpenseCategoryChange(idx, category)}>
+                            <SelectTrigger aria-label={`تصنيف ${ce.name}`}><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {EXPENSE_CATEGORIES.map(category => <SelectItem key={category} value={category}>{EXPENSE_CATEGORY_LABELS[category]}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
                     ))}
                   </div>
                 )}
 
-                <div className="flex gap-2 mt-3">
+                <div className="grid grid-cols-[1fr_170px_auto] gap-2 mt-3">
                   <Input
                     placeholder="اسم البند الجديد"
                     value={newCustomName}
                     onChange={(e) => setNewCustomName(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddCustomExpense())}
                   />
+                  <Select value={newCustomCategory} onValueChange={(category: ExpenseCategory) => setNewCustomCategory(category)}>
+                    <SelectTrigger aria-label="تصنيف البند الجديد"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {EXPENSE_CATEGORIES.map(category => <SelectItem key={category} value={category}>{EXPENSE_CATEGORY_LABELS[category]}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                   <Button type="button" variant="outline" size="sm" onClick={handleAddCustomExpense} className="gap-1 shrink-0">
                     <Plus size={14} /> إضافة بند
                   </Button>
@@ -1076,16 +1157,42 @@ export const IndirectExpensesPage: React.FC = () => {
             </Card>
           </div>
 
+          {/* Classification totals */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {EXPENSE_CATEGORIES.map(category => (
+              <Card key={category} className="border-border/70">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between gap-3 mb-2">
+                    <Badge variant="outline">{EXPENSE_CATEGORY_LABELS[category]}</Badge>
+                    <span className="text-sm font-bold text-primary">{expenseSummary[category].pct.toFixed(2)}%</span>
+                  </div>
+                  <p className="text-2xl font-bold">{expenseSummary[category].total.toLocaleString(undefined, { maximumFractionDigits: 2 })} <span className="text-xs font-normal text-muted-foreground">ج.م</span></p>
+                  <p className="text-xs text-muted-foreground mt-1">{expenseItems.filter(item => item.category === category).length} بند مصروف</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
           {/* Profitability Summary Table */}
           <Card>
             <CardContent className="p-0 overflow-hidden rounded-lg">
               <table className="w-full text-sm">
                 <tbody>
-                  <tr>
-                    <td className="px-6 py-3 bg-muted text-right font-semibold border-b border-border w-1/2">
-                      Indirect Cost Per.
+                  {EXPENSE_CATEGORIES.map(category => (
+                    <tr key={category}>
+                      <td className="px-6 py-3 bg-muted text-right font-semibold border-b border-border w-1/2">
+                        Indirect Cost Per. — {EXPENSE_CATEGORY_LABELS[category]}
+                      </td>
+                      <td className="px-6 py-3 bg-card text-center font-bold border-b border-border w-1/2 text-muted-foreground">
+                        {expenseSummary[category].pct.toFixed(2)}%
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="bg-destructive/5">
+                    <td className="px-6 py-3 text-right font-bold border-b border-border">
+                      Total Indirect Cost Per. — إجمالي المصاريف غير المباشرة
                     </td>
-                    <td className="px-6 py-3 bg-card text-center font-bold border-b border-border w-1/2 text-destructive">
+                    <td className="px-6 py-3 text-center font-bold border-b border-border text-destructive">
                       {indirectPctValue.toFixed(2)}%
                     </td>
                   </tr>
@@ -1466,28 +1573,49 @@ export const IndirectExpensesPage: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card>
-              <CardHeader><CardTitle className="text-lg">توزيع المصاريف</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-lg">توزيع المصاريف حسب التصنيف</CardTitle></CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {expenseItems.map((item) => {
-                    const Icon = item.icon;
-                    const pct = monthSales > 0 ? (item.value / monthSales * 100) : 0;
+                <div className="space-y-5">
+                  {EXPENSE_CATEGORIES.map(category => {
+                    const categoryItems = expenseItems.filter(item => item.category === category);
                     return (
-                      <div key={item.label} className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Icon size={16} className={item.color} />
-                          <span className="text-sm">{item.label}</span>
+                      <section key={category} className="rounded-lg border overflow-hidden">
+                        <div className="flex items-center justify-between gap-2 bg-muted/50 px-3 py-2">
+                          <span className="text-sm font-bold">{EXPENSE_CATEGORY_LABELS[category]}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold">{expenseSummary[category].total.toLocaleString()}</span>
+                            <Badge variant="outline">{expenseSummary[category].pct.toFixed(2)}%</Badge>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-semibold">{item.value.toLocaleString()}</span>
-                          <Badge variant="secondary" className="text-xs">{pct.toFixed(2)}%</Badge>
+                        <div className="p-3 space-y-3">
+                          {categoryItems.length === 0 ? (
+                            <p className="text-xs text-muted-foreground text-center py-2">لا توجد بنود في هذا التصنيف</p>
+                          ) : categoryItems.map(item => {
+                            const Icon = item.icon;
+                            const pct = monthSales > 0 ? (item.value / monthSales * 100) : 0;
+                            return (
+                              <div key={item.id} className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-2">
+                                  <Icon size={16} className={item.color} />
+                                  <span className="text-sm">{item.label}</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <span className="text-sm font-semibold">{item.value.toLocaleString()}</span>
+                                  <Badge variant="secondary" className="text-xs">{pct.toFixed(2)}%</Badge>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                      </div>
+                      </section>
                     );
                   })}
-                  <div className="border-t pt-2 flex items-center justify-between font-bold">
-                    <span>الإجمالي</span>
-                    <span className="text-primary">{total.toLocaleString()}</span>
+                  <div className="border-t pt-3 flex items-center justify-between font-bold">
+                    <span>إجمالي كل التصنيفات</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-primary">{total.toLocaleString()}</span>
+                      <Badge>{indirectPctValue.toFixed(2)}%</Badge>
+                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -1531,9 +1659,9 @@ export const IndirectExpensesPage: React.FC = () => {
                 {expenseItems.map((item) => {
                   const pct = monthSales > 0 ? (item.value / monthSales * 100) : 0;
                   return (
-                    <div key={item.label}>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span>{item.label}</span>
+                    <div key={item.id}>
+                      <div className="flex justify-between text-sm mb-1 gap-2">
+                        <span className="flex items-center gap-2">{item.label}<Badge variant="outline" className="text-[10px]">{EXPENSE_CATEGORY_LABELS[item.category]}</Badge></span>
                         <span className="font-medium">{pct.toFixed(2)}%</span>
                       </div>
                       <div className="h-3 bg-muted rounded-full overflow-hidden">

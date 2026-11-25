@@ -24,7 +24,7 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { recalculatePurchaseCostsForItems } from "@/lib/branchCostUtils";
+import { applyBranchCostIn, recalculateGlobalPurchaseCost } from "@/lib/branchCostUtils";
 import { useLocationStock } from "@/hooks/useLocationStock";
 
 interface InvoiceItem {
@@ -257,19 +257,30 @@ export const AddPurchaseInvoicePage: React.FC = () => {
       // from the actual completed purchase invoices. This keeps new/edited/
       // archived invoices consistent for both branches and warehouses.
       if (status === "مكتمل") {
-        // On-hand stock after this invoice = stock before + new quantities
-        const after = new Map<string, number>();
+        // New purchase: incremental WAC on the location's ACTUAL on-hand stock
+        // and its CURRENT average (same numbers shown in Inventory Balances):
+        // (oldQty × oldAvg + newQty × newCost) ÷ (oldQty + newQty).
+        // Rebuilding from old invoice prices ignored transfers/production
+        // costs and produced a wrong average.
+        const incoming = new Map<string, { qty: number; value: number }>();
         for (const it of items) {
           if (!it.stock_item_id) continue;
-          const base = after.has(it.stock_item_id) ? after.get(it.stock_item_id)! : Math.max(getLocationStock(it.stock_item_id), 0);
-          after.set(it.stock_item_id, base + (Number(it.quantity) || 0));
+          const q = Number(it.quantity) || 0;
+          const prev = incoming.get(it.stock_item_id) ?? { qty: 0, value: 0 };
+          incoming.set(it.stock_item_id, { qty: prev.qty + q, value: prev.value + q * (Number(it.unit_cost) || 0) });
         }
-        await recalculatePurchaseCostsForItems({
-          companyId: companyId!,
-          stockItemIds: items.map((item) => item.stock_item_id).filter(Boolean),
-          locationIds: [destinationId || null],
-          onHand: destinationId ? { [destinationId]: after } : undefined,
-        });
+        for (const [stockItemId, inc] of incoming) {
+          if (inc.qty <= 0 || !destinationId) continue;
+          await applyBranchCostIn({
+            companyId: companyId!,
+            stockItemId,
+            branchId: destinationId,
+            incomingQty: inc.qty,
+            incomingUnitCost: inc.value / inc.qty,
+            branchStockBefore: Math.max(getLocationStock(stockItemId), 0),
+          });
+          await recalculateGlobalPurchaseCost({ companyId: companyId!, stockItemId });
+        }
       }
     },
     onSuccess: () => {

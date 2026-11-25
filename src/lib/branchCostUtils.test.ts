@@ -65,3 +65,9 @@ describe("location weighted average cost", () => {
     expect(5.5 * average).toBeCloseTo(425, 10);
   });
 });
+
+import { calculateIncomingWeightedAverage as _cwa } from "./branchCostUtils";
+import { it as _it, expect as _expect } from "vitest";
+_it("chicken breast: 1.75 @ 182.694 + 1kg @ 200 = 188.987", () => {
+  _expect(_cwa({ oldStock: 1.75, oldAverageCost: 182.694, incomingQty: 1, incomingUnitCost: 200 })).toBeCloseTo(188.987, 3);
+});

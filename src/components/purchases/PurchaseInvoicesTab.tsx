@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -25,7 +25,8 @@ import { useNavigate } from "react-router-dom";
 import { DateRange } from "react-day-picker";
 import { format, startOfDay, endOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
-import { recalculatePurchaseCostsForItems } from "@/lib/branchCostUtils";
+import { applyInvoiceContribution } from "@/lib/branchCostUtils";
+import { useLocationStock } from "@/hooks/useLocationStock";
 import { getPurchasePaymentSummary, sumLinkedPayments } from "@/lib/purchasePaymentStatus";
 
 
@@ -44,24 +45,20 @@ export const PurchaseInvoicesTab: React.FC = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteOrder, setDeleteOrder] = useState<any>(null);
 
-  const refreshPurchaseCostState = async (orderId: string, locationIds: Array<string | null | undefined>) => {
-    if (!companyId) return;
-    const { data: items, error } = await supabase
-      .from("purchase_items")
-      .select("stock_item_id")
-      .eq("purchase_order_id", orderId);
-    if (error) throw error;
-
-    const stockItemIds = (items || [])
-      .map((item: any) => item.stock_item_id)
-      .filter(Boolean) as string[];
-
-    if (stockItemIds.length === 0) return;
-    await recalculatePurchaseCostsForItems({
-      companyId,
-      stockItemIds,
-      locationIds,
-    });
+  // Location whose actual on-hand stock is needed for the WAC update
+  // (archive / un-archive / delete use the same numbers as Inventory Balances).
+  const [costOrder, setCostOrder] = useState<any>(null);
+  const costLocId = costOrder ? (costOrder.branch_id ?? costOrder.warehouse_id ?? null) : null;
+  const costLocStock = useLocationStock(costLocId, costOrder?.warehouse_id ? "warehouse" : "branch");
+  const costStockRef = useRef(costLocStock);
+  costStockRef.current = costLocStock;
+  const waitForCostStock = async () => {
+    for (let i = 0; i < 100 && !costStockRef.current.isReady; i++) {
+      await new Promise((r) => setTimeout(r, 150));
+    }
+    if (!costStockRef.current.isReady) throw new Error("تعذر تحميل رصيد الموقع، حاول مرة أخرى");
+    const map = new Map(costStockRef.current.stockMap);
+    return (sid: string) => map.get(sid) ?? 0;
   };
 
   const handleDelete = async () => {
@@ -70,20 +67,17 @@ export const PurchaseInvoicesTab: React.FC = () => {
       const locationId = deleteOrder.branch_id ?? deleteOrder.warehouse_id ?? null;
       const { data: items } = await supabase
         .from("purchase_items")
-        .select("stock_item_id")
+        .select("stock_item_id, quantity, unit_cost")
         .eq("purchase_order_id", deleteOrder.id);
-      const stockItemIds = (items || [])
-        .map((item: any) => item.stock_item_id)
-        .filter(Boolean) as string[];
+      const getStockBefore = deleteOrder.status === "مكتمل" && locationId ? await waitForCostStock() : null;
 
       await supabase.from("purchase_items").delete().eq("purchase_order_id", deleteOrder.id);
       await supabase.from("purchase_orders").delete().eq("id", deleteOrder.id);
 
-      if (deleteOrder.status === "مكتمل" && stockItemIds.length > 0 && companyId) {
-        await recalculatePurchaseCostsForItems({
-          companyId,
-          stockItemIds,
-          locationIds: [locationId],
+      if (getStockBefore && locationId && companyId) {
+        await applyInvoiceContribution({
+          companyId, orderId: deleteOrder.id, locationId, mode: "remove",
+          getStockBefore, items: (items ?? []) as any[],
         });
       }
 
@@ -170,12 +164,22 @@ export const PurchaseInvoicesTab: React.FC = () => {
         .eq("id", id)
         .maybeSingle();
       if (orderError) throw orderError;
+      const locationId = (order as any)?.branch_id ?? (order as any)?.warehouse_id ?? null;
+      // Actual on-hand stock BEFORE the status change
+      const getStockBefore = locationId ? await waitForCostStock() : null;
 
       const newStatus = status === "مؤرشف" ? "مكتمل" : "مؤرشف";
       const { error } = await supabase.from("purchase_orders").update({ status: newStatus }).eq("id", id);
       if (error) throw error;
 
-      await refreshPurchaseCostState(id, [(order as any)?.branch_id ?? (order as any)?.warehouse_id ?? null]);
+      if (getStockBefore && locationId && companyId) {
+        await applyInvoiceContribution({
+          companyId, orderId: id, locationId,
+          mode: newStatus === "مكتمل" ? "add" : "remove",
+          getStockBefore,
+        });
+      }
+      setCostOrder(null);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["purchase-orders"] });
@@ -576,18 +580,18 @@ export const PurchaseInvoicesTab: React.FC = () => {
                          </Button>
                        )}
                        {o.status === "مكتمل" ? (
-                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleArchiveMutation.mutate({ id: o.id, status: o.status })}>
+                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setCostOrder(o); toggleArchiveMutation.mutate({ id: o.id, status: o.status }); }}>
                            <ToggleLeft size={14} />
                          </Button>
                        ) : o.status === "مؤرشف" ? (
-                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => toggleArchiveMutation.mutate({ id: o.id, status: o.status })}>
+                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setCostOrder(o); toggleArchiveMutation.mutate({ id: o.id, status: o.status }); }}>
                            <ToggleRight size={14} />
                          </Button>
                        ) : null}
                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handlePrintInvoice(o)}>
                          <Printer size={14} />
                        </Button>
-                       <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => { setDeleteOrder(o); setShowDeleteConfirm(true); }}>
+                       <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => { setDeleteOrder(o); setCostOrder(o); setShowDeleteConfirm(true); }}>
                          <Trash2 size={14} />
                        </Button>
                      </div>

@@ -23,7 +23,7 @@ export function useLocationStock(
   const companyId = auth.profile?.company_id;
   const enabled = !!companyId && !!locationId;
 
-  const { data: purchaseItems = [] } = useQuery({
+  const { data: purchaseItems = [], isSuccess: ok_purchaseItems, isFetching: f_purchaseItems } = useQuery({
     queryKey: ["loc-stock-purchases", companyId, "all-statuses-for-production-paginated"],
     queryFn: async () =>
       fetchAllRows<any>((from, to) =>
@@ -39,7 +39,7 @@ export function useLocationStock(
     refetchOnMount: "always",
   });
 
-  const { data: productionRecords = [] } = useQuery({
+  const { data: productionRecords = [], isSuccess: ok_productionRecords, isFetching: f_productionRecords } = useQuery({
     queryKey: ["loc-stock-production-records", companyId],
     queryFn: async () =>
       fetchAllRows<any>((from, to) =>
@@ -56,7 +56,7 @@ export function useLocationStock(
     refetchOnMount: "always",
   });
 
-  const { data: productionIngredients = [] } = useQuery({
+  const { data: productionIngredients = [], isSuccess: ok_productionIngredients, isFetching: f_productionIngredients } = useQuery({
     queryKey: ["loc-stock-production-ingredients", companyId],
     queryFn: async () =>
       fetchAllRows<any>((from, to) =>
@@ -73,7 +73,7 @@ export function useLocationStock(
     refetchOnMount: "always",
   });
 
-  const { data: transferItems = [] } = useQuery({
+  const { data: transferItems = [], isSuccess: ok_transferItems, isFetching: f_transferItems } = useQuery({
     queryKey: ["loc-stock-transfers", companyId],
     queryFn: async () =>
       fetchAllRows<any>((from, to) =>
@@ -90,7 +90,7 @@ export function useLocationStock(
     refetchOnMount: "always",
   });
 
-  const { data: wasteItems = [] } = useQuery({
+  const { data: wasteItems = [], isSuccess: ok_wasteItems, isFetching: f_wasteItems } = useQuery({
     queryKey: ["loc-stock-waste", companyId],
     queryFn: async () =>
       fetchAllRows<any>((from, to) =>
@@ -107,7 +107,7 @@ export function useLocationStock(
     refetchOnMount: "always",
   });
 
-  const { data: posSaleItems = [] } = useQuery({
+  const { data: posSaleItems = [], isSuccess: ok_posSaleItems, isFetching: f_posSaleItems } = useQuery({
     queryKey: ["loc-stock-pos-sales", companyId],
     queryFn: async () =>
       fetchAllRows<any>((from, to) =>
@@ -124,7 +124,7 @@ export function useLocationStock(
     refetchOnMount: "always",
   });
 
-  const { data: recipes = [] } = useQuery({
+  const { data: recipes = [], isSuccess: ok_recipes, isFetching: f_recipes } = useQuery({
     queryKey: ["loc-stock-recipes", companyId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -140,7 +140,7 @@ export function useLocationStock(
   });
 
   // Fetch stock items to get conversion_factor for unit conversion
-  const { data: stockItemsData = [] } = useQuery({
+  const { data: stockItemsData = [], isSuccess: ok_stockItemsData, isFetching: f_stockItemsData } = useQuery({
     queryKey: ["loc-stock-items-conversion", companyId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -156,7 +156,7 @@ export function useLocationStock(
   });
 
   // Stocktake adjustments - use latest completed stocktake per location
-  const { data: stocktakes = [] } = useQuery({
+  const { data: stocktakes = [], isSuccess: ok_stocktakes, isFetching: f_stocktakes } = useQuery({
     queryKey: ["loc-stock-stocktakes", companyId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -598,5 +598,6 @@ export function useLocationStock(
     return stockMap.get(stockItemId) ?? 0;
   };
 
-  return { stockMap, getLocationStock, getProductionAvailable, getTransferAvailable };
+  const isReady = enabled && ok_purchaseItems && ok_productionRecords && ok_productionIngredients && ok_transferItems && ok_wasteItems && ok_posSaleItems && ok_recipes && ok_stockItemsData && ok_stocktakes && !(f_purchaseItems || f_productionRecords || f_productionIngredients || f_transferItems || f_wasteItems || f_posSaleItems || f_recipes || f_stockItemsData || f_stocktakes);
+  return { stockMap, getLocationStock, getProductionAvailable, getTransferAvailable, isReady };
 }

@@ -417,3 +417,50 @@ export async function recalculatePurchaseCostsForItems(params: {
     }
   }
 }
+
+/**
+ * Add or remove a whole purchase invoice's contribution to a location WAC
+ * (archive / un-archive / delete) using the location's ACTUAL on-hand stock
+ * before the change and its current average.
+ */
+export async function applyInvoiceContribution(params: {
+  companyId: string;
+  orderId: string;
+  locationId: string;
+  mode: "add" | "remove";
+  getStockBefore: (stockItemId: string) => number;
+  items?: Array<{ stock_item_id: string | null; quantity: number | string | null; unit_cost: number | string | null }>;
+}): Promise<string[]> {
+  const { companyId, orderId, locationId, mode, getStockBefore } = params;
+  let items = params.items;
+  if (!items) {
+    const { data, error } = await supabase
+      .from("purchase_items").select("stock_item_id, quantity, unit_cost").eq("purchase_order_id", orderId);
+    if (error) throw error;
+    items = (data ?? []) as any[];
+  }
+  const agg = new Map<string, { qty: number; value: number }>();
+  for (const it of items) {
+    if (!it.stock_item_id) continue;
+    const q = Number(it.quantity ?? 0);
+    const p = agg.get(it.stock_item_id) ?? { qty: 0, value: 0 };
+    agg.set(it.stock_item_id, { qty: p.qty + q, value: p.value + q * Number(it.unit_cost ?? 0) });
+  }
+  for (const [sid, a] of agg) {
+    if (a.qty <= 0) continue;
+    const unit = a.value / a.qty;
+    const stockBefore = Math.max(Number(getStockBefore(sid)) || 0, 0);
+    const { data: row } = await supabase.from("stock_item_branch_costs")
+      .select("avg_cost").eq("stock_item_id", sid).eq("branch_id", locationId).maybeSingle();
+    const avg = row ? Number(row.avg_cost ?? 0) : await getBranchCost(sid, locationId);
+    const newAvg = calculateReplacedWeightedAverage({
+      stockBefore, currentAverageCost: avg,
+      removeQty: mode === "remove" ? a.qty : 0, removeUnitCost: unit,
+      addQty: mode === "add" ? a.qty : 0, addUnitCost: unit,
+    });
+    const newStock = Math.max(mode === "add" ? stockBefore + a.qty : stockBefore - a.qty, 0);
+    await upsertBranchCost({ companyId, stockItemId: sid, branchId: locationId, newAvgCost: newAvg, newStock });
+    await recalculateGlobalPurchaseCost({ companyId, stockItemId: sid });
+  }
+  return Array.from(agg.keys());
+}

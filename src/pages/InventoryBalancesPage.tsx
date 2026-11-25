@@ -19,6 +19,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { cn } from "@/lib/utils";
 import { useLocationStock } from "@/hooks/useLocationStock";
 import { useBranchCosts } from "@/hooks/useBranchCosts";
+import { calculateDisplayedInventoryValue, roundCurrency } from "@/lib/inventoryValue";
 
 export const InventoryBalancesPage: React.FC = () => {
   const { auth } = useAuth();
@@ -224,7 +225,7 @@ export const InventoryBalancesPage: React.FC = () => {
     for (const item of filtered) {
       const stock = normalizeStock(getLocationStock(item.id));
       const cost = getBranchCost(item.id, item.avg_cost);
-      totalValue += stock * cost;
+      totalValue += calculateDisplayedInventoryValue(stock, cost);
       if (stock < 0) negativeCount++;
       else if (stock === 0) zeroCount++;
       else positiveCount++;
@@ -252,8 +253,8 @@ export const InventoryBalancesPage: React.FC = () => {
       unit: item.stock_unit,
       locations: getLocationNames(item.id),
       stock: s.toFixed(3),
-      avgCost: c.toFixed(2),
-      value: (s * c).toFixed(2),
+      avgCost: roundCurrency(c).toFixed(2),
+      value: calculateDisplayedInventoryValue(s, c).toFixed(2),
     };
   });
   const exportColumns = [
@@ -302,7 +303,7 @@ export const InventoryBalancesPage: React.FC = () => {
                 <div className="p-2 rounded-lg bg-primary/10 text-primary"><DollarSign className="h-5 w-5" /></div>
                 <div>
                   <p className="text-xs text-muted-foreground">إجمالي قيمة المخزون</p>
-                  <p className="text-lg font-bold">{summary.totalValue.toFixed(2)} ج.م</p>
+                  <p className="text-lg font-bold">{roundCurrency(summary.totalValue).toFixed(2)} ج.م</p>
                 </div>
               </CardContent>
             </Card>
@@ -473,7 +474,7 @@ export const InventoryBalancesPage: React.FC = () => {
                     {displayed.map((item: any) => {
                       const stock = normalizeStock(getLocationStock(item.id));
                       const cost = getBranchCost(item.id, item.avg_cost);
-                      const inventoryValue = stock * cost;
+                      const inventoryValue = calculateDisplayedInventoryValue(stock, cost);
                       const isNegative = stock < 0;
                       return (
                         <TableRow key={item.id} className={cn(isNegative && "bg-destructive/5 hover:bg-destructive/10")}>
@@ -506,7 +507,7 @@ export const InventoryBalancesPage: React.FC = () => {
                           )}>
                             {stock.toFixed(3)}
                           </TableCell>
-                          <TableCell className={cn(isNegative && "text-destructive")}>{cost.toFixed(2)}</TableCell>
+                          <TableCell className={cn(isNegative && "text-destructive")}>{roundCurrency(cost).toFixed(2)}</TableCell>
                           <TableCell className={cn("font-semibold", isNegative && "text-destructive")}>
                             {inventoryValue.toFixed(2)}
                           </TableCell>
@@ -515,7 +516,7 @@ export const InventoryBalancesPage: React.FC = () => {
                     })}
                     <TableRow className="bg-muted/30 font-bold">
                       <TableCell colSpan={7} className="text-left">الإجمالي</TableCell>
-                      <TableCell className="font-bold">{summary.totalValue.toFixed(2)}</TableCell>
+                      <TableCell className="font-bold">{roundCurrency(summary.totalValue).toFixed(2)}</TableCell>
                     </TableRow>
                   </>
                 )}

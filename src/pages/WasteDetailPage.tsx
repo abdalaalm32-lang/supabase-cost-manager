@@ -22,6 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocationStock } from "@/hooks/useLocationStock";
 import { useBranchCosts } from "@/hooks/useBranchCosts";
 import { resolveWasteItemCost } from "@/lib/wasteCost";
+import { exceedsWasteStock, formatWasteStock } from "@/lib/wasteStock";
 
 const WASTE_REASONS = [
   { value: "تلف عام أو انتهاء صلاحية", label: "تلف عام أو انتهاء صلاحية" },
@@ -349,9 +350,9 @@ export const WasteDetailPage: React.FC = () => {
       const qty = Number(localQty[item.id] ?? item.quantity);
       if (qty > 0 && item.stock_item_id) {
         const available = getCurrentStock(item.stock_item_id);
-        if (available !== null && qty > available) {
+        if (available !== null && exceedsWasteStock(qty, available)) {
           const si = getStockItemInfo(item.stock_item_id);
-          overStockItems.push(`"${si?.name || item.name}" (المطلوب: ${qty} / المتاح: ${available.toFixed(2)})`);
+          overStockItems.push(`"${si?.name || item.name}" (المطلوب: ${formatWasteStock(qty)} / المتاح: ${formatWasteStock(available)})`);
         }
       }
     }
@@ -593,8 +594,8 @@ export const WasteDetailPage: React.FC = () => {
                       <TableCell className="font-medium">{si?.name || item.name}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">{item.source_product || "—"}</TableCell>
                       <TableCell>{si?.stock_unit || item.unit || "—"}</TableCell>
-                      <TableCell className={cn(currentStock !== null && qty > currentStock && "text-destructive font-bold")}>
-                        {currentStock !== null ? currentStock.toFixed(2) : "—"}
+                      <TableCell className={cn(currentStock !== null && exceedsWasteStock(qty, currentStock) && "text-destructive font-bold")}>
+                        {currentStock !== null ? formatWasteStock(currentStock) : "—"}
                       </TableCell>
                       <TableCell>
                         {isEditable ? (
@@ -602,13 +603,13 @@ export const WasteDetailPage: React.FC = () => {
                             <Input
                               type="number"
                               min="0"
-                              step="0.01"
+                              step="0.001"
                               value={getQty(item)}
                               onChange={e => setLocalQty(prev => ({ ...prev, [item.id]: e.target.value }))}
-                              className={cn("w-24 h-8 text-sm", currentStock !== null && qty > currentStock && "border-destructive ring-1 ring-destructive")}
+                              className={cn("w-24 h-8 text-sm", currentStock !== null && exceedsWasteStock(qty, currentStock) && "border-destructive ring-1 ring-destructive")}
                             />
-                            {currentStock !== null && qty > currentStock && (
-                              <p className="text-[10px] text-destructive mt-0.5">المتاح: {currentStock.toFixed(2)}</p>
+                            {currentStock !== null && exceedsWasteStock(qty, currentStock) && (
+                              <p className="text-[10px] text-destructive mt-0.5">المتاح: {formatWasteStock(currentStock)}</p>
                             )}
                           </>
                         ) : (

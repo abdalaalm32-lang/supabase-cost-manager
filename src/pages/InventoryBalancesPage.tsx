@@ -253,7 +253,7 @@ export const InventoryBalancesPage: React.FC = () => {
       unit: item.stock_unit,
       locations: getLocationNames(item.id),
       stock: s.toFixed(3),
-      avgCost: c.toFixed(3),
+      avgCost: c.toFixed(2),
       value: calculateDisplayedInventoryValue(s, c).toFixed(2),
     };
   });
@@ -507,7 +507,7 @@ export const InventoryBalancesPage: React.FC = () => {
                           )}>
                             {stock.toFixed(3)}
                           </TableCell>
-                          <TableCell className={cn(isNegative && "text-destructive")}>{cost.toFixed(3)}</TableCell>
+                          <TableCell className={cn(isNegative && "text-destructive")}>{cost.toFixed(2)}</TableCell>
                           <TableCell className={cn("font-semibold", isNegative && "text-destructive")}>
                             {inventoryValue.toFixed(2)}
                           </TableCell>

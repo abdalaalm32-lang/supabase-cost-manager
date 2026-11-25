@@ -51,28 +51,31 @@ export async function upsertBranchCost(params: {
 }): Promise<void> {
   const { companyId, stockItemId, branchId, newAvgCost, newStock } = params;
 
-  const { data: existing } = await supabase
+  const { data: existing, error: readError } = await supabase
     .from("stock_item_branch_costs")
     .select("id")
     .eq("stock_item_id", stockItemId)
     .eq("branch_id", branchId)
     .maybeSingle();
+  if (readError) throw readError;
 
   if (existing) {
     const updatePayload: any = { avg_cost: newAvgCost };
     if (typeof newStock === "number") updatePayload.current_stock = newStock;
-    await supabase
+    const { error } = await supabase
       .from("stock_item_branch_costs")
       .update(updatePayload)
       .eq("id", existing.id);
+    if (error) throw error;
   } else {
-    await supabase.from("stock_item_branch_costs").insert({
+    const { error } = await supabase.from("stock_item_branch_costs").insert({
       company_id: companyId,
       stock_item_id: stockItemId,
       branch_id: branchId,
       avg_cost: newAvgCost,
       current_stock: newStock ?? 0,
     });
+    if (error) throw error;
   }
 }
 

@@ -19,7 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowRight, Plus, Search, Trash2, Save, Archive } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { setBranchCost } from "@/lib/branchCostUtils";
+import { applyCompletedCostAdjustmentCosts } from "@/lib/costAdjustmentCosts";
 
 interface AdjustmentItem {
   stock_item_id: string;
@@ -295,27 +295,13 @@ export const AddCostAdjustmentPage: React.FC = () => {
           if (ie) throw ie;
         }
 
-        // Update stock_items standard_cost if status is مكتمل
         if (status === "مكتمل") {
-          const targetBranchId = destinationType === "branch" && destinationId ? destinationId : null;
-          for (const item of items) {
-            if (item.stock_item_id && item.new_cost > 0) {
-              await supabase.from("stock_items").update({ standard_cost: item.new_cost, avg_cost: item.new_cost }).eq("id", item.stock_item_id);
-              // PER-BRANCH cost
-              if (targetBranchId) {
-                try {
-                  await setBranchCost({
-                    companyId: companyId!,
-                    stockItemId: item.stock_item_id,
-                    branchId: targetBranchId,
-                    newAvgCost: Number(item.new_cost),
-                  });
-                } catch (e) {
-                  console.error("Failed to set per-branch cost (cost adjustment edit)", e);
-                }
-              }
-            }
-          }
+          await applyCompletedCostAdjustmentCosts({
+            companyId: companyId!,
+            destinationType,
+            destinationId,
+            items,
+          });
         }
       } else {
         const { data: recNum } = await supabase.rpc("generate_cost_adjustment_number", { p_company_id: companyId! });
@@ -342,25 +328,12 @@ export const AddCostAdjustmentPage: React.FC = () => {
         }
 
         if (status === "مكتمل") {
-          const targetBranchId = destinationType === "branch" && destinationId ? destinationId : null;
-          for (const item of items) {
-            if (item.stock_item_id && item.new_cost > 0) {
-              await supabase.from("stock_items").update({ standard_cost: item.new_cost, avg_cost: item.new_cost }).eq("id", item.stock_item_id);
-              // PER-BRANCH cost
-              if (targetBranchId) {
-                try {
-                  await setBranchCost({
-                    companyId: companyId!,
-                    stockItemId: item.stock_item_id,
-                    branchId: targetBranchId,
-                    newAvgCost: Number(item.new_cost),
-                  });
-                } catch (e) {
-                  console.error("Failed to set per-branch cost (cost adjustment new)", e);
-                }
-              }
-            }
-          }
+          await applyCompletedCostAdjustmentCosts({
+            companyId: companyId!,
+            destinationType,
+            destinationId,
+            items,
+          });
         }
       }
     },
@@ -369,6 +342,8 @@ export const AddCostAdjustmentPage: React.FC = () => {
       qc.invalidateQueries({ queryKey: ["cost-adjustment", editId] });
       qc.invalidateQueries({ queryKey: ["cost-adjustment-items", editId] });
       qc.invalidateQueries({ queryKey: ["stock-items"] });
+      qc.invalidateQueries({ queryKey: ["stock-items-all"] });
+      qc.invalidateQueries({ queryKey: ["branch-costs"] });
       toast.success(isEdit ? "تم تحديث السجل بنجاح" : "تم حفظ السجل بنجاح");
       navigate("/cost-adjustment");
     },

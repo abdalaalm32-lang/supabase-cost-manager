@@ -102,8 +102,6 @@ export const RecipesPage: React.FC = () => {
   const [globalSearch, setGlobalSearch] = useState("");
 
   // Per-branch cost resolver (falls back to global avg_cost when branch = "all")
-  const branchFilter = selectedBranch && selectedBranch !== "all" ? selectedBranch : null;
-  const { getCost } = useBranchCosts(branchFilter);
   const [showGlobalResults, setShowGlobalResults] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState<any>(null);
 
@@ -245,6 +243,11 @@ export const RecipesPage: React.FC = () => {
     if (!selectedProductId) return null;
     return posItems.find((p: any) => p.id === selectedProductId) || null;
   }, [selectedProductId, posItems]);
+
+  // Cost location: selected branch filter, else the opened product's own branch (same source as stock balances)
+  const branchFilter =
+    selectedBranch && selectedBranch !== "all" ? selectedBranch : (selectedProduct?.branch_id ?? null);
+  const { getCost, costMap } = useBranchCosts(branchFilter);
 
   const getProductCategory = (product: any) => {
     if (!product) return "—";
@@ -422,11 +425,14 @@ export const RecipesPage: React.FC = () => {
     setIngredients((prev) =>
       prev.map((ing) => ({
         ...ing,
-        avg_cost: getCost(ing.stock_item_id, ing.avg_cost),
+        avg_cost: getCost(
+          ing.stock_item_id,
+          allStockItems.find((s: any) => s.id === ing.stock_item_id)?.avg_cost ?? ing.avg_cost,
+        ),
       }))
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedBranch]);
+  }, [branchFilter, costMap]);
 
   // Cost calculations - convert qty from recipe_unit to stock_unit before calculating cost
   const totalIngredientsCost = useMemo(() => {

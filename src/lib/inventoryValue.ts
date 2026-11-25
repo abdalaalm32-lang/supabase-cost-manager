@@ -7,10 +7,10 @@ export function roundCurrency(value: number): number {
 }
 
 /**
- * Inventory Balances displays average cost to two decimals, so its value must
- * use that same rounded cost. The row value is rounded too, keeping the table,
- * grand total, and exports consistent with the figures the user can see.
+ * Use the full weighted-average cost for inventory value so the result equals
+ * the underlying inventory amount. Only the final currency value is rounded;
+ * the average-cost column independently shows three decimal places.
  */
 export function calculateDisplayedInventoryValue(stock: number, averageCost: number): number {
-  return roundCurrency((Number(stock) || 0) * roundCurrency(averageCost));
+  return roundCurrency((Number(stock) || 0) * (Number(averageCost) || 0));
 }

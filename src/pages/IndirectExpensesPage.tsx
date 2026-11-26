@@ -19,6 +19,7 @@ import { toast as sonnerToast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
+import { splitContributionExpenses } from "@/lib/contributionAnalysis";
 import {
   EXPENSE_CATEGORIES,
   EXPENSE_CATEGORY_LABELS,
@@ -31,6 +32,8 @@ interface CustomExpense {
   name: string;
   value: number;
   category: ExpenseCategory;
+  fixed_part?: number;
+  variable_part?: number;
 }
 
 interface CostingPeriod {
@@ -82,6 +85,7 @@ const emptyForm = {
   tax_rate: 0,
   custom_expenses: [] as CustomExpense[],
   expense_classifications: {} as Record<string, ExpenseCategory>,
+  expense_fixed_parts: {} as Record<string, number>,
   branch_id: "" as string,
   consumables_kitchen_categories: [] as string[],
   consumables_bar_categories: [] as string[],
@@ -346,6 +350,16 @@ export const IndirectExpensesPage: React.FC = () => {
       return;
     }
 
+    const baseKeys = ["rent", "salaries", "bills", "media", "maintenance", "other_expenses"] as const;
+    const splitValidation = splitContributionExpenses([
+      ...baseKeys.map(key => ({ id: key, name: key, value: form[key], category: form.expense_classifications[key], fixedPart: form.expense_fixed_parts[key], variablePart: form.expense_fixed_parts[key] == null ? undefined : form[key] - form.expense_fixed_parts[key] })),
+      ...form.custom_expenses.map((expense, index) => ({ id: `custom:${index}`, name: expense.name, value: expense.value, category: expense.category, fixedPart: expense.fixed_part, variablePart: expense.fixed_part == null ? undefined : expense.value - expense.fixed_part })),
+    ]);
+    if (splitValidation.unresolved.length > 0) {
+      toast({ title: "تقسيم المصروف مطلوب", description: "حدد الجزء الثابت لكل مصروف شبه متغير؛ يجب ألا يقل عن صفر أو يزيد عن قيمة البند.", variant: "destructive" });
+      return;
+    }
+
     const isTakeaway = form.venue_type === "تيك اواي";
     const effectiveTurnOver = isTakeaway ? 1 : form.turn_over;
     const expSales = isTakeaway
@@ -371,8 +385,8 @@ export const IndirectExpensesPage: React.FC = () => {
       default_consumables_pct_bar: form.default_consumables_pct_bar,
       default_packing_cost: form.default_packing_cost,
       tax_rate: form.tax_rate,
-      custom_expenses: form.custom_expenses as any,
-      expense_classifications: form.expense_classifications as any,
+      custom_expenses: form.custom_expenses.map(expense => expense.category === "semi_variable" && expense.fixed_part != null ? { ...expense, variable_part: expense.value - expense.fixed_part } : expense) as any,
+      expense_classifications: { ...form.expense_classifications, __semi_variable_fixed_parts: form.expense_fixed_parts } as any,
       branch_id: form.branch_id || null,
       consumables_kitchen_categories: form.consumables_kitchen_categories as any,
       consumables_bar_categories: form.consumables_bar_categories as any,
@@ -419,6 +433,7 @@ export const IndirectExpensesPage: React.FC = () => {
       tax_rate: (p as any).tax_rate || 0,
       custom_expenses: p.custom_expenses ?? [],
       expense_classifications: p.expense_classifications ?? {},
+      expense_fixed_parts: (p.expense_classifications as any)?.__semi_variable_fixed_parts ?? {},
       branch_id: p.branch_id || "",
       consumables_kitchen_categories: Array.isArray((p as any).consumables_kitchen_categories) ? (p as any).consumables_kitchen_categories : [],
       consumables_bar_categories: Array.isArray((p as any).consumables_bar_categories) ? (p as any).consumables_bar_categories : [],
@@ -942,6 +957,36 @@ export const IndirectExpensesPage: React.FC = () => {
                   </Button>
                 </div>
               </div>
+
+              {(() => {
+                const base = [
+                  { id: "rent", name: "الإيجار", value: form.rent }, { id: "salaries", name: "المرتبات", value: form.salaries },
+                  { id: "bills", name: "الفواتير", value: form.bills }, { id: "media", name: "الميديا والتسويق", value: form.media },
+                  { id: "maintenance", name: "الصيانة", value: form.maintenance }, { id: "other_expenses", name: "أخرى", value: form.other_expenses },
+                ].filter(expense => form.expense_classifications[expense.id] === "semi_variable").map(expense => ({ ...expense, fixed: form.expense_fixed_parts[expense.id], index: -1 }));
+                const custom = form.custom_expenses.map((expense, index) => ({ id: `custom:${index}`, name: expense.name, value: expense.value, fixed: expense.fixed_part, index })).filter(expense => form.custom_expenses[expense.index].category === "semi_variable");
+                const semiExpenses = [...base, ...custom];
+                if (semiExpenses.length === 0) return null;
+                return <section className="border-t pt-4 space-y-3">
+                  <h3 className="font-semibold">تقسيم المصاريف شبه المتغيرة</h3>
+                  {semiExpenses.map(expense => <div key={expense.id} className="space-y-2">
+                    <div className="flex justify-between gap-2 text-sm"><span>{expense.name}</span><span>إجمالي البند: {expense.value.toFixed(2)} ج.م</span></div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><Label>الجزء الثابت (ج.م)</Label><Input type="number" min="0" max={expense.value} step="0.01" aria-label={`الجزء الثابت — ${expense.name}`} value={expense.fixed ?? ""} onChange={event => {
+                        const value = event.target.value === "" ? undefined : Number(event.target.value);
+                        setForm(previous => {
+                          if (expense.index >= 0) return { ...previous, custom_expenses: previous.custom_expenses.map((item, index) => index === expense.index ? { ...item, fixed_part: value } : item) };
+                          const next = { ...previous.expense_fixed_parts };
+                          if (value == null) delete next[expense.id]; else next[expense.id] = value;
+                          return { ...previous, expense_fixed_parts: next };
+                        });
+                      }} /></div>
+                      <div><Label>الجزء المتغير (ج.م)</Label><Input aria-label={`الجزء المتغير — ${expense.name}`} readOnly value={expense.fixed == null ? "" : (expense.value - expense.fixed).toFixed(2)} className="bg-muted" /></div>
+                    </div>
+                    {expense.fixed != null && (expense.fixed < 0 || expense.fixed > expense.value) && <p className="text-xs text-destructive">الجزء الثابت يجب أن يكون بين صفر وإجمالي البند.</p>}
+                  </div>)}
+                </section>;
+              })()}
 
               <div className="border-t pt-4">
                 <h3 className="font-semibold mb-3">بيانات التشغيل</h3>

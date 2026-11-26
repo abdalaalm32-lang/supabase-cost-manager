@@ -101,6 +101,7 @@ const mainNavItems: NavItem[] = [
     children: [
       { id: "menu-costing-indirect", path: "/menu-costing/indirect-expenses", label: "تحليل المصاريف الغير مباشرة", icon: Calculator },
       { id: "menu-costing-analysis", path: "/menu-costing/analysis", label: "تحليل المنيو", icon: PieChart },
+      { id: "menu-costing-contribution", path: "/menu-costing/contribution", label: "تحليل المساهمة والربحية", icon: TrendingUp },
       { id: "menu-costing-report", path: "/menu-costing/report", label: "التقرير النهائي", icon: FileText },
       { id: "menu-costing-profitability", path: "/menu-costing/profitability", label: "تحسين الربحية", icon: TrendingUp },
     ],

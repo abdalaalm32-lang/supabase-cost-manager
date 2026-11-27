@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      branch_collections: {
+        Row: {
+          amount: number
+          branch_id: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          payment_date: string
+          payment_method: string
+          transfer_id: string | null
+        }
+        Insert: {
+          amount: number
+          branch_id: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_method?: string
+          transfer_id?: string | null
+        }
+        Update: {
+          amount?: number
+          branch_id?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_method?: string
+          transfer_id?: string | null
+        }
+        Relationships: []
+      }
       branch_supply_policies: {
         Row: {
           branch_id: string

@@ -86,6 +86,7 @@ const ProductionListPage = lazyPage(() => import("@/pages/ProductionListPage"), 
 const ProductionDetailPage = lazyPage(() => import("@/pages/ProductionDetailPage"), "ProductionDetailPage");
 const TransferListPage = lazyPage(() => import("@/pages/TransferListPage"), "TransferListPage");
 const TransferDetailPage = lazyPage(() => import("@/pages/TransferDetailPage"), "TransferDetailPage");
+const BranchReceivablesPage = lazyPage(() => import("@/pages/BranchReceivablesPage"), "BranchReceivablesPage");
 const SupplyInvoicesToBranchesPage = lazyPage(() => import("@/pages/SupplyInvoicesToBranchesPage"), "SupplyInvoicesToBranchesPage");
 const ProductionRecipesPage = lazyPage(() => import("@/pages/ProductionRecipesPage"), "ProductionRecipesPage");
 const MenuOffersPage = lazyPage(() => import("@/pages/MenuOffersPage"), "MenuOffersPage");
@@ -561,6 +562,7 @@ const AppRoutes = () => {
                   <Route path="/inventory/supply-pricing" element={<PermissionGuard permKey="inventory"><SupplyPricingPage /></PermissionGuard>} />
                   <Route path="/transfers" element={<PermissionGuard permKey="transfers"><TransferListPage /></PermissionGuard>} />
                   <Route path="/transfers/supply-invoices" element={<PermissionGuard permKey="transfers"><SupplyInvoicesToBranchesPage /></PermissionGuard>} />
+                  <Route path="/transfers/branch-receivables" element={<PermissionGuard permKey="transfers"><BranchReceivablesPage /></PermissionGuard>} />
                   <Route path="/transfers/add" element={<PermissionGuard permKey="transfers"><TransferDetailPage /></PermissionGuard>} />
                   <Route path="/transfers/:id" element={<PermissionGuard permKey="transfers"><TransferDetailPage /></PermissionGuard>} />
                   <Route path="/stocktake" element={<PermissionGuard permKey="stocktake"><Navigate to="/stocktake/periodic" replace /></PermissionGuard>} />

@@ -12,7 +12,7 @@ import {
   FileText, Settings, LogOut, Menu,
   Store, ArrowRightLeft, ClipboardCheck, Trash2,
   Layers, PieChart, BarChart3, ShieldBan, Factory,
-  ChevronDown, Monitor, Receipt, BrainCircuit, FolderOpen, UtensilsCrossed, MessageSquare, Tags,
+  ChevronDown, Monitor, Receipt, Wallet, BrainCircuit, FolderOpen, UtensilsCrossed, MessageSquare, Tags,
   Shield, Building2, Sun, Moon, Phone, Clock, GitBranch, Truck, MessageSquareQuote, FileSpreadsheet, Code2, TrendingUp
 } from "lucide-react";
 
@@ -67,6 +67,7 @@ const mainNavItems: NavItem[] = [
     children: [
       { id: "transfers-list", path: "/transfers", label: "أذونات الصرف والتحويل", icon: ArrowRightLeft },
       { id: "transfers-supply-invoices", path: "/transfers/supply-invoices", label: "فواتير التوريدات للفروع", icon: Receipt },
+      { id: "transfers-branch-receivables", path: "/transfers/branch-receivables", label: "مديونية الفروع", icon: Wallet },
     ],
   },
   {

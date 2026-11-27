@@ -8,6 +8,13 @@
       "when": 1795573449793,
       "tag": "0000_add_indirect_expense_classifications",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795795538600,
+      "tag": "0001_create_branch_collections",
+      "breakpoints": true
     }
   ]
 }

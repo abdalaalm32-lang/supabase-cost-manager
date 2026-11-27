@@ -11,6 +11,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
+import { transferGrandTotal, roundUpWhole } from "@/lib/transferTotals";
 import {
   Plus, Search, Eye, Pencil, ToggleLeft, ToggleRight, ArrowLeftRight, Trash2, Printer,
 } from "lucide-react";
@@ -146,6 +147,17 @@ export const TransferListPage: React.FC = () => {
       <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">—</td>
       <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${totalCostSum.toFixed(2)}</td>
     </tr>`;
+    const transportFee = Number(record.transportation_cost || 0);
+    const loadingFee = Number(record.loading_cost || 0);
+    if (transportFee > 0 || loadingFee > 0) {
+      const span = includeBalance ? 7 : 6;
+      const row = (label: string, v: string, bold = false) => `<tr style="${bold ? "font-weight:bold;background:#e8e8e8;" : ""}">
+        <td colspan="${span}" style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${label}</td>
+        <td style="border:1px solid #000;padding:4px 6px;font-size:10px;text-align:center;">${v}</td></tr>`;
+      itemsHTML += row("تكلفة النقل", transportFee.toFixed(2));
+      itemsHTML += row("تكلفة التحميل", loadingFee.toFixed(2));
+      itemsHTML += row("الإجمالي الكلي", String(roundUpWhole(totalCostSum + transportFee + loadingFee)), true);
+    }
 
     const printHTML = `<!DOCTYPE html>
 <html dir="rtl" lang="ar">
@@ -278,7 +290,7 @@ export const TransferListPage: React.FC = () => {
           ))}
         </div>
         <ExportButtons
-          data={filtered.map((r: any) => ({ record: r.record_number || "—", date: r.date, from: r.source_name || "—", to: r.destination_name || "—", creator: r.creator_name || "—", status: r.is_edited ? "معدل" : r.status, cost: Number(r.total_cost || 0).toFixed(2) }))}
+          data={filtered.map((r: any) => ({ record: r.record_number || "—", date: r.date, from: r.source_name || "—", to: r.destination_name || "—", creator: r.creator_name || "—", status: r.is_edited ? "معدل" : r.status, cost: roundUpWhole(transferGrandTotal(r)).toFixed(0) }))}
           columns={[{ key: "record", label: "رقم الإذن" }, { key: "date", label: "التاريخ" }, { key: "from", label: "من" }, { key: "to", label: "إلى" }, { key: "creator", label: "المنشئ" }, { key: "status", label: "الحالة" }, { key: "cost", label: "إجمالي التكلفة" }]}
           filename="أذونات_التحويل"
           title="أذونات الصرف والتحويل"
@@ -313,7 +325,7 @@ export const TransferListPage: React.FC = () => {
                   <TableCell>{r.destination_name || "—"}</TableCell>
                   <TableCell className="text-sm">{r.creator_name || "—"}</TableCell>
                   <TableCell>{getStatusBadgeWithEdited(r.status, r.is_edited)}</TableCell>
-                  <TableCell>{Number(r.total_cost || 0).toFixed(2)}</TableCell>
+                  <TableCell>{roundUpWhole(transferGrandTotal(r)).toLocaleString("en-US")}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`/transfers/${r.id}`)}>

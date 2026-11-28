@@ -222,19 +222,19 @@ export const BranchReceivablesPage: React.FC = () => {
       </Card>
 
       <Card>
-        <CardHeader className="pb-2 flex flex-row flex-wrap items-center justify-between gap-2">
+        <CardHeader className="pb-2">
           <CardTitle className="text-base">الفواتير</CardTitle>
-          <div className="flex flex-wrap gap-2">
-            <div className="relative"><Search size={14} className="absolute right-2 top-3 text-muted-foreground" /><Input className="pr-7 w-44" placeholder="رقم الفاتورة" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
-            <Select value={branchFilter} onValueChange={setBranchFilter}><SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <div className="relative"><Search size={14} className="absolute right-2 top-3 text-muted-foreground" /><Input className="pr-7 w-32" placeholder="رقم الفاتورة" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
+            <Select value={branchFilter} onValueChange={setBranchFilter}><SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
               <SelectContent><SelectItem value="all">كل الفروع</SelectItem>{(branches as any[]).map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent></Select>
-            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}><SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}><SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
               <SelectContent><SelectItem value="all">كل الحالات</SelectItem><SelectItem value="unpaid">غير محصّل</SelectItem><SelectItem value="partial">محصّل جزئياً</SelectItem><SelectItem value="paid">تم التحصيل</SelectItem></SelectContent></Select>
-            <div className="flex items-end gap-2">
-              <div className="space-y-1"><Label className="text-xs">من تاريخ</Label><Input type="date" className="w-36" value={fromDate} max={toDate || undefined} onChange={(e) => setFromDate(e.target.value)} /></div>
-              <div className="space-y-1"><Label className="text-xs">إلى تاريخ</Label><Input type="date" className="w-36" value={toDate} min={fromDate || undefined} onChange={(e) => setToDate(e.target.value)} /></div>
-              {(fromDate || toDate) && <Button variant="ghost" size="sm" onClick={() => { setFromDate(""); setToDate(""); }}>مسح التاريخ</Button>}
-            </div>
+            <Label className="text-xs text-muted-foreground whitespace-nowrap">من تاريخ</Label>
+            <Input type="date" className="w-28 shrink-0" value={fromDate} max={toDate || undefined} onChange={(e) => setFromDate(e.target.value)} />
+            <Label className="text-xs text-muted-foreground whitespace-nowrap">إلى تاريخ</Label>
+            <Input type="date" className="w-28 shrink-0" value={toDate} min={fromDate || undefined} onChange={(e) => setToDate(e.target.value)} />
+            {(fromDate || toDate) && <Button variant="ghost" className="h-10 shrink-0 px-3" onClick={() => { setFromDate(""); setToDate(""); }}>مسح</Button>}
           </div>
         </CardHeader>
         <CardContent>

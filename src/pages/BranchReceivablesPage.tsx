@@ -11,10 +11,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Wallet, HandCoins, AlertCircle, CheckCircle2, Plus, Trash2, Building2, Search } from "lucide-react";
+import { Wallet, HandCoins, AlertCircle, CheckCircle2, Plus, Trash2, Building2, Search, Printer } from "lucide-react";
 import { ExportButtons } from "@/components/ExportButtons";
 import { toast } from "sonner";
-import { allocateCollections, invoiceAmount, payStatus, type PayStatus } from "@/lib/branchReceivables";
+import { allocateCollections, invoiceAmount, isWithinDateRange, payStatus, type PayStatus } from "@/lib/branchReceivables";
 
 const fmt = (n: number) => new Intl.NumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n || 0);
 const statusLabel: Record<PayStatus, string> = { unpaid: "غير محصّل", partial: "محصّل جزئياً", paid: "تم التحصيل" };
@@ -26,6 +26,8 @@ export const BranchReceivablesPage: React.FC = () => {
   const qc = useQueryClient();
   const [branchFilter, setBranchFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<"all" | PayStatus>("all");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ branch_id: "", transfer_id: "none", amount: "", payment_date: new Date().toISOString().slice(0, 10), payment_method: "نقدي", notes: "" });
@@ -60,22 +62,32 @@ export const BranchReceivablesPage: React.FC = () => {
 
   const { paid } = useMemo(() => allocateCollections(invoices, collections as any[]), [invoices, collections]);
 
-  const rows = useMemo(() => invoices.map((i) => {
+  const allRows = useMemo(() => invoices.map((i) => {
     const p = paid.get(i.id) ?? 0;
     return { ...i, paid: p, remaining: Math.max(i.amount - p, 0), status: payStatus(i.amount, p) };
   }), [invoices, paid]);
+
+  const rows = useMemo(
+    () => allRows.filter((r) => isWithinDateRange(r.date, fromDate, toDate)),
+    [allRows, fromDate, toDate],
+  );
 
   const filtered = rows.filter((r) =>
     (branchFilter === "all" || r.branch_id === branchFilter) &&
     (statusFilter === "all" || r.status === statusFilter) &&
     (!search.trim() || (r.record_number ?? "").toLowerCase().includes(search.trim().toLowerCase())));
 
+  const filteredCollections = (collections as any[]).filter((c) =>
+    (branchFilter === "all" || c.branch_id === branchFilter) &&
+    isWithinDateRange(c.payment_date, fromDate, toDate));
+
   const branchSummary = useMemo(() => (branches as any[]).map((b) => {
     const list = rows.filter((r) => r.branch_id === b.id);
     const total = list.reduce((s, r) => s + r.amount, 0);
-    const collected = (collections as any[]).filter((c) => c.branch_id === b.id).reduce((s, c) => s + Number(c.amount), 0);
-    return { id: b.id, name: b.name, count: list.length, total, collected, remaining: Math.max(total - collected, 0), status: payStatus(total, collected) };
-  }).filter((b) => b.count > 0 || b.collected > 0), [branches, rows, collections]);
+    const collected = list.reduce((s, r) => s + r.paid, 0);
+    const remaining = list.reduce((s, r) => s + r.remaining, 0);
+    return { id: b.id, name: b.name, count: list.length, total, collected, remaining, status: payStatus(total, collected) };
+  }).filter((b) => b.count > 0), [branches, rows]);
 
   const scoped = branchSummary.filter((b) => branchFilter === "all" || b.id === branchFilter);
   const kpi = {
@@ -85,7 +97,7 @@ export const BranchReceivablesPage: React.FC = () => {
   };
   const rate = kpi.total > 0 ? (kpi.collected / kpi.total) * 100 : 0;
 
-  const openInvoicesForBranch = rows.filter((r) => r.branch_id === form.branch_id && r.remaining > 0);
+  const openInvoicesForBranch = allRows.filter((r) => r.branch_id === form.branch_id && r.remaining > 0);
 
   const save = async () => {
     const amount = Number(form.amount);
@@ -113,6 +125,38 @@ export const BranchReceivablesPage: React.FC = () => {
   };
 
   const recordOf = (id: string | null) => (id ? invoices.find((i) => i.id === id)?.record_number ?? "—" : "دفعة على الحساب");
+  const periodLabel = fromDate || toDate ? `${fromDate || "من البداية"} — ${toDate || "حتى الآن"}` : "كل الفترات";
+
+  const handlePrint = () => {
+    if (filtered.length === 0) { toast.error("لا توجد فواتير للطباعة"); return; }
+    const popup = window.open("", "_blank");
+    if (!popup) { toast.error("يرجى السماح بفتح نافذة الطباعة"); return; }
+    const esc = (value: unknown) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[char] ?? char));
+    const printedTotal = filtered.reduce((sum, row) => sum + row.amount, 0);
+    const printedPaid = filtered.reduce((sum, row) => sum + row.paid, 0);
+    const printedRemaining = filtered.reduce((sum, row) => sum + row.remaining, 0);
+    const summaryRows = scoped.map((branch) => `<tr><td>${esc(branch.name)}</td><td>${branch.count}</td><td>${fmt(branch.total)}</td><td>${fmt(branch.collected)}</td><td>${fmt(branch.remaining)}</td><td>${statusLabel[branch.status]}</td></tr>`).join("");
+    const invoiceRows = filtered.map((row, index) => `<tr><td>${index + 1}</td><td>${esc(row.record_number ?? "—")}</td><td>${esc(row.date)}</td><td>${esc(branchName(row.branch_id))}</td><td>${fmt(row.amount)}</td><td>${fmt(row.paid)}</td><td>${fmt(row.remaining)}</td><td>${statusLabel[row.status]}</td></tr>`).join("");
+    popup.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>مديونية الفروع</title>
+      <style>
+        @font-face{font-family:CairoLocal;src:url('${window.location.origin}/fonts/Cairo-Regular.ttf') format('truetype')}
+        *{box-sizing:border-box}body{font-family:CairoLocal,sans-serif;direction:rtl;padding:18px;color:#000;background:#fff;font-size:11px}
+        @media print{@page{size:landscape;margin:9mm}body{padding:0}}
+        .header{display:flex;align-items:center;justify-content:center;gap:14px;text-align:center;border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:12px}
+        .header img{width:58px;height:58px;object-fit:contain}.header h1{font-size:20px;margin:0 0 4px}.meta{color:#444;font-size:10px}
+        .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}.kpi{border:1px solid #777;padding:8px;text-align:center}.kpi b{display:block;font-size:15px;margin-top:3px}
+        h2{font-size:14px;margin:14px 0 6px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #333;padding:5px;text-align:center}th{background:#eee}tfoot td{font-weight:bold;background:#f5f5f5}
+        .footer{text-align:center;border-top:1px solid #333;margin-top:14px;padding-top:6px;font-size:9px}
+      </style></head><body>
+      <div class="header"><img src="${window.location.origin}/logo.png" alt="الشعار"><div><h1>تقرير مديونية الفروع</h1><div class="meta">الفترة: ${esc(periodLabel)} • الفرع: ${esc(branchFilter === "all" ? "كل الفروع" : branchName(branchFilter))} • الحالة: ${statusFilter === "all" ? "كل الحالات" : statusLabel[statusFilter]} • تاريخ الطباعة: ${new Date().toLocaleDateString("ar-EG")}</div></div></div>
+      <div class="kpis"><div class="kpi">إجمالي الفواتير<b>${fmt(kpi.total)} ج.م</b></div><div class="kpi">إجمالي المحصّل<b>${fmt(kpi.collected)} ج.م</b></div><div class="kpi">المتبقي على الفروع<b>${fmt(kpi.remaining)} ج.م</b></div><div class="kpi">نسبة التحصيل<b>${rate.toFixed(1)}%</b></div></div>
+      <h2>ملخص الفروع</h2><table><thead><tr><th>الفرع</th><th>عدد الفواتير</th><th>الإجمالي</th><th>المحصّل</th><th>المتبقي</th><th>الحالة</th></tr></thead><tbody>${summaryRows}</tbody></table>
+      <h2>الفواتير</h2><table><thead><tr><th>م</th><th>رقم الفاتورة</th><th>التاريخ</th><th>الفرع</th><th>القيمة</th><th>المحصّل</th><th>المتبقي</th><th>الحالة</th></tr></thead><tbody>${invoiceRows}</tbody><tfoot><tr><td colspan="4">إجمالي الفواتير المعروضة</td><td>${fmt(printedTotal)}</td><td>${fmt(printedPaid)}</td><td>${fmt(printedRemaining)}</td><td>—</td></tr></tfoot></table>
+      <div class="footer">Powered by Mohamed Abdel Aal</div>
+      <script>(async()=>{try{if(document.fonts&&document.fonts.ready)await document.fonts.ready}catch(e){}window.print();window.onafterprint=()=>window.close()})()</script>
+    </body></html>`);
+    popup.document.close();
+  };
 
   return (
     <div className="space-y-6 p-4" dir="rtl">
@@ -121,12 +165,17 @@ export const BranchReceivablesPage: React.FC = () => {
           <h1 className="text-2xl font-bold flex items-center gap-2"><Wallet className="text-primary" /> مديونية الفروع</h1>
           <p className="text-sm text-muted-foreground">متابعة تحصيل فواتير التوريدات من الفروع</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={handlePrint} disabled={filtered.length === 0}><Printer size={14} /> طباعة</Button>
           <ExportButtons
             title="مديونية الفروع" filename="branch-receivables"
             columns={[{ key: "record", label: "رقم الفاتورة" }, { key: "date", label: "التاريخ" }, { key: "branch", label: "الفرع" }, { key: "amount", label: "قيمة الفاتورة" }, { key: "paid", label: "المحصّل" }, { key: "remaining", label: "المتبقي" }, { key: "status", label: "الحالة" }]}
             data={filtered.map((r) => ({ record: r.record_number ?? "—", date: r.date, branch: branchName(r.branch_id), amount: fmt(r.amount), paid: fmt(r.paid), remaining: fmt(r.remaining), status: statusLabel[r.status] }))}
-            filters={[{ label: "الفرع", value: branchFilter === "all" ? "الكل" : branchName(branchFilter) }]}
+            filters={[
+              { label: "الفرع", value: branchFilter === "all" ? "الكل" : branchName(branchFilter) },
+              { label: "الفترة", value: periodLabel },
+              { label: "الحالة", value: statusFilter === "all" ? "كل الحالات" : statusLabel[statusFilter] },
+            ]}
           />
           <Button onClick={() => { setForm((f) => ({ ...f, branch_id: branchFilter !== "all" ? branchFilter : f.branch_id })); setOpen(true); }}><Plus size={16} /> تسجيل تحصيل</Button>
         </div>
@@ -181,6 +230,11 @@ export const BranchReceivablesPage: React.FC = () => {
               <SelectContent><SelectItem value="all">كل الفروع</SelectItem>{(branches as any[]).map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent></Select>
             <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}><SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
               <SelectContent><SelectItem value="all">كل الحالات</SelectItem><SelectItem value="unpaid">غير محصّل</SelectItem><SelectItem value="partial">محصّل جزئياً</SelectItem><SelectItem value="paid">تم التحصيل</SelectItem></SelectContent></Select>
+            <div className="flex items-end gap-2">
+              <div className="space-y-1"><Label className="text-xs">من تاريخ</Label><Input type="date" className="w-36" value={fromDate} max={toDate || undefined} onChange={(e) => setFromDate(e.target.value)} /></div>
+              <div className="space-y-1"><Label className="text-xs">إلى تاريخ</Label><Input type="date" className="w-36" value={toDate} min={fromDate || undefined} onChange={(e) => setToDate(e.target.value)} /></div>
+              {(fromDate || toDate) && <Button variant="ghost" size="sm" onClick={() => { setFromDate(""); setToDate(""); }}>مسح التاريخ</Button>}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -210,7 +264,7 @@ export const BranchReceivablesPage: React.FC = () => {
           <Table>
             <TableHeader><TableRow><TableHead>التاريخ</TableHead><TableHead>الفرع</TableHead><TableHead>الفاتورة</TableHead><TableHead className="text-center">المبلغ</TableHead><TableHead>طريقة الدفع</TableHead><TableHead>ملاحظات</TableHead><TableHead /></TableRow></TableHeader>
             <TableBody>
-              {(collections as any[]).filter((c) => branchFilter === "all" || c.branch_id === branchFilter).map((c) => (
+              {filteredCollections.map((c) => (
                 <TableRow key={c.id}>
                   <TableCell>{c.payment_date}</TableCell><TableCell>{branchName(c.branch_id)}</TableCell><TableCell className="font-mono">{recordOf(c.transfer_id)}</TableCell>
                   <TableCell className="text-center tabular-nums font-bold">{fmt(Number(c.amount))}</TableCell><TableCell>{c.payment_method}</TableCell><TableCell>{c.notes ?? ""}</TableCell>
@@ -230,7 +284,7 @@ export const BranchReceivablesPage: React.FC = () => {
               <Select value={form.branch_id} onValueChange={(v) => setForm((f) => ({ ...f, branch_id: v, transfer_id: "none" }))}><SelectTrigger><SelectValue placeholder="اختر الفرع" /></SelectTrigger>
                 <SelectContent>{(branches as any[]).map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent></Select></div>
             <div><Label>ربط بفاتورة</Label>
-              <Select value={form.transfer_id} onValueChange={(v) => setForm((f) => ({ ...f, transfer_id: v, amount: v === "none" ? f.amount : String(rows.find((r) => r.id === v)?.remaining ?? f.amount) }))}><SelectTrigger><SelectValue /></SelectTrigger>
+              <Select value={form.transfer_id} onValueChange={(v) => setForm((f) => ({ ...f, transfer_id: v, amount: v === "none" ? f.amount : String(allRows.find((r) => r.id === v)?.remaining ?? f.amount) }))}><SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent><SelectItem value="none">دفعة على الحساب (تُخصم من الأقدم)</SelectItem>{openInvoicesForBranch.map((r) => <SelectItem key={r.id} value={r.id}>{r.record_number} — متبقي {fmt(r.remaining)}</SelectItem>)}</SelectContent></Select></div>
             <div className="grid grid-cols-2 gap-3">
               <div><Label>المبلغ</Label><Input type="number" step="0.01" value={form.amount} onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))} /></div>

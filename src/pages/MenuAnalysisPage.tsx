@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMenuChannelPricing } from "@/hooks/useMenuChannelPricing";
 import { calculateMenuMainCost } from "@/lib/menuMainCost";
+import { buildRecipeBranchCostMap, resolveRecipeIngredientCost } from "@/lib/recipeBranchCost";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -202,9 +204,11 @@ export const MenuAnalysisPage: React.FC = () => {
       supabase.from("pos_item_cost_settings").select("*").eq("company_id", companyId!),
       supabase.from("branches").select("id, name").eq("company_id", companyId!).eq("active", true),
       supabase.from("companies").select("name").eq("id", companyId!).single(),
-      branchFilter
-        ? supabase.from("stock_item_branch_costs").select("stock_item_id, avg_cost").eq("company_id", companyId!).eq("branch_id", branchFilter)
-        : Promise.resolve({ data: [] as any[] }),
+      fetchAllRows<any>((from, to) => supabase
+        .from("stock_item_branch_costs")
+        .select("branch_id, stock_item_id, avg_cost")
+        .eq("company_id", companyId!)
+        .range(from, to)),
     ]);
     if (companyRes.data) setCompanyName(companyRes.data.name);
 
@@ -222,18 +226,11 @@ export const MenuAnalysisPage: React.FC = () => {
     }
     if (branchesRes.data) setBranches(branchesRes.data as Branch[]);
 
-    // Build per-branch cost map (fallback to global avg_cost)
-    const branchCostMap = new Map<string, number>();
-    ((branchCostsRes as any).data || []).forEach((bc: any) => {
-      if (bc.stock_item_id && bc.avg_cost != null) {
-        branchCostMap.set(bc.stock_item_id, Number(bc.avg_cost));
-      }
-    });
-    const resolveCost = (stockItemId: string, globalCost: number): number => {
-      if (!branchFilter) return globalCost;
-      const bc = branchCostMap.get(stockItemId);
-      return bc != null ? bc : globalCost;
-    };
+    // Match Recipes: selected branch, or each item's own branch when showing all branches.
+    const branchCostMap = buildRecipeBranchCostMap(branchCostsRes);
+    const itemBranchMap = new Map<string, string | null>(
+      ((itemsRes.data ?? []) as any[]).map((item) => [item.id, item.branch_id ?? null]),
+    );
 
     const recipeCostMap = new Map<string, number>();
     const recipeDetailsMap = new Map<string, RecipeIngredientDetail[]>();
@@ -241,11 +238,12 @@ export const MenuAnalysisPage: React.FC = () => {
       for (const recipe of recipesRes.data as any[]) {
         let totalCost = 0;
         const details: RecipeIngredientDetail[] = [];
+        const recipeBranchId = branchFilter ?? itemBranchMap.get(recipe.menu_item_id) ?? null;
         for (const ing of recipe.recipe_ingredients || []) {
           const stockItem = ing.stock_items;
           if (stockItem) {
             const convFactor = stockItem.conversion_factor || 1;
-            const unitCost = resolveCost(ing.stock_item_id, Number(stockItem.avg_cost || 0));
+            const unitCost = resolveRecipeIngredientCost(branchCostMap, recipeBranchId, ing.stock_item_id, stockItem.avg_cost);
             const costPerRecipeUnit = unitCost / convFactor;
             const lineCost = ing.qty * costPerRecipeUnit;
             totalCost += lineCost;

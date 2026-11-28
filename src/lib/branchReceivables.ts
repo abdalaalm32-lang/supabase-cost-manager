@@ -31,3 +31,10 @@ export const payStatus = (amount: number, paid: number): PayStatus =>
 
 export const invoiceAmount = (itemsCost: number, transport: number, loading: number) =>
   roundUpWhole(itemsCost + transport + loading);
+
+/** Inclusive YYYY-MM-DD date filtering; either boundary may be left open. */
+export function isWithinDateRange(date: string | null | undefined, from = "", to = "") {
+  const day = String(date ?? "").slice(0, 10);
+  if (!day) return !from && !to;
+  return (!from || day >= from) && (!to || day <= to);
+}
